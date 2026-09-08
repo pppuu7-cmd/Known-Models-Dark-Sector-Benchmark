@@ -1,0 +1,31 @@
+prior_id,source_model,source_wave,requirement,status
+DP-0001,M00,W00,"future candidate exposes a recoverable reference/decoupling limit",ACTIVE
+DP-0002,M00,W00,"exact reference-limit residuals must vanish under matched bookkeeping",ACTIVE
+DP-0003,M00,W00,"missing or non-applicable response cells are masked, never zero-imputed",ACTIVE
+DP-0004,M00,W00,"solver-specific control success is not solver-independent universality",ACTIVE
+DP-0101,M01,W00,"candidate has a controlled physically admissible path to the reference limit",ACTIVE
+DP-0102,M01,W00,"one-sided/tangent-cone local geometry is respected before differentiation",ACTIVE
+DP-0103,M01,W00,"candidate targets covariance-whitened observable directions rather than raw theory distance",ACTIVE
+DP-0104,M01,W00,"small residuals dominate and survive cross-solver calibration systematics",ACTIVE
+DP-0105,M01,W00,"every clean local response is compared against a real covariance scale",ACTIVE
+DP-0106,M01,W00,"if nuisance-free Fisher sensitivity is already weak, add orthogonal observables rather than interpretive complexity",ACTIVE
+DP-0201,M02,W01,"physical parameter geometry precedes linearization/Jacobian construction",ACTIVE
+DP-0202,M02,W01,"full-history physical constraints are checked, not only local algebraic admissibility",ACTIVE
+DP-0203,M02,W01,"internal dark-sector interactions satisfy total conservation",ACTIVE
+DP-0204,M02,W01,"background-only matching is insufficient for equivalence claims",ACTIVE
+DP-0301,M03,W01,"future model predicts multiple orthogonal response channels",ACTIVE
+DP-0302,M03,W01,"slip-like metric observables are treated as high-value degeneracy breakers",ACTIVE
+DP-0303,M03,W01,"parameter count is not identified rank; near-collinearity is quantified",ACTIVE
+DP-0304,M03,W01,"within-family holdout support is kept distinct from universal holdout",ACTIVE
+DP-0401,M04,W01,"candidate is tested across multiple k windows so characteristic scales cannot hide outside one block",ACTIVE
+DP-0402,M04,W01,"blind/near-null/solver-limited/undefined response states remain distinct",ACTIVE
+DP-0403,M04,W01,"characteristic-scale motion is compared against alternative suppression mechanisms before attribution",ACTIVE
+DP-0404,M04,W01,"time separability/evolution is retained as a possible mechanism discriminator",ACTIVE
+DP-0501,M05,W01,"dark-sector candidates are compared against modified-gravity explanations",ACTIVE
+DP-0502,M05,W01,"time evolution and response sign/orientation are first-class observables",ACTIVE
+DP-0503,M05,W01,"near-reference solver thresholds are explicit and cannot silently define the tangent",ACTIVE
+DP-0504,M05,W01,"novel microphysics must generate a distinctive observable direction, not only a new interpretation",ACTIVE
+DP-0601,M06,W01,"holdout tests are prospective and relation-specific",ACTIVE
+DP-0602,M06,W01,"characteristic scales/epochs are predicted before holdout exposure",ACTIVE
+DP-0603,M06,W01,"cross-family holdout is stronger than interpolation but cannot retroactively define a law",ACTIVE
+DP-0604,M06,W01,"temporal localization is retained as an independent response axis",ACTIVE
