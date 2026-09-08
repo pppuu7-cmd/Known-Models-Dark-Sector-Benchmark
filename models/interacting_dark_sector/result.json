@@ -1,0 +1,49 @@
+{
+  "schema_version": "KMDSB-result-v0.1",
+  "model_id": "M02",
+  "model_slug": "interacting_dark_sector",
+  "model_name": "Interacting dark sector (IDE) local tangent-cone model",
+  "wave": "wave_01_baseline_atlas",
+  "audit_date": "2026-09-08",
+  "protocol": "protocol/DSIR_BENCHMARK_PROTOCOL_v0.1.md",
+  "dsir_authority": {
+    "repository": "pppuu7-cmd/Dark-Sector-Influence-Reconstruction",
+    "commit": "e3276e2193f6a5200b541a194e3175356ae5a1c1"
+  },
+  "tested_scope": {
+    "family": "C2 IDE",
+    "implementation": "kaeonikc/class_iv@ac627d54...",
+    "local_geometry": "tangent_cone",
+    "alpha_direction": "one_sided_left; alpha>0 excluded by full-history rho_iv>=0 requirement",
+    "beta_direction": "two_sided"
+  },
+  "hard_controls": {
+    "alpha_beta_structure_angle_deg": 58.9338,
+    "alpha_beta_background_H_angle_deg": 10.8306
+  },
+  "gate_states": {
+    "B0": "PASS",
+    "B1": "PASS_WITH_SCOPE",
+    "B2": "PASS_WITH_SCOPE",
+    "B3": "PASS_WITH_SCOPE",
+    "B4": "PASS_WITH_SCOPE",
+    "B5": "PARTIAL",
+    "B6": "PARTIAL",
+    "B7": "OPEN",
+    "B8": "OPEN",
+    "B9": "PASS"
+  },
+  "overall_verdict": "DSIR_COMPATIBLE",
+  "branch_level_note": "The excluded alpha>0 branch fails the frozen physical positivity domain, but this does not falsify the whole IDE family.",
+  "wave_hypotheses": {
+    "W01-H1": "SUPPORTED_HARD",
+    "W01-H3": "SUPPORTED"
+  },
+  "design_prior_delta": [
+    "DP-0201 physical parameter geometry must precede linearization",
+    "DP-0202 full-history physical constraints must be checked",
+    "DP-0203 internal interactions must satisfy total conservation",
+    "DP-0204 background-only matching is insufficient"
+  ],
+  "next_hard_task": "M02_B5_B6_observation_space_tangent_cone_identifiability"
+}
