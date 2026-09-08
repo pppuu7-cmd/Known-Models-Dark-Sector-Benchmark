@@ -1,0 +1,18 @@
+{
+  "schema_version": "KMDSB-edge-result-v0.1",
+  "wave": "W02",
+  "edge": "E2",
+  "pair": ["M02_IDE", "M05_designer_fR"],
+  "status": "PASS_WITH_SCOPE",
+  "scope": "unwhitened common G_lowk r_Delta(k,z) geometry; f(R) uses minimum resolved B0=1e-6 production ray",
+  "dsir_authority": "e3276e2193f6a5200b541a194e3175356ae5a1c1",
+  "input": {"path":"data/derived/comparison_readiness/local_response_tangents_v0_1.json","blob_sha":"37179b18618c8376763c7fe0d69df6e07da4f904"},
+  "pairs": [
+    {"left":"C2_IDE_alpha_negative","right":"C5_designer_fR_B0","cosine":-0.7378634073344369,"oriented_angle_deg":137.54972730703213,"acute_line_angle_deg":42.450272692967864,"best_scalar_projection_residual_fraction":0.6749500663877402},
+    {"left":"C2_IDE_beta","right":"C5_designer_fR_B0","cosine":0.5089798106771986,"oriented_angle_deg":59.40410068973369,"acute_line_angle_deg":59.40410068973369,"best_scalar_projection_residual_fraction":0.8607784571671175}
+  ],
+  "hard_interpretation": "Exact IDE/f(R) directional equivalence is rejected in the frozen common G_lowk production block.",
+  "scope_caveat": "C5 B0=1e-6 is a minimum resolved production ray, not an exact B0->0 tangent because of the pinned solver GR threshold.",
+  "observability_note": "S_slip is unknown for C2 and C5 in the frozen observability atlas; no slip separator is claimed. Observation-space promotion remains open.",
+  "next": "W02-E2b covariance-aware IDE-vs-f(R) projection"
+}
