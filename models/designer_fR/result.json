@@ -1,0 +1,24 @@
+{
+  "schema_version": "KMDSB-result-v0.1",
+  "model_id": "M05",
+  "model_slug": "designer_fR",
+  "model_name": "Designer f(R) modified-gravity comparator",
+  "wave": "wave_01_baseline_atlas",
+  "audit_date": "2026-09-08",
+  "dsir_authority": {"repository":"pppuu7-cmd/Dark-Sector-Influence-Reconstruction","commit":"e3276e2193f6a5200b541a194e3175356ae5a1c1"},
+  "hard_controls": {
+    "implementation": "EFTCAMB/EFTCAMB@16d9c4e9...",
+    "production_B0": [1e-6,1e-5,1e-4,1e-3],
+    "gdm_cs2_fR_scale_angle_deg": 0.07813,
+    "gdm_cs2_fR_time_angle_deg": 25.18,
+    "gdm_cs2_fR_full_oriented_angle_deg": 154.82,
+    "gdm_cv2_fR_scale_angle_deg": 0.10169,
+    "gdm_cv2_fR_time_angle_deg": 25.49,
+    "gdm_cv2_fR_full_oriented_angle_deg": 154.51
+  },
+  "gate_states": {"B0":"PASS","B1":"PASS_WITH_SCOPE","B2":"PASS_WITH_SCOPE","B3":"PASS_WITH_SCOPE","B4":"PASS_WITH_SCOPE","B5":"PARTIAL","B6":"PASS_WITH_SCOPE","B7":"OPEN","B8":"SUPPORTED","B9":"PASS"},
+  "overall_verdict": "DSIR_DISCRIMINATED",
+  "verdict_scope": "Hard cross-family multi-response theory-space discrimination; no survey-level or ontology claim.",
+  "wave_hypotheses": {"W01-H3":"HARD_PASS_THEORY_RESPONSE","W01-H4":"RESPECTED"},
+  "design_prior_delta": ["DP-0501 compare dark-sector candidates against modified gravity","DP-0502 treat time and response sign/orientation as first-class observables","DP-0503 expose near-reference solver thresholds","DP-0504 require a distinctive observable direction, not only distinct microphysics"]
+}
