@@ -1,11 +1,11 @@
-"""Wave 02 E1: IDE vs GDM common-block tangent geometry.
+"""Wave 02 common-block tangent geometry for E1/E2.
 
 Usage:
     python code/w02_e1_pair_angles.py /path/to/local_response_tangents_v0_1.json
 
 The input must be the frozen DSIR artifact
 `data/derived/comparison_readiness/local_response_tangents_v0_1.json`
-from the authority commit recorded by the Wave-02 audit.
+from the authority commit recorded by the Wave-02 audits.
 
 This script measures only unwhitened theory-response geometry on the common
 35-node G_lowk r_Delta(k,z) block. It does not make an observational claim.
@@ -20,10 +20,14 @@ from pathlib import Path
 import numpy as np
 
 PAIR_IDS = [
+    # W02-E1 IDE vs GDM
     ("C2_IDE_alpha_negative", "C3_GDM_cs2"),
     ("C2_IDE_alpha_negative", "C3_GDM_cv2"),
     ("C2_IDE_beta", "C3_GDM_cs2"),
     ("C2_IDE_beta", "C3_GDM_cv2"),
+    # W02-E2 IDE vs designer f(R)
+    ("C2_IDE_alpha_negative", "C5_designer_fR_B0"),
+    ("C2_IDE_beta", "C5_designer_fR_B0"),
 ]
 
 
@@ -36,8 +40,6 @@ def geometry(a: np.ndarray, b: np.ndarray) -> dict:
     cos = max(-1.0, min(1.0, cos))
     oriented = math.degrees(math.acos(cos))
     acute = math.degrees(math.acos(abs(cos)))
-    # Residual fraction after the best one-dimensional scalar projection,
-    # expressed relative to a unit-normalized target direction.
     projection_residual = math.sqrt(max(0.0, 1.0 - cos * cos))
     return {
         "cosine": cos,
