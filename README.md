@@ -32,32 +32,68 @@ Unknown or unavailable theory/channel cells are masked, never zero-imputed.
 
 ## Architecture
 
-- `protocol/DSIR_BENCHMARK_PROTOCOL_v0.1.md` — frozen per-model funnel.
+- `protocol/DSIR_BENCHMARK_PROTOCOL_v0.1.md` — frozen per-model B0-B9 funnel.
+- `protocol/WAVE_TESTING_PROTOCOL_v0.1.md` — cross-model wave protocol.
 - `protocol/STATUS_TAXONOMY.md` — allowed gate and overall verdicts.
+- `protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.1.md` — living methodology for constructing a future original dark-sector model from benchmark evidence.
 - `models/<model>/audit.md` — human-readable evidence ledger.
 - `models/<model>/result.json` — machine-readable verdict.
+- `waves/` — calibration, atlas and adversarial cross-model waves.
 - `matrices/benchmark_matrix.csv` — cross-model comparison table.
+- `matrices/wave_matrix.csv` — wave-level status.
+- `matrices/design_prior_ledger.csv` — evidence-derived future-model requirements.
 - `logs/research_log.md` — chronological research log.
-- `recovery/STATE.md` — current authority/handoff state.
+- `recovery/STATE.md` — compact current frontier/handoff state.
+- `recovery/RESTORE_FROM_NEW_CHAT.md` — full recovery manual sufficient to resume development from another chat.
 
 ## DSIR authority
 
-The scientific authority remains the main DSIR repository. KMDSB consumes frozen DSIR conventions and records the exact scope/version used by each audit. Changes discovered here may propose improvements to DSIR, but are not silently promoted into DSIR itself.
+The scientific authority remains the main DSIR repository. Existing KMDSB audits currently pin:
 
-## First calibration target
+`pppuu7-cmd/Dark-Sector-Influence-Reconstruction@e3276e2193f6a5200b541a194e3175356ae5a1c1`
 
-**M00 — LambdaCDM** is the null/reference control. Its job is not to show novelty; its job is to verify that the benchmark reproduces the DSIR reference origin without manufacturing residual structure.
+KMDSB consumes frozen DSIR conventions and records the exact scope/version used by each audit. Changes discovered here may propose improvements to DSIR, but are not silently promoted into DSIR itself.
 
-Initial status (2026-09-08): `CONTROL_PASS_WITH_SCOPE` — DSIR already reports C0 as the reference origin with multiple solver-specific zero limits, while the global DSIR G0 remains PARTIAL because a broader solver-independent reference suite is still desirable.
+## Current benchmark state — 2026-09-08
 
-## Planned first wave
+### Wave 00 — Calibration and semantics: COMPLETE
 
-1. M00 LambdaCDM — null/reference control.
-2. M01 smooth non-phantom DE / wCDM local family.
-3. M02 interacting dark sector (IDE).
-4. M03 generalized dark matter (GDM).
-5. M04 thermal warm dark matter (WDM).
-6. M05 designer f(R) modified gravity.
-7. M06 decaying CDM -> dark radiation (withheld-family control already present in DSIR).
+- M00 LambdaCDM: `CONTROL_PASS_WITH_SCOPE`.
+- M01 smooth non-phantom DE / local wCDM ray: DSIR-compatible but `NONIDENTIFIABLE` in the scoped corrected DESI DR1 ShapeFit control.
+- Calibration result: `sigma(epsilon_w) ~= 0.1782`; frozen `epsilon_w=1e-4` corresponds to about `5.61e-4 sigma` in that limited nuisance-free test.
 
-After calibration, the catalogue expands to additional quintessence/k-essence, interacting-sector, unified-dark-sector, fuzzy/SIDM and modified-gravity families, subject to explicit implementation/provenance availability.
+### Wave 01 — Baseline dark-sector control atlas: COMPLETE
+
+M02 IDE, M03 GDM, M04 thermal WDM, M05 designer f(R), M06 DCDM were passed through the frozen protocol within pinned scopes.
+
+The wave established durable methodology pressure around tangent-cone geometry, multi-channel discrimination, rank rather than parameter count, high-k/mask discipline, modified-gravity comparators and prospective temporal holdouts.
+
+### Wave 02 — Same-observable degeneracy attack: ACTIVE
+
+- E1 IDE vs GDM: `PASS_WITH_SCOPE` in frozen unwhitened common low-k response geometry; closest acute line angle about `24.7864 deg`. Observation-space promotion remains open.
+- E2 IDE vs designer f(R): `PASS_WITH_SCOPE` in frozen unwhitened common low-k response geometry; acute angles about `42.4503 deg` and `59.4041 deg`. Observation-space promotion remains open.
+- E3 WDM vs alternative small-scale suppression: valid second pinned comparator not yet present in frozen DSIR; use `BLOCKED_IMPLEMENTATION` rather than fabricate one.
+- E4 DCDM vs alternative temporal-history mechanism: active same-coordinate provenance/implementation check.
+
+## Future-model construction
+
+The benchmark is intentionally building a methodology before building a new theory. The current construction stages are F0-F9:
+
+1. provenance/authority freeze;
+2. recoverable reference/decoupling limit;
+3. physical parameter geometry before differentiation;
+4. conservation/gauge/frame closure;
+5. multi-channel response architecture;
+6. covariance-aware observation-space identifiability;
+7. nearest-comparator attack;
+8. quotient-surviving novelty;
+9. prospective holdout prediction;
+10. candidate synthesis and promotion.
+
+The current `design_prior_ledger.csv` contains DP-0001..DP-0604 (30 ACTIVE requirements). They are evidence-derived priors, not yet all axioms. The methodology treats promotion conceptually as `ACTIVE -> REINFORCED -> CORE -> RETIRED` as additional waves test them.
+
+When the requirements are mature enough, the future original dark-sector candidate should be developed in a separate repository; KMDSB remains the benchmark/evidence layer and DSIR remains the formal reconstruction authority.
+
+## Recovery
+
+A fresh chat should begin with `recovery/STATE.md` and then `recovery/RESTORE_FROM_NEW_CHAT.md`. If chat memory conflicts with repository evidence, repository evidence wins.
