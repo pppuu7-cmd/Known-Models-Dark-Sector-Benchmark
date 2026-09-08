@@ -1,0 +1,20 @@
+{
+  "schema_version": "KMDSB-result-v0.1",
+  "model_id": "M06",
+  "model_slug": "decaying_cdm_dark_radiation",
+  "model_name": "Decaying CDM -> dark radiation",
+  "wave": "wave_01_baseline_atlas",
+  "audit_date": "2026-09-08",
+  "dsir_authority": {"repository":"pppuu7-cmd/Dark-Sector-Influence-Reconstruction","commit":"e3276e2193f6a5200b541a194e3175356ae5a1c1"},
+  "hard_controls": {
+    "Gamma_over_H0": [0.25,0.5,1.0,2.0],
+    "z_R": [0.6304573,0.6343830,0.6419613,0.6562403],
+    "preregistered_min_shift_guard": 0.001,
+    "directional_test": "PASS"
+  },
+  "gate_states": {"B0":"PASS","B1":"PASS_WITH_SCOPE","B2":"PASS_WITH_SCOPE","B3":"PASS_WITH_SCOPE","B4":"PASS_WITH_SCOPE","B5":"PARTIAL","B6":"PARTIAL","B7":"SUPPORTED","B8":"SUPPORTED","B9":"PASS"},
+  "overall_verdict": "DSIR_COMPATIBLE",
+  "verdict_scope": "Genuine withheld-family/mechanism support for a broad temporal/characteristic-scale organizing idea, not a universal frozen-relation pass.",
+  "wave_hypotheses": {"W01-H4":"HARD_PASS_SEMANTICS"},
+  "design_prior_delta": ["DP-0601 holdout must be prospective and relation-specific","DP-0602 predict characteristic scales/epochs before holdout exposure","DP-0603 cross-family holdout is stronger than interpolation but cannot retroactively define a law","DP-0604 preserve temporal localization as an independent response axis"]
+}
