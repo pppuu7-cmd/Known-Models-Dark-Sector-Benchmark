@@ -1,0 +1,4 @@
+wave_id,wave_name,status,models,central_result,open_front
+W00,Calibration and semantics,COMPLETE,"M00;M01","Compatibility and numerical cleanliness do not imply observational identifiability; M01 is NONIDENTIFIABLE in scoped corrected ShapeFit control","M01 B6 comparator attack; full likelihood/nuisance-marginalized promotion"
+W01,Baseline dark-sector control atlas,COMPLETE,"M02;M03;M04;M05;M06","No single observable block is sufficient across C2-C6; valid discrimination is domain/mask/channel aware","unresolved pairwise graph; observation-space promotion"
+W02,Same-observable degeneracy attack,ACTIVE,"pairwise edges across M01-M06","Test smallest valid common multi-channel block per unresolved comparator edge","E1 IDE-GDM; E2 IDE-fR; E3 WDM-alternative suppression; E4 DCDM-temporal alternatives"
