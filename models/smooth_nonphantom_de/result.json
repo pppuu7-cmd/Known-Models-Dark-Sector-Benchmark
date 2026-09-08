@@ -4,6 +4,7 @@
   "model_slug": "smooth_nonphantom_de",
   "model_name": "Smooth non-phantom DE / wCDM local family",
   "role": "first_nonnull_local_control",
+  "wave": "wave_00_calibration",
   "audit_date": "2026-09-08",
   "protocol": "protocol/DSIR_BENCHMARK_PROTOCOL_v0.1.md",
   "dsir_authority": {
@@ -14,8 +15,9 @@
     "family": "C1 smooth non-phantom DE",
     "local_coordinate": "epsilon_w = 1+w -> 0+",
     "reference_intersection": "w=-1",
-    "smallest_frozen_step": "1e-4",
-    "precision": "p8"
+    "smallest_frozen_step": 0.0001,
+    "precision": "p8",
+    "observation_control": "corrected DESI DR1 ShapeFit AP+growth+shape local Fisher projection"
   },
   "gate_states": {
     "B0": "PASS",
@@ -23,29 +25,37 @@
     "B2": "PASS_WITH_SCOPE",
     "B3": "PASS_WITH_SCOPE",
     "B4": "PASS_WITH_SCOPE",
-    "B5": "PARTIAL",
+    "B5": "NONIDENTIFIABLE",
     "B6": "OPEN",
     "B7": "OPEN",
     "B8": "OPEN",
     "B9": "PASS"
   },
-  "overall_verdict": "DSIR_COMPATIBLE",
+  "overall_verdict": "DSIR_COMPATIBLE_NONIDENTIFIABLE",
   "hard_controls": {
     "cross_solver_bridge_threshold": "1e-9",
     "matched_p8_calibration_mismatch": 2.3747404043e-10,
     "finite_difference_change_at_epsilon_1e-3_L2": "0.12%",
-    "finite_difference_direction_change_deg": 0.014
+    "finite_difference_direction_change_deg": 0.014,
+    "ShapeFit_F_epsilon_epsilon": 31.492844638169533,
+    "ShapeFit_sigma_epsilon_optimistic_unmarginalized": 0.17819440124055738,
+    "ShapeFit_sqrt_delta_chi2_at_epsilon_1e-4": 0.0005611848593660519,
+    "ShapeFit_sqrt_delta_chi2_at_epsilon_0p1": 0.6159639956949865
   },
   "scope_limitations": [
-    "This audit covers the frozen C1 local non-phantom ray, not all quintessence/k-essence theories.",
-    "B5 cannot be promoted to PASS from raw theory-space separation; observational kernels/covariance whitening are required.",
-    "No nearest-comparator B6 or prospective B8 test has yet been frozen for M01."
+    "Covers the frozen C1 phenomenological constant-w local control, not all quintessence/k-essence realizations.",
+    "ShapeFit projection uses flat Omega_m=0.3, fixed present-day fluctuation normalization, zero local m+n derivative, and no nuisance marginalization.",
+    "This is not a full DESI likelihood constraint and not a precision replacement for CLASS/CAMB production predictions.",
+    "NONIDENTIFIABLE is data/observable-space blindness in this scope, not physical falsification."
   ],
   "design_prior_delta": [
     "DP-0101 controlled physical path to the reference limit",
     "DP-0102 respect one-sided local geometry/tangent cones",
     "DP-0103 optimize for observable whitened directions rather than raw theory distance",
-    "DP-0104 residuals must dominate and survive cross-solver calibration systematics"
+    "DP-0104 residuals must dominate and survive cross-solver calibration systematics",
+    "DP-0105 compare every clean local response to a real covariance scale",
+    "DP-0106 nuisance-free Fisher information is an optimistic ceiling; invisible signatures require orthogonal channels"
   ],
-  "next_hard_task": "M01_B5_observation_space_whitened_identifiability"
+  "b5_result": "models/smooth_nonphantom_de/b5_shapefit_local_fisher_result.json",
+  "next_hard_task": "M01_B6_nearest_comparator_whitened_attack_in_Wave02"
 }
