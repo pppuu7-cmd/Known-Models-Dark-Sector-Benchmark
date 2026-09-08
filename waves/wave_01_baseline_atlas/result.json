@@ -1,0 +1,32 @@
+{
+  "schema_version": "KMDSB-wave-result-v0.1",
+  "wave_id": "W01",
+  "wave_name": "Baseline dark-sector control atlas",
+  "status": "COMPLETE",
+  "opened": "2026-09-08",
+  "completed": "2026-09-08",
+  "dsir_authority": "e3276e2193f6a5200b541a194e3175356ae5a1c1",
+  "models": ["M02","M03","M04","M05","M06"],
+  "inherited_comparators": ["M00","M01"],
+  "hypotheses": {
+    "W01-H1": {"verdict":"HARD_PASS","evidence":"M02 IDE physical local space is a tangent cone; alpha>0 excluded by frozen full-history positivity."},
+    "W01-H2": {"verdict":"HARD_PASS","evidence":"M04 WDM is near-null at low k but strongly nonzero at high k, requiring block-aware masks."},
+    "W01-H3": {"verdict":"HARD_PASS_THEORY_RESPONSE","evidence":"M03 cs2/cv2 split by slip; M03 vs M05 scale degeneracy split by time/orientation."},
+    "W01-H4": {"verdict":"HARD_PASS_SEMANTICS","evidence":"M06 is genuine withheld-family support but cannot retroactively close a universal relation that was not mathematically frozen."}
+  },
+  "model_verdicts": {
+    "M02":"DSIR_COMPATIBLE",
+    "M03":"DSIR_DISCRIMINATED",
+    "M04":"DSIR_DISCRIMINATED",
+    "M05":"DSIR_DISCRIMINATED",
+    "M06":"DSIR_COMPATIBLE"
+  },
+  "central_result": "No single observable block is sufficient across C2-C6. Valid discrimination is mechanism-, domain-, mask- and channel-aware.",
+  "unresolved_front": [
+    "Observation-space covariance whitening for M01/M02/M03/M05",
+    "Pair-specific IDE-vs-GDM and IDE-vs-f(R) comparator edges",
+    "WDM versus alternative small-scale suppression mechanisms",
+    "DCDM versus alternative temporal/interaction histories"
+  ],
+  "next_wave": "W02_same_observable_degeneracy_attack"
+}
