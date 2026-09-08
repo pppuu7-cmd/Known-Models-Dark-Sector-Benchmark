@@ -1,0 +1,2 @@
+model_id,model_name,role,B0,B1,B2,B3,B4,B5,B6,B7,B8,B9,overall_verdict,dsir_authority,notes
+M00,LambdaCDM,null_reference_control,PASS,PASS_WITH_SCOPE,PASS_WITH_SCOPE,PASS_WITH_SCOPE,PASS,NOT_APPLICABLE_CONTROL,NOT_APPLICABLE_CONTROL,NO_NOVELTY_EXPECTED,NOT_APPLICABLE_CONTROL,PASS,CONTROL_PASS_WITH_SCOPE,e3276e2193f6a5200b541a194e3175356ae5a1c1,"C0 reference origin; global DSIR G0 still PARTIAL pending broader solver-independent reference suite"
