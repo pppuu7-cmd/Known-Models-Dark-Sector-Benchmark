@@ -1,0 +1,51 @@
+{
+  "schema_version": "KMDSB-result-v0.1",
+  "model_id": "M01",
+  "model_slug": "smooth_nonphantom_de",
+  "model_name": "Smooth non-phantom DE / wCDM local family",
+  "role": "first_nonnull_local_control",
+  "audit_date": "2026-09-08",
+  "protocol": "protocol/DSIR_BENCHMARK_PROTOCOL_v0.1.md",
+  "dsir_authority": {
+    "repository": "pppuu7-cmd/Dark-Sector-Influence-Reconstruction",
+    "commit": "e3276e2193f6a5200b541a194e3175356ae5a1c1"
+  },
+  "tested_scope": {
+    "family": "C1 smooth non-phantom DE",
+    "local_coordinate": "epsilon_w = 1+w -> 0+",
+    "reference_intersection": "w=-1",
+    "smallest_frozen_step": "1e-4",
+    "precision": "p8"
+  },
+  "gate_states": {
+    "B0": "PASS",
+    "B1": "PASS_WITH_SCOPE",
+    "B2": "PASS_WITH_SCOPE",
+    "B3": "PASS_WITH_SCOPE",
+    "B4": "PASS_WITH_SCOPE",
+    "B5": "PARTIAL",
+    "B6": "OPEN",
+    "B7": "OPEN",
+    "B8": "OPEN",
+    "B9": "PASS"
+  },
+  "overall_verdict": "DSIR_COMPATIBLE",
+  "hard_controls": {
+    "cross_solver_bridge_threshold": "1e-9",
+    "matched_p8_calibration_mismatch": 2.3747404043e-10,
+    "finite_difference_change_at_epsilon_1e-3_L2": "0.12%",
+    "finite_difference_direction_change_deg": 0.014
+  },
+  "scope_limitations": [
+    "This audit covers the frozen C1 local non-phantom ray, not all quintessence/k-essence theories.",
+    "B5 cannot be promoted to PASS from raw theory-space separation; observational kernels/covariance whitening are required.",
+    "No nearest-comparator B6 or prospective B8 test has yet been frozen for M01."
+  ],
+  "design_prior_delta": [
+    "DP-0101 controlled physical path to the reference limit",
+    "DP-0102 respect one-sided local geometry/tangent cones",
+    "DP-0103 optimize for observable whitened directions rather than raw theory distance",
+    "DP-0104 residuals must dominate and survive cross-solver calibration systematics"
+  ],
+  "next_hard_task": "M01_B5_observation_space_whitened_identifiability"
+}
