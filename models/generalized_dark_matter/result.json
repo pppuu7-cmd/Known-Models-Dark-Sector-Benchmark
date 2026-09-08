@@ -1,0 +1,21 @@
+{
+  "schema_version": "KMDSB-result-v0.1",
+  "model_id": "M03",
+  "model_slug": "generalized_dark_matter",
+  "model_name": "Generalized dark matter (GDM) cs2/cv2 local rays",
+  "wave": "wave_01_baseline_atlas",
+  "audit_date": "2026-09-08",
+  "dsir_authority": {"repository": "pppuu7-cmd/Dark-Sector-Influence-Reconstruction", "commit": "e3276e2193f6a5200b541a194e3175356ae5a1c1"},
+  "hard_controls": {
+    "low_k_matter_angle_deg": 0.322616,
+    "sigma2_over_sigma1": 0.002572,
+    "weyl_amplitude_angle_deg": 0.3007,
+    "metric_slip_angle_deg": 137.9432,
+    "equalized_weyl_slip_angle_deg": 56.9632
+  },
+  "gate_states": {"B0":"PASS","B1":"PASS_WITH_SCOPE","B2":"PASS_WITH_SCOPE","B3":"PASS_WITH_SCOPE","B4":"PASS_WITH_SCOPE","B5":"PARTIAL","B6":"PASS_WITH_SCOPE","B7":"OPEN","B8":"SUPPORTED","B9":"PASS"},
+  "overall_verdict": "DSIR_DISCRIMINATED",
+  "verdict_scope": "Hard multi-response theory-space discrimination; observational detectability still requires survey projection/covariance whitening.",
+  "wave_hypotheses": {"W01-H3":"HARD_PASS_THEORY_RESPONSE","W01-H4":"RESPECTED"},
+  "design_prior_delta": ["DP-0301 multi-channel prediction required","DP-0302 prioritize slip-like orthogonal response","DP-0303 parameter count is not identifiable rank","DP-0304 distinguish within-family holdout from universal holdout"]
+}
