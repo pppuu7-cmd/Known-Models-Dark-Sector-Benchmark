@@ -1,0 +1,57 @@
+{
+  "schema": "KMDSB.M01.B5.ShapeFitLocalFisher.v0.1",
+  "date": "2026-09-08",
+  "dsir_authority": "e3276e2193f6a5200b541a194e3175356ae5a1c1",
+  "provenance": {
+    "covariance": "DSIR data/observations/desi_dr1_shapefit_erratum_2026.json",
+    "observation_test": "DSIR experiments/009_desi_dr1_multichannel_identifiability.py",
+    "control_equations": "DSIR src/dsir/linear_controls.py",
+    "kmidsb_code": "code/m01_b5_shapefit_local_fisher.py"
+  },
+  "scope": {
+    "model": "flat constant-w phenomenological C1 control",
+    "Omega_m": 0.3,
+    "epsilon_w": "1+w >= 0",
+    "channels": ["DH_over_DM", "f_sigma_s8", "m_plus_n"],
+    "bins": ["LRG1", "LRG2", "LRG3", "ELG2", "QSO"],
+    "BGS_excluded": true,
+    "sigma8_today_fixed": true,
+    "dm_plus_n_d_epsilon_assumed": 0.0,
+    "nuisance_marginalization": false
+  },
+  "finite_difference_step": 0.0001,
+  "F_epsilon_epsilon": 31.492844638169533,
+  "sigma_epsilon_optimistic_unmarginalized": 0.17819440124055738,
+  "finite_difference_robustness": [
+    {"step": 0.00001, "F": 31.487735141505524, "sigma_epsilon": 0.17820885840557216},
+    {"step": 0.0001, "F": 31.492844638169533, "sigma_epsilon": 0.17819440124055738},
+    {"step": 0.001, "F": 31.544002979032243, "sigma_epsilon": 0.17804984398383097},
+    {"step": 0.01, "F": 32.06198825372775, "sigma_epsilon": 0.17660572367387917}
+  ],
+  "exact_probe_significances": [
+    {"epsilon_w": 0.0001, "delta_chi2": 3.149284463816954e-7, "sqrt_delta_chi2": 0.0005611848593660519},
+    {"epsilon_w": 0.001, "delta_chi2": 0.00003154400297903224, "sqrt_delta_chi2": 0.00561640480904219},
+    {"epsilon_w": 0.01, "delta_chi2": 0.003206198825372775, "sqrt_delta_chi2": 0.05662330637973002},
+    {"epsilon_w": 0.05, "delta_chi2": 0.08627828615754882, "sqrt_delta_chi2": 0.29373165671671964},
+    {"epsilon_w": 0.1, "delta_chi2": 0.3794116439925333, "sqrt_delta_chi2": 0.6159639956949865}
+  ],
+  "per_bin_local_derivative_at_1e-4": {
+    "LRG1": {"dAP_depsilon": -0.15269449, "dgrowth_depsilon": -0.11189684, "F": 12.376957916129653},
+    "LRG2": {"dAP_depsilon": -0.08402708, "dgrowth_depsilon": -0.09666779, "F": 11.414046690429997},
+    "LRG3": {"dAP_depsilon": -0.03896585, "dgrowth_depsilon": -0.07211237, "F": 6.737468590280613},
+    "ELG2": {"dAP_depsilon": 0.00116565, "dgrowth_depsilon": -0.02770059, "F": 0.8231828033245095},
+    "QSO": {"dAP_depsilon": 0.00866645, "dgrowth_depsilon": -0.01298775, "F": 0.1411886380047614}
+  },
+  "gate_classification": "NONIDENTIFIABLE",
+  "overall_scope_classification": "DSIR_COMPATIBLE_NONIDENTIFIABLE",
+  "interpretation": {
+    "supported": "The frozen local C1 epsilon_w=1e-4 deformation is far below corrected DESI DR1 ShapeFit AP+growth+shape covariance sensitivity in this scoped projection.",
+    "optimistic_bound": "Because nuisance parameters are not marginalized, sigma_epsilon=0.1782 is optimistic; nuisance marginalization can only weaken local information in the same mapping.",
+    "not_supported": [
+      "a full DESI constraint on constant w",
+      "nonidentifiability of every smooth-DE realization",
+      "physical falsification of wCDM",
+      "precision equivalence to CLASS/CAMB production predictions"
+    ]
+  }
+}
