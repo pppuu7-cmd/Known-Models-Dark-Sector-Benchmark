@@ -1,0 +1,21 @@
+{
+  "schema_version": "KMDSB-result-v0.1",
+  "model_id": "M04",
+  "model_slug": "thermal_warm_dark_matter",
+  "model_name": "Thermal warm dark matter",
+  "wave": "wave_01_baseline_atlas",
+  "audit_date": "2026-09-08",
+  "dsir_authority": {"repository":"pppuu7-cmd/Dark-Sector-Influence-Reconstruction","commit":"e3276e2193f6a5200b541a194e3175356ae5a1c1"},
+  "hard_controls": {
+    "rT_k0p1_3keV": -3.46e-6,
+    "rT_k10_3keV": -0.10375,
+    "high_k_time_separability_chi_I": "~2e-10",
+    "withheld_interpolation_masses_keV": [2.5,3.5,4.0,4.5],
+    "withheld_cutoff_monotonicity": "PASS at all seven frozen redshifts"
+  },
+  "gate_states": {"B0":"PASS","B1":"PASS_WITH_SCOPE","B2":"PASS_WITH_SCOPE","B3":"PASS_WITH_SCOPE","B4":"PASS","B5":"PASS_WITH_SCOPE","B6":"PARTIAL","B7":"OPEN","B8":"SUPPORTED","B9":"PASS"},
+  "overall_verdict": "DSIR_DISCRIMINATED",
+  "verdict_scope": "Strong reference separation in the valid high-k theory-response block; no claim of unique WDM attribution or survey significance.",
+  "wave_hypotheses": {"W01-H2":"HARD_PASS","W01-H4":"RESPECTED"},
+  "design_prior_delta": ["DP-0401 test multiple k-windows","DP-0402 preserve blindness/mask semantics","DP-0403 use characteristic-scale motion but require alternative-mechanism comparators","DP-0404 exploit time-separability as a discriminator"]
+}
