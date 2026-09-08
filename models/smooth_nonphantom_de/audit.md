@@ -1,76 +1,115 @@
 # M01 — Smooth non-phantom dark energy / wCDM local-family audit
 
 Date: 2026-09-08  
+Wave: `wave_00_calibration`  
 KMDSB protocol: `DSIR_BENCHMARK_PROTOCOL_v0.1`  
 DSIR authority snapshot: `pppuu7-cmd/Dark-Sector-Influence-Reconstruction@e3276e2193f6a5200b541a194e3175356ae5a1c1`
 
 ## Tested scope
 
-This first non-null audit deliberately uses the **already frozen DSIR C1 local ray**, not the entire space of scalar-field dark-energy theories.
-
-Frozen local coordinate:
+This audit uses the frozen DSIR C1 smooth non-phantom local ray, not the whole space of scalar-field dark-energy theories.
 
 `epsilon_w = 1 + w -> 0+`
 
-The tested side is non-phantom and one-sided around the LambdaCDM intersection. The smallest frozen step reported by DSIR is `epsilon_w = 1e-4` at p8 precision.
+The tested side is one-sided around the LambdaCDM intersection. The smallest frozen C1 step is `epsilon_w=1e-4` at p8 precision.
 
-## Why M01 is the first non-null target
+## Frozen DSIR compatibility evidence
 
-It is the cleanest test of the KMDSB distinction between:
+- reference intersection: `w=-1` / `epsilon_w=0`;
+- smallest production step: `epsilon_w=1e-4`;
+- finite-difference change at `epsilon_w=1e-3`: about `0.12%` L2 and `0.014 deg` direction change;
+- cross-solver smooth-w bridge hard threshold `1e-9` passes;
+- matched-p8 calibration mismatch: `2.3747404043e-10`.
 
-- a valid DSIR embedding;
-- a numerically controlled nonzero deformation;
-- observational identifiability;
-- genuine residual novelty.
+These establish a controlled Theory->Response deformation, not observational detectability.
 
-Those are not the same claim.
+## B5 observation-space test
 
-## Frozen DSIR evidence used
+Wave 00 recovered the pinned observation product used by DSIR Experiment 009:
 
-DSIR G3B reports C1 as comparison-ready in its block-aware v0.1 scope. At the frozen local ray:
+- corrected DESI DR1 ShapeFit erratum covariance;
+- channels `[DH/DM, f sigma_s8, m+n]`;
+- informative bins `LRG1, LRG2, LRG3, ELG2, QSO`;
+- BGS excluded, matching the DSIR AP/growth control because its AP coordinate is prior dominated.
 
-- the reference intersection is `w=-1` / `epsilon_w=0`;
-- the smallest production step is `epsilon_w=1e-4`;
-- finite-difference change at `epsilon_w=1e-3` is about `0.12%` in L2 and `0.014 deg` in direction;
-- the cross-solver smooth-w response bridge passes the hard threshold `1e-9`, with matched-p8 calibration mismatch `2.3747404043e-10`.
+KMDSB then projected the frozen *phenomenological* constant-w control into the same 3-channel covariance using:
 
-These establish a controlled local Theory→Response deformation. They do **not** by themselves establish observational detectability or a new law.
+- flat `Omega_m=0.3`, matching `src/dsir/linear_controls.py`;
+- one-sided `epsilon_w>=0`;
+- `DH/DM` from the flat-wCDM background;
+- growth response from the frozen sub-horizon DSIR growth equation;
+- fixed present-day fluctuation normalization, so the local growth observable scales as `(fD)_w/(fD)_LCDM`;
+- local smooth-w shape derivative `d(m+n)/d epsilon_w = 0` in this control;
+- no nuisance marginalization.
+
+Reproducible code: `code/m01_b5_shapefit_local_fisher.py`.
+Result record: `models/smooth_nonphantom_de/b5_shapefit_local_fisher_result.json`.
+
+### B5 numerical result
+
+Using a one-sided finite-difference step `1e-4`:
+
+- `F_epsilon_epsilon = 31.4928446382`;
+- optimistic unmarginalized `sigma(epsilon_w) = 0.1781944012`.
+
+Finite-difference robustness is stable:
+
+- step `1e-5`: sigma `0.1782088584`;
+- step `1e-4`: sigma `0.1781944012`;
+- step `1e-3`: sigma `0.1780498440`;
+- step `1e-2`: sigma `0.1766057237`.
+
+Exact scoped displacement relative to the LambdaCDM origin gives:
+
+- `epsilon_w=1e-4`: sqrt(Delta chi2) = `5.61185e-4`;
+- `epsilon_w=1e-3`: `0.0056164`;
+- `epsilon_w=1e-2`: `0.0566233`;
+- `epsilon_w=0.05`: `0.293732`;
+- `epsilon_w=0.1` (`w=-0.9`): `0.615964`.
+
+Thus the smallest frozen C1 ray is overwhelmingly below the corrected ShapeFit covariance sensitivity in this scoped projection. Even `w=-0.9` remains below 1 sigma in this deliberately limited AP+growth+shape control.
+
+Because nuisance parameters were **not** marginalized, the local Fisher sensitivity is optimistic: adding nuisance freedom cannot make the tiny `epsilon_w=1e-4` displacement more identifiable within the same mapping.
+
+This is **not** a full DESI likelihood constraint on w and is not a statement that every smooth-DE realization is unidentifiable.
 
 ## Gate ledger
 
 | Gate | State | Evidence / interpretation |
 |---|---|---|
 | B0 Identity & provenance | PASS | Tested object is explicitly restricted to the frozen DSIR C1 smooth non-phantom local ray. |
-| B1 DSIR embedding/reference limit | PASS_WITH_SCOPE | Exact intersection at `w=-1`; response map is frozen in the C1 block-aware scope. This is not a claim about every quintessence or k-essence realization. |
-| B2 Conservation/gauge bookkeeping | PASS_WITH_SCOPE | Uses the frozen DSIR v0.1.1 response bookkeeping and same-solver comoving total-matter response. |
-| B3 Physical/numerical control | PASS_WITH_SCOPE | One-sided non-phantom domain and local finite-difference/convergence diagnostics are frozen; cross-solver smooth-w bridge passes. |
-| B4 Response coverage/masks | PASS_WITH_SCOPE | Background/AP and frozen low-k structure response are available in the C1 comparison block. Unrepresented channels remain masked. |
-| B5 Reference identifiability | PARTIAL | The local response is nonzero away from `w=-1`, but a hard observational identifiability verdict requires survey response kernels/covariance whitening. Raw theory separation is insufficient. |
-| B6 Nearest-comparator discrimination | OPEN | No frozen KMDSB nearest-comparator test yet separates this local smooth-w ray from alternative smooth-DE/mimicking responses in observation space. |
-| B7 Quotient-surviving novelty | OPEN | A controlled deformation is not automatically a residual law after quotienting. |
-| B8 Prospective withheld prediction | OPEN | No KMDSB preregistered withheld test for this M01 claim has yet been executed. |
-| B9 Synthesis/design prior | PASS | The audit already yields explicit design constraints even without a novelty claim. |
+| B1 DSIR embedding/reference limit | PASS_WITH_SCOPE | Exact intersection at `w=-1`; response map frozen in C1 scope. |
+| B2 Conservation/gauge bookkeeping | PASS_WITH_SCOPE | Uses frozen DSIR v0.1.1 bookkeeping. |
+| B3 Physical/numerical control | PASS_WITH_SCOPE | One-sided non-phantom domain, convergence diagnostics and cross-solver bridge pass. |
+| B4 Response coverage/masks | PASS_WITH_SCOPE | Background/AP and growth response are represented; missing channels remain masked. |
+| B5 Reference identifiability | NONIDENTIFIABLE | Corrected DESI DR1 ShapeFit local Fisher control gives `sigma(epsilon_w)=0.1782`; the frozen `epsilon_w=1e-4` ray is only `5.6e-4 sigma`. Scope is the explicit phenomenological mapping above, not a full likelihood. |
+| B6 Nearest-comparator discrimination | OPEN | Alternative smooth-DE/mimic comparator not yet tested in the same observation space. |
+| B7 Quotient-surviving novelty | OPEN | Controlled deformation is not a residual law. |
+| B8 Prospective withheld prediction | OPEN | No M01-specific prospective novelty claim has been frozen/tested. |
+| B9 Synthesis/design prior | PASS | Compatibility and non-identifiability now produce a concrete design constraint. |
 
 ## Overall verdict
 
-`DSIR_COMPATIBLE`
+`DSIR_COMPATIBLE_NONIDENTIFIABLE`
 
-Meaning: within the frozen C1 local scope, the model family is reproducibly embedded, has a clean LambdaCDM limit, and survives the applicable numerical/bookkeeping controls. **It has not yet earned `DSIR_DISCRIMINATED` or `DSIR_PREDICTIVE_SUPPORT`.**
+Within the frozen C1 + corrected ShapeFit control scope, M01 is physically/bookkeeping compatible but its local deformation is not identifiable against the LambdaCDM origin at the tested amplitudes.
 
-## First methodological lesson from M01
-
-A known model can pass the DSIR compatibility funnel without passing the observational-discrimination funnel. This separation must remain explicit in every future KMDSB result.
+This is not theory falsification. It is a concrete example of **data blindness to a valid model direction**.
 
 ## Design-prior delta
 
-DP-0101 — **Controlled decoupling/intersection:** future models should expose a numerically smooth and physically admissible path to the reference limit.
+DP-0101 — controlled physical path to the reference limit.
 
-DP-0102 — **Local geometry matters:** one-sided rays/tangent cones must be respected; a symmetric finite difference is not legitimate when the physical domain is one-sided.
+DP-0102 — respect one-sided local geometry/tangent cones.
 
-DP-0103 — **Theory-space distance is insufficient:** candidate construction should target response directions that survive survey kernels and covariance whitening, not merely produce a nonzero raw response.
+DP-0103 — optimize for covariance-whitened observable directions, not raw theory distance.
 
-DP-0104 — **Cross-solver calibration:** any future claimed small residual should be larger than and robust to pinned cross-solver calibration mismatch.
+DP-0104 — small residuals must dominate and survive cross-solver calibration systematics.
 
-## Next hard task for M01
+DP-0105 — **local response amplitude must be compared to a real covariance scale.** A numerically clean response can still be observationally invisible by orders of magnitude.
 
-Construct the first KMDSB observation-space B5 test: choose a frozen response block and covariance/operator treatment, then test whether the C1 local ray remains distinguishable from the LambdaCDM origin after whitening. Until that is done, B5 remains PARTIAL.
+DP-0106 — **nuisance-free Fisher information is an optimistic ceiling.** A future model whose signature already fails this ceiling needs a new/orthogonal observable channel rather than more interpretive complexity.
+
+## Next M01 task
+
+B6 comparator attack moves to Wave 02: test smooth-w against the nearest smooth-DE/background-growth mimics in the same whitened observation space.
