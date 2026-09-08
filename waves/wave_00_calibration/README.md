@@ -1,59 +1,71 @@
 # Wave 00 — Calibration and semantics
 
-Status: **ACTIVE**  
+Status: **COMPLETE**  
 Opened: 2026-09-08  
+Completed: 2026-09-08  
 Protocol: `protocol/WAVE_TESTING_PROTOCOL_v0.1.md`  
-DSIR authority for existing audits: `e3276e2193f6a5200b541a194e3175356ae5a1c1`
+DSIR authority: `e3276e2193f6a5200b541a194e3175356ae5a1c1`
 
 ## Scientific question
 
-Can KMDSB reproduce the DSIR null/reference origin and then correctly distinguish a controlled non-null theory response from genuine observation-space identifiability?
+Can KMDSB reproduce the DSIR null/reference origin and correctly distinguish a controlled non-null theory response from genuine observation-space identifiability?
 
-## Model set
+## Final model set
 
-| Model | Role | Current overall verdict | Wave-0 role |
+| Model | Role | Final overall verdict | Wave-0 result |
 |---|---|---|---|
-| M00 LambdaCDM | null/reference control | `CONTROL_PASS_WITH_SCOPE` | verifies no fake residual novelty |
-| M01 smooth non-phantom DE / local wCDM | first non-null control | `DSIR_COMPATIBLE` | tests compatibility vs identifiability semantics |
+| M00 LambdaCDM | null/reference control | `CONTROL_PASS_WITH_SCOPE` | null origin reproduced without fake novelty |
+| M01 smooth non-phantom DE / local wCDM | first non-null control | `DSIR_COMPATIBLE_NONIDENTIFIABLE` | clean C1 response exists but is nonidentifiable in the scoped corrected ShapeFit control |
 
-## Completed
+## W00-H1 / M01-B5 — CLOSED
 
-- [x] M00 B0–B9 calibration audit.
-- [x] M01 B0–B4 compatibility/numerical audit.
-- [x] Explicit distinction between raw theory response and observational discrimination.
-- [x] Wave protocol and exit criteria frozen before closing M01/B5.
+The previously missing provenance was recovered directly from the frozen DSIR repository:
 
-## Open hard criterion
+- `experiments/009_desi_dr1_multichannel_identifiability.py`;
+- `data/observations/desi_dr1_shapefit_erratum_2026.json`;
+- `src/dsir/shapefit_response.py`;
+- `src/dsir/linear_controls.py`.
 
-### W00-H1 / M01-B5
+KMDSB then froze a reproducible one-sided local Fisher projection for the C1 phenomenological constant-w control into the corrected DESI DR1 ShapeFit `[DH/DM, f sigma_s8, m+n]` covariance.
 
-A hard observational-space classification requires a reproducible response operator and covariance/noise treatment that can be mapped to the frozen C1 response.
+Result at finite-difference step `epsilon_w=1e-4`:
 
-The main DSIR documentation states that DESI DR1 ShapeFit geometry/growth/shape covariance was used in Experiment 009, but the currently inspected repository code-search/tree surface does not expose a directly reusable, pinned ShapeFit covariance artifact under an obvious indexed path. KMDSB therefore does not invent a surrogate covariance.
+- `F_epsilon_epsilon = 31.4928446382`;
+- optimistic unmarginalized `sigma(epsilon_w)=0.1781944012`;
+- frozen minimum C1 step `epsilon_w=1e-4` gives `sqrt(Delta chi2)=5.61185e-4`;
+- even `epsilon_w=0.1` (`w=-0.9`) gives only `sqrt(Delta chi2)=0.615964` in this deliberately limited control.
 
-Current state remains `PARTIAL` pending provenance recovery or a newly pinned observation-space package.
+Therefore M01/B5 is classified `NONIDENTIFIABLE` **in this explicit scoped projection**.
 
-## Exit rule
+The no-nuisance Fisher information is an optimistic ceiling; nuisance marginalization can only weaken local information in the same mapping. This strengthens the nonidentifiability conclusion for the tiny frozen local step, while the result remains explicitly weaker than a full DESI likelihood analysis.
 
-Wave 00 is COMPLETE only when W00-H1 is classified as one of:
+## Exit criteria
 
-- `PASS` / `PASS_WITH_SCOPE`;
-- `NONIDENTIFIABLE`;
-- `BLOCKED_DATA` with a documented, reproducible provenance gap;
-- `INCONCLUSIVE` after an executed hard test.
+- [x] M00 null/reference origin reproduced.
+- [x] M01 B0–B4 compatibility controls passed in frozen scope.
+- [x] Observation-space covariance recovered from pinned DSIR provenance.
+- [x] M01/B5 received a hard scoped classification: `NONIDENTIFIABLE`.
+- [x] Raw response, observational identifiability and physical truth remain separate concepts.
 
-`PARTIAL` is not an exit state.
+Wave 00 is therefore **COMPLETE**.
 
-## Current wave verdict
+## Central Wave-0 lesson
 
-`ACTIVE — calibration semantics validated; observation-space B5 unresolved.`
+**A model direction can be physically/bookkeeping compatible, numerically clean, and still be observationally invisible.**
 
-## Design-prior output so far
+This validates one of the most important KMDSB semantics: `NONIDENTIFIABLE` is neither `FAIL` nor evidence that the theory is false.
 
-Wave 00 already establishes that a future model must:
+## Design-prior output
+
+A future dark-sector candidate should:
 
 1. possess a controlled reference/decoupling limit;
 2. not manufacture residual novelty at that limit;
 3. respect physical local-domain geometry;
-4. demonstrate observable separation after covariance-aware projection, not only raw theory-space deformation;
-5. retain explicit masks and solver/data scope.
+4. produce at least one response direction large enough relative to real covariance, not merely numerically nonzero;
+5. target orthogonal channels when the optimistic nuisance-free sensitivity is already weak;
+6. retain explicit masks, solver scope and observation-space provenance.
+
+## Carry-forward
+
+M01/B6 moves to Wave 02: nearest-comparator discrimination in the same covariance-aware spirit.
