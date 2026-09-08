@@ -1,0 +1,29 @@
+{
+  "schema_version": "KMDSB-wave-result-v0.1",
+  "wave_id": "W00",
+  "wave_name": "Calibration and semantics",
+  "status": "COMPLETE",
+  "opened": "2026-09-08",
+  "completed": "2026-09-08",
+  "dsir_authority": "e3276e2193f6a5200b541a194e3175356ae5a1c1",
+  "models": ["M00","M01"],
+  "model_verdicts": {
+    "M00": "CONTROL_PASS_WITH_SCOPE",
+    "M01": "DSIR_COMPATIBLE_NONIDENTIFIABLE"
+  },
+  "hard_result": {
+    "gate": "M01/B5",
+    "classification": "NONIDENTIFIABLE",
+    "scope": "corrected DESI DR1 ShapeFit AP+growth+shape local Fisher projection of frozen phenomenological constant-w C1 control",
+    "F_epsilon_epsilon": 31.492844638169533,
+    "sigma_epsilon_optimistic_unmarginalized": 0.17819440124055738,
+    "sqrt_delta_chi2_epsilon_1e-4": 0.0005611848593660519,
+    "sqrt_delta_chi2_epsilon_0p1": 0.6159639956949865
+  },
+  "central_result": "Physical/bookkeeping compatibility and numerical cleanliness do not imply observational identifiability.",
+  "anti_overclaim": "NONIDENTIFIABLE is a scoped data/observable-space statement, not physical falsification of wCDM or smooth dark energy.",
+  "carry_forward": [
+    "M01 B6 nearest-comparator attack in Wave 02",
+    "full likelihood / nuisance-marginalized observational promotion remains outside this scoped control"
+  ]
+}
