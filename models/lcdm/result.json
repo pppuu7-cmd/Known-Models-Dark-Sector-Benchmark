@@ -1,0 +1,42 @@
+{
+  "schema_version": "KMDSB-result-v0.1",
+  "model_id": "M00",
+  "model_slug": "lcdm",
+  "model_name": "LambdaCDM",
+  "role": "null_reference_control",
+  "audit_date": "2026-09-08",
+  "protocol": "protocol/DSIR_BENCHMARK_PROTOCOL_v0.1.md",
+  "dsir_authority": {
+    "repository": "pppuu7-cmd/Dark-Sector-Influence-Reconstruction",
+    "commit": "e3276e2193f6a5200b541a194e3175356ae5a1c1"
+  },
+  "gate_states": {
+    "B0": "PASS",
+    "B1": "PASS_WITH_SCOPE",
+    "B2": "PASS_WITH_SCOPE",
+    "B3": "PASS_WITH_SCOPE",
+    "B4": "PASS",
+    "B5": "NOT_APPLICABLE_CONTROL",
+    "B6": "NOT_APPLICABLE_CONTROL",
+    "B7": "NO_NOVELTY_EXPECTED",
+    "B8": "NOT_APPLICABLE_CONTROL",
+    "B9": "PASS"
+  },
+  "overall_verdict": "CONTROL_PASS_WITH_SCOPE",
+  "reference_origin": {
+    "r_E": 0.0,
+    "r_Delta": 0.0,
+    "interpretation": "Exact reference-origin target under matched solver lineage/settings; deviations are diagnostics rather than novelty."
+  },
+  "scope_limitations": [
+    "DSIR global G0 remains PARTIAL because a broader solver-independent LambdaCDM reference suite is still desirable.",
+    "Uncomputed or non-applicable response channels are masked and are not asserted to be zero."
+  ],
+  "design_prior_delta": [
+    "DP-0001 recoverable reference/decoupling limit",
+    "DP-0002 no fake novelty in exact reference limit",
+    "DP-0003 mask discipline for missing channels",
+    "DP-0004 solver-scope honesty"
+  ],
+  "next_model": "M01_smooth_nonphantom_DE_wCDM"
+}
