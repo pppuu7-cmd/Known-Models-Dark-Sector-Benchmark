@@ -1,0 +1,192 @@
+name: W03 M07 versus smooth-w cross-channel comparator
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m07-c1-crosschannel-comparator.yml'
+      - 'code/w03_m07_c1_crosschannel_comparator.py'
+      - 'code/w03_m07_quintessence_probe.py'
+
+jobs:
+  crosschannel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OMEGA_DE_TARGET: '0.682686955086854'
+      SHOOT_REL_TOL: '1.0e-13'
+      C1_BRIDGE_ANGLE_MAX_DEG: '1.0'
+      C1_BRIDGE_RESID_MAX: '0.02'
+      CROSSCHANNEL_H_RESID_MIN: '0.10'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check numpy
+
+      - name: Fetch pinned solvers and DSIR frozen comparator
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/lesgourg/class_public.git class_public
+          git -C class_public checkout e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git -C class_public rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          make -C class_public -j2
+          git clone https://github.com/pppuu7-cmd/Dark-Sector-Influence-Reconstruction.git dsir
+          git -C dsir checkout e3276e2193f6a5200b541a194e3175356ae5a1c1
+          test "$(git -C dsir rev-parse HEAD)" = "e3276e2193f6a5200b541a194e3175356ae5a1c1"
+          test -f dsir/data/derived/comparison_readiness/local_response_tangents_v0_1.json
+
+      - name: Write matched high-precision configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cfg out logs
+          Aseed=$(python3 -c 'import math; Om=float("'"$OMEGA_DE_TARGET"'"); h=.67; H0=100*h/299792.458; lam=.025; phi=1.; print(f"{3*Om*H0*H0*math.exp(lam*phi)-1:.17g}")')
+          A0=$(python3 -c 'Om=float("'"$OMEGA_DE_TARGET"'"); h=.67; H0=100*h/299792.458; print(f"{3*Om*H0*H0-1:.17g}")')
+          cat > cfg/common.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          reio_parametrization = reio_none
+          output = mPk,mTk
+          modes = s
+          ic = ad
+          gauge = synchronous
+          non linear = none
+          z_pk = 0.295,0.51,0.706,0.934,1.317,1.491,2.33
+          P_k_max_h/Mpc = 0.2
+          write background = yes
+          headers = yes
+          format = class
+          tol_shooting_deltax_rel = ${SHOOT_REL_TOL}
+          tol_perturbations_integration = 1.0e-10
+          perturbations_sampling_stepsize = 0.002
+          k_per_decade_for_pk = 80
+          k_per_decade_for_bao = 80
+          matter_source_in_current_gauge = no
+          get_perturbations_in_current_gauge = no
+          EOF
+
+          cp cfg/common.ini cfg/ref.ini
+          cat >> cfg/ref.ini <<EOF
+          Omega_Lambda = ${OMEGA_DE_TARGET}
+          Omega_fld = 0
+          Omega_scf = 0
+          root = ${GITHUB_WORKSPACE}/out/ref_
+          EOF
+
+          cp cfg/common.ini cfg/scf_l0.ini
+          cat >> cfg/scf_l0.ini <<EOF
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = ${OMEGA_DE_TARGET}
+          scf_parameters = 0.0,0.0,${A0},0.0,1.0,0.0
+          attractor_ic_scf = no
+          scf_tuning_index = 2
+          root = ${GITHUB_WORKSPACE}/out/scf_l0_
+          EOF
+
+          cp cfg/common.ini cfg/m07.ini
+          cat >> cfg/m07.ini <<EOF
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = ${OMEGA_DE_TARGET}
+          scf_parameters = 0.025,0.0,${Aseed},0.0,1.0,0.0
+          attractor_ic_scf = no
+          scf_tuning_index = 2
+          root = ${GITHUB_WORKSPACE}/out/m07_
+          EOF
+
+          cp cfg/common.ini cfg/c1.ini
+          cat >> cfg/c1.ini <<EOF
+          Omega_Lambda = 0
+          Omega_scf = 0
+          Omega_fld = ${OMEGA_DE_TARGET}
+          fluid_equation_of_state = CLP
+          w0_fld = -0.9999
+          wa_fld = 0
+          cs2_fld = 1
+          root = ${GITHUB_WORKSPACE}/out/c1_
+          EOF
+
+      - name: Run matched models
+        shell: bash
+        run: |
+          set +e
+          for tag in ref scf_l0 m07 c1; do
+            ./class_public/class cfg/${tag}.ini > logs/${tag}.log 2>&1
+            echo "$?" > logs/${tag}.exit
+          done
+          exit 0
+
+      - name: Build response product and cross-channel geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in ref scf_l0 m07 c1; do test "$(cat logs/${tag}.exit)" = "0"; done
+          python3 code/w03_m07_quintessence_probe.py \
+            --directory out \
+            --case REF_LCDM:ref_:nan \
+            --case SCF_SPLIT_L0:scf_l0_:0.0 \
+            --case M07_QPOINT_0025:m07_:0.025 \
+            --case C1_EPS1E4:c1_:nan \
+            --json crosschannel_probe.json
+          python3 code/w03_m07_c1_crosschannel_comparator.py \
+            --probe crosschannel_probe.json \
+            --frozen-c1 dsir/data/derived/comparison_readiness/local_response_tangents_v0_1.json \
+            --json crosschannel_result.json
+
+      - name: Enforce preregistered bridge and classify H separator
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - "$C1_BRIDGE_ANGLE_MAX_DEG" "$C1_BRIDGE_RESID_MAX" "$CROSSCHANNEL_H_RESID_MIN" <<'PY'
+          import json,sys
+          amax,rmax,hmin=map(float,sys.argv[1:])
+          d=json.load(open('crosschannel_result.json'))
+          b=d['bridge_generated_C1_vs_frozen_DSIR_C1_P']
+          print('C1_bridge_angle_deg=',b['acute_angle_deg'])
+          print('C1_bridge_residual=',b['best_scalar_projection_residual_fraction'])
+          if b['acute_angle_deg']>amax or b['best_scalar_projection_residual_fraction']>rmax:
+              raise SystemExit('C1 frozen-bridge control failed')
+          h=d['matter_fit']['H_residual_fraction_using_same_P_fit_scalar']
+          print('M07_vs_C1_P_angle_deg=',d['M07_vs_C1_P']['acute_angle_deg'])
+          print('M07_vs_C1_H_angle_deg=',d['M07_vs_C1_H']['acute_angle_deg'])
+          print('H_residual_after_P_fit=',h)
+          d['preregistered_classification'] = 'CROSSCHANNEL_SEPARATOR' if h>=hmin else 'CROSSCHANNEL_NEAR_DEGENERACY'
+          open('crosschannel_result.json','w').write(json.dumps(d,indent=2)+'\n')
+          print('classification=',d['preregistered_classification'])
+          PY
+
+      - name: Record provenance
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "KMDSB_HEAD=$(git rev-parse HEAD)"
+            echo "CLASS_HEAD=$(git -C class_public rev-parse HEAD)"
+            echo "DSIR_FROZEN_HEAD=$(git -C dsir rev-parse HEAD)"
+            echo 'M07_q=lambda^2; lambda=0.025'
+            echo 'C1_epsilon_w=1e-4; w0=-0.9999'
+            echo "C1_BRIDGE_ANGLE_MAX_DEG=${C1_BRIDGE_ANGLE_MAX_DEG}"
+            echo "C1_BRIDGE_RESID_MAX=${C1_BRIDGE_RESID_MAX}"
+            echo "CROSSCHANNEL_H_RESID_MIN=${CROSSCHANNEL_H_RESID_MIN}"
+            echo 'scope=unwhitened theory-response only'
+          } > crosschannel_provenance.txt
+
+      - name: Upload immutable cross-channel bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m07-c1-crosschannel-comparator
+          path: |
+            crosschannel_probe.json
+            crosschannel_result.json
+            crosschannel_provenance.txt
+            cfg/
+            logs/
+          if-no-files-found: error
+          retention-days: 90
