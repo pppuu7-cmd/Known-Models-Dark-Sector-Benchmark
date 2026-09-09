@@ -5,6 +5,7 @@
   "wave": "W03",
   "status": "DSIR_PREDICTIVE_SUPPORT",
   "dsir_authority": "328f2ca80b724870b851c7fe6366cce1ca5086cd",
+  "observation_methodology_overlay_authority": "864952e1520d82473a9e976edfeb69f9899d174d",
   "solver": {"repository":"lesgourg/class_public","commit":"e85808324f51fc694d12e3ed7439552a3c3f9540","sector":"scf"},
   "branch": {
     "potential":"V(phi)=(1+A) exp(-lambda phi)","alpha":0,"B":0,"attractor_ic_scf":false,"phi_ini":1.0,"phi_prime_ini":0.0,
@@ -62,7 +63,8 @@
     "M07_vs_C1_P_acute_angle_deg":6.763932413651629,"M07_vs_C1_H_acute_angle_deg":10.612398525096017,
     "matter_fit_scalar_C1_to_M07":0.06866077867253075,"P_residual_fraction_after_matter_fit":0.11777887495243908,
     "H_residual_fraction_using_same_matter_fit":0.3091701900035304,"preregistered_H_separator_min":0.10,
-    "classification":"CROSSCHANNEL_SEPARATOR","B7_implication":"PARTIAL; theory-space separator exists but observational survival must be checked"
+    "classification":"CROSSCHANNEL_SEPARATOR_AGAINST_CONSTANT_W_ONLY",
+    "B7_implication":"superseded as a mechanism-novelty candidate by the stronger M08 CPL manifold test; useful only as the constant-w baseline"
   },
   "b5_shapefit_identifiability": {
     "run_id":34390859777,"artifact_digest":"sha256:91cd68778994d06a3d41c849a7dadf2ccb9ca23f8abd924666dc41d6d2f526c4",
@@ -79,7 +81,39 @@
     "sigma_degradation_factor":1.8011781353926377,"whitened_orthogonal_residual_fraction":0.5551921713628901,
     "largest_tested_q_profiled_significance_sigma":0.02202315903013532,
     "classification":"NONIDENTIFIABLE_AFTER_C1_PROFILING_IN_FROZEN_SHAPEFIT_CONTROL",
-    "B7_implication":"PARTIAL: a non-collinear whitened direction exists, but it carries far too little absolute information in this scoped control to support observational mechanism novelty"
+    "B7_implication":"constant-w profiling already weakens M07, but M08 is the stronger family-level comparator"
+  },
+  "m08_cpl_family_absorption_theory_space": {
+    "m08_basis_run_id":34394929596,
+    "m08_step_stability_run_id":34395806203,
+    "m08_step_stability_artifact_digest":"sha256:97902cc12abf4e18a84dd160f53b22169ec312ecc654dd6d9626cd4e281f3405",
+    "result_file":"waves/wave_03_expanded_dark_energy/M08_M07_ABSORPTION_RESULT.json",
+    "scope":"one shared 2D CPL parameter vector across unwhitened 35-node lnP + 7-node lnH local response",
+    "combined_residual_fraction":0.011074683775084661,
+    "P_residual_fraction":0.008641869617431507,
+    "H_residual_fraction":0.019929329756650474,
+    "constant_w_combined_residual_fraction":0.15819789479991475,
+    "improvement_factor_over_constant_w":14.284642163401672,
+    "step_stable_combined_residual_at_h_5e4":0.011068373238009356,
+    "classification":"CPL_ABSORBS_M07_CROSSCHANNEL_SEPARATOR_WITH_SCOPE",
+    "B7_implication":"the earlier P/H separator does not survive the stronger local smooth-DE family manifold"
+  },
+  "common_shapefit_profile_over_m08": {
+    "run_id":34396432509,
+    "artifact_digest":"sha256:57e35eea1a1a72f5ecf13f949abfdf3c67ac451b7ab133f4f0578e6097111b28",
+    "contract":"protocol/W03_M07_M08_COMMON_SHAPEFIT_OPERATOR_V0_1.md",
+    "contract_preregistration_commit":"46424a91cf625d52d4bcb5da18e09ec69eb33772",
+    "result_file":"waves/wave_03_expanded_dark_energy/M07_M08_COMMON_SHAPEFIT_RESULT.json",
+    "scope":"one common pure-LambdaCDM CLASS reference, identical 15-coordinate ShapeFit operator and covariance for M07 and M08",
+    "m07_sigma_q_unprofiled":2.268731845483864,
+    "m08_whitened_sigma2_over_sigma1":0.18051679830250314,
+    "whitened_residual_fraction_after_CPL_profile":0.010667804799332502,
+    "subspace_angle_deg":0.6112317852842958,
+    "m07_sigma_q_profiled_over_CPL":212.67091853965132,
+    "sigma_degradation_factor":93.73999794774949,
+    "q_0p09_profiled_significance_sigma":0.0004231890312883564,
+    "classification":"NONIDENTIFIABLE_AFTER_CPL_PROFILING_IN_COMMON_SHAPEFIT_CONTROL",
+    "B7_implication":"the tested late-time ShapeFit M07 direction carries essentially no mechanism-specific information outside the local CPL span in this common operator; global B7 stays PARTIAL because other robust channels are not exhausted"
   },
   "prospective_holdout_lambda_0p225": {
     "strength_level":1,"type":"prospective within-family withheld interpolation point","preregistration_commit":"b0ff43a0951458293ffb71b2dd2646a974b12cd6",
@@ -95,8 +129,9 @@
     "q=lambda^2 is established only within the tested canonical branch and numerical scope",
     "B2 remains PARTIAL because response-level cross-gauge stability fails even when raw observables are stable",
     "B5 NONIDENTIFIABLE is scoped observational non-identifiability, not physical falsification",
-    "B6 theory-space and cross-channel separators do not imply observational discrimination",
-    "B7 remains PARTIAL because the whitened C1-orthogonal component is itself extremely low signal in the scoped ShapeFit control",
+    "the former constant-w P/H separator is not mechanism-specific: the step-stable CPL manifold absorbs it to ~1.1 percent theory-space residual",
+    "the common ShapeFit M07/CPL control leaves only ~1.07 percent whitened residual and q=.09 carries ~4.23e-4 sigma after CPL profiling",
+    "B7 remains globally PARTIAL because this scoped control does not exhaust all possible robust response channels and is not full Article-2 G5 closure",
     "B8 support is level 1 within-family interpolation only and cannot be promoted to a universal law",
     "the model is not established as the physical explanation of dark energy"
   ]
