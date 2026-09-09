@@ -39,3 +39,4 @@ DP-0803,M07,W03,"an analytic reference intersection is numerically regressed and
 DP-0804,M07,W03,"microphysical dark-energy candidates are tested through perturbation and time-response channels rather than being identified only through an effective background w(z)",ACTIVE
 DP-0805,M07,W03,"microphysical dark-energy candidates are attacked against a phenomenological dark-energy nearest comparator; near-alignment in low-k matter response requires an orthogonal response channel before mechanism discrimination",ACTIVE
 DP-0806,M07,W03,"solver-default tolerance in an ill-conditioned nuisance coordinate cannot define physical target drift; precision is audited or the nuisance is reparameterized before response attribution",ACTIVE
+DP-0807,M07,W03,"exact parameter or field-coordinate redundancies are quotiented before local parity, derivative order, Jacobian rank or natural-coordinate claims are inferred",ACTIVE
