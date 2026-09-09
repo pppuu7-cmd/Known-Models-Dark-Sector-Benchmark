@@ -18,7 +18,7 @@ DP-0302,M03,W01,"slip-like metric observables are treated as high-value degenera
 DP-0303,M03,W01,"parameter count is not identified rank; near-collinearity is quantified",REINFORCED
 DP-0304,M03,W01,"within-family holdout support is kept distinct from universal holdout",REINFORCED
 DP-0401,M04,W01,"candidate is tested across multiple k windows so characteristic scales cannot hide outside one block",ACTIVE
-DP-0402,M04,W01,"blind/near-null/solver-limited/undefined response states remain distinct",ACTIVE
+DP-0402,M04,W01,"blind/near-null/solver-limited/undefined response states remain distinct",REINFORCED
 DP-0403,M04,W01,"characteristic-scale motion is compared against alternative suppression mechanisms before attribution",ACTIVE
 DP-0404,M04,W01,"time separability/evolution is retained as a possible mechanism discriminator",ACTIVE
 DP-0501,M05,W01,"dark-sector candidates are compared against modified-gravity explanations",ACTIVE
@@ -50,3 +50,5 @@ DP-0814,M07,W03,"after covariance whitening and nearest-comparator profiling, ab
 DP-0815,M08,W03,"nearest-comparator attacks profile the implemented local response span or manifold of the nearest family with one shared parameter vector across all claimed blocks; separation from a single representative ray is insufficient",ACTIVE
 DP-0816,W03_G5_overlay,W03,"cross-family observation-space promotion requires one prospectively frozen observation operator mapping every compared family into exactly the same covariance coordinate vector with matched order units masks and provenance; covariance availability alone is insufficient",ACTIVE
 DP-0817,M08,W03,"cosmological closure and normalization conventions are explicit benchmark inputs; an implementation failure caused by incompatible closure assignments is kept distinct from physical-domain failure",ACTIVE
+DP-0818,M09,W03,"a model branch is counted as implemented only after an executable reference or control traverses the solver through the modules required by the claimed response; parser options or dormant source branches alone do not establish benchmark coverage",ACTIVE
+DP-0819,M09,W03,"repairing or completing an unfinished third-party solver branch creates a distinct implementation authority that requires explicit equations regression and provenance; never silently patch upstream code and inherit its scientific label",ACTIVE
