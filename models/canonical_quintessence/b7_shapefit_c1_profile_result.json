@@ -1,0 +1,30 @@
+{
+  "schema": "KMDSB.W03.M07.B7.ShapeFitC1Profile.v0.1",
+  "scope": "same corrected DESI DR1 ShapeFit AP+growth+shape covariance as M01/M07 B5; local optimistic control with C1 epsilon amplitude profiled",
+  "source_m07": "models/canonical_quintessence/b5_shapefit_q_fisher_result.json",
+  "source_m01": "models/smooth_nonphantom_de/b5_shapefit_local_fisher_result.json",
+  "reproduction_code": "code/w03_m07_b7_shapefit_c1_profile.py",
+  "Fqq": 0.19426186043603622,
+  "Fee": 31.492843683430202,
+  "Fqe": 2.057206805780697,
+  "whitened_cosine_q_vs_epsilon": 0.8317221007387979,
+  "whitened_acute_angle_deg": 33.72395208648241,
+  "profiled_Fq_given_C1_epsilon": 0.05987895477365815,
+  "sigma_q_unprofiled": 2.2688523183385048,
+  "sigma_q_profiled_over_C1": 4.086607188226211,
+  "sigma_degradation_factor": 1.8011781353926377,
+  "best_fit_C1_epsilon_per_unit_q": 0.06532299294595255,
+  "whitened_orthogonal_residual_fraction": 0.5551921713628901,
+  "largest_tested_q": 0.09,
+  "largest_tested_q_profiled_significance_sigma": 0.02202315903013532,
+  "classification": "NONIDENTIFIABLE_AFTER_C1_PROFILING_IN_FROZEN_SHAPEFIT_CONTROL",
+  "interpretation": {
+    "supported": "The M07 and C1 local directions are not collinear after ShapeFit covariance whitening, but M07 carries extremely little absolute information and becomes still less identifiable after profiling the nearest C1 amplitude.",
+    "not_supported": [
+      "observational mechanism discrimination",
+      "physical falsification of M07 or C1",
+      "a full DESI likelihood conclusion",
+      "a universal result for all quintessence potentials"
+    ]
+  }
+}
