@@ -1,0 +1,116 @@
+name: W03 M07 B5 ShapeFit identifiability audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m07-b5-shapefit.yml'
+      - 'code/w03_m07_b5_shapefit_fisher.py'
+
+jobs:
+  b5-shapefit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OMEGA_SCF_TARGET: '0.682686955086854'
+      SHOOT_REL_TOL: '1.0e-13'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check numpy
+      - name: Fetch and build pinned official CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/lesgourg/class_public.git class_public
+          cd class_public
+          git checkout e85808324f51fc694d12e3ed7439552a3c3f9540
+          make -j2
+      - name: Write B5 configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cfg out logs
+          cat > cfg/common.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          Omega_fld = 0
+          reio_parametrization = reio_none
+          output = mPk
+          modes = s
+          ic = ad
+          gauge = synchronous
+          non linear = none
+          z_pk = 0.51
+          P_k_max_h/Mpc = 0.2
+          write background = yes
+          headers = yes
+          format = class
+          tol_shooting_deltax_rel = ${SHOOT_REL_TOL}
+          EOF
+          cp cfg/common.ini cfg/ref.ini
+          cat >> cfg/ref.ini <<EOF
+          Omega_scf = 0
+          root = ${GITHUB_WORKSPACE}/out/ref_
+          EOF
+          make_scf () {
+            local lam="$1"; local tag="$2"; local Aseed
+            Aseed=$(python3 -c 'import math,sys; lam=float(sys.argv[1]); Om=float(sys.argv[2]); h=.67; H0=100*h/299792.458; phi=1.; print(f"{3*Om*H0*H0*math.exp(lam*phi)-1:.17g}")' "$lam" "$OMEGA_SCF_TARGET")
+            cp cfg/common.ini cfg/${tag}.ini
+            cat >> cfg/${tag}.ini <<EOF
+          Omega_scf = ${OMEGA_SCF_TARGET}
+          scf_parameters = ${lam},0.0,${Aseed},0.0,1.0,0.0
+          attractor_ic_scf = no
+          scf_tuning_index = 2
+          root = ${GITHUB_WORKSPACE}/out/${tag}_
+          EOF
+          }
+          make_scf 0.025 l0025
+          make_scf 0.075 l0075
+          make_scf 0.15 l015
+          make_scf 0.30 l030
+      - name: Run B5 cases
+        shell: bash
+        run: |
+          set +e
+          for tag in ref l0025 l0075 l015 l030; do
+            ./class_public/class cfg/${tag}.ini > logs/${tag}.log 2>&1
+            echo "$?" > logs/${tag}.exit
+          done
+          exit 0
+      - name: Analyze ShapeFit projection
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in ref l0025 l0075 l015 l030; do test "$(cat logs/${tag}.exit)" = "0"; done
+          python3 code/w03_m07_b5_shapefit_fisher.py \
+            --ref out/ref_00_background.dat \
+            --case 0.025:out/l0025_00_background.dat \
+            --case 0.075:out/l0075_00_background.dat \
+            --case 0.15:out/l015_00_background.dat \
+            --case 0.30:out/l030_00_background.dat \
+            --json m07_b5_shapefit_result.json
+      - name: Record provenance
+        if: always()
+        run: |
+          {
+            echo "KMDSB_HEAD=$(git rev-parse HEAD)"
+            echo "CLASS_HEAD=$(git -C class_public rev-parse HEAD)"
+            echo 'DSIR_COVARIANCE_SOURCE=data/observations/desi_dr1_shapefit_erratum_2026.json'
+            echo 'SCOPE=optimistic unmarginalized AP+growth+shape control'
+          } > m07_b5_shapefit_provenance.txt
+      - name: Upload immutable B5 bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m07-b5-shapefit
+          path: |
+            m07_b5_shapefit_result.json
+            m07_b5_shapefit_provenance.txt
+            cfg/
+            logs/
+          if-no-files-found: error
+          retention-days: 90
