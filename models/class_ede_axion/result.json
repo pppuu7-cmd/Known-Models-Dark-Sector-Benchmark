@@ -1,0 +1,51 @@
+{
+  "schema_version": "KMDSB-model-result-v0.1",
+  "model_id": "M10",
+  "model_name": "CLASS_EDE axion-like scalar-field Early Dark Energy",
+  "wave": "W03",
+  "status": "INCONCLUSIVE",
+  "dsir_methodology_overlay_authority": "bc28acc47cc5facba046741fd09f710ae8da9689",
+  "solver": {
+    "repository": "mwt5345/class_ede",
+    "commit": "5a131c91d657dd9a7c6364cc45b038710f8d0d97"
+  },
+  "branch": {
+    "potential": "m^2 f^2 [1-cos(phi/f)]^n plus separately tuned CC in CLASS_EDE units",
+    "n_scf": 3.0,
+    "thetai_scf": 2.6,
+    "CC_scf": 1.0,
+    "target_log10z_c": 3.5,
+    "coordinate": "f=fEDE>0",
+    "grid": [0.005, 0.01, 0.03, 0.05],
+    "reference": "pure LambdaCDM in same CLASS_EDE commit"
+  },
+  "stage_A": {
+    "status": "OPEN",
+    "shooting_gates": {
+      "fEDE_abs_or_rel": "abs error <= max(1e-4,1% target)",
+      "log10z_c_abs": 0.015
+    },
+    "local_convergence_pair": [0.005, 0.01],
+    "response_relative_l2_max": 0.10,
+    "response_angle_deg_max": 3.0
+  },
+  "gates": {
+    "B0": "PASS_WITH_SCOPE",
+    "B1": "OPEN",
+    "B2": "PARTIAL",
+    "B3": "OPEN",
+    "B4": "OPEN",
+    "B5": "OPEN",
+    "B6": "OPEN",
+    "B7": "OPEN",
+    "B8": "OPEN",
+    "B9": "PARTIAL"
+  },
+  "primary_question": "Does a completed scalar-field EDE implementation generate a stable broad-k shape direction that survives profiling by the full local CPL manifold?",
+  "anti_overclaim": [
+    "M10 is distinct from blocked M09 native CLASS EDE.",
+    "Stage A establishes implementation and theory-response geometry only.",
+    "No finite Stage A point is a prospective holdout.",
+    "Raw broad-k separation is not observational discrimination."
+  ]
+}
