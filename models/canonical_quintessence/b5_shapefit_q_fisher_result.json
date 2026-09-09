@@ -1,0 +1,36 @@
+{
+  "schema": "KMDSB.W03.M07.B5.ShapeFitQFisher.v0.1",
+  "coordinate": "q=lambda^2 after field-reflection quotient",
+  "scope": "corrected DESI DR1 ShapeFit AP+growth+shape covariance; optimistic unmarginalized local control, not full likelihood",
+  "classification": "NONIDENTIFIABLE_IN_FROZEN_LOCAL_CONTROL_SCOPE",
+  "workflow_run_id": 34390859777,
+  "artifact_digest": "sha256:91cd68778994d06a3d41c849a7dadf2ccb9ca23f8abd924666dc41d6d2f526c4",
+  "sigma_q_optimistic_unmarginalized_local": 2.2687295131730147,
+  "local_F_q": 0.19428289159505893,
+  "cases": [
+    {"lambda":0.025,"q":0.0006250000000000001,"delta_chi2":7.588353923282667e-08,"sqrt_delta_chi2":0.00027546967025940747,"F_q_from_case":0.1942618604360362,"sigma_q_from_case":2.268852318338505},
+    {"lambda":0.075,"q":0.005625,"delta_chi2":6.147897555890865e-06,"sqrt_delta_chi2":0.002479495423647897,"F_q_from_case":0.19430392275408168,"sigma_q_from_case":2.2686067279464286},
+    {"lambda":0.15,"q":0.0225,"delta_chi2":9.87761272937565e-05,"sqrt_delta_chi2":0.009938617977050758,"F_q_from_case":0.19511333786421037,"sigma_q_from_case":2.26389625317672},
+    {"lambda":0.3,"q":0.09,"delta_chi2":0.001607143912261452,"sqrt_delta_chi2":0.040089199446502445,"F_q_from_case":0.19841282867425336,"sigma_q_from_case":2.2449936951248346}
+  ],
+  "local_derivative_per_bin_at_lambda_0p025": {
+    "LRG1": [-0.011365769082516406,-0.010519816539122926,0.0],
+    "LRG2": [-0.0036502624919165774,-0.007752397995375302,0.0],
+    "LRG3": [0.0003667690602782158,-0.004664937443266125,0.0],
+    "ELG2": [0.002837196532645691,-0.0003231801157355107,0.0],
+    "QSO": [0.0030217164395551772,0.0008662936451742096,0.0]
+  },
+  "assumptions": [
+    "CLASS background H, comoving distance, normalized growth D and f are used directly",
+    "AP coordinate is DH/DM ratio relative to LambdaCDM",
+    "growth coordinate scales as (D f)_M07/(D f)_LCDM with present normalization held fixed",
+    "late canonical-DE local deformation has zero ShapeFit early-shape coordinate in this scoped control",
+    "no nuisance marginalization; sensitivity is optimistic"
+  ],
+  "anti_overclaim": [
+    "not a full DESI likelihood",
+    "NONIDENTIFIABLE here is not physical falsification",
+    "no conclusion about all quintessence potentials",
+    "no observational mechanism discrimination against smooth-w without a joint comparator projection"
+  ]
+}
