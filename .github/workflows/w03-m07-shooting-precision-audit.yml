@@ -1,0 +1,182 @@
+name: W03 M07 shooting precision audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m07-shooting-precision-audit.yml'
+
+jobs:
+  precision-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      OMEGA_SCF_TARGET: '0.682686955086854'
+      MAX_LNH_TOL: '1.0e-8'
+      MAX_LNP_TOL: '1.0e-5'
+      OMEGA_TOL: '1.0e-6'
+      W_TOL: '1.0e-10'
+      PHIP_TOL: '1.0e-12'
+      SHOOT_REL_TOL: '1.0e-13'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check numpy
+
+      - name: Fetch and build pinned official CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/lesgourg/class_public.git class_public
+          cd class_public
+          git checkout e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          make -j2
+
+      - name: Write strict-shooting configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p strict_configs strict_outputs strict_logs
+
+          cat > strict_configs/common.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          Omega_fld = 0
+          reio_parametrization = reio_none
+          output = mPk,mTk
+          modes = s
+          ic = ad
+          gauge = synchronous
+          non linear = none
+          z_pk = 0.295,0.51,0.706,0.934,1.317,1.491,2.33
+          P_k_max_h/Mpc = 0.2
+          write background = yes
+          headers = yes
+          format = class
+          tol_shooting_deltax_rel = ${SHOOT_REL_TOL}
+          input_verbose = 1
+          EOF
+
+          cat strict_configs/common.ini > strict_configs/ref.ini
+          cat >> strict_configs/ref.ini <<EOF
+          Omega_scf = 0
+          root = ${GITHUB_WORKSPACE}/strict_outputs/ref_
+          EOF
+
+          make_scf () {
+            local lam="$1"
+            local tag="$2"
+            local Aseed
+            Aseed=$(python3 -c 'import math,sys; lam=float(sys.argv[1]); Om=float(sys.argv[2]); h=0.67; H0=100*h/299792.458; phi=1.0; print(f"{3*Om*H0*H0*math.exp(lam*phi)-1.0:.17g}")' "$lam" "$OMEGA_SCF_TARGET")
+            cat strict_configs/common.ini > "strict_configs/${tag}.ini"
+            cat >> "strict_configs/${tag}.ini" <<EOF
+          Omega_scf = ${OMEGA_SCF_TARGET}
+          scf_parameters = ${lam},0.0,${Aseed},0.0,1.0,0.0
+          attractor_ic_scf = no
+          scf_tuning_index = 2
+          root = ${GITHUB_WORKSPACE}/strict_outputs/${tag}_
+          EOF
+          }
+
+          make_scf 0.0 scf_l0
+          make_scf 0.025 scf_l0025
+          make_scf 0.075 scf_l0075
+          make_scf 0.15 scf_l015
+          make_scf 0.30 scf_l030
+
+      - name: Run strict-shooting cases and preserve exit codes
+        shell: bash
+        run: |
+          set +e
+          for tag in ref scf_l0 scf_l0025 scf_l0075 scf_l015 scf_l030; do
+            ./class_public/class "strict_configs/${tag}.ini" > "strict_logs/${tag}.log" 2>&1
+            rc=$?
+            echo "$rc" > "strict_logs/${tag}.exit"
+            echo "${tag}: exit ${rc}"
+          done
+          exit 0
+
+      - name: Analyze strict common-grid responses
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 code/w03_m07_quintessence_probe.py \
+            --directory strict_outputs \
+            --case REF_LCDM:ref_:nan \
+            --case SCF_SPLIT_L0:scf_l0_:0.0 \
+            --case M07_L0025:scf_l0025_:0.025 \
+            --case M07_L0075:scf_l0075_:0.075 \
+            --case M07_L015:scf_l015_:0.15 \
+            --case M07_L030:scf_l030_:0.30 \
+            --json strict_result.json
+
+      - name: Record precision-audit provenance
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "KMDSB_HEAD=$(git rev-parse HEAD)"
+            echo "CLASS_HEAD=$(git -C class_public rev-parse HEAD)"
+            echo "CLASS_REMOTE=$(git -C class_public remote get-url origin)"
+            echo "SHOOT_REL_TOL=${SHOOT_REL_TOL}"
+            echo "OMEGA_SCF_TARGET=${OMEGA_SCF_TARGET}"
+            echo "AUDIT_SHA256=$(sha256sum waves/wave_03_expanded_dark_energy/M07_SHOOTING_PRECISION_AUDIT.md | cut -d' ' -f1)"
+          } > strict_provenance.txt
+
+      - name: Upload immutable strict-shooting bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m07-shooting-precision-audit
+          path: |
+            strict_result.json
+            strict_provenance.txt
+            strict_configs/
+            strict_outputs/
+            strict_logs/
+            waves/wave_03_expanded_dark_energy/M07_SHOOTING_PRECISION_AUDIT.md
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce preregistered strict-shooting audit
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in ref scf_l0 scf_l0025 scf_l0075 scf_l015 scf_l030; do
+            rc=$(cat "strict_logs/${tag}.exit")
+            echo "${tag}: exit=${rc}"
+            test "$rc" = "0"
+          done
+          test -f strict_result.json
+          python3 - "$OMEGA_SCF_TARGET" "$MAX_LNH_TOL" "$MAX_LNP_TOL" "$OMEGA_TOL" "$W_TOL" "$PHIP_TOL" <<'PY'
+          import json, sys
+          target, htol, ptol, otol, wtol, phiptol = map(float, sys.argv[1:])
+          d=json.load(open('strict_result.json'))
+          rc=d['lambda0_reference_control']
+          if rc['max_abs_lnH'] > htol:
+              raise SystemExit(f"lambda0 max_abs_lnH {rc['max_abs_lnH']} > {htol}")
+          if rc['max_abs_lnP'] > ptol:
+              raise SystemExit(f"lambda0 max_abs_lnP {rc['max_abs_lnP']} > {ptol}")
+          l0=next(x for x in d['cases'] if x['label']=='SCF_SPLIT_L0')
+          bg=l0['background']
+          if abs(bg['Omega_scf_today']-target) > otol:
+              raise SystemExit(f"lambda0 Omega_scf mismatch {bg['Omega_scf_today']-target}")
+          if max(abs(x+1.0) for x in bg['w_scf_z']) > wtol:
+              raise SystemExit('lambda0 w_scf reference tolerance failed')
+          if max(abs(x) for x in bg['phi_prime_z']) > phiptol:
+              raise SystemExit('lambda0 phi_prime reference tolerance failed')
+          for case in d['cases']:
+              if case['label'].startswith('M07_L'):
+                  err=abs(case['background']['Omega_scf_today']-target)
+                  print(case['label'], 'Omega_error=', err)
+                  if err > otol:
+                      raise SystemExit(f"{case['label']} Omega target error {err} > {otol}")
+          print('M07_STRICT_SHOOTING_AUDIT=PASS')
+          PY
