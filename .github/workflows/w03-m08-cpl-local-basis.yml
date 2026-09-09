@@ -36,7 +36,6 @@ jobs:
           omega_cdm = 0.1200
           Omega_k = 0
           Omega_Lambda = 0
-          Omega_fld = 0.682686955086854
           fluid_equation_of_state = CLP
           cs2_fld = 1
           use_ppf = yes
@@ -105,6 +104,7 @@ jobs:
             echo 'fluid_equation_of_state=CLP'
             echo 'cs2_fld=1'
             echo 'use_ppf=yes'
+            echo 'Omega_Lambda=0; Omega_fld=inferred_by_closure'
             echo 'local_step=1e-3'
           } > m08_cpl_provenance.txt
       - name: Upload immutable M08 basis bundle
