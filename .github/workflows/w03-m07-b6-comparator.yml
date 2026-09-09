@@ -1,0 +1,82 @@
+name: W03 M07 B6 nearest-comparator geometry
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m07-b6-comparator.yml'
+      - 'code/w03_m07_comparator_geometry.py'
+
+jobs:
+  comparator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check numpy
+
+      - name: Download immutable strict M07 production artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: w03-m07-shooting-precision-audit
+          path: strict_bundle
+          github-token: ${{ github.token }}
+          run-id: 34338140447
+
+      - name: Fetch frozen DSIR comparator tangents
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            'https://raw.githubusercontent.com/pppuu7-cmd/Dark-Sector-Influence-Reconstruction/e3276e2193f6a5200b541a194e3175356ae5a1c1/data/derived/comparison_readiness/local_response_tangents_v0_1.json' \
+            --output local_response_tangents_v0_1.json
+          sha256sum local_response_tangents_v0_1.json
+
+      - name: Compute common-block geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f strict_bundle/strict_result.json
+          python3 code/w03_m07_comparator_geometry.py \
+            strict_bundle/strict_result.json \
+            local_response_tangents_v0_1.json \
+            --json m07_b6_geometry.json
+
+      - name: Enforce scope and nonzero inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, math
+          d=json.load(open('m07_b6_geometry.json'))
+          assert len(d['m07_vs_comparators']) == 8
+          assert len(d['m07_internal_shape_stability']) == 3
+          for x in d['m07_vs_comparators']:
+              assert x['norm_left'] > 0 and x['norm_right'] > 0
+              assert math.isfinite(x['acute_line_angle_deg'])
+          print('B6 geometry payload sanity PASS')
+          PY
+
+      - name: Record provenance
+        shell: bash
+        run: |
+          {
+            echo 'M07_STRICT_RUN=34338140447'
+            echo 'M07_STRICT_ARTIFACT=w03-m07-shooting-precision-audit'
+            echo 'M07_STRICT_ARTIFACT_DIGEST=sha256:958708322566a2d36ce7522a3f705b543e0158c554a8de8e18e803c82a5c9cb8'
+            echo 'DSIR_COMPARATOR_AUTHORITY=e3276e2193f6a5200b541a194e3175356ae5a1c1'
+            echo "KMDSB_HEAD=$(git rev-parse HEAD)"
+          } > m07_b6_provenance.txt
+
+      - name: Upload immutable comparator result
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m07-b6-comparator
+          path: |
+            m07_b6_geometry.json
+            m07_b6_provenance.txt
+            local_response_tangents_v0_1.json
+          retention-days: 90
