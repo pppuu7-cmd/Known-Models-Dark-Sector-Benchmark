@@ -1,152 +1,163 @@
 # M07 — canonical scalar-field / quintessence audit
 
 Wave: W03 — Expanded dark-energy mechanisms  
-Status: **ACTIVE / REFERENCE CALIBRATED / PRODUCTION RUNNING**  
+Status: **ACTIVE / STRICT PRODUCTION CALIBRATED / LOCAL GEOMETRY AUDITING**  
 W03 DSIR authority: `328f2ca80b724870b851c7fe6366cce1ca5086cd`  
 Pinned scalar solver: `lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540`
 
 ## Model identity
 
-M07 is a minimally coupled canonical scalar field with standard kinetic term and a controlled pure-exponential potential branch of the pinned CLASS `scf` implementation.
+M07 is a minimally coupled canonical scalar field with standard kinetic term on the pinned CLASS `scf` pure-exponential subset
 
-CLASS potential family:
+`V(phi)=((phi-B)^alpha+A) exp(-lambda phi)`,
 
-`V(phi) = ((phi-B)^alpha + A) exp(-lambda phi)`.
+with frozen
 
-Frozen M07 subset:
-
-`alpha = 0`, `B = 0`, hence
-
-`V(phi) = (1+A) exp(-lambda phi)`.
+`alpha=0`, `B=0`, hence `V(phi)=(1+A) exp(-lambda phi)`.
 
 Canonical solver stress:
 
-`rho_phi = [phi_prime^2/(2a^2) + V]/3`
+`rho_phi=[phi_prime^2/(2a^2)+V]/3`
 
-`p_phi = [phi_prime^2/(2a^2) - V]/3`.
+`p_phi=[phi_prime^2/(2a^2)-V]/3`.
 
-The perturbation solver exposes scalar-field density and velocity response sources (`delta_scf`, `theta_scf`) in addition to the standard matter and metric outputs.
+Frozen branch:
+- `attractor_ic_scf=no`;
+- `phi_ini=1`;
+- `phi_prime_ini=0`;
+- physical theory parameter `lambda`;
+- nuisance normalization `A`;
+- `scf_tuning_index=2` so shooting changes `A`, never `lambda`.
 
-## Parameter/provenance decision
+`phi_ini=1` avoids the pinned CLASS alpha-zero coordinate singularity at `phi=B=0`; this does not change the alpha-zero pure-exponential physical branch because the constant field-coordinate shift is absorbed into the normalization nuisance.
 
-The default CLASS scalar-field shooting convention can tune parameter index 0 (`lambda`) when `Omega_scf` is targeted. That convention is unsuitable for a benchmark in which `lambda` is itself the physical slope parameter.
+## Reference intersection
 
-M07 therefore freezes:
+At `lambda=0` and `phi_prime=0`, the potential is constant and
 
-- `attractor_ic_scf = no`;
-- `phi_ini = 1`;
-- `phi_prime_ini = 0`;
-- `scf_tuning_index = 2`;
-- potential normalization `A` is the shooting nuisance used to hit the requested `Omega_scf`;
-- `lambda` remains fixed by the benchmark point.
+`p_phi=-rho_phi`.
 
-`phi_ini=1` replaces the initial implementation idea `phi_ini=0` because pinned CLASS evaluates the alpha-zero polynomial derivative literally as `alpha*(phi-B)^(alpha-1)`; choosing `phi=B=0` creates the numerical coordinate singularity `0*0^-1`. For `alpha=0`, a constant field-coordinate shift is absorbed into the normalization nuisance and does not alter the pure-exponential branch being benchmarked.
+Therefore replacing Lambda by a constant scalar at matched total density must reproduce LambdaCDM if solver/bookkeeping are clean.
 
-This physical-parameter / solver-nuisance separation is required before any local derivative or comparator geometry is defined.
+This has now been verified twice:
 
-## Reference-intersection logic
+### Subdominant calibration run `34325977559`
 
-At `lambda = 0` and `phi_prime = 0`, the pure-exponential branch becomes a constant potential. Then
-
-`p_phi = -rho_phi`.
-
-A matched split-reference control can therefore replace a fixed fraction of Lambda by the constant scalar while leaving the total dark-energy response at the LambdaCDM origin, if solver and bookkeeping are clean.
-
-This statement has now been tested numerically in the calibration scope.
-
-## Successful calibration — Actions run 34325977559
-
-Pinned KMDSB head:
-`e74f798a685f8b92f75ef3afe0b4be03eb51a576`.
-
-Pinned CLASS head:
-`e85808324f51fc694d12e3ed7439552a3c3f9540`.
-
-Mandatory cases and all diagnostic finite-lambda cases exited with code 0.
-
-For the `Omega_scf=0.10`, `lambda=0` split reference:
-
+For `Omega_scf=0.10`, lambda zero gives:
 - achieved `Omega_scf(today)=0.10000000013560413`;
-- `w_scf(z)=-1` at all seven frozen redshift nodes;
-- `phi(z)=1` at all seven nodes;
-- `phi_prime(z)=0` at all seven nodes;
-- `max_abs_lnH = 5.462919005900343e-11` against pure LambdaCDM;
-- `max_abs_lnP = 4.111520165089289e-7` on the frozen 7x5 low-k grid.
+- `w_scf=-1`, `phi=1`, `phi_prime=0` on all frozen nodes;
+- `max_abs_lnH=5.46292e-11`;
+- `max_abs_lnP=4.11152e-7`.
 
-Thus the analytic constant-field reference intersection is solver-clean in the calibrated subdominant split scope.
+### Dark-energy-dominant strict production run `34338140447`
 
-The calibration finite-lambda points `{0.05,0.10,0.20}` remain implementation diagnostics only and can never be relabeled as B8 prospective evidence.
+Target:
+`Omega_scf_target=0.682686955086854`.
 
-## Numerical shooting diagnosis
+Lambda-zero result:
+- achieved `Omega_scf(today)=0.682686955181768`;
+- `w_scf=-1`, `phi=1`, `phi_prime=0`;
+- `max_abs_lnH=1.08876e-10`;
+- `max_abs_lnP=2.16648e-10`.
 
-The earlier failed SCF runs were traced to an inappropriate nuisance initial scale, not a physical-domain failure.
+The preregistered production reference thresholds are satisfied by large margins.
 
-At lambda zero,
+## Numerical conditioning audit
 
-`V_target = 3 Omega_scf H0^2`.
+Default CLASS one-dimensional shooting scales its root tolerance in the raw nuisance coordinate. Here `A~ -1` while the physically resolved normalization is `N=1+A << 1`. Default `tol_shooting_deltax_rel=1e-5` therefore allowed target-density drift that increased with lambda.
 
-For `V=(1+A)exp(-lambda phi)`, the scale-aware shooting seed is
+Default errors in `Omega_scf(today)-target`:
+- lambda 0.025: `+2.57319e-8`;
+- 0.075: `+3.11478e-6`;
+- 0.15: `+6.10320e-5`;
+- 0.30: `+1.23798e-3`.
 
-`A_seed(lambda)=3 Omega_scf H0^2 exp(lambda phi_ini)-1`.
+A preregistered rerun changed only
 
-The successful run used this natural-scale initialization. The methodology is recorded in:
+`tol_shooting_deltax_rel: 1e-5 -> 1e-13`.
 
-- `recovery/M07_SHOOTING_DIAGNOSIS_2026-09-09.md`;
+Strict errors:
+- 0.025: `+2.57319e-8`;
+- 0.075: `-3.43697e-11`;
+- 0.15: `-1.58952e-10`;
+- 0.30: `-3.01260e-10`.
+
+All pass the frozen `1e-6` target-error gate.
+
+This matters for the response itself: at lambda 0.30 the default vs strict 35-node `r_Delta` vectors differ by about `38.1%` in relative norm and `1.33 deg` in direction; H-response norm differs by about `49.6%`. Default vectors are therefore retained only as numerical-conditioning evidence. Strict run `34338140447` is authoritative for B4/B6.
+
+See:
+- `waves/wave_03_expanded_dark_energy/M07_SHOOTING_PRECISION_AUDIT.md`;
+- `waves/wave_03_expanded_dark_energy/M07_SHOOTING_PRECISION_RESULT.md`;
 - `protocol/NUMERICAL_CALIBRATION_RULES_v0.1.md`.
 
-## Production preregistration
+## B6 nearest-comparator attack
 
-Frozen before inspecting any dark-energy-dominant finite-lambda production output:
+Reproducible run: `34358089618`.
 
-`waves/wave_03_expanded_dark_energy/M07_PRODUCTION_PREREGISTRATION.md`.
+Common block:
+`r_Delta(k,z)`, 7 frozen z nodes x 5 low-k nodes, unwhitened theory-response geometry.
 
-Dark-energy-dominant target:
+Against C1 smooth non-phantom wCDM:
+- lambda 0.025: acute angle `15.9702 deg`;
+- 0.075: `6.9206 deg`;
+- 0.15: `6.6924 deg`;
+- 0.30: `6.6114 deg`.
 
-`Omega_scf_target = 0.682686955086854`,
+For lambda >=0.075, best scalar projection still leaves roughly `11.5-12.0%` orthogonal residual. Exact collinearity is rejected, but the low-k matter-response near-degeneracy is strong.
 
-the measured present Lambda fraction of the matched pure-LambdaCDM reference.
+Against the frozen minimum-resolved designer-f(R) ray:
+- acute angles decrease from `73.0805 deg` at lambda 0.025 to `60.7968 deg` at lambda 0.30;
+- best scalar projection leaves about `87-96%` residual.
 
-Hard lambda-zero production thresholds:
+Thus in this restricted block M07 is far closer to phenomenological smooth DE than to the frozen MG comparator. No observational discrimination is claimed.
 
-- `max_abs_lnH <= 1e-8`;
-- `max_abs_lnP <= 1e-5`;
-- `abs(Omega_scf(today)-Omega_scf_target) <= 1e-6`;
-- `max_z abs(w_scf+1) <= 1e-10`;
-- `max_z abs(phi_prime) <= 1e-12`.
+See `waves/wave_03_expanded_dark_energy/M07_B6_NEAREST_COMPARATOR.md`.
 
-Frozen production response grid:
+## Emerging local-geometry question
 
-`lambda={0.025,0.075,0.15,0.30}`.
+Strict response norms approximately scale as lambda squared:
 
-These are B3-B6 production points, not B8 holdouts.
+`||r_Delta||/lambda^2 = {0.1105,0.1167,0.1175,0.1189}`
 
-Active production workflow:
-`.github/workflows/w03-m07-quintessence-production.yml`.
+for lambda `{0.025,0.075,0.15,0.30}`.
+
+This raises a nontrivial local-coordinate issue: if the response is even in lambda, the naive first derivative `dr/dlambda` at lambda=0 vanishes even though a nonzero second-order response exists. A preregistered `+/-lambda` parity audit is running to test whether `q=lambda^2` is the appropriate near-reference coordinate.
+
+Active workflow:
+`.github/workflows/w03-m07-parity-coordinate-audit.yml`.
+
+Preregistered hard parity threshold:
+`||r_odd||/||r_even|| <= 1e-3`.
+
+No post-hoc threshold is imposed on convergence of `r/lambda^2`; that is descriptive until separately frozen.
 
 ## B0-B9 gate ledger
 
 | Gate | State | Evidence / requirement |
 |---|---|---|
-| B0 identity/provenance | `PASS_WITH_SCOPE` | canonical CLASS `scf` branch, exact upstream commit, potential subset, explicit IC and shooting semantics pinned |
-| B1 DSIR embedding/reference limit | `PASS_WITH_SCOPE` | analytic constant-field intersection numerically reproduced in calibrated `Omega_scf=0.10` split; full-DE production lambda-zero gate preregistered and running |
-| B2 conservation/gauge/frame bookkeeping | `PARTIAL` | minimally coupled canonical solver implementation and matched total response are clean; explicit cross-gauge / additional response bookkeeping audit still pending |
-| B3 physical-domain/numerical control | `PARTIAL` | natural-scale shooting converges for lambda `{0,0.05,0.10,0.20}` in calibration; positive finite scalar background obtained; dark-energy-dominant production and precision robustness pending |
-| B4 response coverage/masks | `PARTIAL` | frozen 7x5 low-k matter response is executable; production response and scalar/metric/slip coverage still pending |
-| B5 reference identifiability | `OPEN` | no observational promotion without a pinned operator/covariance |
-| B6 nearest comparator | `OPEN` | attack M01 smooth-w and M05 designer f(R) after production response passes its frozen reference gate |
-| B7 quotient-surviving novelty | `OPEN` | premature |
-| B8 prospective withheld prediction | `OPEN` | no relation/holdout frozen yet; calibration and production response points are not holdouts |
-| B9 synthesis/design priors | `PARTIAL` | parameter/nuisance separation, natural-scale initialization and reference-first calibration feed methodology; final model verdict pending |
+| B0 identity/provenance | `PASS_WITH_SCOPE` | pinned canonical CLASS scf subset, explicit IC and physical/nuisance semantics |
+| B1 DSIR embedding/reference limit | `PASS_WITH_SCOPE` | subdominant and full-DE lambda-zero scalar replacements reproduce LambdaCDM within frozen numerical tolerances |
+| B2 conservation/gauge/frame bookkeeping | `PARTIAL` | minimally coupled canonical implementation and matched total reference clean; explicit cross-gauge/additional-response audit pending |
+| B3 physical-domain/numerical control | `PASS_WITH_SCOPE` | natural-scale seed + strict shooting pass frozen target and reference gates; positive finite backgrounds on production grid |
+| B4 response coverage/masks | `PASS_WITH_SCOPE` | authoritative strict 7x5 low-k matter response produced for lambda `{0.025,0.075,0.15,0.30}`; broader metric/slip/time coverage still future work |
+| B5 reference identifiability | `OPEN` | no observation-space promotion without pinned operator/covariance |
+| B6 nearest comparator | `PASS_WITH_SCOPE` | strong C1 near-alignment but non-collinearity; large separation from frozen f(R) ray on common low-k theory-response block |
+| B7 quotient-surviving novelty | `OPEN` | orthogonal channel / observation-space survival not yet established |
+| B8 prospective withheld prediction | `OPEN` | no prospective relation/holdout frozen; production points are not B8 evidence |
+| B9 synthesis/design priors | `PARTIAL` | numerical conditioning, comparator pressure and possible higher-order local coordinate feed methodology |
 
 ## Current overall verdict
 
-`INCONCLUSIVE` while the preregistered dark-energy-dominant production gate and comparator attacks remain open.
+`DSIR_COMPATIBLE`.
 
-This is no longer an implementation-blocked model: the calibrated reference branch is reproducibly executable.
+Precise meaning: M07 has a clean reference limit, controlled physical/numerical production branch and nontrivial DSIR response. Its restricted low-k response is nearly degenerate with smooth-w and has not yet been shown observationally distinguishable. This is not a falsification and not a uniqueness claim.
 
 ## Design-prior pressure from M07
 
-- physical theory parameters and solver shooting/nuisance parameters must be explicitly separated;
-- exponentially or dimensionfully sensitive nuisance parameters require natural-scale initialization before automated fitting/shooting;
-- exact analytic reference intersections require numerical regression and a frozen production tolerance before finite-deformation science;
-- microphysical dark energy must expose perturbation/time response rather than being reduced to a fitted background `w(z)`.
+- physical parameters and solver nuisance parameters must be separated;
+- sensitive nuisance coordinates require natural-scale initialization and tolerance conditioning in the physically resolved combination;
+- exact analytic reference intersections require numerical regression before finite-deformation science;
+- microphysical DE must be attacked against both phenomenological DE and MG comparators;
+- strong nearest-comparator alignment demands an orthogonal response channel before mechanism attribution;
+- local model geometry may be higher-order, so the natural identifiable coordinate must be established before Jacobian/rank claims.
