@@ -1,14 +1,97 @@
 {
-  "schema_version":"KMDSB-model-result-v0.1",
-  "model_id":"M08",
-  "model_name":"CPL time-varying smooth dark energy",
-  "wave":"W03",
-  "status":"INCONCLUSIVE",
-  "dsir_authority":"328f2ca80b724870b851c7fe6366cce1ca5086cd",
-  "solver":{"repository":"lesgourg/class_public","commit":"e85808324f51fc694d12e3ed7439552a3c3f9540","sector":"fld"},
-  "branch":{"fluid_equation_of_state":"CLP","w_of_a":"w0+wa(1-a)","coordinates":{"epsilon0":"1+w0","epsilon_a":"wa"},"cs2_fld":1.0,"use_ppf":true,"reference":{"w0":-1.0,"wa":0.0}},
-  "preregistered_local_grid":{"epsilon0":[-0.001,0.001],"wa":[-0.001,0.001]},
-  "primary_question":"Can the two-dimensional CPL local response span absorb the M07 q=lambda^2 P/H cross-channel separator using one shared parameter vector across blocks?",
-  "gates":{"B0":"PASS_WITH_SCOPE","B1":"PARTIAL","B2":"PARTIAL","B3":"OPEN","B4":"OPEN","B5":"OPEN","B6":"OPEN","B7":"OPEN","B8":"OPEN","B9":"PARTIAL"},
-  "anti_overclaim":["CPL+PPF is a phenomenological smooth-DE comparator, not canonical quintessence","PPF crossing regularity is not a microphysical realization proof","theory-space absorption or separation is not observational discrimination","finite implementation probes are not B8 evidence"]
+  "schema_version": "KMDSB-model-result-v0.1",
+  "model_id": "M08",
+  "model_name": "CPL time-varying smooth dark energy",
+  "wave": "W03",
+  "status": "DSIR_COMPATIBLE",
+  "initial_dsir_authority": "328f2ca80b724870b851c7fe6366cce1ca5086cd",
+  "observation_methodology_overlay_authority": "864952e1520d82473a9e976edfeb69f9899d174d",
+  "solver": {
+    "repository": "lesgourg/class_public",
+    "commit": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+    "sector": "fld"
+  },
+  "branch": {
+    "fluid_equation_of_state": "CLP",
+    "w_of_a": "w0+wa(1-a)",
+    "coordinates": {"epsilon0": "1+w0", "epsilon_a": "wa"},
+    "cs2_fld": 1.0,
+    "use_ppf": true,
+    "closure": "Omega_Lambda=0; Omega_fld inferred by CLASS closure",
+    "reference": {"w0": -1.0, "wa": 0.0}
+  },
+  "preregistered_local_grid": {
+    "epsilon0": [-0.001, 0.001],
+    "wa": [-0.001, 0.001]
+  },
+  "initial_configuration_failure": {
+    "run_id": 34391852165,
+    "artifact_digest": "sha256:0c8cf5c2de8f3d4cc9f62d9a8574a60656db38caee297b01b6fdf1674517045e",
+    "classification": "BLOCKED_IMPLEMENTATION_CONFIGURATION",
+    "cause": "Omega_Lambda and Omega_fld were both explicitly specified; pinned CLASS requires one closure component unspecified",
+    "physical_conclusion": "none"
+  },
+  "local_basis": {
+    "run_id": 34394929596,
+    "head_sha": "a3bb13aab2f181fed31882d31f819c9d0b0a7a36",
+    "artifact_digest": "sha256:561bf0abc6b9247fe9bd517c142eeac5f96c677eab430993bd6cb1473e3a6a97",
+    "reference_max_abs_lnP": 0.0,
+    "reference_max_abs_lnH": 0.0,
+    "epsilon0_vs_wa_angle_deg": 9.17902249994233,
+    "singular_values_combined_PH": [1.8829717592574127, 0.09452818632913004],
+    "sigma2_over_sigma1": 0.050201595358184824,
+    "central_nonlinearity_ratios": {
+      "epsilon0_P": 0.001333200160398004,
+      "epsilon0_H": 0.0007770374752229206,
+      "wa_P": 0.000715525932609993,
+      "wa_H": 0.00034394015234813556
+    },
+    "classification": "PASS_WITH_SCOPE"
+  },
+  "m07_absorption": {
+    "target": "M07 local dr/dq, q=lambda^2",
+    "fit_rule": "one shared CPL parameter vector across 35-node lnP and 7-node lnH blocks",
+    "coefficients_per_unit_q": {
+      "epsilon0": 0.14065348711233602,
+      "wa": -0.2006790926584112
+    },
+    "cpl_residual_fraction": {
+      "combined_PH": 0.011074683775084661,
+      "P": 0.008641869617431507,
+      "H": 0.019929329756650474
+    },
+    "constant_w_same_solver_baseline_residual_fraction": {
+      "combined_PH": 0.15819789479991475,
+      "P": 0.12063934302096947,
+      "H": 0.29148838356430123
+    },
+    "improvement_factor": {
+      "combined_PH": 14.284642163401672,
+      "P": 13.959866135636664,
+      "H": 14.626100682940967
+    },
+    "classification": "CPL_ABSORBS_M07_CROSSCHANNEL_SEPARATOR_WITH_SCOPE"
+  },
+  "primary_question_result": "The two-dimensional CPL local response span absorbs the previously identified M07-versus-constant-w P/H separator to about 1.1 percent combined residual in unwhitened local theory space.",
+  "gates": {
+    "B0": "PASS_WITH_SCOPE",
+    "B1": "PASS_WITH_SCOPE",
+    "B2": "PARTIAL",
+    "B3": "PASS_WITH_SCOPE",
+    "B4": "PASS_WITH_SCOPE",
+    "B5": "OPEN",
+    "B6": "PASS_WITH_SCOPE",
+    "B7": "PARTIAL",
+    "B8": "OPEN",
+    "B9": "PASS"
+  },
+  "next_hard_question": "Does the M07/CPL near-equivalence survive or break when both families are propagated through one exact common observation operator and covariance under DSIR AD-002/G5 rules?",
+  "anti_overclaim": [
+    "CPL+PPF is a phenomenological smooth-DE comparator, not canonical quintessence.",
+    "The local CPL basis is strongly anisotropic; parameter count two is not equivalent to two equally identifiable response directions.",
+    "CPL absorption is local theory-space evidence and is not observational discrimination.",
+    "CPL absorption does not prove CPL is the physical dark-energy mechanism.",
+    "Finite implementation probes are not B8 evidence.",
+    "Any cross-family observational promotion must bind one exact common observation operator/covariance coordinate vector for M07 and M08."
+  ]
 }
