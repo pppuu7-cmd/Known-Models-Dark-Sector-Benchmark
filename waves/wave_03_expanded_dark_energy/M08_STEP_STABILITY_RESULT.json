@@ -1,0 +1,45 @@
+{
+  "schema": "KMDSB.W03.M08.StepStability.v0.1",
+  "run_id": 34395806203,
+  "head_sha": "92ae359470374823e9313f2d5958d948f8d222ae",
+  "artifact_digest": "sha256:97902cc12abf4e18a84dd160f53b22169ec312ecc654dd6d9626cd4e281f3405",
+  "steps": {"h1": 0.001, "h2": 0.0005},
+  "frozen_gates": {
+    "direction_relative_l2_max": 0.01,
+    "direction_angle_deg_max": 0.25,
+    "sigma2_over_sigma1_relative_change_max": 0.05,
+    "m07_absorption_combined_residual_absolute_change_max": 0.005,
+    "m07_absorption_coefficient_relative_change_max": 0.05
+  },
+  "direction_stability": {
+    "epsilon0_combined": {"relative_l2_difference": 1.2055481149871692e-05, "angle_deg": 0.0006640866342380483},
+    "wa_combined": {"relative_l2_difference": 5.57296960082773e-05, "angle_deg": 0.002295564114917826},
+    "epsilon0_P": {"relative_l2_difference": 1.2618827509845166e-05, "angle_deg": 0.000692772475658938},
+    "epsilon0_H": {"relative_l2_difference": 3.796376217975426e-07, "angle_deg": 1.716063790683883e-05},
+    "wa_P": {"relative_l2_difference": 5.702408014610382e-05, "angle_deg": 0.0022968459765185982},
+    "wa_H": {"relative_l2_difference": 8.479022867047796e-08, "angle_deg": 4.094554566467037e-06}
+  },
+  "basis": {
+    "h1": {"singular_values": [1.8829717592574127, 0.09452818632913004], "sigma2_over_sigma1": 0.050201595358184824},
+    "h2": {"singular_values": [1.882958622940554, 0.09451755840508708], "sigma2_over_sigma1": 0.05019630131727597},
+    "sigma_ratio_relative_change": 0.00010545563086358103
+  },
+  "m07_absorption": {
+    "h1": {
+      "coefficients": {"epsilon0": 0.14065348711233602, "wa": -0.20067909265841125},
+      "combined_residual_fraction": 0.011074683775084658,
+      "P_residual_fraction": 0.00864186961743154,
+      "H_residual_fraction": 0.019929329756650384
+    },
+    "h2": {
+      "coefficients": {"epsilon0": 0.14065896839508849, "wa": -0.20070079545072517},
+      "combined_residual_fraction": 0.011068373238009356,
+      "P_residual_fraction": 0.008638519916525174,
+      "H_residual_fraction": 0.01991406519084141
+    },
+    "combined_residual_absolute_change": 6.310537075301589e-06,
+    "coefficient_relative_change": 9.13411729704134e-05
+  },
+  "classification": "PASS_WITH_SCOPE",
+  "interpretation": "The local CPL tangent plane and its approximately 1.1 percent absorption of the M07 P+H direction are stable when the central finite-difference step is halved from 1e-3 to 5e-4. This is theory-response stability only, not observation-space equivalence."
+}
