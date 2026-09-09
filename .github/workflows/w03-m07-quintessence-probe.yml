@@ -64,35 +64,17 @@ jobs:
           make_scf () {
             local lam="$1"
             local tag="$2"
-            # CLASS scalar-field potential is dimensionful in Mpc^-2 while
-            # V_p=(phi-B)^alpha+A is O(1) for the naive A=0 seed.  For a
-            # late-time Omega_scf=0.10 component the correct normalization is
-            # instead O(H0^2).  Seed A close to the analytic constant-field
-            # density scale so the root finder does not integrate through an
-            # enormous, stiff scalar-energy regime before reaching the root.
-            # H0 = 100 h / c in Mpc^-1; phi_ini=1, alpha=0, B=0.
+            # Seed the normalization close to the analytic late-time density
+            # scale.  This keeps lambda physical and A as the shooting nuisance.
             local Aseed
-            Aseed=$(python3 - "$lam" <<'PY'
-import math, sys
-lam=float(sys.argv[1])
-h=0.67
-c_km_s=299792.458
-H0=100.0*h/c_km_s
-Omega=0.10
-phi_ini=1.0
-Vtarget=3.0*Omega*H0*H0
-# V=(1+A)*exp(-lambda*phi) for alpha=0.
-print(f"{Vtarget*math.exp(lam*phi_ini)-1.0:.17g}")
-PY
-)
+            Aseed=$(python3 -c 'import math,sys; lam=float(sys.argv[1]); h=0.67; c=299792.458; H0=100*h/c; Om=0.10; phi=1.0; print(f"{3*Om*H0*H0*math.exp(lam*phi)-1.0:.17g}")' "$lam")
             echo "${tag}: analytic A seed ${Aseed}"
             cat probe_configs/common.ini > "probe_configs/${tag}.ini"
             cat >> "probe_configs/${tag}.ini" <<EOF
           Omega_scf = 0.10
           # alpha=0 gives the pure-exponential branch. Keep phi_ini-B != 0
-          # because pinned CLASS evaluates alpha*(phi-B)^(alpha-1)
-          # literally; phi_ini=B would create a numerical 0*0^-1 singularity.
-          # lambda is the physical parameter; A is only the closure/shooting nuisance.
+          # because pinned CLASS evaluates alpha*(phi-B)^(alpha-1) literally.
+          # lambda is physical; A is the closure/shooting nuisance.
           scf_parameters = ${lam},0.0,${Aseed},0.0,1.0,0.0
           attractor_ic_scf = no
           scf_tuning_index = 2
