@@ -1,180 +1,230 @@
 # KMDSB recovery manual — restore from a new chat
 
-Updated: 2026-09-08
-Purpose: allow the KMDSB/DSIR benchmark development to be resumed from another chat without relying on memory of the previous conversation.
+Updated: 2026-09-09
+Purpose: resume KMDSB/DSIR benchmark development from another chat without relying on conversation memory.
 
-## 0. Rule of authority
+## 0. Authority rule
 
-If chat memory conflicts with repository state, the repository wins.
+If chat memory conflicts with repository state, repository evidence wins.
 
-Scientific authority currently pinned for existing audits:
-`pppuu7-cmd/Dark-Sector-Influence-Reconstruction@e3276e2193f6a5200b541a194e3175356ae5a1c1`
+Do **not** assume one DSIR commit applies to every historical result.
 
-Do not silently substitute a newer DSIR commit into an existing audit. Record an authority delta or new audit revision.
+- W00-W02 evidence: `Dark-Sector-Influence-Reconstruction@e3276e2193f6a5200b541a194e3175356ae5a1c1`.
+- W03 starting authority: `Dark-Sector-Influence-Reconstruction@328f2ca80b724870b851c7fe6366cce1ca5086cd`.
+- exact transition and 11-commit delta: `recovery/AUTHORITY_DELTAS.md` AD-001.
+
+Never silently rebase an old audit.
 
 ## 1. Project roles
 
-- `Dark-Sector-Influence-Reconstruction` (DSIR): main formal reconstruction/methodology authority.
-- `Known-Models-Dark-Sector-Benchmark` (KMDSB): controlled test range that passes known dark-sector and modified-gravity models through the DSIR funnel.
-- Future original dark-sector model: must eventually live in a separate repository; KMDSB supplies evidence-derived construction requirements.
+- DSIR: formal reconstruction/methodology authority.
+- KMDSB: test range for known dark-sector and modified-gravity models through DSIR.
+- Future original model: later separate repository; KMDSB supplies evidence-derived requirements.
 
-## 2. Files to read first in a fresh chat
+## 2. Read order in a fresh chat
 
-Read in this order:
-1. `recovery/STATE.md` — shortest current handoff/frontier.
-2. `protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.1.md` — methodology accumulated for the future original model.
-3. `protocol/DSIR_BENCHMARK_PROTOCOL_v0.1.md` — frozen B0-B9 per-model funnel.
-4. `protocol/WAVE_TESTING_PROTOCOL_v0.1.md` — wave logic.
-5. `protocol/STATUS_TAXONOMY.md` — verdict semantics.
-6. `matrices/wave_matrix.csv` — wave-level state.
-7. `matrices/benchmark_matrix.csv` — per-model state.
-8. `matrices/design_prior_ledger.csv` — current design priors DP-*.
-9. `logs/research_log.md` — chronology and scientific decisions.
-10. Active-wave directory under `waves/`.
+1. `recovery/STATE.md`
+2. `recovery/AUTHORITY_DELTAS.md`
+3. `protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.1.md`
+4. `protocol/DSIR_BENCHMARK_PROTOCOL_v0.1.md`
+5. `protocol/WAVE_TESTING_PROTOCOL_v0.1.md`
+6. `protocol/STATUS_TAXONOMY.md`
+7. `matrices/wave_matrix.csv`
+8. `matrices/benchmark_matrix.csv`
+9. `matrices/design_prior_ledger.csv`
+10. `logs/research_log.md`
+11. active-wave directory under `waves/`
 
 Do not reconstruct the project from README alone.
 
-## 3. Frozen benchmark gate sequence
+## 3. Frozen B0-B9 funnel
 
-B0 — identity/provenance
-B1 — DSIR embedding/reference limit
-B2 — conservation/gauge/frame bookkeeping
-B3 — physical-domain/numerical control
-B4 — response coverage/masks
-B5 — LambdaCDM/reference identifiability
-B6 — nearest-comparator discrimination
-B7 — quotient-surviving residual novelty
-B8 — prospective withheld prediction
-B9 — synthesis/design-prior extraction
+B0 identity/provenance  
+B1 DSIR embedding/reference limit  
+B2 conservation/gauge/frame bookkeeping  
+B3 physical-domain/numerical control  
+B4 response coverage/masks  
+B5 reference/observational identifiability  
+B6 nearest-comparator discrimination  
+B7 quotient-surviving novelty  
+B8 prospective withheld prediction  
+B9 synthesis/design-prior extraction
 
-Critical semantic rule: FAIL, NONIDENTIFIABLE, BLOCKED_*, comparator equivalence and physical inconsistency are not synonyms.
+Critical semantics: `FAIL`, `NONIDENTIFIABLE`, `BLOCKED_*`, `INCONCLUSIVE`, comparator degeneracy and physical inconsistency are not synonyms.
 
-## 4. Current wave state at this checkpoint
+## 4. Completed waves
 
-### W00 — Calibration and semantics
-Status: COMPLETE.
+### W00 — Calibration and semantics — COMPLETE
 
 M00 LambdaCDM: `CONTROL_PASS_WITH_SCOPE`.
 
-M01 smooth non-phantom DE / local wCDM ray: controlled DSIR deformation but observationally `NONIDENTIFIABLE` in the scoped corrected DESI DR1 ShapeFit control.
+M01 smooth non-phantom DE/wCDM: DSIR-compatible but `NONIDENTIFIABLE` in the scoped corrected DESI DR1 ShapeFit control.
 
-Key calibration numbers for M01/B5:
-- local amplitude coordinate: `epsilon_w`;
-- nuisance-free scoped sensitivity: `sigma(epsilon_w) ~= 0.1782`;
-- frozen minimal step: `epsilon_w = 1e-4`;
-- significance of that step: about `5.61e-4 sigma`.
+Calibration:
+- `sigma(epsilon_w) ~= 0.1782`;
+- frozen `epsilon_w=1e-4`;
+- significance about `5.61e-4 sigma`.
 
-Interpretation: this is not physical falsification. It demonstrates that a clean theory-space response can be far below realistic covariance scale.
+Lesson: clean theory response != observational identifiability.
 
-### W01 — Baseline dark-sector control atlas
-Status: COMPLETE.
+### W01 — Baseline dark-sector control atlas — COMPLETE
 
-Models:
-- M02 IDE;
-- M03 GDM;
-- M04 thermal WDM;
-- M05 designer f(R);
-- M06 decaying CDM -> dark radiation.
+M02 IDE, M03 GDM, M04 thermal WDM, M05 designer f(R), M06 DCDM.
 
-Central methodological results:
-- IDE requires physical tangent-cone/one-sided geometry before differentiation;
-- GDM demonstrates that parameter count is not identified rank and that additional channels such as slip can be high-value degeneracy breakers;
-- WDM forces explicit high-k windowing, characteristic-scale and mask discipline;
-- designer f(R) forces modified-gravity comparators and explicit near-GR solver-threshold handling;
-- DCDM reinforces prospective/temporal holdout semantics.
+Durable results:
+- IDE: physical tangent-cone/one-sided geometry precedes differentiation;
+- GDM: parameter count != identified rank; additional metric/slip channels can break matter-response near-collinearity;
+- WDM: high-k windows, masks and characteristic-scale motion are first-class;
+- designer f(R): MG comparators and solver GR-threshold discipline are required;
+- DCDM: prospective temporal/withheld semantics must stay explicit.
 
-### W02 — Same-observable degeneracy attack
-Status: ACTIVE.
+### W02 — Same-observable degeneracy attack — COMPLETE
 
-Frozen edges:
-- E1 IDE vs GDM;
-- E2 IDE vs designer f(R);
-- E3 WDM vs alternative small-scale suppression;
-- E4 DCDM vs alternative temporal-history mechanism.
+Exact closure: `waves/wave_02_degeneracy_attack/result.json`.
 
-E1 status: `PASS_WITH_SCOPE` in unwhitened common low-k `r_Delta(k,z)` tangent geometry on the frozen 7x5 nodes.
+Theory/edge states:
+- PC1 GDM vs designer f(R): `PASS_WITH_SCOPE` positive control; scale-only near-mimicry is broken by time/full-response information.
+- E1 IDE vs GDM: `PASS_WITH_SCOPE`; closest acute theory-response angle `24.7863980743 deg`.
+- E2 IDE vs designer f(R): `PASS_WITH_SCOPE`; acute angles `42.4502726930 deg`, `59.4041006897 deg`.
+- E3 WDM vs alternative small-scale suppression: `BLOCKED_IMPLEMENTATION`; no second pinned same-convention non-WDM high-k family exists in frozen C0-C6 coverage. This is not WDM uniqueness.
+- E4 DCDM vs alternative temporal histories: `INCONCLUSIVE`; a common temporal centroid exists but is too lossy to act as a frozen hard mechanism discriminator.
 
-Exact stored source:
-`waves/wave_02_degeneracy_attack/E1_result.json`
+E4 coordinate:
+`q_z(z)=sum_k r(k,z)^2/sum_{z,k}r(k,z)^2`
+`z_R=exp[sum_z q_z ln(1+z)]-1`.
 
-Key values:
-- IDE alpha_negative vs GDM cs2: acute angle `24.934547 deg`;
-- IDE alpha_negative vs GDM cv2: acute angle `24.786398 deg` (closest pair);
-- IDE beta vs GDM cs2: oriented `123.714916 deg`, acute-line `56.285084 deg`;
-- IDE beta vs GDM cv2: oriented `123.706615 deg`, acute-line `56.293385 deg`.
+DCDM sequence:
+`{0.6304573019,0.6343829813,0.6419613202,0.6562403431}`.
 
-Hard interpretation: exact directional equivalence/collinearity is rejected in this frozen theory-response block. Observation-space promotion remains open.
+Same-coordinate frozen alternatives:
+- C1 smooth-w `0.6214182972`;
+- IDE alpha-negative `0.9516948867`;
+- IDE beta `1.0839529728`;
+- GDM cs2 `0.7315736878`;
+- GDM cv2 `0.7362246207`;
+- designer f(R) `0.4547904059`.
 
-E2 status: `PASS_WITH_SCOPE` in unwhitened common low-k `r_Delta(k,z)` geometry. The f(R) side is the minimum resolved `B0=1e-6` production ray, not an exact B0->0 tangent because of the pinned solver GR threshold.
+The nearest scalar alternative to sampled DCDM is C1; absolute centroid gaps are about `{0.0090390,0.0129647,0.0205430,0.0348220}`. No preregistered scalar cross-model threshold/covariance exists, so E4 remains `INCONCLUSIVE`.
 
-Exact stored source:
-`waves/wave_02_degeneracy_attack/E2_result.json`
+Keep separate:
+- `waves/wave_02_degeneracy_attack/THEORY_SPACE_GRAPH.md`
+- `waves/wave_02_degeneracy_attack/OBSERVATION_SPACE_GRAPH.md`
 
-Key values:
-- IDE alpha_negative vs designer f(R): acute angle `42.450273 deg`; best scalar projection residual fraction `0.674950`;
-- IDE beta vs designer f(R): acute angle `59.404101 deg`; residual fraction `0.860778`.
+No W02 pairwise theory-space edge was promoted to observational discrimination.
 
-Hard interpretation: exact IDE/f(R) directional equivalence is rejected within this theory-space scope. No slip separator may be claimed because the frozen observability atlas has slip unknown for the relevant sides.
+## 5. Design methodology state
 
-E3 current result: expected/appropriate classification is `BLOCKED_IMPLEMENTATION` unless a second pinned small-scale suppression family is implemented on the same k,z grid, baseline and conventions. Frozen DSIR search found no already prepared fuzzy/axion/SIDM-like high-k response product suitable for a hard comparator edge. Do not fabricate a synthetic comparator.
+Living construction methodology:
+`protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.1.md`
 
-E4 current frontier: determine whether frozen DSIR contains a second mechanism evaluated in the same temporal-localization coordinate as C6 DCDM. If not, classify as `BLOCKED_IMPLEMENTATION`. Do not compare post-hoc mismatched temporal coordinates.
-
-## 5. Design-prior state
+Pipeline F0-F9:
+authority/provenance -> reference limit -> physical geometry -> conservation/gauge/frame -> multi-channel response -> observational whitening -> nearest-comparator attack -> quotient novelty -> prospective holdout -> candidate synthesis.
 
 Current ledger:
 `matrices/design_prior_ledger.csv`
 
-It contains DP-0001 through DP-0604 (30 active requirements at this checkpoint).
+Count: **34 ACTIVE requirements, DP-0001..DP-0704**.
 
-Important rule: these are evidence-derived priors, not axioms for the future model. The construction methodology defines conceptual promotion levels ACTIVE -> REINFORCED -> CORE -> RETIRED. Do not hard-code all current priors into a new theory yet.
+W02 additions:
+- DP-0701: no uniqueness from an unimplemented comparator;
+- DP-0702: theory-space and observation-space graphs remain separate;
+- DP-0703: scalar characteristic summaries require full-profile stress tests;
+- DP-0704: use the smallest sufficient common block, not the smallest convenient summary.
 
-## 6. Immediate next actions after restoration
+These are not all axioms. Conceptual promotion remains `ACTIVE -> REINFORCED -> CORE -> RETIRED` after independent/adversarial evidence.
 
-Resume in this order:
-1. finish E4 provenance/implementation check against the frozen DSIR snapshot;
-2. write explicit E3 and E4 result records with `BLOCKED_IMPLEMENTATION` if no valid second comparator exists;
-3. split W02 outputs into a theory-space comparator graph and an observation-space comparator graph;
-4. mark W02 COMPLETE only after every frozen edge has a terminal status (`PASS_WITH_SCOPE`, `FAIL`, `NONIDENTIFIABLE`, `BLOCKED_*`, etc.);
-5. update `matrices/wave_matrix.csv`, `recovery/STATE.md`, this recovery manual and `logs/research_log.md`;
-6. open W03 for an expanded dark-energy family only after W02 closure criteria are met.
+## 6. Active Wave 03
 
-## 7. What must never be inferred after restoration
+Directory:
+`waves/wave_03_expanded_dark_energy/`
 
-Do not infer that:
-- a DSIR gate failure means the physical model is globally false;
-- a theory-space angle proves observational distinguishability;
-- a missing channel is zero;
-- a solver threshold is a physical tangent;
-- a retrospective fit is a prospective holdout success;
-- an absent comparator can be replaced with a synthetic one without changing the claim class.
+Status: ACTIVE.
 
-## 8. Formula/logic recovery essentials
+First target:
+M07 canonical scalar-field / quintessence.
 
-Canonical DSIR residual:
-`X_{mu nu} = M0^2 G_{mu nu} - T^{known}_{mu nu}`.
+M07 audit/result:
+- `models/canonical_quintessence/audit.md`
+- `models/canonical_quintessence/result.json`
 
-Local response geometry:
-- form physically admissible directional responses/Jacobians only after domain constraints are frozen;
-- if one-sided, use a tangent-cone directional derivative rather than symmetric finite differences.
+Solver provenance:
+`lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540`.
 
-Theory-space direction comparison:
-`cos(theta) = (u . v)/(||u|| ||v||)`.
+Pinned initial branch:
+`V(phi)=((phi-B)^alpha+A) exp(-lambda phi)` with `alpha=0`, `B=0`, so `V=(1+A)exp(-lambda phi)`.
 
-Observation-space whitening:
-`J_white = C^{-1/2} R J`.
+Canonical stress from the pinned implementation:
+`rho_phi=[phi_prime^2/(2a^2)+V]/3`
+`p_phi=[phi_prime^2/(2a^2)-V]/3`.
 
-Nuisance-free local Fisher block:
-`F = J^T R^T C^{-1} R J`.
+Important solver semantics:
+- default `scf_tuning_index=0` would allow `Omega_scf` shooting to tune `lambda`;
+- M07 forbids that because `lambda` is the physical model shape parameter;
+- M07 uses `scf_tuning_index=2`, so `A` is the normalization/shooting nuisance;
+- `attractor_ic_scf=no`, with explicit initial `phi`/`phi_prime`, avoids conflating the physical branch with CLASS tracking-attractor conventions.
 
-For nuisance parameters, use profiled/marginalized information before making identifiability claims.
+Reference logic:
+at `lambda=0` and zero field velocity, `p_phi=-rho_phi`; a split Lambda + constant-scalar control should reproduce total LambdaCDM response if solver/bookkeeping is correct.
 
-## 9. Repository maintenance rule
+Current gate state:
+B0 `PASS_WITH_SCOPE`; B1 `PARTIAL`; B2 `PARTIAL`; B3-B8 open; B9 partial; overall `INCONCLUSIVE`.
 
-At every meaningful frontier change update all four layers:
-- evidence: per-model/per-edge audit + machine-readable result;
+## 7. M07 implementation-probe chronology
+
+Workflow:
+`.github/workflows/w03-m07-quintessence-probe.yml`
+
+Analyzer:
+`code/w03_m07_quintessence_probe.py`
+
+Run #1 / Actions run `34319481691`, head `89e0ba040900fa17ada29c35987d322ba9e36b8a`:
+- pinned CLASS build: PASS;
+- config generation: PASS;
+- mandatory REF + lambda-zero run step: FAIL before analysis;
+- no physical conclusion permitted;
+- original workflow failed before preserving diagnostics.
+
+Workflow was immediately hardened so every case records an exit code and logs/artifacts are uploaded even if mandatory controls fail.
+
+Current diagnostic rerun at this checkpoint:
+Actions run `34319672901`, head `f0fbbf2043c4bf6b29c259d5ccd29aec893030f4`.
+
+Mandatory cases:
+1. `REF_LCDM`: `Omega_scf=0`;
+2. `SCF_SPLIT_L0`: `Omega_scf=0.10`, `lambda=0`, zero explicit initial velocity;
+3. finite `lambda={0.05,0.10,0.20}` are **diagnostic only** and cannot become B8 evidence.
+
+Do not freeze a production science threshold from the finite-lambda probe. First diagnose plumbing and numerical reference floor; then preregister the hard production tolerance before production science.
+
+## 8. Immediate restoration actions
+
+1. inspect Actions run `34319672901` status and artifact `w03-m07-quintessence-probe`;
+2. read `probe_logs/ref.log`, `probe_logs/scf_l0.log` and `*.exit` first;
+3. if config/plumbing error exists, fix it without altering W03 scientific hypotheses;
+4. obtain successful REF + lambda-zero control;
+5. only then freeze a hard M07 B1 production reference tolerance based on the measured infrastructure floor plus explicit safety margin;
+6. run a production scalar branch on the standard DSIR 7x5 low-k grid;
+7. attack M07 against M01 smooth-w and M05 designer f(R);
+8. no observation-space promotion without pinned covariance/operator.
+
+## 9. Never infer
+
+- gate failure == global theory falsification;
+- theory-space angle == observational discrimination;
+- missing channel == zero;
+- missing comparator == uniqueness;
+- solver threshold == physical tangent;
+- one scalar characteristic epoch == mechanism identity;
+- infrastructure finite-lambda samples == prospective holdout support;
+- newest DSIR main == authority for every historical audit.
+
+## 10. Maintenance rule
+
+At every meaningful frontier change synchronize:
+- evidence: audit/result and computation artifacts;
 - synthesis: benchmark/wave/design-prior matrices;
-- methodology: `protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.1.md` when a durable rule changes;
-- recovery: `recovery/STATE.md`, this file and chronology in `logs/research_log.md`.
+- methodology: future-model construction rules when durable evidence changes them;
+- recovery: `STATE.md`, this file, `AUTHORITY_DELTAS.md` when relevant;
+- chronology: `logs/research_log.md`.
 
-A new chat should be able to resume by reading the repository alone.
+A new chat must be able to continue from repository state alone.
