@@ -1,0 +1,54 @@
+{
+  "schema": "KMDSB.W03.M07M08.CommonShapeFit.v0.1",
+  "run_id": 34396432509,
+  "head_sha": "457db40ce1defaf9d9cf1ce326db93cc584c0cf0",
+  "artifact_digest": "sha256:57e35eea1a1a72f5ecf13f949abfdf3c67ac451b7ab133f4f0578e6097111b28",
+  "contract": "protocol/W03_M07_M08_COMMON_SHAPEFIT_OPERATOR_V0_1.md",
+  "contract_preregistration_commit": "46424a91cf625d52d4bcb5da18e09ec69eb33772",
+  "dsir_observation_methodology_overlay": "864952e1520d82473a9e976edfeb69f9899d174d",
+  "coordinate_order": [
+    "LRG1:DH_over_DM","LRG1:f_sigma_s8_control","LRG1:m_plus_n_control",
+    "LRG2:DH_over_DM","LRG2:f_sigma_s8_control","LRG2:m_plus_n_control",
+    "LRG3:DH_over_DM","LRG3:f_sigma_s8_control","LRG3:m_plus_n_control",
+    "ELG2:DH_over_DM","ELG2:f_sigma_s8_control","ELG2:m_plus_n_control",
+    "QSO:DH_over_DM","QSO:f_sigma_s8_control","QSO:m_plus_n_control"
+  ],
+  "covariance": {
+    "shape": [15,15],
+    "max_asymmetry": 0.0,
+    "condition_number_2": 38.408870310734834,
+    "cholesky_roundtrip_relative_l2": 8.461743739855432e-17
+  },
+  "m07_q_direction": {
+    "qscaled_0025_vs_0075_cosine": 0.9999967335691928,
+    "qscaled_0025_vs_0075_angle_deg": 0.14644497692542321,
+    "qscaled_0025_vs_0075_relative_l2_difference": 0.00274249697381019,
+    "whitened_norm": 0.4407748769386736,
+    "unprofiled_F_q": 0.19428249214030285,
+    "unprofiled_sigma_q": 2.268731845483864
+  },
+  "m08_whitened_local_span": {
+    "singular_values": [5.487001039590474,0.9904958599493786],
+    "sigma2_over_sigma1": 0.18051679830250314,
+    "F_mm": [[27.140975687242353,8.808836473549896],[8.808836473549896,3.94728676980146]]
+  },
+  "profile_over_m08": {
+    "coefficients_per_unit_q": {"epsilon0":0.14430604679004932,"wa":-0.22336289535813914},
+    "whitened_residual_norm": 0.004702100347631575,
+    "whitened_residual_fraction": 0.010667804799332502,
+    "subspace_angle_deg": 0.6112317852842958,
+    "profiled_F_q": 2.210974767935525e-05,
+    "profiled_sigma_q": 212.67091853965132,
+    "sigma_degradation_factor": 93.73999794774949,
+    "q_0p09_profiled_significance_sigma": 0.0004231890312883564
+  },
+  "classification": "NONIDENTIFIABLE_AFTER_CPL_PROFILING_IN_COMMON_SHAPEFIT_CONTROL",
+  "interpretation": "With one exact common ShapeFit mapping and covariance for both families, the M07 local q direction is almost entirely contained in the M08 CPL local subspace. The residual is about 1.07 percent in whitened norm and carries only about 4.23e-4 sigma at q=0.09. This strongly weakens M07 mechanism-level observational novelty in this scoped control, but is not a physical falsification and is not full Article-2 G5 closure.",
+  "anti_overclaim": [
+    "This is a scoped common-operator ShapeFit control, not a full DESI likelihood.",
+    "This is not DSIR Article-2 G5 closure and does not implement the full multi-family weighting/bootstrap stress suite.",
+    "The m_plus_n response is frozen to zero for both families in this late-time control.",
+    "Observational non-identifiability in this control is not physical falsification.",
+    "Local CPL profiling does not establish global equivalence of CPL and canonical quintessence."
+  ]
+}
