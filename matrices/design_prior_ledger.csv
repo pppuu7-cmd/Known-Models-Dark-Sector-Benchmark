@@ -40,3 +40,4 @@ DP-0804,M07,W03,"microphysical dark-energy candidates are tested through perturb
 DP-0805,M07,W03,"microphysical dark-energy candidates are attacked against a phenomenological dark-energy nearest comparator; near-alignment in low-k matter response requires an orthogonal response channel before mechanism discrimination",ACTIVE
 DP-0806,M07,W03,"solver-default tolerance in an ill-conditioned nuisance coordinate cannot define physical target drift; precision is audited or the nuisance is reparameterized before response attribution",ACTIVE
 DP-0807,M07,W03,"exact parameter or field-coordinate redundancies are quotiented before local parity, derivative order, Jacobian rank or natural-coordinate claims are inferred",ACTIVE
+DP-0808,M07,W03,"a proposed local quotient coordinate is numerically convergence-tested in every claimed response channel; background convergence cannot be assumed to guarantee perturbation convergence",ACTIVE
