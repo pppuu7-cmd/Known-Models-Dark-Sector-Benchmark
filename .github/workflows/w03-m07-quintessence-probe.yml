@@ -1,0 +1,132 @@
+name: W03 M07 quintessence implementation probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m07-quintessence-probe.yml'
+      - 'code/w03_m07_quintessence_probe.py'
+      - 'models/canonical_quintessence/**'
+      - 'waves/wave_03_expanded_dark_energy/**'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check numpy
+
+      - name: Fetch and build pinned official CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/lesgourg/class_public.git class_public
+          cd class_public
+          git checkout e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          make -j2
+
+      - name: Write matched probe configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe_configs probe_outputs probe_logs
+
+          cat > probe_configs/common.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          Omega_fld = 0
+          reio_parametrization = reio_none
+          output = mPk,mTk
+          modes = s
+          ic = ad
+          gauge = synchronous
+          non linear = none
+          z_pk = 0.295,0.51,0.706,0.934,1.317,1.491,2.33
+          P_k_max_h/Mpc = 0.2
+          write background = yes
+          headers = yes
+          format = class
+          EOF
+
+          cat probe_configs/common.ini > probe_configs/ref.ini
+          cat >> probe_configs/ref.ini <<EOF
+          Omega_scf = 0
+          root = ${GITHUB_WORKSPACE}/probe_outputs/ref_
+          EOF
+
+          make_scf () {
+            local lam="$1"
+            local tag="$2"
+            cat probe_configs/common.ini > "probe_configs/${tag}.ini"
+            cat >> "probe_configs/${tag}.ini" <<EOF
+          Omega_scf = 0.10
+          scf_parameters = ${lam},0.0,0.0,0.0,0.0,0.0
+          attractor_ic_scf = no
+          scf_tuning_index = 2
+          root = ${GITHUB_WORKSPACE}/probe_outputs/${tag}_
+          EOF
+          }
+
+          make_scf 0.0 scf_l0
+          make_scf 0.05 scf_l005
+          make_scf 0.10 scf_l010
+          make_scf 0.20 scf_l020
+
+      - name: Run reference and mandatory lambda-zero split control
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./class_public/class probe_configs/ref.ini > probe_logs/ref.log 2>&1
+          ./class_public/class probe_configs/scf_l0.ini > probe_logs/scf_l0.log 2>&1
+
+      - name: Run finite-lambda infrastructure samples
+        shell: bash
+        run: |
+          set +e
+          for tag in scf_l005 scf_l010 scf_l020; do
+            ./class_public/class "probe_configs/${tag}.ini" > "probe_logs/${tag}.log" 2>&1
+            echo "$?" > "probe_logs/${tag}.exit"
+          done
+          exit 0
+
+      - name: Analyze common-grid outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 code/w03_m07_quintessence_probe.py \
+            --directory probe_outputs \
+            --case REF_LCDM:ref_:nan \
+            --case SCF_SPLIT_L0:scf_l0_:0.0 \
+            --case SCF_SPLIT_L005:scf_l005_:0.05 \
+            --case SCF_SPLIT_L010:scf_l010_:0.10 \
+            --case SCF_SPLIT_L020:scf_l020_:0.20 \
+            --json probe_result.json
+
+      - name: Record provenance
+        shell: bash
+        run: |
+          {
+            echo "KMDSB_HEAD=$(git rev-parse HEAD)"
+            echo "CLASS_HEAD=$(git -C class_public rev-parse HEAD)"
+            echo "CLASS_REMOTE=$(git -C class_public remote get-url origin)"
+          } > probe_provenance.txt
+
+      - name: Upload immutable probe bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m07-quintessence-probe
+          path: |
+            probe_result.json
+            probe_provenance.txt
+            probe_configs/
+            probe_outputs/
+            probe_logs/
+          if-no-files-found: error
+          retention-days: 90
