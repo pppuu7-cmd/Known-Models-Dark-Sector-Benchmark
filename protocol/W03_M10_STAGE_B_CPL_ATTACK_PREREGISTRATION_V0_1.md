@@ -1,6 +1,7 @@
 # W03 / M10 Stage B — same-solver CPL manifold attack preregistration v0.1
 
-Frozen: 2026-09-10, before M10 Stage A response inspection.
+Frozen: 2026-09-10, before M10 Stage A response inspection.  
+Implementation-control addendum frozen before any Stage B output: require the same-solver CPL zero point `(w0,wa)=(-1,0)` to agree with the pure-Lambda reference to `max|lnP|<=1e-6` and `max|lnH|<=1e-6` on the frozen L block.
 
 ## Entry condition
 Run Stage B only if M10 Stage A obtains:
