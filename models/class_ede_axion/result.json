@@ -3,85 +3,46 @@
   "model_id": "M10",
   "model_name": "CLASS_EDE axion-like scalar-field Early Dark Energy",
   "wave": "W03",
-  "status": "DSIR_COMPATIBLE",
+  "status": "DSIR_DISCRIMINATED",
   "dsir_methodology_overlay_authority": "bc28acc47cc5facba046741fd09f710ae8da9689",
-  "solver": {
-    "repository": "mwt5345/class_ede",
-    "commit": "5a131c91d657dd9a7c6364cc45b038710f8d0d97"
-  },
-  "branch": {
-    "potential": "m^2 f^2 [1-cos(phi/f)]^n plus separately tuned CC in CLASS_EDE units",
-    "n_scf": 3.0,
-    "thetai_scf": 2.6,
-    "CC_scf": 1.0,
-    "target_log10z_c": 3.5,
-    "coordinate": "f=fEDE>0",
-    "grid": [0.005, 0.01, 0.03, 0.05],
-    "reference": "pure LambdaCDM in same CLASS_EDE commit"
-  },
+  "solver": {"repository":"mwt5345/class_ede","commit":"5a131c91d657dd9a7c6364cc45b038710f8d0d97"},
+  "branch": {"potential":"m^2 f^2 [1-cos(phi/f)]^n plus separately tuned CC in CLASS_EDE units","n_scf":3.0,"thetai_scf":2.6,"CC_scf":1.0,"target_log10z_c":3.5,"coordinate":"f=fEDE>0","grid":[0.005,0.01,0.03,0.05],"reference":"pure LambdaCDM in same CLASS_EDE commit"},
   "stage_A": {
-    "status": "PASS_WITH_SCOPE",
-    "diagnostic_run_1": {
-      "run_id": 34410251259,
-      "artifact_digest": "sha256:8978d6450da1081ed15cc52eb338aa6ef827bdf0c230acc41e0fd55af90de3e4",
-      "classification": "IMPLEMENTATION_PLUMBING_FAILURE",
-      "cause": "missing six-entry scf_parameters seed required by CLASS_EDE shooting-guess code",
-      "physical_conclusion": "none"
-    },
-    "authoritative_run": {
-      "run_id": 34410430602,
-      "head_sha": "4833a29944dbc0ace0fed58790421d7513bc0b60",
-      "artifact_id": 10127037860,
-      "artifact_digest": "sha256:7aa1af3e8ce6ce6b09000f5be37843f54a76d6dbc9dde92cfe360172b7899e10"
-    },
-    "shooting": {
-      "all_cases_pass": true,
-      "f005": {"achieved_fEDE":0.005000629014816127,"achieved_log10z_c":3.4999998158644976},
-      "f010": {"achieved_fEDE":0.010000159099003092,"achieved_log10z_c":3.4999998545830477},
-      "f030": {"achieved_fEDE":0.030000021564214663,"achieved_log10z_c":3.4999998659102896},
-      "f050": {"achieved_fEDE":0.050000890802181175,"achieved_log10z_c":3.4999997820726207}
-    },
-    "local_convergence_pair": [0.005, 0.01],
-    "local_convergence": {
-      "P": {"relative_l2":0.003123143733595786,"angle_deg":0.03555207719905795},
-      "H": {"relative_l2":0.015816923987450233,"angle_deg":0.8309005683147109},
-      "S": {"relative_l2":0.009914094585381568,"angle_deg":0.4005893582795647}
-    },
-    "local_direction_norms_per_unit_fEDE_approx": {
-      "P": 2.69,
-      "H": 2.95e-5,
-      "S": 2.51
-    },
-    "finite_f050_max_abs_response": {
-      "lnP_lowk": 0.04364089653357519,
-      "lnH": 9.338214833352387e-7,
-      "shape": 0.04722156432945369
-    },
-    "interpretation": "A stable early/scale response exists while late-time H is nearly null in the tested branch; this is unwhitened theory-response evidence only."
+    "status":"PASS_WITH_SCOPE",
+    "diagnostic_run_1":{"run_id":34410251259,"artifact_digest":"sha256:8978d6450da1081ed15cc52eb338aa6ef827bdf0c230acc41e0fd55af90de3e4","classification":"IMPLEMENTATION_PLUMBING_FAILURE","cause":"missing six-entry scf_parameters seed required by CLASS_EDE shooting-guess code","physical_conclusion":"none"},
+    "authoritative_run":{"run_id":34410430602,"head_sha":"4833a29944dbc0ace0fed58790421d7513bc0b60","artifact_id":10127037860,"artifact_digest":"sha256:7aa1af3e8ce6ce6b09000f5be37843f54a76d6dbc9dde92cfe360172b7899e10"},
+    "shooting":{"all_cases_pass":true,"f005":{"achieved_fEDE":0.005000629014816127,"achieved_log10z_c":3.4999998158644976},"f010":{"achieved_fEDE":0.010000159099003092,"achieved_log10z_c":3.4999998545830477},"f030":{"achieved_fEDE":0.030000021564214663,"achieved_log10z_c":3.4999998659102896},"f050":{"achieved_fEDE":0.050000890802181175,"achieved_log10z_c":3.4999997820726207}},
+    "local_convergence_pair":[0.005,0.01],
+    "local_convergence":{"P":{"relative_l2":0.003123143733595786,"angle_deg":0.03555207719905795},"H":{"relative_l2":0.015816923987450233,"angle_deg":0.8309005683147109},"S":{"relative_l2":0.009914094585381568,"angle_deg":0.4005893582795647}},
+    "local_direction_norms_per_unit_fEDE_approx":{"P":2.69,"H":2.95e-5,"S":2.51},
+    "finite_f050_max_abs_response":{"lnP_lowk":0.04364089653357519,"lnH":9.338214833352387e-7,"shape":0.04722156432945369},
+    "interpretation":"Stable early/scale response with nearly null late-time H in this tested branch."
   },
   "stage_B": {
-    "status": "PREREGISTERED",
-    "protocol": "protocol/W03_M10_STAGE_B_CPL_ATTACK_PREREGISTRATION_V0_1.md",
-    "primary_test": "fit one same-solver 2D CPL coefficient vector on P+H and apply it without refit to broad-k S"
+    "status":"PASS_WITH_SCOPE",
+    "protocol":"protocol/W03_M10_STAGE_B_CPL_ATTACK_PREREGISTRATION_V0_1.md",
+    "run_id":34410724189,
+    "head_sha":"a0553075261c551549d116da5d25951ba5fbea5d",
+    "artifact_id":10127125849,
+    "artifact_digest":"sha256:0795d1ae506974a6e1e5cd0ab54d8b0524e85e488a8d024a7934e9fd44539e18",
+    "cpl_zero_bridge":{"max_abs_lnP":0.0,"max_abs_lnH":0.0,"max_abs_shape":0.0,"result":"PASS"},
+    "cpl_rank":{"L_sigma2_over_sigma1":0.05408846924793962,"S_sigma2_over_sigma1":0.05670713905442893},
+    "primary_L_fit_crosschannel": {
+      "beta_per_unit_fEDE":[-3.111610093024165,11.529115156995223],
+      "L_residual_fraction":0.6173296270721036,
+      "P_residual_fraction":0.5886146465163064,
+      "H_residual_fraction":16977.631252470965,
+      "S_residual_fraction_same_coefficients":0.8330161632191561,
+      "L_angle_deg":38.12139085141696,
+      "P_angle_deg":35.93510812378418,
+      "H_angle_deg":70.6135199870442,
+      "S_angle_deg":25.930539992441282
+    },
+    "secondary_S_only_diagnostic":{"S_residual_fraction":0.4367482103935406,"S_angle_deg":25.896587492789703},
+    "interpretation":"The full local CPL manifold fails to absorb the M10 EDE direction in the frozen same-solver theory-response comparison. The huge relative H residual reflects an almost-null EDE H target versus non-negligible H induced by the CPL combination, and must not be interpreted as an absolute signal-to-noise measure."
   },
-  "gates": {
-    "B0": "PASS_WITH_SCOPE",
-    "B1": "PASS_WITH_SCOPE",
-    "B2": "PARTIAL",
-    "B3": "PASS_WITH_SCOPE",
-    "B4": "PASS_WITH_SCOPE",
-    "B5": "OPEN",
-    "B6": "OPEN",
-    "B7": "OPEN",
-    "B8": "OPEN",
-    "B9": "PARTIAL"
-  },
-  "primary_question": "Does the stable broad-k EDE shape direction survive profiling by the full local CPL manifold?",
-  "anti_overclaim": [
-    "M10 is distinct from blocked M09 native CLASS EDE.",
-    "Stage A establishes implementation and unwhitened theory-response geometry only.",
-    "Near-null late-time H is not evidence of no cosmological effect because P and S are nonzero.",
-    "No finite Stage A point is a prospective holdout.",
-    "Raw broad-k separation is not observational discrimination."
-  ]
+  "gates":{"B0":"PASS_WITH_SCOPE","B1":"PASS_WITH_SCOPE","B2":"PARTIAL","B3":"PASS_WITH_SCOPE","B4":"PASS_WITH_SCOPE","B5":"OPEN","B6":"PASS_WITH_SCOPE","B7":"PARTIAL","B8":"OPEN","B9":"PASS"},
+  "primary_question_result":"YES in unwhitened same-solver theory-response space: the stable EDE direction remains substantially outside the full local CPL manifold in P/H/S, unlike M07 quintessence.",
+  "next_hard_question":"Does this early/shape separator survive a genuine common observation operator/covariance that admits early transfer-shape information, and is it robust to CPL finite-difference step and alternative early-time comparators?",
+  "anti_overclaim":["M10 is distinct from blocked M09 native CLASS EDE.","B6 is a theory-response same-solver discriminator, not observational detection.","The very large relative H residual is caused by the near-null EDE H denominator and is not an absolute significance.","The S-only projection is diagnostic and cannot replace the preregistered shared P+H fit.","No finite Stage A point is a prospective holdout."]
 }
