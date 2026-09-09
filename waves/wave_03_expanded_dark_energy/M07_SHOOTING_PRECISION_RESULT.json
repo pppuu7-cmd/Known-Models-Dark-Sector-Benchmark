@@ -1,0 +1,39 @@
+{
+  "schema": "KMDSB-W03-M07-shooting-precision-result-v0.1",
+  "date": "2026-09-09",
+  "status": "PASS_WITH_SCOPE",
+  "run_id": 34338140447,
+  "artifact": "w03-m07-shooting-precision-audit",
+  "artifact_digest": "sha256:958708322566a2d36ce7522a3f705b543e0158c554a8de8e18e803c82a5c9cb8",
+  "omega_scf_target": 0.682686955086854,
+  "numerical_intervention": {
+    "parameter": "tol_shooting_deltax_rel",
+    "default": 1e-5,
+    "strict": 1e-13,
+    "physical_branch_changed": false
+  },
+  "lambda0_reference": {
+    "omega_scf_today": 0.682686955181768,
+    "max_abs_lnP": 2.1664792184809906e-10,
+    "max_abs_lnH": 1.088764633945931e-10,
+    "w_scf": -1.0,
+    "phi": 1.0,
+    "phi_prime": 0.0
+  },
+  "finite_lambda": [
+    {"lambda": 0.025, "default_target_error": 2.5731859532e-8, "strict_target_error": 2.5731859532e-8, "response_relative_difference": 2.784348e-12, "response_angle_deg": 0.0},
+    {"lambda": 0.075, "default_target_error": 3.1147812486e-6, "strict_target_error": -3.436973e-11, "response_relative_difference": 0.01468890, "response_angle_deg": 0.135411},
+    {"lambda": 0.15, "default_target_error": 6.1031979429e-5, "strict_target_error": -1.589524e-10, "response_relative_difference": 0.07495516, "response_angle_deg": 0.325764},
+    {"lambda": 0.30, "default_target_error": 1.2379784585e-3, "strict_target_error": -3.012598e-10, "response_relative_difference": 0.3813401, "response_angle_deg": 1.327626}
+  ],
+  "acceptance": {
+    "max_abs_omega_scf_error": 1e-6,
+    "all_finite_lambda_pass": true,
+    "authoritative_response_for_B4_B6": "strict run 34338140447"
+  },
+  "anti_overclaim": [
+    "B3 numerical pass is scoped to the frozen branch and strict solver realization",
+    "finite-lambda production points are not B8 prospective evidence",
+    "no observation-space discrimination is implied"
+  ]
+}
