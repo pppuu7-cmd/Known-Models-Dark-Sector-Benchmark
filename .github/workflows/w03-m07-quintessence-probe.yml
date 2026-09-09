@@ -79,24 +79,20 @@ jobs:
           make_scf 0.10 scf_l010
           make_scf 0.20 scf_l020
 
-      - name: Run reference and mandatory lambda-zero split control
-        shell: bash
-        run: |
-          set -euo pipefail
-          ./class_public/class probe_configs/ref.ini > probe_logs/ref.log 2>&1
-          ./class_public/class probe_configs/scf_l0.ini > probe_logs/scf_l0.log 2>&1
-
-      - name: Run finite-lambda infrastructure samples
+      - name: Run all probe cases and preserve exit codes
         shell: bash
         run: |
           set +e
-          for tag in scf_l005 scf_l010 scf_l020; do
+          for tag in ref scf_l0 scf_l005 scf_l010 scf_l020; do
             ./class_public/class "probe_configs/${tag}.ini" > "probe_logs/${tag}.log" 2>&1
-            echo "$?" > "probe_logs/${tag}.exit"
+            rc=$?
+            echo "$rc" > "probe_logs/${tag}.exit"
+            echo "${tag}: exit ${rc}"
           done
           exit 0
 
-      - name: Analyze common-grid outputs
+      - name: Analyze common-grid outputs when mandatory controls exist
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -110,6 +106,7 @@ jobs:
             --json probe_result.json
 
       - name: Record provenance
+        if: always()
         shell: bash
         run: |
           {
@@ -119,6 +116,7 @@ jobs:
           } > probe_provenance.txt
 
       - name: Upload immutable probe bundle
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: w03-m07-quintessence-probe
@@ -130,3 +128,17 @@ jobs:
             probe_logs/
           if-no-files-found: error
           retention-days: 90
+
+      - name: Enforce mandatory implementation controls
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref_rc=$(cat probe_logs/ref.exit)
+          l0_rc=$(cat probe_logs/scf_l0.exit)
+          echo "REF exit=${ref_rc}; SCF_SPLIT_L0 exit=${l0_rc}"
+          if [ "$ref_rc" != "0" ] || [ "$l0_rc" != "0" ]; then
+            echo "Mandatory implementation/reference control failed; inspect uploaded logs."
+            exit 1
+          fi
+          test -f probe_result.json
