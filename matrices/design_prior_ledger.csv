@@ -29,3 +29,7 @@ DP-0601,M06,W01,"holdout tests are prospective and relation-specific",ACTIVE
 DP-0602,M06,W01,"characteristic scales/epochs are predicted before holdout exposure",ACTIVE
 DP-0603,M06,W01,"cross-family holdout is stronger than interpolation but cannot retroactively define a law",ACTIVE
 DP-0604,M06,W01,"temporal localization is retained as an independent response axis",ACTIVE
+DP-0701,W02_cross_edge,W02,"candidate uniqueness claims require implemented nearest comparators; absence of a comparator is not evidence of uniqueness",ACTIVE
+DP-0702,W02_cross_edge,W02,"theory-space and observation-space comparator graphs remain separate until a pinned operator and covariance justify promotion",ACTIVE
+DP-0703,W02_E4,W02,"portable characteristic scalar summaries are stress-tested against fuller profiles; a close scalar centroid does not establish mechanism equivalence or distinction",ACTIVE
+DP-0704,W02_cross_edge,W02,"nearest-comparator tests use the smallest sufficient common response block with frozen masks baselines and provenance, not the smallest convenient summary",ACTIVE
