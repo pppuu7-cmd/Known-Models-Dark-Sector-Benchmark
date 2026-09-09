@@ -1,0 +1,169 @@
+name: W03 M07 field-reflection quotient parity audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m07-field-reflection-quotient-audit.yml'
+
+jobs:
+  quotient-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      OMEGA_SCF_TARGET: '0.682686955086854'
+      SHOOT_REL_TOL: '1.0e-13'
+      OMEGA_TOL: '1.0e-6'
+      ODD_FRACTION_MAX: '1.0e-6'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check numpy
+
+      - name: Fetch and build pinned official CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/lesgourg/class_public.git class_public
+          cd class_public
+          git checkout e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          make -j2
+
+      - name: Write field-reflection quotient configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p quotient_configs quotient_outputs quotient_logs
+          cat > quotient_configs/common.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          Omega_fld = 0
+          reio_parametrization = reio_none
+          output = mPk,mTk
+          modes = s
+          ic = ad
+          gauge = synchronous
+          non linear = none
+          z_pk = 0.295,0.51,0.706,0.934,1.317,1.491,2.33
+          P_k_max_h/Mpc = 0.2
+          write background = yes
+          headers = yes
+          format = class
+          tol_shooting_deltax_rel = ${SHOOT_REL_TOL}
+          input_verbose = 1
+          EOF
+
+          cat quotient_configs/common.ini > quotient_configs/ref.ini
+          cat >> quotient_configs/ref.ini <<EOF
+          Omega_scf = 0
+          root = ${GITHUB_WORKSPACE}/quotient_outputs/ref_
+          EOF
+
+          make_scf () {
+            local lam="$1"
+            local phi="$2"
+            local tag="$3"
+            local Aseed
+            Aseed=$(python3 -c 'import math,sys; lam=float(sys.argv[1]); phi=float(sys.argv[2]); Om=float(sys.argv[3]); h=0.67; H0=100*h/299792.458; print(f"{3*Om*H0*H0*math.exp(lam*phi)-1.0:.17g}")' "$lam" "$phi" "$OMEGA_SCF_TARGET")
+            cat quotient_configs/common.ini > "quotient_configs/${tag}.ini"
+            cat >> "quotient_configs/${tag}.ini" <<EOF
+          Omega_scf = ${OMEGA_SCF_TARGET}
+          scf_parameters = ${lam},0.0,${Aseed},0.0,${phi},0.0
+          attractor_ic_scf = no
+          scf_tuning_index = 2
+          root = ${GITHUB_WORKSPACE}/quotient_outputs/${tag}_
+          EOF
+          }
+
+          make_scf 0.0 1.0 scf_l0
+          make_scf 0.025 1.0 scf_p0025
+          make_scf -0.025 -1.0 scf_m0025
+          make_scf 0.075 1.0 scf_p0075
+          make_scf -0.075 -1.0 scf_m0075
+
+      - name: Run quotient cases and preserve exit codes
+        shell: bash
+        run: |
+          set +e
+          for tag in ref scf_l0 scf_p0025 scf_m0025 scf_p0075 scf_m0075; do
+            ./class_public/class "quotient_configs/${tag}.ini" > "quotient_logs/${tag}.log" 2>&1
+            rc=$?
+            echo "$rc" > "quotient_logs/${tag}.exit"
+            echo "${tag}: exit ${rc}"
+          done
+          exit 0
+
+      - name: Analyze quotient parity
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 code/w03_m07_quintessence_probe.py \
+            --directory quotient_outputs \
+            --case REF_LCDM:ref_:nan \
+            --case SCF_SPLIT_L0:scf_l0_:0.0 \
+            --case M07_P0025:scf_p0025_:0.025 \
+            --case M07_M0025:scf_m0025_:-0.025 \
+            --case M07_P0075:scf_p0075_:0.075 \
+            --case M07_M0075:scf_m0075_:-0.075 \
+            --json quotient_probe_result.json
+          python3 code/w03_m07_parity_coordinate_audit.py \
+            quotient_probe_result.json --json m07_quotient_parity_result.json
+
+      - name: Enforce preregistered quotient parity gate
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in ref scf_l0 scf_p0025 scf_m0025 scf_p0075 scf_m0075; do
+            test "$(cat quotient_logs/${tag}.exit)" = "0"
+          done
+          python3 - "$OMEGA_SCF_TARGET" "$OMEGA_TOL" "$ODD_FRACTION_MAX" <<'PY'
+          import json,sys
+          target,tol,oddmax=map(float,sys.argv[1:])
+          d=json.load(open('quotient_probe_result.json'))
+          for c in d['cases']:
+              if c['label'].startswith('M07_') or c['label']=='SCF_SPLIT_L0':
+                  err=abs(c['background']['Omega_scf_today']-target)
+                  print(c['label'],'Omega_error=',err)
+                  if err>tol: raise SystemExit(f'Omega target error {err} > {tol}')
+          p=json.load(open('m07_quotient_parity_result.json'))
+          for x in p['pairs']:
+              print('abs_lambda',x['abs_lambda'],'lnP_odd_fraction',x['lnP_odd_fraction'],'lnH_odd_fraction',x['lnH_odd_fraction'])
+              if x['lnP_odd_fraction']>oddmax or x['lnH_odd_fraction']>oddmax:
+                  raise SystemExit(f"quotient parity failed at {x['abs_lambda']}")
+          print('M07_FIELD_REFLECTION_QUOTIENT_PARITY=PASS')
+          PY
+
+      - name: Record provenance
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "KMDSB_HEAD=$(git rev-parse HEAD)"
+            echo "CLASS_HEAD=$(git -C class_public rev-parse HEAD)"
+            echo "OMEGA_SCF_TARGET=${OMEGA_SCF_TARGET}"
+            echo "SHOOT_REL_TOL=${SHOOT_REL_TOL}"
+            echo "PREREGISTERED_ODD_FRACTION_MAX=${ODD_FRACTION_MAX}"
+            echo 'QUOTIENT_MAP=(lambda,phi_ini)->(-lambda,-phi_ini), B=0, phi_prime_ini=0'
+          } > quotient_provenance.txt
+
+      - name: Upload immutable quotient-parity bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m07-field-reflection-quotient-parity
+          path: |
+            quotient_probe_result.json
+            m07_quotient_parity_result.json
+            quotient_provenance.txt
+            quotient_configs/
+            quotient_outputs/
+            quotient_logs/
+          if-no-files-found: error
+          retention-days: 90
