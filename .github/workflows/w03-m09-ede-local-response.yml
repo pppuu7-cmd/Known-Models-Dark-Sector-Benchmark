@@ -1,0 +1,134 @@
+name: W03 M09 EDE local response audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m09-ede-local-response.yml'
+      - 'code/w03_m09_ede_local_response.py'
+      - 'protocol/W03_M09_EDE_PREREGISTRATION_V0_1.md'
+
+jobs:
+  ede-local-response:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check numpy
+      - name: Fetch and build pinned CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/lesgourg/class_public.git class_public
+          cd class_public
+          git checkout e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          make -j2
+      - name: Write preregistered Lambda and EDE configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cfg out logs
+          cat > cfg/base.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          reio_parametrization = reio_none
+          output = mPk
+          modes = s
+          ic = ad
+          gauge = synchronous
+          non linear = none
+          z_pk = 0.295,0.51,0.706,0.934,1.317,1.491,2.33
+          P_k_max_h/Mpc = 1.2
+          write background = yes
+          headers = yes
+          format = class
+          tol_perturbations_integration = 1e-8
+          perturbations_sampling_stepsize = 0.01
+          EOF
+
+          cp cfg/base.ini cfg/lcdm.ini
+          cat >> cfg/lcdm.ini <<EOF
+          Omega_fld = 0
+          root = ${GITHUB_WORKSPACE}/out/lcdm_
+          EOF
+
+          make_ede () {
+            local tag="$1"; local e="$2"
+            cp cfg/base.ini cfg/${tag}.ini
+            cat >> cfg/${tag}.ini <<EOF
+          Omega_Lambda = 0
+          fluid_equation_of_state = EDE
+          w0_fld = -1
+          Omega_EDE = ${e}
+          cs2_fld = 1
+          use_ppf = yes
+          root = ${GITHUB_WORKSPACE}/out/${tag}_
+          EOF
+          }
+          make_ede ede0 0
+          make_ede e1e4 0.0001
+          make_ede e3e4 0.0003
+          make_ede e1e3 0.001
+          make_ede e3e3 0.003
+      - name: Run all M09 cases
+        shell: bash
+        run: |
+          set +e
+          for tag in lcdm ede0 e1e4 e3e4 e1e3 e3e3; do
+            ./class_public/class cfg/${tag}.ini > logs/${tag}.log 2>&1
+            echo "$?" > logs/${tag}.exit
+          done
+          exit 0
+      - name: Analyze M09 response
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in lcdm ede0 e1e4 e3e4 e1e3 e3e3; do
+            test "$(cat logs/${tag}.exit)" = "0"
+          done
+          python3 code/w03_m09_ede_local_response.py --directory out --json m09_ede_local_response.json
+      - name: Enforce implementation controls only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, math
+          d=json.load(open('m09_ede_local_response.json'))
+          vals=[]
+          vals.extend(d['ede0_to_lcdm_bridge'].values())
+          vals.extend(d['local_tangent']['norms'].values())
+          nums=[float(x) for x in vals if isinstance(x,(int,float)) and not isinstance(x,bool)]
+          if not all(math.isfinite(x) for x in nums):
+              raise SystemExit('non-finite M09 summary quantity')
+          if d['local_tangent']['norms']['P'] <= 0 and d['local_tangent']['norms']['H'] <= 0 and d['local_tangent']['norms']['S'] <= 0:
+              raise SystemExit('all M09 local response blocks are zero')
+          print('M09_IMPLEMENTATION_CONTROL=PASS')
+          print('M09_SCIENTIFIC_CLASSIFICATION='+d['classification'])
+          PY
+      - name: Record provenance
+        if: always()
+        run: |
+          {
+            echo "KMDSB_HEAD=$(git rev-parse HEAD)"
+            echo "CLASS_HEAD=$(git -C class_public rev-parse HEAD)"
+            echo 'DSIR_OVERLAY=bc28acc47cc5facba046741fd09f710ae8da9689'
+            echo 'BRANCH=fluid_equation_of_state:EDE,w0_fld:-1,cs2_fld:1,use_ppf:yes'
+            echo 'PHYSICAL_COORDINATE=Omega_EDE>=0'
+          } > m09_ede_provenance.txt
+      - name: Upload immutable M09 bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m09-ede-local-response
+          path: |
+            m09_ede_local_response.json
+            m09_ede_provenance.txt
+            cfg/
+            logs/
+          if-no-files-found: error
+          retention-days: 90
