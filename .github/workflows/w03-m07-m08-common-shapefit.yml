@@ -1,0 +1,182 @@
+name: W03 M07 M08 common ShapeFit observation control
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m07-m08-common-shapefit.yml'
+      - 'code/w03_m07_m08_common_shapefit.py'
+
+jobs:
+  common-shapefit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OMEGA_SCF_TARGET: '0.682686955086854'
+      SHOOT_REL_TOL: '1.0e-13'
+      M08_STEP: '0.001'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check numpy
+
+      - name: Fetch and build pinned CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/lesgourg/class_public.git class_public
+          cd class_public
+          git checkout e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          make -j2
+
+      - name: Write one-reference common-operator configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cfg out logs
+          cat > cfg/base.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          reio_parametrization = reio_none
+          output = mPk
+          modes = s
+          ic = ad
+          gauge = synchronous
+          non linear = none
+          z_pk = 0.51
+          P_k_max_h/Mpc = 0.2
+          write background = yes
+          headers = yes
+          format = class
+          tol_perturbations_integration = 1e-8
+          perturbations_sampling_stepsize = 0.01
+          EOF
+
+          cp cfg/base.ini cfg/ref.ini
+          cat >> cfg/ref.ini <<EOF
+          Omega_fld = 0
+          Omega_scf = 0
+          root = ${GITHUB_WORKSPACE}/out/ref_
+          EOF
+
+          make_m07 () {
+            local lam="$1"; local tag="$2"; local Aseed
+            Aseed=$(python3 -c 'import math,sys; lam=float(sys.argv[1]); Om=float(sys.argv[2]); h=.67; H0=100*h/299792.458; phi=1.; print(f"{3*Om*H0*H0*math.exp(lam*phi)-1:.17g}")' "$lam" "$OMEGA_SCF_TARGET")
+            cp cfg/base.ini cfg/${tag}.ini
+            cat >> cfg/${tag}.ini <<EOF
+          Omega_fld = 0
+          Omega_scf = ${OMEGA_SCF_TARGET}
+          scf_parameters = ${lam},0.0,${Aseed},0.0,1.0,0.0
+          attractor_ic_scf = no
+          scf_tuning_index = 2
+          tol_shooting_deltax_rel = ${SHOOT_REL_TOL}
+          root = ${GITHUB_WORKSPACE}/out/${tag}_
+          EOF
+          }
+          make_m07 0.025 m07_0025
+          make_m07 0.075 m07_0075
+
+          make_m08 () {
+            local tag="$1"; local w0="$2"; local wa="$3"
+            cp cfg/base.ini cfg/${tag}.ini
+            cat >> cfg/${tag}.ini <<EOF
+          Omega_Lambda = 0
+          Omega_scf = 0
+          fluid_equation_of_state = CLP
+          w0_fld = ${w0}
+          wa_fld = ${wa}
+          cs2_fld = 1
+          use_ppf = yes
+          root = ${GITHUB_WORKSPACE}/out/${tag}_
+          EOF
+          }
+          make_m08 m08_e0p -0.999 0.0
+          make_m08 m08_e0m -1.001 0.0
+          make_m08 m08_wap -1.0 0.001
+          make_m08 m08_wam -1.0 -0.001
+
+      - name: Run all common-operator cases
+        shell: bash
+        run: |
+          set +e
+          for tag in ref m07_0025 m07_0075 m08_e0p m08_e0m m08_wap m08_wam; do
+            ./class_public/class cfg/${tag}.ini > logs/${tag}.log 2>&1
+            echo "$?" > logs/${tag}.exit
+          done
+          exit 0
+
+      - name: Analyze one common ShapeFit bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in ref m07_0025 m07_0075 m08_e0p m08_e0m m08_wap m08_wam; do
+            test "$(cat logs/${tag}.exit)" = "0"
+          done
+          python3 code/w03_m07_m08_common_shapefit.py \
+            --ref out/ref_00_background.dat \
+            --m07-0025 out/m07_0025_00_background.dat \
+            --m07-0075 out/m07_0075_00_background.dat \
+            --m08-e0p out/m08_e0p_00_background.dat \
+            --m08-e0m out/m08_e0m_00_background.dat \
+            --m08-wap out/m08_wap_00_background.dat \
+            --m08-wam out/m08_wam_00_background.dat \
+            --m08-step "$M08_STEP" \
+            --json m07_m08_common_shapefit.json
+
+      - name: Enforce fail-closed common-bridge controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,math
+          d=json.load(open('m07_m08_common_shapefit.json'))
+          if len(d['coordinate_order']) != 15:
+              raise SystemExit('coordinate-order length failure')
+          c=d['covariance']
+          if c['shape'] != [15,15]:
+              raise SystemExit('covariance shape failure')
+          if c['max_asymmetry'] > 1e-14:
+              raise SystemExit('covariance symmetry failure')
+          if not math.isfinite(c['condition_number_2']) or c['condition_number_2'] <= 0:
+              raise SystemExit('covariance condition failure')
+          if c['cholesky_roundtrip_relative_l2'] > 1e-12:
+              raise SystemExit('covariance Cholesky roundtrip failure')
+          p=d['profile_over_m08']
+          if not math.isfinite(p['profiled_sigma_q']) or p['profiled_sigma_q'] <= 0:
+              raise SystemExit('profiled sigma failure')
+          print('M07_M08_COMMON_SHAPEFIT_BRIDGE=PASS')
+          print('classification=',d['classification'])
+          PY
+
+      - name: Record immutable provenance
+        if: always()
+        run: |
+          {
+            echo "KMDSB_HEAD=$(git rev-parse HEAD)"
+            echo "CLASS_HEAD=$(git -C class_public rev-parse HEAD)"
+            echo 'CONTRACT=protocol/W03_M07_M08_COMMON_SHAPEFIT_OPERATOR_V0_1.md'
+            echo 'CONTRACT_PREREG_COMMIT=46424a91cf625d52d4bcb5da18e09ec69eb33772'
+            echo 'DSIR_OBSERVATION_METHOD_OVERLAY=864952e1520d82473a9e976edfeb69f9899d174d'
+            echo 'COORDINATE_ORDER=LRG1(AP,growth,shape),LRG2(AP,growth,shape),LRG3(AP,growth,shape),ELG2(AP,growth,shape),QSO(AP,growth,shape)'
+            echo 'M07_LOCAL_Q_LAMBDAS=0.025,0.075'
+            echo "M08_STEP=${M08_STEP}"
+            echo 'SCOPE=scoped common ShapeFit observation control; not Article2 G5 closure'
+          } > m07_m08_common_shapefit_provenance.txt
+
+      - name: Upload immutable common ShapeFit bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m07-m08-common-shapefit
+          path: |
+            m07_m08_common_shapefit.json
+            m07_m08_common_shapefit_provenance.txt
+            cfg/
+            logs/
+          if-no-files-found: error
+          retention-days: 90
