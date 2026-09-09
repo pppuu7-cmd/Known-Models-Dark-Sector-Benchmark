@@ -1,0 +1,138 @@
+name: W03 M10 CLASS_EDE Stage A
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m10-class-ede-stage-a.yml'
+      - 'code/w03_m10_class_ede_stage_a.py'
+      - 'protocol/W03_M10_CLASS_EDE_PREREGISTRATION_V0_1.md'
+
+jobs:
+  class-ede-stage-a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check numpy
+      - name: Fetch and build pinned CLASS_EDE
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --branch class_ede https://github.com/mwt5345/class_ede.git class_ede
+          cd class_ede
+          git checkout 5a131c91d657dd9a7c6364cc45b038710f8d0d97
+          test "$(git rev-parse HEAD)" = "5a131c91d657dd9a7c6364cc45b038710f8d0d97"
+          make -j2 class
+      - name: Write frozen reference and EDE cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cfg out logs
+          cat > cfg/base.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          N_ur = 3.046
+          A_s = 2.1e-9
+          n_s = 0.965
+          recombination = RECFAST
+          reio_parametrization = reio_none
+          output = mPk
+          modes = s
+          ic = ad
+          gauge = synchronous
+          non linear = none
+          z_pk = 0.295,0.51,0.706,0.934,1.317,1.491,2.33
+          P_k_max_h/Mpc = 1.2
+          write background = yes
+          headers = yes
+          format = class
+          overwrite_root = yes
+          EOF
+
+          cp cfg/base.ini cfg/lcdm.ini
+          cat >> cfg/lcdm.ini <<EOF
+          Omega_fld = 0
+          Omega_scf = 0
+          root = ${GITHUB_WORKSPACE}/out/lcdm
+          EOF
+
+          make_ede () {
+            local tag="$1"; local fede="$2"
+            cp cfg/base.ini cfg/${tag}.ini
+            cat >> cfg/${tag}.ini <<EOF
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = -1
+          attractor_ic_scf = no
+          scf_tuning_index = 3
+          n_scf = 3
+          thetai_scf = 2.6
+          CC_scf = 1
+          fEDE = ${fede}
+          log10z_c = 3.5
+          root = ${GITHUB_WORKSPACE}/out/${tag}
+          EOF
+          }
+          make_ede f005 0.005
+          make_ede f010 0.01
+          make_ede f030 0.03
+          make_ede f050 0.05
+      - name: Run frozen Stage A cases
+        shell: bash
+        run: |
+          set +e
+          for tag in lcdm f005 f010 f030 f050; do
+            ./class_ede/class cfg/${tag}.ini > logs/${tag}.log 2>&1
+            echo "$?" > logs/${tag}.exit
+          done
+          exit 0
+      - name: Analyze Stage A
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in lcdm f005 f010 f030 f050; do
+            test "$(cat logs/${tag}.exit)" = "0"
+          done
+          python3 code/w03_m10_class_ede_stage_a.py --directory out --json m10_class_ede_stage_a.json
+      - name: Enforce preregistered implementation gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          d=json.load(open('m10_class_ede_stage_a.json'))
+          if not d['reference']['finite']:
+              raise SystemExit('same-solver Lambda reference invalid')
+          if not d['all_shooting_pass']:
+              raise SystemExit('CLASS_EDE shooting gate failed')
+          if not d['local_tangent_pass_with_scope']:
+              raise SystemExit('M10 local response convergence gate failed')
+          print('M10_STAGE_A=PASS_WITH_SCOPE')
+          PY
+      - name: Record provenance
+        if: always()
+        run: |
+          {
+            echo "KMDSB_HEAD=$(git rev-parse HEAD)"
+            echo "CLASS_EDE_HEAD=$(git -C class_ede rev-parse HEAD)"
+            echo 'DSIR_OVERLAY=bc28acc47cc5facba046741fd09f710ae8da9689'
+            echo 'M10_BRANCH=n_scf:3,thetai_scf:2.6,log10z_c:3.5,CC_scf:1'
+            echo 'GRID=fEDE:0.005,0.01,0.03,0.05'
+          } > m10_class_ede_provenance.txt
+      - name: Upload immutable Stage A bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m10-class-ede-stage-a
+          path: |
+            m10_class_ede_stage_a.json
+            m10_class_ede_provenance.txt
+            cfg/
+            logs/
+          if-no-files-found: error
+          retention-days: 90
