@@ -1,0 +1,132 @@
+name: W03 M07 transfer-response gauge audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m07-transfer-response-gauge-audit.yml'
+
+jobs:
+  transfer-response-gauge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OMEGA_SCF_TARGET: '0.682686955086854'
+      SHOOT_REL_TOL: '1.0e-13'
+      RAW_GAUGE_REL_MAX: '1.0e-4'
+      TRANSFER_RESPONSE_REL_MAX: '5.0e-3'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check numpy
+      - name: Fetch and build pinned official CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/lesgourg/class_public.git class_public
+          cd class_public
+          git checkout e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          make -j2
+      - name: Write paired gauge configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cfg out_sync out_newt logs
+          Aseed=$(python3 -c 'import math; Om=0.682686955086854; h=.67; H0=100*h/299792.458; lam=.075; phi=1.; print(f"{3*Om*H0*H0*math.exp(lam*phi)-1:.17g}")')
+          for gauge in sync newt; do
+            if [ "$gauge" = sync ]; then g=synchronous; out=out_sync; else g=newtonian; out=out_newt; fi
+            cat > cfg/${gauge}_common.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          Omega_fld = 0
+          reio_parametrization = reio_none
+          output = mPk,mTk
+          modes = s
+          ic = ad
+          gauge = ${g}
+          non linear = none
+          z_pk = 0.295,0.51,0.706,0.934,1.317,1.491,2.33
+          P_k_max_h/Mpc = 0.2
+          headers = yes
+          format = class
+          tol_shooting_deltax_rel = ${SHOOT_REL_TOL}
+          tol_perturbations_integration = 1.0e-8
+          perturbations_sampling_stepsize = 0.01
+          matter_source_in_current_gauge = no
+          get_perturbations_in_current_gauge = no
+          EOF
+            cp cfg/${gauge}_common.ini cfg/${gauge}_ref.ini
+            cat >> cfg/${gauge}_ref.ini <<EOF
+          Omega_scf = 0
+          root = ${GITHUB_WORKSPACE}/${out}/ref_
+          EOF
+            cp cfg/${gauge}_common.ini cfg/${gauge}_m07.ini
+            cat >> cfg/${gauge}_m07.ini <<EOF
+          Omega_scf = ${OMEGA_SCF_TARGET}
+          scf_parameters = 0.075,0.0,${Aseed},0.0,1.0,0.0
+          attractor_ic_scf = no
+          scf_tuning_index = 2
+          root = ${GITHUB_WORKSPACE}/${out}/m07_
+          EOF
+          done
+      - name: Run paired gauges
+        shell: bash
+        run: |
+          set +e
+          for gauge in sync newt; do
+            for case in ref m07; do
+              ./class_public/class cfg/${gauge}_${case}.ini > logs/${gauge}_${case}.log 2>&1
+              echo "$?" > logs/${gauge}_${case}.exit
+            done
+          done
+          exit 0
+      - name: Analyze transfer-level responses
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 code/w03_m07_gauge_bookkeeping_audit.py --sync out_sync --newt out_newt --json transfer_gauge_result.json
+      - name: Enforce preregistered transfer-response gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          for gauge in sync newt; do for case in ref m07; do test "$(cat logs/${gauge}_${case}.exit)" = "0"; done; done
+          python3 - "$RAW_GAUGE_REL_MAX" "$TRANSFER_RESPONSE_REL_MAX" <<'PY'
+          import json,sys
+          rawmax,rmax=map(float,sys.argv[1:]); d=json.load(open('transfer_gauge_result.json'))['comparisons']
+          for key in ('ref_d_m','m07_d_m','ref_phi','m07_phi','ref_psi','m07_psi'):
+              x=d[key]['max_symmetric_relative_difference']; print(key,x)
+              if x>rawmax: raise SystemExit(f'{key} raw gauge gate {x}>{rawmax}')
+          for key in ('response_ln_abs_d_m','response_fractional_Weyl_phi_plus_psi'):
+              x=d[key]['l2_relative_difference']; print(key,x)
+              if x>rmax: raise SystemExit(f'{key} transfer-response gate {x}>{rmax}')
+          print('M07_TRANSFER_RESPONSE_GAUGE=PASS')
+          PY
+      - name: Record provenance
+        if: always()
+        run: |
+          {
+            echo "KMDSB_HEAD=$(git rev-parse HEAD)"
+            echo "CLASS_HEAD=$(git -C class_public rev-parse HEAD)"
+            echo 'lambda=0.075'
+            echo 'tol_perturbations_integration=1e-8'
+            echo 'perturbations_sampling_stepsize=0.01'
+            echo 'matter_source_in_current_gauge=no'
+            echo 'get_perturbations_in_current_gauge=no'
+            echo "TRANSFER_RESPONSE_REL_MAX=${TRANSFER_RESPONSE_REL_MAX}"
+          } > transfer_gauge_provenance.txt
+      - name: Upload immutable transfer-gauge bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m07-transfer-response-gauge-audit
+          path: |
+            transfer_gauge_result.json
+            transfer_gauge_provenance.txt
+            cfg/
+            logs/
+          if-no-files-found: error
+          retention-days: 90
