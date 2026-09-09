@@ -1,0 +1,29 @@
+{
+  "schema": "KMDSB-W03-M07-B6-theory-geometry-v0.1",
+  "m07_source_run_id": 34338140447,
+  "m07_source_artifact_digest": "sha256:958708322566a2d36ce7522a3f705b543e0158c554a8de8e18e803c82a5c9cb8",
+  "m07_dsir_authority": "328f2ca80b724870b851c7fe6366cce1ca5086cd",
+  "comparator_dsir_authority": "e3276e2193f6a5200b541a194e3175356ae5a1c1",
+  "comparator_input": "data/derived/comparison_readiness/local_response_tangents_v0_1.json",
+  "comparator_blob_sha": "37179b18618c8376763c7fe0d69df6e07da4f904",
+  "authority_bridge": "AD-001: W03 newer authority did not silently rewrite W00-W02 C1/C5 numerical artifacts; comparison uses shared frozen 7x5 r_Delta convention with explicit old-artifact provenance",
+  "scope": "unwhitened theory-response geometry only; no observational discrimination",
+  "m07_vs_comparators": [
+    {"m07_label":"M07_L0025","lambda":0.025,"comparator":"C1_smooth_w_nonphantom","cosine":0.9614047929281571,"oriented_angle_deg":15.970227949107878,"acute_line_angle_deg":15.970227949107878,"best_scalar_projection_residual_fraction":0.2751378275242563,"m07_norm":6.906399759853785e-05,"comparator_norm":1.699557205508302},
+    {"m07_label":"M07_L0025","lambda":0.025,"comparator":"C5_designer_fR_B0","cosine":-0.2910279497296681,"oriented_angle_deg":106.91950789325375,"acute_line_angle_deg":73.08049210674625,"best_scalar_projection_residual_fraction":0.9567145511991264,"m07_norm":6.906399759853785e-05,"comparator_norm":0.0012349683611083497},
+    {"m07_label":"M07_L0075","lambda":0.075,"comparator":"C1_smooth_w_nonphantom","cosine":0.9927141167619465,"oriented_angle_deg":6.920584434210297,"acute_line_angle_deg":6.920584434210297,"best_scalar_projection_residual_fraction":0.12049349518355092,"m07_norm":0.0006562870691858936,"comparator_norm":1.699557205508302},
+    {"m07_label":"M07_L0075","lambda":0.075,"comparator":"C5_designer_fR_B0","cosine":-0.46765000485700065,"oriented_angle_deg":117.88186107937031,"acute_line_angle_deg":62.118138920629704,"best_scalar_projection_residual_fraction":0.8839137248381469,"m07_norm":0.0006562870691858936,"comparator_norm":0.0012349683611083497},
+    {"m07_label":"M07_L015","lambda":0.15,"comparator":"C1_smooth_w_nonphantom","cosine":0.9931861071134742,"oriented_angle_deg":6.692404660947033,"acute_line_angle_deg":6.692404660947033,"best_scalar_projection_residual_fraction":0.11653907772409436,"m07_norm":0.0026448348890717307,"comparator_norm":1.699557205508302},
+    {"m07_label":"M07_L015","lambda":0.15,"comparator":"C5_designer_fR_B0","cosine":-0.4841495738625666,"oriented_angle_deg":118.95676981812983,"acute_line_angle_deg":61.04323018187018,"best_scalar_projection_residual_fraction":0.8749852513778134,"m07_norm":0.0026448348890717307,"comparator_norm":0.0012349683611083497},
+    {"m07_label":"M07_L030","lambda":0.3,"comparator":"C1_smooth_w_nonphantom","cosine":0.9933499616504379,"oriented_angle_deg":6.611357962037032,"acute_line_angle_deg":6.611357962037032,"best_scalar_projection_residual_fraction":0.11513406832503384,"m07_norm":0.010697813981406392,"comparator_norm":1.699557205508302},
+    {"m07_label":"M07_L030","lambda":0.3,"comparator":"C5_designer_fR_B0","cosine":-0.48790897671712774,"oriented_angle_deg":119.2032370973139,"acute_line_angle_deg":60.79676290268612,"best_scalar_projection_residual_fraction":0.8728945127785174,"m07_norm":0.010697813981406392,"comparator_norm":0.0012349683611083497}
+  ],
+  "m07_internal_shape_stability": [
+    {"left":"M07_L0025","lambda_left":0.025,"right":"M07_L0075","lambda_right":0.075,"oriented_angle_deg":12.505781373465604,"acute_line_angle_deg":12.505781373465604,"cosine":0.9762741625265396,"norm_ratio_right_over_left":9.50259313109596},
+    {"left":"M07_L0025","lambda_left":0.025,"right":"M07_L015","lambda_right":0.15,"oriented_angle_deg":13.680428510820017,"acute_line_angle_deg":13.680428510820017,"cosine":0.9716299641293122,"norm_ratio_right_over_left":38.295421363325836},
+    {"left":"M07_L0025","lambda_left":0.025,"right":"M07_L030","lambda_right":0.3,"oriented_angle_deg":13.956151335490203,"acute_line_angle_deg":13.956151335490203,"cosine":0.970480585801855,"norm_ratio_right_over_left":154.89711504381373},
+    {"left":"M07_L0075","lambda_left":0.075,"right":"M07_L015","lambda_right":0.15,"oriented_angle_deg":1.2124390624803003,"acute_line_angle_deg":1.2124390624803003,"cosine":0.9997761132595551,"norm_ratio_right_over_left":4.029996952937953},
+    {"left":"M07_L0075","lambda_left":0.075,"right":"M07_L030","lambda_right":0.3,"oriented_angle_deg":1.5025565804842813,"acute_line_angle_deg":1.5025565804842813,"cosine":0.9996561559454045,"norm_ratio_right_over_left":16.300510072027993},
+    {"left":"M07_L015","lambda_left":0.15,"right":"M07_L030","lambda_right":0.3,"oriented_angle_deg":0.3004291104555849,"acute_line_angle_deg":0.3004291104555849,"cosine":0.9999862530052049,"norm_ratio_right_over_left":4.044794639396583}
+  ]
+}
