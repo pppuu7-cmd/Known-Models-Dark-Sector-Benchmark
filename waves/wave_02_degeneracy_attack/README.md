@@ -1,88 +1,90 @@
 # Wave 02 — Same-observable degeneracy attack
 
-Status: **ACTIVE**  
+Status: **COMPLETE**  
 Opened: 2026-09-08  
+Closed: 2026-09-09  
 Protocol: `protocol/WAVE_TESTING_PROTOCOL_v0.1.md`  
-Starting DSIR authority: `e3276e2193f6a5200b541a194e3175356ae5a1c1`
+Frozen DSIR authority for this wave: `e3276e2193f6a5200b541a194e3175356ae5a1c1`
 
 ## Scientific question
 
 Given that Wave 01 proved no single response block is universally sufficient, which apparently similar known-model responses remain distinguishable when each unresolved pair is tested on the **smallest valid common multi-channel block**?
 
-The objective is not to maximize the number of separations. The objective is to determine whether a claimed degeneracy is:
+The objective is not to maximize separations. It is to distinguish genuine response separation from missing implementations, lossy summaries, masks and lack of observational whitening.
 
-- genuine in the identifiable common subspace;
-- an artifact of looking at one channel;
-- caused by a missing response cell / incompatible block;
-- observationally unresolved after whitening;
-- or simply not yet testable with pinned provenance.
-
-## Positive-control edge
+## Final edge ledger
 
 ### W02-PC1 — M03 GDM vs M05 designer f(R)
 
-Wave 01 already contains a hard theory-response separator:
-- scale-mode angles near zero (`0.07813–0.10169 deg`);
+`PASS_WITH_SCOPE`.
+
+Frozen positive control reproduces the semantic result that scale-only mimicry is not full-response equivalence:
+- scale-mode angles about `0.07813–0.10169 deg`;
 - time-mode angles about `25 deg`;
 - full oriented ray angles about `154.5–154.8 deg`.
 
-Wave 02 must reproduce the semantic result that **scale-only mimicry != full-response equivalence**. This positive control calibrates the pairwise edge machinery.
-
-## Primary unresolved edges
+See `PC1_GDM_vs_fR.md`.
 
 ### W02-E1 — M02 IDE vs M03 GDM
-Required common information:
-- admissible IDE tangent-cone direction(s);
-- GDM local direction(s);
-- common low-k structure block;
-- metric/slip block if available for both;
-- covariance/operator projection before observational claims.
 
-Initial status: `OPEN`.
+`PASS_WITH_SCOPE` in the unwhitened frozen 7x5 low-k `r_Delta(k,z)` tangent block.
+
+Closest frozen pair: IDE alpha-negative vs GDM cv2, acute angle `24.786398 deg`. Exact directional collinearity is rejected within scope.
+
+See `E1_IDE_vs_GDM.md` and `E1_result.json`.
 
 ### W02-E2 — M02 IDE vs M05 designer f(R)
-Required common information:
-- structure + time evolution on common k,z nodes;
-- slip/metric response where implementation allows;
-- preservation of IDE physical-domain mask and f(R) near-GR solver threshold.
 
-Initial status: `OPEN`.
+`PASS_WITH_SCOPE` in the same class of common low-k theory-response geometry.
 
-### W02-E3 — M04 WDM vs alternative small-scale suppression mechanisms
-A comparator must be pinned before testing. Candidate mechanisms may include other dark-matter cutoff/suppression families, but KMDSB will not select a winner by convenience; implementation/provenance and valid high-k overlap are prerequisites.
+Acute angles against the minimum-resolved designer-f(R) production ray are `42.450273 deg` and `59.404101 deg` for the two frozen IDE directions.
 
-Initial status: `BLOCKED_IMPLEMENTATION` until at least one alternative suppression model is pinned into the KMDSB/DSIR response conventions.
+See `E2_IDE_vs_fR.md` and `E2_result.json`.
 
-### W02-E4 — M06 DCDM vs alternative temporal/interaction histories
-Need a common temporal-localization observable that can be evaluated without redefining the coordinate per model.
+### W02-E3 — M04 WDM vs alternative small-scale suppression
 
-Initial status: `OPEN`.
+`BLOCKED_IMPLEMENTATION`.
 
-## Frozen Wave-02 hypotheses
+The WDM high-k block is pinned, but the frozen DSIR C0-C6 authority contains no second non-WDM suppression family implemented on a valid same-convention high-k block. This is not evidence of WDM uniqueness.
 
-### W02-H1 — restricted-block degeneracy is not equivalence
-At least one pair with a very small angle/distance in one block will remain clearly separated in a second valid block.
+See `E3_WDM_vs_alt_suppression.md` and `E3_result.json`.
 
-Positive-control expectation: PASS from M03/M05; new unresolved pairs must be tested independently.
+### W02-E4 — M06 DCDM vs alternative temporal histories
 
-### W02-H2 — missing common channels create legitimate BLOCKED edges
-At least one unresolved pair will remain unscored until a common response block is computed. `BLOCKED_*` is a valid scientific result and must not be zero-filled.
+`INCONCLUSIVE`.
 
-### W02-H3 — minimum discriminating suite is a graph problem
-The required observable set depends on which comparator edge is being broken; there is no presumption that one universal scalar discriminator exists.
+A common amplitude-invariant temporal centroid exists:
 
-### W02-H4 — observation-space promotion is separate
-A hard theory-response edge is promoted to observational discrimination only after a pinned response operator/covariance and consistent whitening.
+`q_z(z)=sum_k r(k,z)^2/sum_{z,k} r(k,z)^2`
 
-## Exit criteria
+`z_R=exp[sum_z q_z ln(1+z)]-1`.
 
-Wave 02 is complete when:
-1. W02-PC1 semantic positive control is encoded/reproduced;
-2. E1–E4 each receive a defensible hard state (`PASS_WITH_SCOPE`, `NONIDENTIFIABLE`, `BLOCKED_*`, `INCONCLUSIVE`, etc.);
-3. the minimum observed channel set for every scored edge is recorded;
-4. no missing channel is zero-imputed;
-5. theory-space and observation-space edge graphs are reported separately.
+DCDM spans `z_R=0.6304573..0.6562403`; frozen alternative centroids include C1 `0.6214183`, GDM `0.7315737/0.7362246`, IDE `0.9516949/1.0839530`, and designer-f(R) `0.4547904`.
 
-## Immediate next computation
+The scalar coordinate is portable, but no preregistered separation threshold or observational covariance exists and the nearest C1 value is close. Therefore a one-number characteristic epoch is not a hard mechanism discriminator.
 
-**W02-E1 IDE vs GDM common-block audit.** First determine whether the frozen DSIR repository contains a common pinned response product beyond low-k matter/growth for both C2 and C3. If not, freeze the missing-channel specification required for a new hard run rather than inferring the edge from unrelated angles.
+See `E4_DCDM_vs_temporal_histories.md`, `E4_result.json`, and `code/wave02_temporal_centroid_comparator.py`.
+
+## Frozen Wave-02 hypotheses — final states
+
+- **W02-H1 restricted-block degeneracy is not equivalence:** `SUPPORTED`.
+- **W02-H2 missing common channels/implementations create legitimate BLOCKED edges:** `SUPPORTED`.
+- **W02-H3 minimum discriminating suite is a graph problem:** `SUPPORTED`.
+- **W02-H4 observation-space promotion is separate:** `SUPPORTED`.
+
+## Separate graphs
+
+- `THEORY_SPACE_GRAPH.md` — frozen response-geometry statements and blocked/inconclusive theory edges.
+- `OBSERVATION_SPACE_GRAPH.md` — only claims that survive an explicit observational operator/covariance; no new W02 edge is promoted there.
+
+## Scientific conclusion
+
+Wave 02 establishes that pairwise distinguishability is a graph over **model pair x valid response block x mask x observational operator**. Restricted-block similarity, missing comparator implementation and lossy scalar compression are distinct failure modes.
+
+The future-model methodology therefore must:
+1. attack nearest alternatives rather than compare only with LambdaCDM;
+2. never infer uniqueness from an unimplemented comparator;
+3. preserve fuller temporal/multi-channel profiles when scalar summaries are close;
+4. keep theory-space and observation-space graphs separate.
+
+Exact machine-readable closure: `result.json`.
