@@ -1,0 +1,49 @@
+{
+  "schema": "KMDSB.W03.M08.M07Absorption.v0.1",
+  "scope": "unwhitened common 35-node lnP + 7-node lnH local theory-response geometry",
+  "target": "M07 local dr/dq with q=lambda^2",
+  "comparator": "M08 CPL local span {d/depsilon0,d/dwa}",
+  "fit_rule": "one shared parameter vector across P and H blocks",
+  "cpl_fit_coefficients_per_unit_q": {
+    "epsilon0": 0.14065348711233602,
+    "wa": -0.2006790926584112
+  },
+  "cpl_residual_fractions": {
+    "combined_PH": 0.011074683775084661,
+    "P": 0.008641869617431507,
+    "H": 0.019929329756650474
+  },
+  "same_solver_constant_w_baseline": {
+    "epsilon0_per_unit_q": 0.07071328617543521,
+    "residual_fractions": {
+      "combined_PH": 0.15819789479991475,
+      "P": 0.12063934302096947,
+      "H": 0.29148838356430123
+    }
+  },
+  "improvement_factor_constant_w_residual_over_CPL_residual": {
+    "combined_PH": 14.284642163401672,
+    "P": 13.959866135636664,
+    "H": 14.626100682940967
+  },
+  "example_mapping": {
+    "lambda_0p30_q_0p09": {
+      "epsilon0": 0.012658813840110241,
+      "w0": -0.9873411861598897,
+      "wa": -0.018061118339257005
+    },
+    "lambda_0p225_q_0p050625": {
+      "epsilon0": 0.007120582785062011,
+      "w0": -0.992879417214938,
+      "wa": -0.010159379065832067
+    }
+  },
+  "classification": "CPL_ABSORBS_M07_CROSSCHANNEL_SEPARATOR_WITH_SCOPE",
+  "B7_implication_for_M07": "The previously identified constant-w P/H separator does not survive a stronger 2D CPL smooth-DE comparator in this unwhitened local theory-response scope.",
+  "anti_overclaim": [
+    "This is a local linear theory-space absorption test, not observational discrimination.",
+    "CPL absorption does not prove CPL is the physical dark-energy mechanism.",
+    "M07 remains predictive within its own tested family; this result specifically weakens mechanism-level novelty of the P/H separator.",
+    "Observation-space promotion must obey AD-002 and use one frozen common observation operator and covariance vector for both families."
+  ]
+}
