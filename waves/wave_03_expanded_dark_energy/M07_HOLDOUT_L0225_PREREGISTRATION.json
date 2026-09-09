@@ -1,0 +1,44 @@
+{
+  "schema": "KMDSB-W03-M07-holdout-prereg-v0.1",
+  "frozen_date": "2026-09-09",
+  "status": "FROZEN_BEFORE_HOLDOUT_EXECUTION",
+  "holdout_lambda": 0.225,
+  "training_lambdas": [0.075, 0.15, 0.3],
+  "training_source": {
+    "run_id": 34338140447,
+    "head_sha": "404d4bef9a2d6bbb23e4a5c3e6db723ec2dc5709",
+    "artifact_digest": "sha256:958708322566a2d36ce7522a3f705b543e0158c554a8de8e18e803c82a5c9cb8",
+    "response_file": "models/canonical_quintessence/strict_production_response.json"
+  },
+  "prediction_rule": "For each response component j, c_j = mean_{lambda in {0.075,0.15,0.30}}[r_j(lambda)/lambda^2]; predict r_j(0.225)=c_j*(0.225)^2.",
+  "scope": "prospective within-family interpolation holdout; supports B8 only within M07 family if passed; not universal and not observationally whitened",
+  "predicted": {
+    "response_lnH": [0.0011730145209215823,0.0012705991837774619,0.001166755143759365,0.000982131688766623,0.0006930362602486788,0.0005886157858630328,0.0002812252890717795],
+    "response_vector_lnP": [-0.0015346137170144673,-0.001662465074119156,-0.0017129092319004818,-0.0017068449933336008,-0.0016587366425280343,-0.0012956867322115107,-0.001359412738109162,-0.001395011977664338,-0.001384641639725489,-0.0013460746500585231,-0.0010652683009175522,-0.0011002535657806238,-0.001130132552136422,-0.0011155742476838095,-0.0010877155461394695,-0.000833317672439491,-0.0008514570506768226,-0.0008786179660069829,-0.0008598548714380033,-0.0008395358581579881,-0.000551405927964682,-0.0005579332313142547,-0.0005812540264650807,-0.0005612388321228026,-0.0005481578179163414,-0.00046046426216802996,-0.0004646663221206083,-0.0004876290673021861,-0.00046601262133596133,-0.0004541142148091234,-0.00021179715837364312,-0.000212257674381407,-0.0002434254008539692,-0.00021013138343104235,-0.00020160790651410428],
+    "l2_lnH": 0.0024944219844039005,
+    "max_abs_lnH": 0.0012705991837774619,
+    "l2_lnP": 0.00595794365107414,
+    "max_abs_lnP": 0.0017129092319004818
+  },
+  "acceptance": {
+    "max_relative_l2_error_lnH": 0.02,
+    "max_angle_deg_lnH": 0.3,
+    "max_relative_l2_error_lnP": 0.05,
+    "max_angle_deg_lnP": 2.0,
+    "max_abs_Omega_scf_target_error": 1e-6,
+    "lambda0_reference_max_abs_lnH": 1e-8,
+    "lambda0_reference_max_abs_lnP": 1e-5
+  },
+  "calibration": {
+    "leave_one_out_max_relative_l2_error_lnH": 0.009058416843437507,
+    "leave_one_out_max_angle_deg_lnH": 0.13879373213803686,
+    "leave_one_out_max_relative_l2_error_lnP": 0.027230258744444465,
+    "leave_one_out_max_angle_deg_lnP": 1.3577451451942724
+  },
+  "anti_overclaim": [
+    "lambda=0.225 was not used in training and repository search returned no prior 0.225 benchmark point before preregistration",
+    "pass means only a prospective within-family interpolation law survived one holdout",
+    "pass does not establish a universal DSIR relation or observational discrimination",
+    "the holdout cannot be used to redefine the prediction rule after exposure"
+  ]
+}
