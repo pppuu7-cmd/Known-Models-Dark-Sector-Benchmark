@@ -3,7 +3,7 @@
   "model_id": "M10",
   "model_name": "CLASS_EDE axion-like scalar-field Early Dark Energy",
   "wave": "W03",
-  "status": "INCONCLUSIVE",
+  "status": "DSIR_COMPATIBLE",
   "dsir_methodology_overlay_authority": "bc28acc47cc5facba046741fd09f710ae8da9689",
   "solver": {
     "repository": "mwt5345/class_ede",
@@ -20,31 +20,67 @@
     "reference": "pure LambdaCDM in same CLASS_EDE commit"
   },
   "stage_A": {
-    "status": "OPEN",
-    "shooting_gates": {
-      "fEDE_abs_or_rel": "abs error <= max(1e-4,1% target)",
-      "log10z_c_abs": 0.015
+    "status": "PASS_WITH_SCOPE",
+    "diagnostic_run_1": {
+      "run_id": 34410251259,
+      "artifact_digest": "sha256:8978d6450da1081ed15cc52eb338aa6ef827bdf0c230acc41e0fd55af90de3e4",
+      "classification": "IMPLEMENTATION_PLUMBING_FAILURE",
+      "cause": "missing six-entry scf_parameters seed required by CLASS_EDE shooting-guess code",
+      "physical_conclusion": "none"
+    },
+    "authoritative_run": {
+      "run_id": 34410430602,
+      "head_sha": "4833a29944dbc0ace0fed58790421d7513bc0b60",
+      "artifact_id": 10127037860,
+      "artifact_digest": "sha256:7aa1af3e8ce6ce6b09000f5be37843f54a76d6dbc9dde92cfe360172b7899e10"
+    },
+    "shooting": {
+      "all_cases_pass": true,
+      "f005": {"achieved_fEDE":0.005000629014816127,"achieved_log10z_c":3.4999998158644976},
+      "f010": {"achieved_fEDE":0.010000159099003092,"achieved_log10z_c":3.4999998545830477},
+      "f030": {"achieved_fEDE":0.030000021564214663,"achieved_log10z_c":3.4999998659102896},
+      "f050": {"achieved_fEDE":0.050000890802181175,"achieved_log10z_c":3.4999997820726207}
     },
     "local_convergence_pair": [0.005, 0.01],
-    "response_relative_l2_max": 0.10,
-    "response_angle_deg_max": 3.0
+    "local_convergence": {
+      "P": {"relative_l2":0.003123143733595786,"angle_deg":0.03555207719905795},
+      "H": {"relative_l2":0.015816923987450233,"angle_deg":0.8309005683147109},
+      "S": {"relative_l2":0.009914094585381568,"angle_deg":0.4005893582795647}
+    },
+    "local_direction_norms_per_unit_fEDE_approx": {
+      "P": 2.69,
+      "H": 2.95e-5,
+      "S": 2.51
+    },
+    "finite_f050_max_abs_response": {
+      "lnP_lowk": 0.04364089653357519,
+      "lnH": 9.338214833352387e-7,
+      "shape": 0.04722156432945369
+    },
+    "interpretation": "A stable early/scale response exists while late-time H is nearly null in the tested branch; this is unwhitened theory-response evidence only."
+  },
+  "stage_B": {
+    "status": "PREREGISTERED",
+    "protocol": "protocol/W03_M10_STAGE_B_CPL_ATTACK_PREREGISTRATION_V0_1.md",
+    "primary_test": "fit one same-solver 2D CPL coefficient vector on P+H and apply it without refit to broad-k S"
   },
   "gates": {
     "B0": "PASS_WITH_SCOPE",
-    "B1": "OPEN",
+    "B1": "PASS_WITH_SCOPE",
     "B2": "PARTIAL",
-    "B3": "OPEN",
-    "B4": "OPEN",
+    "B3": "PASS_WITH_SCOPE",
+    "B4": "PASS_WITH_SCOPE",
     "B5": "OPEN",
     "B6": "OPEN",
     "B7": "OPEN",
     "B8": "OPEN",
     "B9": "PARTIAL"
   },
-  "primary_question": "Does a completed scalar-field EDE implementation generate a stable broad-k shape direction that survives profiling by the full local CPL manifold?",
+  "primary_question": "Does the stable broad-k EDE shape direction survive profiling by the full local CPL manifold?",
   "anti_overclaim": [
     "M10 is distinct from blocked M09 native CLASS EDE.",
-    "Stage A establishes implementation and theory-response geometry only.",
+    "Stage A establishes implementation and unwhitened theory-response geometry only.",
+    "Near-null late-time H is not evidence of no cosmological effect because P and S are nonzero.",
     "No finite Stage A point is a prospective holdout.",
     "Raw broad-k separation is not observational discrimination."
   ]
