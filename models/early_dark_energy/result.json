@@ -3,7 +3,7 @@
   "model_id": "M09",
   "model_name": "Solver-native Early Dark Energy",
   "wave": "W03",
-  "status": "INCONCLUSIVE",
+  "status": "BLOCKED",
   "dsir_methodology_overlay_authority": "bc28acc47cc5facba046741fd09f710ae8da9689",
   "solver": {
     "repository": "lesgourg/class_public",
@@ -28,23 +28,47 @@
     "L": "7-node lnH plus 7x5 low-k lnP",
     "S": "z=0.51 broad-k amplitude-quotiented shape response through k=1 h/Mpc"
   },
+  "execution": {
+    "run_id": 34409305291,
+    "head_sha": "4c94cf0da8d793cf04532d68b4a8e015dab17af8",
+    "artifact_id": 10126634345,
+    "artifact_digest": "sha256:be6b8e1685c9eca114bc7cda42031f1fd2ea3da8df1c17ed8115461c7d68b3a2",
+    "lcdm_exit": 0,
+    "ede_case_exits": {
+      "Omega_EDE_0": 1,
+      "Omega_EDE_1e-4": 1,
+      "Omega_EDE_3e-4": 1,
+      "Omega_EDE_1e-3": 1,
+      "Omega_EDE_3e-3": 1
+    },
+    "class_error": "EDE implementation not finished: to finish it, read the comments in background.c just before this line",
+    "classification": "BLOCKED_IMPLEMENTATION_UPSTREAM_SOLVER_BRANCH"
+  },
+  "upstream_code_audit": {
+    "background_w_of_a_present": true,
+    "dOmega_da_present": true,
+    "dw_da_second_derivative_placeholder": "d2Omega_ede_over_da2 = 0",
+    "continuity_integral_implementation": "class_stop placeholder",
+    "consequence": "The advertised EDE fluid branch cannot enter background evolution in this pinned upstream CLASS revision, including at Omega_EDE=0. No response vector exists to classify."
+  },
   "gates": {
     "B0": "PASS_WITH_SCOPE",
-    "B1": "PARTIAL",
-    "B2": "PARTIAL",
-    "B3": "OPEN",
-    "B4": "OPEN",
+    "B1": "BLOCKED_IMPLEMENTATION",
+    "B2": "BLOCKED_IMPLEMENTATION",
+    "B3": "BLOCKED_IMPLEMENTATION",
+    "B4": "BLOCKED_IMPLEMENTATION",
     "B5": "OPEN",
     "B6": "OPEN",
     "B7": "OPEN",
     "B8": "OPEN",
-    "B9": "PARTIAL"
+    "B9": "PASS"
   },
-  "primary_question": "Does solver-native EDE generate a stable early-time scale-dependent shape direction beyond the late-time smooth-DE manifold tested by M07/M08?",
+  "primary_question_result": "Not answerable in the pinned native CLASS EDE branch because upstream CLASS intentionally stops before background initialization for every EDE case.",
+  "next_branch": "Use a separately identified and pinned EDE implementation with completed background and perturbation dynamics. Do not silently patch native CLASS and reuse the M09 scientific label.",
   "anti_overclaim": [
-    "This branch is the pinned CLASS EDE fluid parameterization, not all EDE models.",
-    "Omega_EDE is differentiated only along the physical nonnegative ray.",
-    "A nonzero raw shape response is not observational discrimination.",
-    "Current finite probes are not B8 holdouts."
+    "This is an upstream implementation block, not evidence that Early Dark Energy is physically false.",
+    "The failure occurs before M09 response construction; no null or separation result may be inferred.",
+    "A locally patched CLASS would constitute a new implementation branch requiring its own validation and provenance.",
+    "The first finite M09 grid remains preregistered but unexecuted scientifically."
   ]
 }
