@@ -15,35 +15,63 @@
     "alpha": 0,
     "B": 0,
     "attractor_ic_scf": false,
-    "phi_ini": 0,
-    "phi_prime_ini": 0,
+    "phi_ini": 1.0,
+    "phi_prime_ini": 0.0,
     "physical_shape_parameter": "lambda",
     "shooting_nuisance": "A",
-    "scf_tuning_index": 2
+    "scf_tuning_index": 2,
+    "shooting_seed": "A_seed(lambda)=3 Omega_scf H0^2 exp(lambda phi_ini)-1"
   },
   "gates": {
     "B0": "PASS_WITH_SCOPE",
-    "B1": "PARTIAL",
+    "B1": "PASS_WITH_SCOPE",
     "B2": "PARTIAL",
-    "B3": "OPEN",
-    "B4": "OPEN",
+    "B3": "PARTIAL",
+    "B4": "PARTIAL",
     "B5": "OPEN",
     "B6": "OPEN",
     "B7": "OPEN",
     "B8": "OPEN",
     "B9": "PARTIAL"
   },
-  "current_probe": {
+  "calibration_probe": {
     "workflow": ".github/workflows/w03-m07-quintessence-probe.yml",
-    "run_id": 34319481691,
-    "head_sha": "89e0ba040900fa17ada29c35987d322ba9e36b8a",
-    "scope": "implementation/reference probe only",
-    "mandatory_cases": ["REF_LCDM", "SCF_SPLIT_L0"],
-    "descriptive_finite_lambda": [0.05, 0.1, 0.2]
+    "run_id": 34325977559,
+    "head_sha": "e74f798a685f8b92f75ef3afe0b4be03eb51a576",
+    "conclusion": "success",
+    "scope": "implementation/reference calibration only",
+    "target_Omega_scf": 0.1,
+    "lambda0": {
+      "achieved_Omega_scf_today": 0.10000000013560413,
+      "max_abs_lnH": 5.462919005900343e-11,
+      "max_abs_lnP": 4.111520165089289e-7,
+      "w_scf_all_frozen_z": -1.0,
+      "phi_all_frozen_z": 1.0,
+      "phi_prime_all_frozen_z": 0.0
+    },
+    "descriptive_finite_lambda": [0.05, 0.1, 0.2],
+    "finite_lambda_B8_eligible": false
+  },
+  "production_preregistration": {
+    "document": "waves/wave_03_expanded_dark_energy/M07_PRODUCTION_PREREGISTRATION.md",
+    "target_Omega_scf": 0.682686955086854,
+    "lambda_grid": [0.025, 0.075, 0.15, 0.3],
+    "lambda_grid_B8_eligible": false,
+    "reference_tolerances": {
+      "max_abs_lnH": 1e-8,
+      "max_abs_lnP": 1e-5,
+      "abs_Omega_scf_error": 1e-6,
+      "max_abs_w_plus_1": 1e-10,
+      "max_abs_phi_prime": 1e-12
+    },
+    "active_workflow": ".github/workflows/w03-m07-quintessence-production.yml",
+    "active_run_id": 34337676199,
+    "active_run_head": "eb7e24d62c90466ea5c1445f0b4dbc48f78f4c21"
   },
   "anti_overclaim": [
-    "finite-lambda probe points are not prospective B8 evidence",
-    "B1 is not closed until the numerical lambda=0 split-reference is checked",
-    "no observational discrimination claim exists"
+    "calibration finite-lambda probe points are not prospective B8 evidence",
+    "production response points are B3-B6 inputs, not B8 holdouts",
+    "B1 PASS_WITH_SCOPE refers to the calibrated subdominant reference intersection; the dark-energy-dominant production reference gate is separately frozen",
+    "no observational discrimination claim exists without a pinned operator/covariance"
   ]
 }
