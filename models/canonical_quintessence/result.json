@@ -5,142 +5,98 @@
   "wave": "W03",
   "status": "DSIR_PREDICTIVE_SUPPORT",
   "dsir_authority": "328f2ca80b724870b851c7fe6366cce1ca5086cd",
-  "solver": {
-    "repository": "lesgourg/class_public",
-    "commit": "e85808324f51fc694d12e3ed7439552a3c3f9540",
-    "sector": "scf"
-  },
+  "solver": {"repository":"lesgourg/class_public","commit":"e85808324f51fc694d12e3ed7439552a3c3f9540","sector":"scf"},
   "branch": {
-    "potential": "V(phi)=(1+A) exp(-lambda phi)",
-    "alpha": 0,
-    "B": 0,
-    "attractor_ic_scf": false,
-    "phi_ini": 1.0,
-    "phi_prime_ini": 0.0,
-    "physical_shape_parameter": "q=lambda^2 after exact field-reflection quotient",
-    "shooting_nuisance": "A",
-    "scf_tuning_index": 2,
-    "shooting_seed": "A_seed(lambda)=3 Omega_scf H0^2 exp(lambda phi_ini)-1",
-    "authoritative_shooting_tolerance": 1e-13
+    "potential":"V(phi)=(1+A) exp(-lambda phi)","alpha":0,"B":0,"attractor_ic_scf":false,"phi_ini":1.0,"phi_prime_ini":0.0,
+    "physical_shape_parameter":"q=lambda^2 after exact field-reflection quotient","shooting_nuisance":"A","scf_tuning_index":2,
+    "shooting_seed":"A_seed(lambda)=3 Omega_scf H0^2 exp(lambda phi_ini)-1","authoritative_shooting_tolerance":1e-13
   },
   "gates": {
-    "B0": "PASS_WITH_SCOPE",
-    "B1": "PASS_WITH_SCOPE",
-    "B2": "PARTIAL",
-    "B3": "PASS_WITH_SCOPE",
-    "B4": "PASS_WITH_SCOPE",
-    "B5": "OPEN",
-    "B6": "PASS_WITH_SCOPE",
-    "B7": "PARTIAL",
-    "B8": "SUPPORTED",
-    "B9": "PARTIAL"
+    "B0":"PASS_WITH_SCOPE","B1":"PASS_WITH_SCOPE","B2":"PARTIAL","B3":"PASS_WITH_SCOPE","B4":"PASS_WITH_SCOPE",
+    "B5":"NONIDENTIFIABLE","B6":"PASS_WITH_SCOPE","B7":"PARTIAL","B8":"SUPPORTED","B9":"PARTIAL"
   },
   "strict_production": {
-    "run_id": 34338140447,
-    "artifact_digest": "sha256:958708322566a2d36ce7522a3f705b543e0158c554a8de8e18e803c82a5c9cb8",
-    "target_Omega_scf": 0.682686955086854,
-    "lambda_grid": [0.025, 0.075, 0.15, 0.3],
-    "lambda0_max_abs_lnH": 1.088764633945931e-10,
-    "lambda0_max_abs_lnP": 2.1664792184809906e-10,
-    "max_abs_target_error_finite_lambda": 2.5731859532e-8,
-    "result": "PASS_WITH_SCOPE"
+    "run_id":34338140447,"artifact_digest":"sha256:958708322566a2d36ce7522a3f705b543e0158c554a8de8e18e803c82a5c9cb8",
+    "target_Omega_scf":0.682686955086854,"lambda_grid":[0.025,0.075,0.15,0.3],
+    "lambda0_max_abs_lnH":1.088764633945931e-10,"lambda0_max_abs_lnP":2.1664792184809906e-10,
+    "max_abs_target_error_finite_lambda":2.5731859532e-8,"result":"PASS_WITH_SCOPE"
   },
   "nearest_comparator": {
-    "run_id": 34358089618,
-    "scope": "unwhitened common 7x5 low-k r_Delta theory-response geometry",
-    "smooth_w_acute_angle_deg": {
-      "lambda_0p025": 15.9702279491,
-      "lambda_0p075": 6.9205844342,
-      "lambda_0p15": 6.6924046609,
-      "lambda_0p30": 6.6113579620
-    },
-    "designer_fR_acute_angle_deg": {
-      "lambda_0p025": 73.0804921067,
-      "lambda_0p075": 62.1181389206,
-      "lambda_0p15": 61.0432301819,
-      "lambda_0p30": 60.7967629027
-    }
+    "run_id":34358089618,"scope":"unwhitened common 7x5 low-k r_Delta theory-response geometry",
+    "smooth_w_acute_angle_deg":{"lambda_0p025":15.9702279491,"lambda_0p075":6.9205844342,"lambda_0p15":6.6924046609,"lambda_0p30":6.6113579620},
+    "designer_fR_acute_angle_deg":{"lambda_0p025":73.0804921067,"lambda_0p075":62.1181389206,"lambda_0p15":61.0432301819,"lambda_0p30":60.7967629027}
   },
   "field_reflection_quotient_parity": {
-    "run_id": 34359042959,
-    "artifact_digest": "sha256:d5e747fc54aee3a8fe3c50372f5788d6c95bcddc47b3598cf1646d114ff041b1",
-    "map": "(lambda,phi_ini)->(-lambda,-phi_ini)",
-    "preregistered_odd_fraction_max": 1e-6,
-    "tested_abs_lambda": [0.025, 0.075],
-    "lnP_odd_fraction": [0.0, 0.0],
-    "lnH_odd_fraction": [0.0, 0.0],
-    "result": "PASS_WITH_SCOPE"
+    "run_id":34359042959,"artifact_digest":"sha256:d5e747fc54aee3a8fe3c50372f5788d6c95bcddc47b3598cf1646d114ff041b1",
+    "map":"(lambda,phi_ini)->(-lambda,-phi_ini)","preregistered_odd_fraction_max":1e-6,"tested_abs_lambda":[0.025,0.075],
+    "lnP_odd_fraction":[0.0,0.0],"lnH_odd_fraction":[0.0,0.0],"result":"PASS_WITH_SCOPE"
   },
   "local_q_coordinate": {
-    "coordinate": "q=lambda^2",
-    "run_id": 34359536106,
-    "artifact_digest": "sha256:6cd91f54d94982425cbec2055c42f7e087458ae3a4e350796f9a661623240b5d",
-    "tight_settings": {
-      "tol_perturbations_integration": 1e-8,
-      "perturbations_sampling_stepsize": 0.01
-    },
-    "frozen_gate": {
-      "relative_difference_max": 0.05,
-      "angle_max_deg": 2.0
-    },
-    "measured_qscaled_rel_difference_0025_vs_0075": 0.0005518892994966552,
-    "measured_qscaled_angle_deg": 0.027311070106469527,
-    "result": "PASS_WITH_SCOPE",
-    "machine_direction": "waves/wave_03_expanded_dark_energy/M07_LOCAL_Q_DIRECTION.json",
-    "local_q_vs_C1_acute_angle_deg": 6.694448015804526,
-    "local_q_vs_C5_fR_acute_angle_deg": 60.72848450799479
+    "coordinate":"q=lambda^2","run_id":34359536106,"artifact_digest":"sha256:6cd91f54d94982425cbec2055c42f7e087458ae3a4e350796f9a661623240b5d",
+    "tight_settings":{"tol_perturbations_integration":1e-8,"perturbations_sampling_stepsize":0.01},
+    "frozen_gate":{"relative_difference_max":0.05,"angle_max_deg":2.0},
+    "measured_qscaled_rel_difference_0025_vs_0075":0.0005518892994966552,"measured_qscaled_angle_deg":0.027311070106469527,
+    "result":"PASS_WITH_SCOPE","machine_direction":"waves/wave_03_expanded_dark_energy/M07_LOCAL_Q_DIRECTION.json",
+    "local_q_vs_C1_acute_angle_deg":6.694448015804526,"local_q_vs_C5_fR_acute_angle_deg":60.72848450799479
   },
   "gauge_response_floor": {
-    "first_run_id": 34360101877,
-    "precision_run_id": 34371774424,
-    "raw_observable_gate": 0.0001,
-    "raw_observables_result": "PASS_WITH_SCOPE",
-    "frozen_response_relative_gate": 0.005,
-    "response_relative_mismatch_initial": 0.03099156905414375,
-    "response_relative_mismatch_tight": 0.02975665236,
-    "response_absolute_l2_floor_tight": 1.96128419e-5,
-    "interpretation": "persistent numerical cross-gauge subtraction floor in small lnP model/reference residual; not evidence of physical gauge dependence",
-    "B2_result": "PARTIAL"
+    "first_run_id":34360101877,"prior_precision_run_id":34371774424,"independent_precision_confirmation_run_id":34390302626,
+    "raw_observable_gate":0.0001,"raw_observables_result":"PASS_WITH_SCOPE","frozen_response_relative_gate":0.005,
+    "response_relative_mismatch_initial":0.03099156905414375,"prior_tight_mismatch":0.02975665236,
+    "independent_baseline_mismatch":0.03099156905414375,"independent_tight_mismatch":0.030987984210274728,
+    "independent_precision_improvement_ratio":0.9998843284164556,
+    "interpretation":"persistent cross-gauge subtraction/representation floor in small model/reference residual; tightening perturbation precision does not remove it; not evidence of physical gauge dependence",
+    "B2_result":"PARTIAL"
+  },
+  "transfer_response_gauge_audit": {
+    "run_id":34390614155,"artifact_digest":"sha256:6805465c0c8b932a15c6bab20641cc1599a36bd428707efd1eb396ce624ab9b8",
+    "raw_observables_result":"PASS_WITH_SCOPE","frozen_transfer_response_relative_gate":0.005,
+    "ln_abs_d_m_response_l2_relative_mismatch":0.031049520715355237,
+    "fractional_Weyl_response_l2_relative_mismatch":0.12892985544159527,
+    "result":"FAIL_IN_RESPONSE_REPRESENTATION_SCOPE",
+    "interpretation":"direct transfer-level residuals do not rescue B2; response-level cross-gauge stability remains unresolved"
   },
   "crosschannel_C1_separator": {
-    "run_id": 34373096320,
-    "artifact_digest": "sha256:63db00acdd9f9ba07fefbeb96cf9bad413b08cc58dcda9d5a98e56ccf3e77237",
-    "scope": "unwhitened 35-node lnP plus 7-node lnH theory-response comparison",
-    "C1_bridge_to_frozen_DSIR_acute_angle_deg": 0.3745179437269424,
-    "M07_vs_C1_P_acute_angle_deg": 6.763932413651629,
-    "M07_vs_C1_H_acute_angle_deg": 10.612398525096017,
-    "matter_fit_scalar_C1_to_M07": 0.06866077867253075,
-    "P_residual_fraction_after_matter_fit": 0.11777887495243908,
-    "H_residual_fraction_using_same_matter_fit": 0.3091701900035304,
-    "preregistered_H_separator_min": 0.10,
-    "classification": "CROSSCHANNEL_SEPARATOR",
-    "B7_implication": "PARTIAL only; observational and measurement-degeneracy quotient remains open"
+    "run_id":34373096320,"artifact_digest":"sha256:63db00acdd9f9ba07fefbeb96cf9bad413b08cc58dcda9d5a98e56ccf3e77237",
+    "scope":"unwhitened 35-node lnP plus 7-node lnH theory-response comparison","C1_bridge_to_frozen_DSIR_acute_angle_deg":0.3745179437269424,
+    "M07_vs_C1_P_acute_angle_deg":6.763932413651629,"M07_vs_C1_H_acute_angle_deg":10.612398525096017,
+    "matter_fit_scalar_C1_to_M07":0.06866077867253075,"P_residual_fraction_after_matter_fit":0.11777887495243908,
+    "H_residual_fraction_using_same_matter_fit":0.3091701900035304,"preregistered_H_separator_min":0.10,
+    "classification":"CROSSCHANNEL_SEPARATOR","B7_implication":"PARTIAL; theory-space separator exists but observational survival must be checked"
+  },
+  "b5_shapefit_identifiability": {
+    "run_id":34390859777,"artifact_digest":"sha256:91cd68778994d06a3d41c849a7dadf2ccb9ca23f8abd924666dc41d6d2f526c4",
+    "result_file":"models/canonical_quintessence/b5_shapefit_q_fisher_result.json",
+    "scope":"corrected DESI DR1 ShapeFit AP+growth+shape covariance; optimistic unmarginalized control",
+    "local_F_q":0.19428289159505893,"sigma_q_optimistic_unmarginalized":2.2687295131730147,
+    "largest_tested_lambda":0.3,"largest_tested_q":0.09,"largest_tested_significance_sigma":0.040089199446502445,
+    "classification":"NONIDENTIFIABLE_IN_FROZEN_LOCAL_CONTROL_SCOPE"
+  },
+  "b7_shapefit_C1_profile": {
+    "result_file":"models/canonical_quintessence/b7_shapefit_c1_profile_result.json",
+    "scope":"same corrected ShapeFit covariance with nearest C1 epsilon amplitude profiled",
+    "whitened_acute_angle_deg":33.72395208648241,"sigma_q_unprofiled":2.2688523183385048,"sigma_q_profiled_over_C1":4.086607188226211,
+    "sigma_degradation_factor":1.8011781353926377,"whitened_orthogonal_residual_fraction":0.5551921713628901,
+    "largest_tested_q_profiled_significance_sigma":0.02202315903013532,
+    "classification":"NONIDENTIFIABLE_AFTER_C1_PROFILING_IN_FROZEN_SHAPEFIT_CONTROL",
+    "B7_implication":"PARTIAL: a non-collinear whitened direction exists, but it carries far too little absolute information in this scoped control to support observational mechanism novelty"
   },
   "prospective_holdout_lambda_0p225": {
-    "strength_level": 1,
-    "type": "prospective within-family withheld interpolation point",
-    "preregistration_commit": "b0ff43a0951458293ffb71b2dd2646a974b12cd6",
-    "preregistration_time_utc": "2026-09-09T10:12:37Z",
-    "first_execution_commit": "2f66353acad0fe85cf570f3198e9a7785e64e783",
-    "first_execution_run_id": 34339027169,
-    "first_execution_time_utc": "2026-09-09T10:13:06Z",
-    "first_execution_conclusion": "success",
-    "artifact_digest": "sha256:3f7f149356f56284d137223b3e32b32992aea815400072b0be86db5e9d0fd576",
-    "lambda": 0.225,
-    "prediction_rule": "componentwise mean of r(lambda)/lambda^2 over training lambda={0.075,0.15,0.30}, multiplied by 0.225^2",
-    "Omega_target_error": 9.643874587794699e-11,
-    "relative_l2_error_lnH": 0.0013262775511469422,
-    "angle_deg_lnH": 0.019997848782056224,
-    "relative_l2_error_lnP": 0.009868617592576536,
-    "angle_deg_lnP": 0.5249527598903336,
-    "result": "SUPPORTED",
-    "anti_overclaim": "one within-family interpolation holdout supports local predictive regularity only; it is not a universal DSIR law or observational discrimination"
+    "strength_level":1,"type":"prospective within-family withheld interpolation point","preregistration_commit":"b0ff43a0951458293ffb71b2dd2646a974b12cd6",
+    "preregistration_time_utc":"2026-09-09T10:12:37Z","first_execution_commit":"2f66353acad0fe85cf570f3198e9a7785e64e783",
+    "first_execution_run_id":34339027169,"first_execution_time_utc":"2026-09-09T10:13:06Z","first_execution_conclusion":"success",
+    "artifact_digest":"sha256:3f7f149356f56284d137223b3e32b32992aea815400072b0be86db5e9d0fd576","lambda":0.225,
+    "prediction_rule":"componentwise mean of r(lambda)/lambda^2 over training lambda={0.075,0.15,0.30}, multiplied by 0.225^2",
+    "Omega_target_error":9.643874587794699e-11,"relative_l2_error_lnH":0.0013262775511469422,"angle_deg_lnH":0.019997848782056224,
+    "relative_l2_error_lnP":0.009868617592576536,"angle_deg_lnP":0.5249527598903336,"result":"SUPPORTED",
+    "anti_overclaim":"one within-family interpolation holdout supports local predictive regularity only; it is not a universal DSIR law or observational discrimination"
   },
   "anti_overclaim": [
     "q=lambda^2 is established only within the tested canonical branch and numerical scope",
-    "B6 and the cross-channel separator are unwhitened theory-space results, not observational discrimination",
-    "B2 retains a measured numerical gauge/subtraction floor and remains PARTIAL",
-    "B7 is only PARTIAL because observation-space and measurement-degeneracy quotienting remain open",
+    "B2 remains PARTIAL because response-level cross-gauge stability fails even when raw observables are stable",
+    "B5 NONIDENTIFIABLE is scoped observational non-identifiability, not physical falsification",
+    "B6 theory-space and cross-channel separators do not imply observational discrimination",
+    "B7 remains PARTIAL because the whitened C1-orthogonal component is itself extremely low signal in the scoped ShapeFit control",
     "B8 support is level 1 within-family interpolation only and cannot be promoted to a universal law",
     "the model is not established as the physical explanation of dark energy"
   ]
