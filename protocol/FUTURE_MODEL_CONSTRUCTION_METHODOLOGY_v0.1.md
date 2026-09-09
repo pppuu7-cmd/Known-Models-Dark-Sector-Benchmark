@@ -1,8 +1,8 @@
 # Future Dark-Sector Model Construction Methodology v0.1
 
-Updated: 2026-09-08
+Updated: 2026-09-09
 Status: LIVING / evidence-fed from KMDSB waves
-Scientific authority: `pppuu7-cmd/Dark-Sector-Influence-Reconstruction@e3276e2193f6a5200b541a194e3175356ae5a1c1`
+Authority handling: see `recovery/AUTHORITY_DELTAS.md`; W00-W02 evidence remains frozen to DSIR `e3276e2193f6a5200b541a194e3175356ae5a1c1`, while W03 may start from `328f2ca80b724870b851c7fe6366cce1ca5086cd`.
 
 ## Purpose
 
@@ -33,7 +33,8 @@ Before deriving or fitting a candidate:
 - pin solver/code versions and parameter conventions;
 - define the known-sector subtraction;
 - define model domain, units, gauge/frame and reference cosmology;
-- record which channels are implemented, unknown, undefined or solver-limited.
+- record which channels are implemented, unknown, undefined or solver-limited;
+- if a newer authority is adopted, record the delta rather than silently rebasing old evidence.
 
 No result is allowed to mix authority snapshots silently.
 
@@ -92,7 +93,9 @@ Missing channels are masked, never filled with zeros.
 
 The local response Jacobian must be rank-tested; parameter count is not identified rank. Near-collinearity must be quantified.
 
-Supported by DP-0301..DP-0304, DP-0401..DP-0404, DP-0502 and DP-0604.
+A scalar compression such as one characteristic scale or epoch may be useful for diagnostics, but it must be checked against the fuller profile before it is treated as a mechanism discriminator. W02-E4 is the calibration example: the same amplitude-invariant temporal centroid `z_R` can be computed across families, yet the nearest C1 value lies close to the DCDM sequence and no frozen scalar separation threshold exists.
+
+Supported by DP-0301..DP-0304, DP-0401..DP-0404, DP-0502, DP-0604 and DP-0703.
 
 ### F5 — observation-space identifiability before interpretation
 
@@ -112,13 +115,15 @@ A model that is theoretically clean but has a response far below the covariance 
 
 Wave 0 M01/wCDM is the calibration example: a controlled local deformation exists, yet the corrected DESI DR1 ShapeFit control gives approximately `sigma(epsilon_w)=0.1782`; the frozen `epsilon_w=1e-4` step is only about `5.61e-4 sigma` in that limited test.
 
-Supported by DP-0103, DP-0105 and DP-0106.
+Wave 02 strengthens this rule: its theory-space and observation-space comparator graphs are stored separately, and no new theory-space pairwise separation was promoted to observational discrimination without a pinned operator/covariance.
+
+Supported by DP-0103, DP-0105, DP-0106 and DP-0702.
 
 ### F6 — nearest-comparator attack
 
-Every candidate must be attacked by the closest alternative mechanisms in the smallest valid common observable block.
+Every candidate must be attacked by the closest implemented alternative mechanisms in the smallest **sufficient** valid common observable block.
 
-Do not compare interpretations; compare response geometry under identical masks, grids, baselines and conventions.
+Do not compare interpretations; compare response geometry under identical masks, grids, baselines and conventions. Do not choose a lossy one-number summary merely because it is convenient.
 
 For two local response directions `u` and `v`, use normalized geometry only as a theory-space diagnostic:
 
@@ -126,13 +131,15 @@ For two local response directions `u` and `v`, use normalized geometry only as a
 
 Exact collinearity may be rejected in theory space, but observational discrimination is not promoted until covariance-aware whitening is performed.
 
-Current Wave 2 examples:
-- IDE vs GDM: closest frozen low-k pair has acute angle about 24.79 deg; exact directional equivalence is rejected within scope.
-- IDE vs designer f(R): acute angles about 42.45 deg and 59.40 deg for the frozen IDE rays against the minimum resolved f(R) production ray; exact directional equivalence is rejected within scope.
+Wave 2 examples:
+- IDE vs GDM: closest frozen low-k pair has acute angle about `24.79 deg`; exact directional equivalence is rejected within scope.
+- IDE vs designer f(R): acute angles about `42.45 deg` and `59.40 deg` for the frozen IDE rays against the minimum resolved f(R) production ray; exact directional equivalence is rejected within scope.
+- WDM vs alternative small-scale suppression: `BLOCKED_IMPLEMENTATION`, because no second non-WDM suppression family is pinned on a valid same-convention high-k block. This is explicitly **not evidence of WDM uniqueness**.
+- DCDM vs temporal alternatives: a common scalar `z_R` exists, but the edge remains `INCONCLUSIVE`; a portable coordinate is not automatically a sufficient discriminator.
 
-These are theory-space results only.
+A missing comparator implementation is a limitation of the benchmark coverage, not positive evidence for the candidate. This is a hard construction rule.
 
-Supported by DP-0403, DP-0501 and DP-0504.
+Supported by DP-0403, DP-0501, DP-0504 and DP-0701..DP-0704.
 
 ### F7 — quotient-surviving novelty
 
@@ -165,7 +172,7 @@ Minimum promotion package:
 4. conservation/gauge/frame closure;
 5. reproducible multi-channel DSIR response map;
 6. covariance-aware identifiability estimate;
-7. nearest-comparator graph;
+7. nearest-comparator graph with implemented alternatives and explicit blocked edges;
 8. at least one prospective holdout prediction;
 9. machine-readable provenance and solver controls;
 10. explicit list of which KMDSB design priors the candidate satisfies, violates or makes obsolete.
@@ -182,7 +189,24 @@ Use four conceptual levels:
 
 Until the CSV schema is upgraded, keep its stored status unchanged and record promotion evidence in methodology/research logs rather than silently rewriting historical meaning.
 
-## 4. Current provisional architecture implied by Waves 0-2
+## 4. Wave-02 methodology closure
+
+Wave 02 closed on 2026-09-09 with four frozen hypotheses supported:
+
+1. restricted-block degeneracy is not full equivalence;
+2. missing common implementations create legitimate `BLOCKED_*` edges;
+3. the minimum discriminating suite is a graph problem rather than one universal scalar;
+4. observation-space promotion is separate from theory-response geometry.
+
+New design priors generated by this closure:
+- **DP-0701** — uniqueness requires implemented nearest comparators; absence of a comparator is not evidence of uniqueness;
+- **DP-0702** — theory-space and observation-space comparator graphs remain separate until a pinned operator/covariance supports promotion;
+- **DP-0703** — portable characteristic scalars must be stress-tested against fuller profiles;
+- **DP-0704** — use the smallest sufficient common response block with frozen masks, baselines and provenance, not the smallest convenient summary.
+
+The ledger now contains **34 ACTIVE requirements** (`DP-0001..DP-0704`). This count is not a claim that all 34 will become axioms of the future model.
+
+## 5. Current provisional architecture implied by Waves 0-2
 
 A promising future model should preferentially have:
 - a clean LambdaCDM/reference intersection;
@@ -191,12 +215,13 @@ A promising future model should preferentially have:
 - a characteristic scale and/or time structure that can move in a predictive way;
 - at least one metric/slip or temporal discriminator where available;
 - signatures that survive comparison with both dark-sector and modified-gravity alternatives;
+- implemented nearest-comparator coverage sufficient to make any uniqueness claim meaningful;
 - amplitudes large enough to be observable in at least one realistic covariance-whitened channel without violating physical constraints;
 - prospective predictions not used to tune the model.
 
-This list is provisional. No new model should yet be built by hard-coding all 30 current priors as axioms.
+This list is provisional. No new model should yet be built by hard-coding all 34 current priors as axioms.
 
-## 5. Anti-patterns forbidden by the benchmark
+## 6. Anti-patterns forbidden by the benchmark
 
 - zero-imputing unknown channels;
 - symmetric derivatives through a forbidden parameter region;
@@ -207,14 +232,16 @@ This list is provisional. No new model should yet be built by hard-coding all 30
 - defining a holdout relation after looking at the holdout;
 - interpreting solver thresholds as physical tangents;
 - calling a new interpretation a new observable direction;
+- claiming uniqueness because the nearest alternative has not been implemented;
+- promoting a one-number characteristic scale/epoch without checking the fuller response profile;
 - promoting a design prior without recording the benchmark evidence that generated it.
 
-## 6. Update rule
+## 7. Update rule
 
 After every completed benchmark wave:
 1. update `matrices/design_prior_ledger.csv` with newly extracted requirements;
 2. update this document with only the methodology changes that survived the wave;
-3. update `recovery/STATE.md` and `recovery/RESTORE_FROM_NEW_CHAT.md`;
+3. update `recovery/STATE.md`, `recovery/RESTORE_FROM_NEW_CHAT.md` and `recovery/AUTHORITY_DELTAS.md` when relevant;
 4. append the chronology to `logs/research_log.md`;
 5. keep unresolved/blocked evidence explicit rather than deleting it.
 
