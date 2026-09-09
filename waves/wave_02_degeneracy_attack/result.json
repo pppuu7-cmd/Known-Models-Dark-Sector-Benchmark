@@ -1,0 +1,30 @@
+{
+  "schema_version": "KMDSB-wave-result-v0.1",
+  "wave": "W02",
+  "name": "Same-observable degeneracy attack",
+  "status": "COMPLETE",
+  "closed": "2026-09-09",
+  "starting_dsir_authority": "e3276e2193f6a5200b541a194e3175356ae5a1c1",
+  "authority_note": "DSIR main later advanced to 328f2ca80b724870b851c7fe6366cce1ca5086cd; W02 evidence remains pinned to its starting authority and is not silently rebased.",
+  "edges": [
+    {"id":"PC1","pair":"M03_GDM_vs_M05_designer_fR","status":"PASS_WITH_SCOPE","minimum_common_information":"scale plus time/full response geometry"},
+    {"id":"E1","pair":"M02_IDE_vs_M03_GDM","status":"PASS_WITH_SCOPE","minimum_common_information":"frozen 7x5 low-k r_Delta tangent geometry","closest_acute_angle_deg":24.786398074293924},
+    {"id":"E2","pair":"M02_IDE_vs_M05_designer_fR","status":"PASS_WITH_SCOPE","minimum_common_information":"frozen 7x5 low-k r_Delta geometry","acute_angles_deg":[42.450272692967864,59.40410068973369]},
+    {"id":"E3","pair":"M04_WDM_vs_alternative_small_scale_suppression","status":"BLOCKED_IMPLEMENTATION","minimum_common_information":"second pinned same-convention high-k suppression mechanism required"},
+    {"id":"E4","pair":"M06_DCDM_vs_alternative_temporal_histories","status":"INCONCLUSIVE","minimum_common_information":"common scalar temporal centroid z_R exists but is insufficient for hard mechanism discrimination"}
+  ],
+  "hypotheses": {
+    "H1_restricted_block_degeneracy_is_not_equivalence": "SUPPORTED",
+    "H2_missing_common_channels_create_legitimate_blocked_edges": "SUPPORTED",
+    "H3_minimum_discriminating_suite_is_a_graph_problem": "SUPPORTED",
+    "H4_observation_space_promotion_is_separate": "SUPPORTED"
+  },
+  "central_result": "Pairwise discrimination is graph- and channel-dependent. Restricted-block similarity, missing comparator implementations, and lossy scalar summaries are distinct failure modes. No W02 theory-space edge is promoted to observational discrimination without a pinned operator/covariance.",
+  "methodology_deltas": [
+    "Never infer uniqueness from missing comparator implementation.",
+    "Keep theory-space and observation-space comparator graphs separate.",
+    "A portable characteristic scalar can still be too lossy; retain full temporal profiles when nearest alternatives are close.",
+    "Nearest-comparator testing must use the smallest sufficient common block, not the smallest convenient summary."
+  ],
+  "next_wave": "W03 expanded dark-energy family and adversarial temporal/scale-response testing"
+}
