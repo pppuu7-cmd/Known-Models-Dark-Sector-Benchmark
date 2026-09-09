@@ -62,19 +62,44 @@ def metrics(a,b):
         'max_absolute_difference':float(np.max(np.abs(d)))
     }
 
+def safe_log_abs_ratio(a,b):
+    a=np.asarray(a,float); b=np.asarray(b,float)
+    if np.any(a==0) or np.any(b==0): raise ValueError('zero in log-abs ratio')
+    return np.log(np.abs(a)/np.abs(b))
+
+def fractional_response(model,ref):
+    model=np.asarray(model,float); ref=np.asarray(ref,float)
+    if np.any(np.abs(ref)<1e-30): raise ValueError('near-zero reference in fractional response')
+    return (model-ref)/ref
+
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument('--sync',required=True); ap.add_argument('--newt',required=True); ap.add_argument('--json',required=True); args=ap.parse_args()
-    out={'schema':'KMDSB-W03-M07-gauge-bookkeeping-v0.2','grid':{'z':Z.tolist(),'k_h_mpc':K.tolist()},'comparisons':{}}
-    p={}
+    out={'schema':'KMDSB-W03-M07-gauge-bookkeeping-v0.3','grid':{'z':Z.tolist(),'k_h_mpc':K.tolist()},'comparisons':{}}
+    p={}; t={}
     for case,prefix in [('ref','ref_'),('m07','m07_')]:
         ps=load_pk(args.sync,prefix); pn=load_pk(args.newt,prefix)
         p[(case,'sync')]=ps; p[(case,'newt')]=pn
         out['comparisons'][f'{case}_P']=metrics(ps,pn)
         ts=load_tk(args.sync,prefix); tn=load_tk(args.newt,prefix)
+        t[(case,'sync')]=ts; t[(case,'newt')]=tn
         for name in ('d_m','phi','psi'): out['comparisons'][f'{case}_{name}']=metrics(ts[name],tn[name])
     rps=np.log(p[('m07','sync')]/p[('ref','sync')])
     rpn=np.log(p[('m07','newt')]/p[('ref','newt')])
     out['comparisons']['response_lnP']=metrics(rps,rpn)
+
+    # Direct transfer-level representations, avoiding the separate mPk pipeline.
+    rdms=safe_log_abs_ratio(t[('m07','sync')]['d_m'],t[('ref','sync')]['d_m'])
+    rdmn=safe_log_abs_ratio(t[('m07','newt')]['d_m'],t[('ref','newt')]['d_m'])
+    out['comparisons']['response_ln_abs_d_m']=metrics(rdms,rdmn)
+
+    ws=t[('m07','sync')]['phi']+t[('m07','sync')]['psi']
+    wrs=t[('ref','sync')]['phi']+t[('ref','sync')]['psi']
+    wn=t[('m07','newt')]['phi']+t[('m07','newt')]['psi']
+    wrn=t[('ref','newt')]['phi']+t[('ref','newt')]['psi']
+    rws=fractional_response(ws,wrs)
+    rwn=fractional_response(wn,wrn)
+    out['comparisons']['response_fractional_Weyl_phi_plus_psi']=metrics(rws,rwn)
+
     # Cross-gauge raw-log errors for common-mode calibration diagnosis.
     dg_ref=np.log(p[('ref','sync')]/p[('ref','newt')])
     dg_m07=np.log(p[('m07','sync')]/p[('m07','newt')])
