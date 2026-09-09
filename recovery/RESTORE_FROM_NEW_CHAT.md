@@ -7,214 +7,234 @@ Purpose: resume KMDSB/DSIR benchmark development from another chat without relyi
 
 If chat memory conflicts with repository evidence, repository evidence wins.
 
-- W00-W02 authority: `Dark-Sector-Influence-Reconstruction@e3276e2193f6a5200b541a194e3175356ae5a1c1`.
-- W03 authority: `Dark-Sector-Influence-Reconstruction@328f2ca80b724870b851c7fe6366cce1ca5086cd`.
-- transition: `recovery/AUTHORITY_DELTAS.md` AD-001.
+Historical scientific authorities are not silently rebased:
+- W00-W02: `Dark-Sector-Influence-Reconstruction@e3276e2193f6a5200b541a194e3175356ae5a1c1`.
+- W03 starting authority / M07 physical evidence: `328f2ca80b724870b851c7fe6366cce1ca5086cd`.
+- current W03 observation-space methodology overlay from corrected M08 onward: `864952e1520d82473a9e976edfeb69f9899d174d`.
+- exact transitions: `recovery/AUTHORITY_DELTAS.md` AD-001 and AD-002.
 
-Never silently rebase historical results.
+Authority continuity is provenance/history, not numerical equality or successful replay.
 
 ## 1. Read order in a fresh chat
 
 1. `recovery/STATE.md`
 2. this file
 3. `recovery/AUTHORITY_DELTAS.md`
-4. `models/canonical_quintessence/result.json`
-5. `models/canonical_quintessence/OBSERVATION_SPACE_AUDIT.md`
-6. `protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.1.md`
-7. `protocol/W03_MODEL_CONSTRUCTION_LESSONS_v0.1.md`
-8. `protocol/W03_M07_OBSERVATION_SPACE_LESSONS.md`
-9. `protocol/NUMERICAL_CALIBRATION_RULES_v0.1.md`
-10. `protocol/DSIR_BENCHMARK_PROTOCOL_v0.1.md`
-11. `protocol/WAVE_TESTING_PROTOCOL_v0.1.md`
-12. `matrices/benchmark_matrix.csv`
-13. `matrices/design_prior_ledger.csv`
-14. active W03 model files.
+4. `protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md`
+5. `protocol/W03_M08_MODEL_CONSTRUCTION_LESSONS_v0.1.md`
+6. `models/canonical_quintessence/result.json`
+7. `models/cpl_dark_energy/result.json`
+8. `waves/wave_03_expanded_dark_energy/M08_M07_ABSORPTION_AUDIT.md`
+9. `waves/wave_03_expanded_dark_energy/M08_M07_ABSORPTION_RESULT.json`
+10. `matrices/benchmark_matrix.csv`
+11. `matrices/design_prior_ledger.csv`
+12. `logs/research_log.md`
+13. active W03 workflows/files.
 
 Do not reconstruct the project from README alone.
 
 ## 2. Project roles
 
-- DSIR: reconstruction/methodology authority.
-- KMDSB: benchmark range for known dark-sector, dark-energy and modified-gravity models.
-- Future original model: separate later repository; KMDSB supplies evidence-derived construction constraints.
+- DSIR: formal reconstruction/methodology authority.
+- KMDSB: model-family benchmark / adversarial test range.
+- Future original model: later separate repository; KMDSB supplies evidence-derived construction constraints.
 
 ## 3. Frozen B0-B9 funnel
 
-B0 provenance -> B1 reference embedding -> B2 conservation/gauge/frame -> B3 physical/numerical domain -> B4 response/masks -> B5 observational identifiability -> B6 nearest comparator -> B7 quotient-surviving novelty -> B8 prospective holdout -> B9 synthesis/design priors.
+B0 provenance -> B1 reference embedding -> B2 conservation/gauge/frame -> B3 physical/numerical control -> B4 response/masks -> B5 observational identifiability -> B6 nearest comparator -> B7 quotient-surviving novelty -> B8 prospective holdout -> B9 synthesis/design priors.
 
-Never collapse `FAIL`, `NONIDENTIFIABLE`, `BLOCKED_*`, `INCONCLUSIVE`, numerical failure and physical failure into one state.
+Do not collapse `FAIL`, `NONIDENTIFIABLE`, `BLOCKED_*`, `INCONCLUSIVE`, implementation failure and physical failure.
 
 ## 4. Completed waves
 
 ### W00 COMPLETE
-M00 LambdaCDM control and M01 smooth non-phantom wCDM. M01 is DSIR-compatible but `NONIDENTIFIABLE` in corrected DESI DR1 ShapeFit local control: `sigma(epsilon_w)=0.1781944`; epsilon=1e-4 is only `~5.61e-4 sigma`.
+M00 LambdaCDM control; M01 smooth non-phantom wCDM scoped `NONIDENTIFIABLE` in corrected DESI DR1 ShapeFit.
 
 ### W01 COMPLETE
 M02 IDE, M03 GDM, M04 WDM, M05 designer f(R), M06 DCDM.
 
 ### W02 COMPLETE
-- E1 IDE/GDM `PASS_WITH_SCOPE`, closest angle `24.786398 deg`.
-- E2 IDE/f(R) `PASS_WITH_SCOPE`, `42.450273/59.404101 deg`.
+- E1 IDE/GDM theory-response separation `PASS_WITH_SCOPE`.
+- E2 IDE/f(R) theory-response separation `PASS_WITH_SCOPE`.
 - E3 WDM alternative suppression `BLOCKED_IMPLEMENTATION`.
-- E4 DCDM temporal scalar `INCONCLUSIVE`.
+- E4 temporal scalar comparator `INCONCLUSIVE`.
+
 Keep theory-space and observation-space graphs separate.
 
-## 5. W03 ACTIVE — M07 canonical quintessence reached current stopping rule
+## 5. W03 — M07 canonical quintessence
 
-Pinned solver: `lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540`.
-
-Branch:
-`V=(1+A)exp(-lambda phi)`, alpha=0, B=0, non-attractor IC, phi_ini=1, phi'_ini=0, A shooting nuisance.
-Exact field-reflection quotient identifies `(lambda,phi)~(-lambda,-phi)` and local invariant coordinate `q=lambda^2`.
+Overall: `DSIR_PREDICTIVE_SUPPORT`.
 
 Current gates:
-B0 `PASS_WITH_SCOPE`; B1 `PASS_WITH_SCOPE`; B2 `PARTIAL`; B3 `PASS_WITH_SCOPE`; B4 `PASS_WITH_SCOPE`; B5 `NONIDENTIFIABLE`; B6 `PASS_WITH_SCOPE`; B7 `PARTIAL`; B8 `SUPPORTED`; B9 `PARTIAL`. Overall `DSIR_PREDICTIVE_SUPPORT`.
+B0 `PASS_WITH_SCOPE`; B1 `PASS_WITH_SCOPE`; B2 `PARTIAL`; B3 `PASS_WITH_SCOPE`; B4 `PASS_WITH_SCOPE`; B5 `NONIDENTIFIABLE`; B6 `PASS_WITH_SCOPE`; B7 `PARTIAL`; B8 `SUPPORTED` level-1; B9 `PARTIAL`.
 
-Machine authority: `models/canonical_quintessence/result.json`.
-Human summary: `models/canonical_quintessence/OBSERVATION_SPACE_AUDIT.md`.
+### Controlled branch
 
-### 5.1 Numerical/reference controls
+Pinned CLASS: `e85808324f51fc694d12e3ed7439552a3c3f9540`.
 
-Natural shooting seed:
-`A_seed=3 Omega_scf H0^2 exp(lambda phi_ini)-1`.
+`V=(1+A)exp(-lambda phi)`, alpha=0, B=0, non-attractor IC, A is shooting nuisance, lambda physical.
 
-Strict production run `34338140447`, digest `sha256:958708322566a2d36ce7522a3f705b543e0158c554a8de8e18e803c82a5c9cb8`.
-Full-DE lambda-zero reference:
-- achieved Omega `0.682686955181768` for target `0.682686955086854`;
-- max|lnH| `1.08876e-10`;
-- max|lnP| `2.16648e-10`.
+Exact field reflection `(lambda,phi)->(-lambda,-phi)` gives local quotient coordinate
 
-Default CLASS shooting tolerance caused fake Omega drift up to `1.23798e-3` at lambda=.30 and ~38.1% response-norm distortion. Strict `tol_shooting_deltax_rel=1e-13` is authoritative.
+`q=lambda^2`.
 
-### 5.2 Exact quotient and local coordinate
+Machine direction:
+`waves/wave_03_expanded_dark_energy/M07_LOCAL_Q_DIRECTION.json`.
 
-Fixed-chart lambda-sign parity run `34358465646` failed the frozen odd-fraction gate and remains preserved.
+### Key M07 results
 
-Correct field-reflection quotient run `34359042959`, digest `sha256:d5e747fc54aee3a8fe3c50372f5788d6c95bcddc47b3598cf1646d114ff041b1`, passed exactly for tested pairs.
+- Lambda-zero reference in strict production: lnH/lnP floor ~`1e-10`.
+- strict shooting tolerance required; solver default distorted finite response strongly.
+- q convergence at lambda .025/.075: relative difference `5.52e-4`, angle `0.0273 deg`.
+- q direction vs C1 constant-w: `6.694 deg`.
+- q direction vs frozen f(R): `60.728 deg`.
+- B2: raw observables cross-gauge stable, small derived residuals not; do not promote metric/Weyl separator in current representation.
+- B5 corrected ShapeFit: `sigma_q~2.269`; q=.09 only `~0.0401 sigma` -> `NONIDENTIFIABLE` in that scope.
+- after C1 profiling: q=.09 only `~0.0220 sigma`; B7 remains `PARTIAL`.
+- prospective lambda=.225 within-family holdout passes; B8 strength level 1 only.
 
-q-coordinate convergence run `34359536106`, digest `sha256:6cd91f54d94982425cbec2055c42f7e087458ae3a4e350796f9a661623240b5d`:
-- q-scaled low-k P relative difference .025 vs .075: `5.51889e-4`;
-- angle `0.0273111 deg`.
-Therefore `q=lambda^2` is the controlled local coordinate in this tested branch/scope.
+### New M08 consequence for M07
 
-Machine direction: `waves/wave_03_expanded_dark_energy/M07_LOCAL_Q_DIRECTION.json`.
+The earlier P/H cross-channel separator against constant-w does **not** survive a stronger 2D CPL family comparator.
 
-### 5.3 B6 / theory-space nearest comparators
+Do not promote the M07 constant-w P/H residual as mechanism-level novelty.
 
-M07 local q vs C1 smooth-w: `6.69445 deg`.
-M07 local q vs frozen designer f(R): `60.72848 deg`.
+M07 remains useful as a controlled/predictive benchmark family, but its tested P/H signature lies almost entirely inside the local CPL smooth-DE span.
 
-Cross-channel P/H comparator run `34373096320` shows that one shared C1 amplitude which best fits matter leaves ~30.9% H residual. This is a theory-space cross-channel separator only.
+## 6. W03 — M08 CPL time-varying smooth dark energy
 
-### 5.4 B2 gauge/frame status — PARTIAL
+Scientific role: stronger phenomenological nearest-family comparator.
 
-Raw paired synchronous/Newtonian P,d_m,phi,psi pass the frozen `1e-4` regression, but small model/reference residuals do not.
+Branch:
 
-Initial lnP residual mismatch: `0.0309915691`.
-Independent precision run `34390302626`, digest `sha256:da93dd0b1afa983cffbc07e162f54cb728b6ede22c070bfc2b4d9001a4a0faed`:
-- baseline `0.0309915691`;
-- tight `0.0309879842`;
-- improvement ratio `0.9998843`, failing frozen <=0.50 convergence requirement.
+`w(a)=w0+wa(1-a)`
 
-Direct transfer-level run `34390614155`, digest `sha256:6805465c0c8b932a15c6bab20641cc1599a36bd428707efd1eb396ce624ab9b8`:
-- ln|d_m_model/d_m_ref| mismatch `0.03104952`;
-- fractional Weyl response mismatch `0.12892986`.
+`epsilon0=1+w0`, `epsilon_a=wa`
 
-Conclusion: current residual representations contain a persistent cross-gauge/systematic floor. This is not physical gauge dependence, but metric/Weyl response cannot be promoted as a clean discriminator in the current representation.
+CLASS CLP, `cs2_fld=1`, `use_ppf=yes`.
 
-### 5.5 B5 — NONIDENTIFIABLE in corrected ShapeFit control
+Pure-fluid closure:
+- explicit `Omega_Lambda=0`;
+- `Omega_fld` inferred by solver closure.
 
-Run `34390859777`, digest `sha256:91cd68778994d06a3d41c849a7dadf2ccb9ca23f8abd924666dc41d6d2f526c4`.
-Result file: `models/canonical_quintessence/b5_shapefit_q_fisher_result.json`.
+### M08 run #1 — preserved implementation failure
 
-Same corrected DESI DR1 ShapeFit AP+growth+shape covariance as M01; optimistic unmarginalized control.
+Actions `34391852165`, digest `sha256:0c8cf5c2de8f3d4cc9f62d9a8574a60656db38caee297b01b6fdf1674517045e`.
 
-- `F_q=0.19428289`;
-- `sigma_q=2.26872951`.
-Production significances:
-- lambda=.025 -> `0.0002755 sigma`;
-- .075 -> `0.0024795 sigma`;
-- .15 -> `0.0099386 sigma`;
-- .30 -> `0.0400892 sigma`.
+All cases stopped before evolution because both `Omega_Lambda` and `Omega_fld` were specified. This is configuration failure only, not physical CPL failure.
 
-Classification: `NONIDENTIFIABLE_IN_FROZEN_LOCAL_CONTROL_SCOPE`, not physical falsification.
+### M08 run #2 — local basis PASS_WITH_SCOPE
 
-### 5.6 B7 — nearest-C1 profiling in observation space
+Actions `34394929596`, head `a3bb13aab2f181fed31882d31f819c9d0b0a7a36`, digest `sha256:561bf0abc6b9247fe9bd517c142eeac5f96c677eab430993bd6cb1473e3a6a97`.
 
-Result file: `models/canonical_quintessence/b7_shapefit_c1_profile_result.json`.
+Local central step `1e-3` in epsilon0/wa.
 
-Same ShapeFit covariance, profiling C1 epsilon_w amplitude:
-- whitened acute angle q vs epsilon = `33.72395 deg`;
-- orthogonal residual fraction = `0.55519`;
-- sigma_q unprofiled = `2.26885`;
-- sigma_q profiled over C1 = `4.08661`;
-- largest tested q=.09 profiled significance = `0.022023 sigma`.
+Combined 35-node lnP + 7-node lnH basis:
+- direction angle `9.1790225 deg`;
+- singular values `{1.88297176,0.09452819}`;
+- `sigma2/sigma1=0.0502016`.
 
-Thus a non-collinear whitened component exists but its absolute information is negligible. B7 remains `PARTIAL`; no observational mechanism novelty claim.
+Central nonlinearity ratios are ~`3.4e-4` to `1.33e-3`.
 
-### 5.7 B8 — prospective within-family support
+Interpretation: nominal parameter dimension 2 but strongly anisotropic response. This independently reinforces `parameter count != response rank`.
 
-Preregistered lambda=.225 holdout:
-- run `34339027169`;
-- digest `sha256:3f7f149356f56284d137223b3e32b32992aea815400072b0be86db5e9d0fd576`.
-Prediction rule was frozen before execution from q-scaled training points lambda={.075,.15,.30}.
+Machine basis:
+`waves/wave_03_expanded_dark_energy/M08_CPL_LOCAL_BASIS.json`.
 
-Holdout errors:
-- lnH relative L2 `0.0013263`, angle `0.019998 deg`;
-- lnP relative L2 `0.0098686`, angle `0.524953 deg`.
+### M08 -> M07 absorption result
 
-Classification: `SUPPORTED`, strength level 1 only. This is local within-family predictive regularity, not a universal law and not observational discrimination.
+Reproducible calculator:
+`code/w03_m08_absorb_m07.py`.
 
-## 6. Future-model design methodology
+Result:
+`waves/wave_03_expanded_dark_energy/M08_M07_ABSORPTION_RESULT.json`.
 
-`matrices/design_prior_ledger.csv` now contains **48 ACTIVE requirements**, DP-0001..DP-0814.
+Fit one shared CPL parameter vector to concatenated M07 local q P+H response.
 
-Latest W03 requirements:
-- DP-0812: orthogonal channels count only after gauge/frame and subtraction-floor robustness;
-- DP-0813: predictive regularity and observational identifiability are independent promotion axes;
-- DP-0814: after whitening/comparator profiling report absolute profiled significance as well as angle/residual fraction.
+Best coefficients per unit q:
+- `epsilon0/q = 0.1406534871`
+- `wa/q = -0.2006790927`.
 
-Read `protocol/W03_M07_OBSERVATION_SPACE_LESSONS.md` before designing a new model.
+Residual after 2D CPL fit:
+- combined `1.107%`
+- P `0.864%`
+- H `1.993%`.
 
-## 7. M07 stopping rule
+Same-solver constant-w-like epsilon0-only residual:
+- combined `15.820%`
+- P `12.064%`
+- H `29.149%`.
 
-Do not spend unlimited cycles tightening the same M07 gauge residual. Further M07 work is justified only if a genuinely different gauge-invariant observable construction or new observational operator is introduced.
+Thus CPL improves absorption by about `14.3x` overall.
 
-## 8. Immediate continuation — M08
+Classification:
+`CPL_ABSORBS_M07_CROSSCHANNEL_SEPARATOR_WITH_SCOPE`.
 
-Next W03 target: **M08 time-varying smooth dark energy / CPL w0-wa comparator**.
+This is local unwhitened theory-space evidence, not observational equivalence.
 
-Primary preregistered question:
-Can a two-dimensional time-varying smooth-DE manifold absorb the M07 P/H cross-channel separator that constant-w C1 cannot?
+## 7. DSIR main advancement / AD-002
 
-Required sequence:
-1. inspect and pin exact solver implementation and perturbation semantics for CPL;
-2. freeze LambdaCDM reference `(w0,wa)=(-1,0)` and physical/admissible domain before differentiation;
-3. build a controlled 2D local response basis in matched P and H blocks;
-4. fit M07 local q direction using one shared CPL parameter vector across both blocks;
-5. report residual geometry before observational interpretation;
-6. only then apply covariance whitening / profiling where a pinned operator exists.
+Inspected DSIR main `864952e...` is 23 commits ahead of W03 starting authority `328f2ca...`.
 
-If CPL absorbs M07, future-model lesson: flexible time-dependent phenomenological DE is the stronger comparator and a viable original model needs an additional perturbative/metric/time signature. If it does not, the M07 cross-channel separator is reinforced.
+Relevant Article-2 G5 changes:
+- cross-family data-whitened stress contract prospectively frozen;
+- synthetic fail-closed QA PASS;
+- real ACT x unWISE 26-coordinate covariance/operator machinery located and reusable;
+- multi-family provider -> exact same 26-coordinate response matrix is not yet bound;
+- real classifying G5 execution is therefore still blocked by the mapping/interface, not by covariance acquisition.
 
-## 9. Never infer
+Hard rule now used for M08 and later:
 
-- numerical failure == physical failure;
-- predictive holdout support == observability;
-- whitened angle == detection;
-- theory-space separator == observational novelty;
-- near-alignment == physical equivalence;
-- missing comparator == uniqueness;
-- production grid == B8 evidence;
-- newest DSIR main == authority for old waves.
+A covariance alone is insufficient for cross-family observational promotion. Every compared family must be propagated through one exact prospectively frozen observation operator into the same coordinate vector/order/units/masks on which the covariance acts.
 
-## 10. Maintenance rule
+Do not relabel the earlier model-specific ShapeFit controls as DSIR Article-2 G5 closure.
+
+## 8. Future-model methodology
+
+Active methodology:
+`protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md`.
+
+M08-specific lessons:
+`protocol/W03_M08_MODEL_CONSTRUCTION_LESSONS_v0.1.md`.
+
+Design ledger currently contains **51 ACTIVE requirements, DP-0001..DP-0817**.
+
+Newest rules:
+- DP-0815: profile the full implemented local comparator-family manifold/span, not one representative ray;
+- DP-0816: exact common observation-operator/covariance coordinate bridge before cross-family observation-space claims;
+- DP-0817: closure/normalization assignments are explicit provenance and configuration failure != physical failure.
+
+M08 also reinforces DP-0303 and DP-0504.
+
+## 9. Immediate continuation
+
+Highest-priority next work:
+
+1. preregister and run M08 local-step stability at a second smaller finite-difference step; confirm the 2D CPL tangent plane and the M07 absorption coefficients are stable;
+2. only after that, build a common M07/M08 observational-operator manifest obeying AD-002;
+3. if DSIR main later binds the ACT x unWISE multi-family provider bridge, reuse that exact 26-coordinate chain rather than inventing a substitute;
+4. search for a gauge-robust response channel outside the CPL smooth-DE span;
+5. use further W03 families to begin promoting repeated priors to `REINFORCED` where justified.
+
+## 10. Never infer
+
+- configuration/numerical failure == physical failure;
+- parameter count == response rank;
+- separation from one ray == separation from the comparator family;
+- theory-space absorption == observational equivalence;
+- covariance exists == covariance is coordinate-compatible;
+- predictive holdout == observability;
+- newest DSIR main == authority for every old result;
+- missing comparator == uniqueness.
+
+## 11. Maintenance rule
 
 Every meaningful frontier change must synchronize:
-- per-model audit/result;
-- benchmark and design-prior matrices;
-- future-model methodology when evidence changes construction rules;
-- `recovery/STATE.md` and this manual;
-- chronology/log.
+- model audit/result;
+- wave evidence;
+- benchmark/design-prior matrices;
+- active construction methodology;
+- `STATE.md`, this manual and authority deltas;
+- research chronology.
 
 A new chat must be able to continue from repository evidence alone.
