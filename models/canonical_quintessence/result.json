@@ -17,7 +17,7 @@
     "attractor_ic_scf": false,
     "phi_ini": 1.0,
     "phi_prime_ini": 0.0,
-    "physical_shape_parameter": "lambda",
+    "physical_shape_parameter": "lambda modulo exact field reflection",
     "shooting_nuisance": "A",
     "scf_tuning_index": 2,
     "shooting_seed": "A_seed(lambda)=3 Omega_scf H0^2 exp(lambda phi_ini)-1",
@@ -82,16 +82,38 @@
     },
     "interpretation": "M07 is near-aligned but not collinear with smooth-w on low-k matter response and is far from the frozen designer-f(R) ray; observational promotion remains open"
   },
-  "active_local_geometry_audit": {
-    "workflow": ".github/workflows/w03-m07-parity-coordinate-audit.yml",
+  "fixed_coordinate_parity": {
     "run_id": 34358465646,
-    "question": "whether the near-reference response is even in lambda and the natural local coordinate is q=lambda^2",
-    "preregistered_odd_fraction_max": 0.001
+    "artifact_digest": "sha256:807e935cfa758df81c251531a672c829f430ab41a44e3219fe67a0fbbbe6cb40",
+    "frozen_odd_fraction_max": 0.001,
+    "lnP_odd_fraction": {"abs_lambda_0p025": 0.0074666132, "abs_lambda_0p075": 0.0020276864},
+    "result": "FAIL_WITH_SCOPE",
+    "interpretation": "lambda sign flip at fixed phi_ini=+1 is not parity on the physical field-reflection quotient"
+  },
+  "field_reflection_quotient_parity": {
+    "run_id": 34359042959,
+    "artifact": "w03-m07-field-reflection-quotient-parity",
+    "artifact_digest": "sha256:d5e747fc54aee3a8fe3c50372f5788d6c95bcddc47b3598cf1646d114ff041b1",
+    "map": "(lambda,phi_ini)->(-lambda,-phi_ini)",
+    "preregistered_odd_fraction_max": 1e-6,
+    "tested_abs_lambda": [0.025, 0.075],
+    "lnP_odd_fraction": [0.0, 0.0],
+    "lnH_odd_fraction": [0.0, 0.0],
+    "result": "PASS_WITH_SCOPE",
+    "interpretation": "sign(lambda) is redundant on the tested canonical field-reflection quotient; q=lambda^2 is an admissible invariant coordinate candidate but q-linearity remains separately unclosed"
+  },
+  "active_q_precision_audit": {
+    "workflow": ".github/workflows/w03-m07-perturbation-precision-q-audit.yml",
+    "run_id": 34359536106,
+    "question": "whether the low-lambda r_Delta/q mismatch is a perturbation-precision floor rather than failure of q-local linearization",
+    "preregistered_tight_q_rel_difference_max": 0.05,
+    "preregistered_tight_q_angle_max_deg": 2.0
   },
   "anti_overclaim": [
     "production response points are B3-B6 inputs, not B8 holdouts",
     "B6 is unwhitened theory-space geometry and is not observational discrimination",
     "near-alignment with C1 means an orthogonal response channel or observation-space test is still required",
+    "field-reflection parity does not by itself prove linearity in q=lambda^2",
     "B2 remains PARTIAL until explicit gauge/additional-response bookkeeping is audited"
   ]
 }
