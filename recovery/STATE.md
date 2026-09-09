@@ -3,40 +3,42 @@
 Updated: 2026-09-09
 
 ## Authority
-- W00-W02: `Dark-Sector-Influence-Reconstruction@e3276e2193f6a5200b541a194e3175356ae5a1c1`.
-- W03: `Dark-Sector-Influence-Reconstruction@328f2ca80b724870b851c7fe6366cce1ca5086cd`.
-- transition: `recovery/AUTHORITY_DELTAS.md` AD-001.
+
+- W00-W02 numerical evidence: `Dark-Sector-Influence-Reconstruction@e3276e2193f6a5200b541a194e3175356ae5a1c1`.
+- W03 starting authority / M07 physical audits: `Dark-Sector-Influence-Reconstruction@328f2ca80b724870b851c7fe6366cce1ca5086cd`.
+- current W03 observation-space methodology overlay from M08 onward: `Dark-Sector-Influence-Reconstruction@864952e1520d82473a9e976edfeb69f9899d174d`.
+- transitions: `recovery/AUTHORITY_DELTAS.md` AD-001 and AD-002.
 - repository evidence overrides chat memory.
 
+Do not silently rebase M07 or older waves onto `864952e...`.
+
 ## Recovery read order
+
 1. `recovery/RESTORE_FROM_NEW_CHAT.md`
 2. this file
-3. `models/canonical_quintessence/result.json`
-4. `models/canonical_quintessence/OBSERVATION_SPACE_AUDIT.md`
-5. `protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.1.md`
-6. `protocol/W03_MODEL_CONSTRUCTION_LESSONS_v0.1.md`
-7. `protocol/W03_M07_OBSERVATION_SPACE_LESSONS.md`
-8. `protocol/NUMERICAL_CALIBRATION_RULES_v0.1.md`
+3. `recovery/AUTHORITY_DELTAS.md`
+4. `protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md`
+5. `protocol/W03_M08_MODEL_CONSTRUCTION_LESSONS_v0.1.md`
+6. `models/canonical_quintessence/result.json`
+7. `models/cpl_dark_energy/result.json`
+8. `waves/wave_03_expanded_dark_energy/M08_M07_ABSORPTION_AUDIT.md`
 9. `matrices/benchmark_matrix.csv`
 10. `matrices/design_prior_ledger.csv`
-11. active W03 files.
+11. `logs/research_log.md`
 
 ## Completed waves
-- W00 COMPLETE: M00 LambdaCDM control; M01 smooth-w scoped `NONIDENTIFIABLE` in corrected ShapeFit (`sigma(epsilon_w)=0.1781944`; epsilon=1e-4 gives ~5.61e-4 sigma).
+
+- W00 COMPLETE: M00 LambdaCDM; M01 smooth-w scoped `NONIDENTIFIABLE` in corrected ShapeFit.
 - W01 COMPLETE: M02 IDE, M03 GDM, M04 WDM, M05 designer f(R), M06 DCDM.
-- W02 COMPLETE: E1 IDE/GDM `PASS_WITH_SCOPE` (24.7864 deg closest); E2 IDE/f(R) `PASS_WITH_SCOPE` (42.4503/59.4041 deg); E3 `BLOCKED_IMPLEMENTATION`; E4 `INCONCLUSIVE`.
+- W02 COMPLETE: E1 IDE/GDM and E2 IDE/f(R) theory-response separation; E3 WDM alternative `BLOCKED_IMPLEMENTATION`; E4 temporal centroid `INCONCLUSIVE`.
 
 ## W03 ACTIVE
 
-### M07 canonical quintessence — current terminal scoped state
+### M07 canonical quintessence — current scoped terminal state
 
-Pinned solver: `lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540`.
+Overall: `DSIR_PREDICTIVE_SUPPORT`.
 
-Branch:
-`V=(1+A)exp(-lambda phi)`, alpha=0, B=0, non-attractor IC, phi_ini=1, phi'_ini=0, A shooting nuisance.
-Exact field-reflection quotient identifies `(lambda,phi)~(-lambda,-phi)` and the controlled local coordinate is `q=lambda^2`.
-
-Current gates:
+Gates:
 - B0 `PASS_WITH_SCOPE`
 - B1 `PASS_WITH_SCOPE`
 - B2 `PARTIAL`
@@ -45,97 +47,132 @@ Current gates:
 - B5 `NONIDENTIFIABLE`
 - B6 `PASS_WITH_SCOPE`
 - B7 `PARTIAL`
-- B8 `SUPPORTED` (level-1 within-family prospective interpolation only)
+- B8 `SUPPORTED` level-1 within-family only
 - B9 `PARTIAL`
-Overall: `DSIR_PREDICTIVE_SUPPORT`.
 
-### Numerical / quotient controls
-Natural seed:
-`A_seed=3 Omega_scf H0^2 exp(lambda phi_ini)-1`.
+Controlled local coordinate after exact field-reflection quotient:
+`q=lambda^2`.
 
-Strict production run `34338140447`, digest `sha256:958708322566a2d36ce7522a3f705b543e0158c554a8de8e18e803c82a5c9cb8`.
-Lambda-zero full-DE reference: max|lnH| `1.08876e-10`, max|lnP| `2.16648e-10`.
-Default shooting tolerance generated fake Omega drift up to `1.23798e-3`; strict `tol_shooting_deltax_rel=1e-13` is authoritative.
+M07 low-k local q direction is strongly near-aligned with constant-w C1 and far from frozen designer f(R).
 
-Field-reflection quotient run `34359042959` PASSED exactly for tested pairs; fixed-chart lambda-sign parity failure remains preserved as a coordinate-chart control.
+ShapeFit B5:
+- `sigma_q ~= 2.2687` optimistic unmarginalized;
+- largest production q=.09 only `~0.0401 sigma`.
+After C1 profiling:
+- `sigma_q ~= 4.0866`;
+- q=.09 only `~0.0220 sigma`.
 
-q-coordinate perturbation convergence run `34359536106`, digest `sha256:6cd91f54d94982425cbec2055c42f7e087458ae3a4e350796f9a661623240b5d`:
-- q-scaled P relative difference `.025 vs .075` = `5.51889e-4`
-- angle = `0.0273111 deg`
-- q direction vs C1 = `6.69445 deg`
-- q direction vs frozen f(R) = `60.72848 deg`.
+B2 remains PARTIAL because small derived residuals retain cross-gauge representation floors even when raw P/d_m/phi/psi pass regression. Do not resume simple tolerance tightening.
 
-### B2 gauge/frame status — PARTIAL
-Raw P,d_m,phi,psi pass paired synchronous/Newtonian `1e-4` regression, but small model/reference residuals do not.
+B8: prospective lambda=.225 interpolation holdout passes in-family; this is predictive regularity, not mechanism uniqueness.
 
-Initial `lnP(model/ref)` response mismatch: `0.0309915691`.
-Independent precision convergence run `34390302626`, digest `sha256:da93dd0b1afa983cffbc07e162f54cb728b6ede22c070bfc2b4d9001a4a0faed`:
-- baseline `0.0309915691`
-- tight `0.0309879842`
-- improvement ratio `0.9998843`, failing preregistered <=0.50 requirement.
+### M08 CPL time-varying smooth DE — ACTIVE / primary adversarial result obtained
 
-Direct transfer-level run `34390614155`, digest `sha256:6805465c0c8b932a15c6bab20641cc1599a36bd428707efd1eb396ce624ab9b8`:
-- ln|d_m_model/d_m_ref| mismatch `0.03104952`
-- fractional Weyl `(phi+psi)` response mismatch `0.12892986`.
+Scientific role: stronger phenomenological nearest-family comparator to test whether the M07 P/H separator survives flexible smooth `w(a)`.
 
-Interpretation: current residual representations have a persistent cross-gauge/systematic floor. This is not evidence of physical gauge dependence, but the metric/Weyl channel cannot be promoted as a clean mechanism separator in this representation. Do not endlessly tighten M07; revisit only with a genuinely different gauge-invariant observable construction.
+Branch:
+- `w(a)=w0+wa(1-a)`;
+- `epsilon0=1+w0`, `epsilon_a=wa`;
+- CLASS CLP fluid, `cs2_fld=1`, `use_ppf=yes`;
+- pure fluid closure: `Omega_Lambda=0`, `Omega_fld` inferred by CLASS.
 
-### B5 observation-space identifiability — NONIDENTIFIABLE
-Workflow run `34390859777`, digest `sha256:91cd68778994d06a3d41c849a7dadf2ccb9ca23f8abd924666dc41d6d2f526c4`.
-Same corrected DESI DR1 ShapeFit AP+growth+shape covariance used by M01; optimistic unmarginalized control.
+#### M08 run #1 — preserved implementation failure
 
-Local q Fisher:
-- `F_q=0.19428289`
-- `sigma_q=2.26872951`.
-Exact production points:
-- lambda=.025 -> `0.0002755 sigma`
-- .075 -> `0.0024795 sigma`
-- .15 -> `0.0099386 sigma`
-- .30 -> `0.0400892 sigma`.
+Actions `34391852165`, artifact digest `sha256:0c8cf5c2de8f3d4cc9f62d9a8574a60656db38caee297b01b6fdf1674517045e`.
 
-Result: `NONIDENTIFIABLE_IN_FROZEN_LOCAL_CONTROL_SCOPE`, not physical falsification.
+All cases failed before cosmological evolution because both `Omega_Lambda` and `Omega_fld` were specified. Classification: configuration/closure failure only, not physical CPL failure.
 
-### B6/B7 nearest C1 comparator
-Theory-space P/H cross-channel separator exists: same matter-fit amplitude leaves ~30.9% H residual, but this alone is not observational novelty.
+Correction commit: `a3bb13aab2f181fed31882d31f819c9d0b0a7a36`.
 
-ShapeFit covariance profiling of C1 smooth-w:
-- whitened acute angle q vs epsilon_w = `33.72395 deg`
-- sigma_q unprofiled = `2.26885`
-- sigma_q profiled over C1 = `4.08661`
-- orthogonal residual fraction = `0.55519`
-- largest q=.09 profiled significance = `0.022023 sigma`.
+#### M08 run #2 — local basis PASS_WITH_SCOPE
 
-Therefore B7 remains `PARTIAL`: covariance whitening reveals a non-collinear direction, but it carries negligible absolute information in this control.
+Actions `34394929596`, artifact digest `sha256:561bf0abc6b9247fe9bd517c142eeac5f96c677eab430993bd6cb1473e3a6a97`.
 
-### B8 prospective holdout — SUPPORTED_WITH_SCOPE
-Preregistered lambda=.225 within-family interpolation holdout:
-- run `34339027169`
-- digest `sha256:3f7f149356f56284d137223b3e32b32992aea815400072b0be86db5e9d0fd576`
-- lnH relative L2 error `0.0013263`, angle `0.019998 deg`
-- lnP relative L2 error `0.0098686`, angle `0.524953 deg`.
-This is only level-1 within-family predictive support, not a general law.
+All five cases pass.
+Reference self-floor: zero by construction relative to the matched CPL Lambda point.
 
-## Future-model methodology
-`matrices/design_prior_ledger.csv` now contains **48 ACTIVE requirements**, DP-0001..DP-0814.
-Latest additions:
-- DP-0812: orthogonal channels count only after gauge/frame and subtraction-floor robustness;
-- DP-0813: predictive regularity and observational identifiability are independent axes;
-- DP-0814: report absolute profiled covariance-weighted significance alongside whitened angle.
+Local combined P+H geometry:
+- epsilon0 vs wa angle `9.1790225 deg`;
+- singular values `{1.88297176, 0.09452819}`;
+- `sigma2/sigma1 = 0.0502016`.
+
+Central nonlinearity ratios at step 1e-3 are `3.44e-4` to `1.33e-3`.
+
+Interpretation: nominally 2D CPL response is strongly anisotropic / near-one-dimensional. Parameter count != response rank.
+
+### M08 absorbs the M07 constant-w P/H separator
+
+Reproducible inputs:
+- `M07_LOCAL_Q_DIRECTION.json`
+- `M08_CPL_LOCAL_BASIS.json`
+- calculator `code/w03_m08_absorb_m07.py`
+- result `M08_M07_ABSORPTION_RESULT.json`.
+
+One shared CPL parameter vector is fitted to the concatenated 35-node lnP + 7-node lnH M07 local q direction.
+
+Best coefficients per unit q:
+- `epsilon0/q = 0.1406534871`
+- `wa/q = -0.2006790927`.
+
+CPL residual fractions:
+- combined P+H `1.107%`
+- P `0.864%`
+- H `1.993%`.
+
+Same-solver constant-w-like epsilon0-only baseline:
+- combined `15.820%`
+- P `12.064%`
+- H `29.149%`.
+
+CPL improves the residual by about `14.3x` overall.
+
+Classification:
+`CPL_ABSORBS_M07_CROSSCHANNEL_SEPARATOR_WITH_SCOPE`.
+
+This is a strong negative result for M07 **mechanism-level novelty**, not a physical failure of M07. M07 remains a controlled and within-family predictive benchmark, but the previously identified constant-w P/H separator is not robust against the stronger smooth-DE family manifold.
+
+## DSIR main advancement / AD-002
+
+Compared with W03 starting authority `328f2ca...`, inspected DSIR main `864952e...` is 23 commits ahead.
+
+Relevant new Article-2 G5 state:
+- prospective data-whitened cross-family stress contract frozen;
+- synthetic fail-closed QA PASS;
+- real covariance/operator machinery exists for ACT x unWISE 26-coordinate chain;
+- cross-family theory -> exact same 26-coordinate provider matrix is **not yet bound**;
+- real classifying G5 execution therefore remains blocked by interface/mapping, not covariance acquisition.
+
+Hard rule adopted for M08 and later observation-space work:
+A covariance alone is insufficient. Every compared family must pass through one exact frozen observation operator into the same coordinate vector/order/units/masks on which the covariance acts.
+
+Do not call existing model-specific ShapeFit controls cross-family G5 closure.
+
+## Future-model methodology state
+
+Active construction methodology is now:
+`protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md`.
+
+Design ledger now contains **51 ACTIVE requirements, DP-0001..DP-0817**.
+
+New M08/AD-002 requirements:
+- DP-0815: profile the full implemented local comparator-family span/manifold, not one representative ray;
+- DP-0816: exact common observation operator + covariance coordinate bridge required for cross-family observation-space promotion;
+- DP-0817: closure/normalization conventions are explicit benchmark provenance and configuration failures remain distinct from physical failures.
+
+M08 independently reinforces DP-0303 (parameter count != response rank) and DP-0504 (new microphysics != new observable direction).
 
 ## Immediate scientific continuation
 
-M07 has reached its current stopping rule. Next target in W03: **M08 dynamic smooth dark energy / CPL w0-wa comparator**.
+The old question "does M07 differ from constant-w?" is closed as insufficiently adversarial.
 
-Primary preregistered question for M08:
-Can a two-dimensional time-varying smooth-DE manifold absorb the M07 P/H cross-channel separator that constant-w C1 cannot?
+Highest-value next frontier:
 
-Required order:
-1. inspect/pin exact solver semantics for CPL and perturbation treatment;
-2. define physical coordinates and LambdaCDM reference `(w0,wa)=(-1,0)`;
-3. freeze admissible/stability domain before finite differences;
-4. construct local 2D P+H response basis on matched grids;
-5. fit M07 q direction with one shared CPL parameter vector across P and H;
-6. only then consider observation-space projection/whitening.
+1. validate M08 local-basis step stability with a second preregistered step before treating the 2D span as a durable tangent plane;
+2. then build an exact common M07/M08 observation-operator manifest satisfying AD-002 before any cross-family observational claim;
+3. if the ACT x unWISE multi-family provider bridge becomes available in DSIR main, prefer reusing that exact 26-coordinate chain rather than inventing a new covariance map;
+4. search for a gauge-robust response channel that lies outside the CPL span (scale dependence, temporal cross-relation, metric/slip only after representation robustness, nonlinear/high-k, tensor/coupling where defined);
+5. use subsequent W03 mechanisms to begin promoting repeated design priors from ACTIVE to REINFORCED rather than only accumulating new priors.
 
 ## Non-negotiable
-No zero-imputation; no theory-angle=observational claim; no numerical failure=physical failure; no missing comparator=uniqueness; no unquotiented rank claims; no retrospective B8; no silent authority rebase; no promoting an orthogonal channel whose derived response fails gauge/frame robustness.
+
+No zero imputation; no numerical failure=physical failure; no pairwise ray separation=family uniqueness; no independent comparator refits by block; no theory-angle=observational claim; no covariance without exact operator-coordinate compatibility; no retrospective B8; no silent authority rebase.
