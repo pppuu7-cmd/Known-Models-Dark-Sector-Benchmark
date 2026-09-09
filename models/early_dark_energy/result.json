@@ -1,0 +1,50 @@
+{
+  "schema_version": "KMDSB-model-result-v0.1",
+  "model_id": "M09",
+  "model_name": "Solver-native Early Dark Energy",
+  "wave": "W03",
+  "status": "INCONCLUSIVE",
+  "dsir_methodology_overlay_authority": "bc28acc47cc5facba046741fd09f710ae8da9689",
+  "solver": {
+    "repository": "lesgourg/class_public",
+    "commit": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+    "sector": "fld",
+    "fluid_equation_of_state": "EDE"
+  },
+  "branch": {
+    "coordinate": "e=Omega_EDE",
+    "physical_domain": "e>=0",
+    "w0_fld": -1.0,
+    "cs2_fld": 1.0,
+    "use_ppf": true,
+    "reference_policy": {
+      "external": "pure LambdaCDM",
+      "internal": "EDE branch at Omega_EDE=0",
+      "exact_intersection_not_assumed": true
+    }
+  },
+  "preregistered_grid": [0.0, 0.0001, 0.0003, 0.001, 0.003],
+  "response_blocks": {
+    "L": "7-node lnH plus 7x5 low-k lnP",
+    "S": "z=0.51 broad-k amplitude-quotiented shape response through k=1 h/Mpc"
+  },
+  "gates": {
+    "B0": "PASS_WITH_SCOPE",
+    "B1": "PARTIAL",
+    "B2": "PARTIAL",
+    "B3": "OPEN",
+    "B4": "OPEN",
+    "B5": "OPEN",
+    "B6": "OPEN",
+    "B7": "OPEN",
+    "B8": "OPEN",
+    "B9": "PARTIAL"
+  },
+  "primary_question": "Does solver-native EDE generate a stable early-time scale-dependent shape direction beyond the late-time smooth-DE manifold tested by M07/M08?",
+  "anti_overclaim": [
+    "This branch is the pinned CLASS EDE fluid parameterization, not all EDE models.",
+    "Omega_EDE is differentiated only along the physical nonnegative ray.",
+    "A nonzero raw shape response is not observational discrimination.",
+    "Current finite probes are not B8 holdouts."
+  ]
+}
