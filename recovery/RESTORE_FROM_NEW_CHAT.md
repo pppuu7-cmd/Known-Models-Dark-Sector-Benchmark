@@ -5,226 +5,195 @@ Purpose: resume KMDSB/DSIR benchmark development from another chat without relyi
 
 ## 0. Authority rule
 
-If chat memory conflicts with repository state, repository evidence wins.
+If chat memory conflicts with repository evidence, repository evidence wins.
 
-Do **not** assume one DSIR commit applies to every historical result.
-
-- W00-W02 evidence: `Dark-Sector-Influence-Reconstruction@e3276e2193f6a5200b541a194e3175356ae5a1c1`.
+- W00-W02 authority: `Dark-Sector-Influence-Reconstruction@e3276e2193f6a5200b541a194e3175356ae5a1c1`.
 - W03 starting authority: `Dark-Sector-Influence-Reconstruction@328f2ca80b724870b851c7fe6366cce1ca5086cd`.
-- exact transition and 11-commit delta: `recovery/AUTHORITY_DELTAS.md` AD-001.
+- transition: `recovery/AUTHORITY_DELTAS.md` AD-001.
 
-Never silently rebase an old audit.
+Never silently rebase historical results.
 
-## 1. Project roles
-
-- DSIR: formal reconstruction/methodology authority.
-- KMDSB: test range for known dark-sector and modified-gravity models through DSIR.
-- Future original model: later separate repository; KMDSB supplies evidence-derived requirements.
-
-## 2. Read order in a fresh chat
+## 1. Read order
 
 1. `recovery/STATE.md`
 2. `recovery/AUTHORITY_DELTAS.md`
 3. `protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.1.md`
-4. `protocol/DSIR_BENCHMARK_PROTOCOL_v0.1.md`
-5. `protocol/WAVE_TESTING_PROTOCOL_v0.1.md`
-6. `protocol/STATUS_TAXONOMY.md`
-7. `matrices/wave_matrix.csv`
-8. `matrices/benchmark_matrix.csv`
-9. `matrices/design_prior_ledger.csv`
-10. `logs/research_log.md`
-11. active-wave directory under `waves/`
+4. `protocol/W03_MODEL_CONSTRUCTION_LESSONS_v0.1.md`
+5. `protocol/NUMERICAL_CALIBRATION_RULES_v0.1.md`
+6. `protocol/DSIR_BENCHMARK_PROTOCOL_v0.1.md`
+7. `protocol/WAVE_TESTING_PROTOCOL_v0.1.md`
+8. `protocol/STATUS_TAXONOMY.md`
+9. `matrices/wave_matrix.csv`
+10. `matrices/benchmark_matrix.csv`
+11. `matrices/design_prior_ledger.csv`
+12. `logs/research_log.md`
+13. active wave directory
 
 Do not reconstruct the project from README alone.
 
+## 2. Project roles
+
+- DSIR: reconstruction/methodology authority.
+- KMDSB: benchmark range for known dark-sector / dark-energy / MG models.
+- Future original model: separate later repository; construction requirements are extracted here first.
+
 ## 3. Frozen B0-B9 funnel
 
-B0 identity/provenance  
-B1 DSIR embedding/reference limit  
-B2 conservation/gauge/frame bookkeeping  
-B3 physical-domain/numerical control  
-B4 response coverage/masks  
-B5 reference/observational identifiability  
-B6 nearest-comparator discrimination  
-B7 quotient-surviving novelty  
-B8 prospective withheld prediction  
-B9 synthesis/design-prior extraction
+B0 provenance -> B1 reference embedding -> B2 conservation/gauge/frame -> B3 physical/numerical domain -> B4 response/masks -> B5 observational identifiability -> B6 nearest comparator -> B7 quotient novelty -> B8 prospective holdout -> B9 synthesis/design priors.
 
-Critical semantics: `FAIL`, `NONIDENTIFIABLE`, `BLOCKED_*`, `INCONCLUSIVE`, comparator degeneracy and physical inconsistency are not synonyms.
+Never collapse `FAIL`, `NONIDENTIFIABLE`, `BLOCKED_*`, `INCONCLUSIVE`, numerical failure and physical failure into one state.
 
 ## 4. Completed waves
 
-### W00 — Calibration and semantics — COMPLETE
+### W00 COMPLETE
+M00 LambdaCDM control and M01 smooth non-phantom wCDM.
+M01 is DSIR-compatible but `NONIDENTIFIABLE` in scoped corrected DESI DR1 ShapeFit; `sigma(epsilon_w)~0.1782`, `epsilon_w=1e-4` is only ~`5.61e-4 sigma`.
 
-M00 LambdaCDM: `CONTROL_PASS_WITH_SCOPE`.
+### W01 COMPLETE
+M02 IDE, M03 GDM, M04 WDM, M05 designer f(R), M06 DCDM.
+Key requirements: tangent cones, conservation, multi-channel rank, high-k masks, MG comparator, temporal/holdout semantics.
 
-M01 smooth non-phantom DE/wCDM: DSIR-compatible but `NONIDENTIFIABLE` in the scoped corrected DESI DR1 ShapeFit control.
+### W02 COMPLETE
+- E1 IDE/GDM `PASS_WITH_SCOPE`, closest angle `24.786398 deg`.
+- E2 IDE/f(R) `PASS_WITH_SCOPE`, `42.450273/59.404101 deg`.
+- E3 WDM alternative suppression `BLOCKED_IMPLEMENTATION`.
+- E4 DCDM temporal scalar `INCONCLUSIVE`.
+Keep theory-space and observation-space graphs separate.
 
-Calibration:
-- `sigma(epsilon_w) ~= 0.1782`;
-- frozen `epsilon_w=1e-4`;
-- significance about `5.61e-4 sigma`.
+## 5. W03 ACTIVE — M07 canonical quintessence
 
-Lesson: clean theory response != observational identifiability.
+Solver: `lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540`.
 
-### W01 — Baseline dark-sector control atlas — COMPLETE
-
-M02 IDE, M03 GDM, M04 thermal WDM, M05 designer f(R), M06 DCDM.
-
-Durable results:
-- IDE: physical tangent-cone/one-sided geometry precedes differentiation;
-- GDM: parameter count != identified rank; additional metric/slip channels can break matter-response near-collinearity;
-- WDM: high-k windows, masks and characteristic-scale motion are first-class;
-- designer f(R): MG comparators and solver GR-threshold discipline are required;
-- DCDM: prospective temporal/withheld semantics must stay explicit.
-
-### W02 — Same-observable degeneracy attack — COMPLETE
-
-Exact closure: `waves/wave_02_degeneracy_attack/result.json`.
-
-Theory/edge states:
-- PC1 GDM vs designer f(R): `PASS_WITH_SCOPE` positive control; scale-only near-mimicry is broken by time/full-response information.
-- E1 IDE vs GDM: `PASS_WITH_SCOPE`; closest acute theory-response angle `24.7863980743 deg`.
-- E2 IDE vs designer f(R): `PASS_WITH_SCOPE`; acute angles `42.4502726930 deg`, `59.4041006897 deg`.
-- E3 WDM vs alternative small-scale suppression: `BLOCKED_IMPLEMENTATION`; no second pinned same-convention non-WDM high-k family exists in frozen C0-C6 coverage. This is not WDM uniqueness.
-- E4 DCDM vs alternative temporal histories: `INCONCLUSIVE`; a common temporal centroid exists but is too lossy to act as a frozen hard mechanism discriminator.
-
-E4 coordinate:
-`q_z(z)=sum_k r(k,z)^2/sum_{z,k}r(k,z)^2`
-`z_R=exp[sum_z q_z ln(1+z)]-1`.
-
-DCDM sequence:
-`{0.6304573019,0.6343829813,0.6419613202,0.6562403431}`.
-
-Same-coordinate frozen alternatives:
-- C1 smooth-w `0.6214182972`;
-- IDE alpha-negative `0.9516948867`;
-- IDE beta `1.0839529728`;
-- GDM cs2 `0.7315736878`;
-- GDM cv2 `0.7362246207`;
-- designer f(R) `0.4547904059`.
-
-The nearest scalar alternative to sampled DCDM is C1; absolute centroid gaps are about `{0.0090390,0.0129647,0.0205430,0.0348220}`. No preregistered scalar cross-model threshold/covariance exists, so E4 remains `INCONCLUSIVE`.
-
-Keep separate:
-- `waves/wave_02_degeneracy_attack/THEORY_SPACE_GRAPH.md`
-- `waves/wave_02_degeneracy_attack/OBSERVATION_SPACE_GRAPH.md`
-
-No W02 pairwise theory-space edge was promoted to observational discrimination.
-
-## 5. Design methodology state
-
-Living construction methodology:
-`protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.1.md`
-
-Pipeline F0-F9:
-authority/provenance -> reference limit -> physical geometry -> conservation/gauge/frame -> multi-channel response -> observational whitening -> nearest-comparator attack -> quotient novelty -> prospective holdout -> candidate synthesis.
-
-Current ledger:
-`matrices/design_prior_ledger.csv`
-
-Count: **34 ACTIVE requirements, DP-0001..DP-0704**.
-
-W02 additions:
-- DP-0701: no uniqueness from an unimplemented comparator;
-- DP-0702: theory-space and observation-space graphs remain separate;
-- DP-0703: scalar characteristic summaries require full-profile stress tests;
-- DP-0704: use the smallest sufficient common block, not the smallest convenient summary.
-
-These are not all axioms. Conceptual promotion remains `ACTIVE -> REINFORCED -> CORE -> RETIRED` after independent/adversarial evidence.
-
-## 6. Active Wave 03
-
-Directory:
-`waves/wave_03_expanded_dark_energy/`
-
-Status: ACTIVE.
-
-First target:
-M07 canonical scalar-field / quintessence.
-
-M07 audit/result:
-- `models/canonical_quintessence/audit.md`
-- `models/canonical_quintessence/result.json`
-
-Solver provenance:
-`lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540`.
-
-Pinned initial branch:
-`V(phi)=((phi-B)^alpha+A) exp(-lambda phi)` with `alpha=0`, `B=0`, so `V=(1+A)exp(-lambda phi)`.
-
-Canonical stress from the pinned implementation:
-`rho_phi=[phi_prime^2/(2a^2)+V]/3`
-`p_phi=[phi_prime^2/(2a^2)-V]/3`.
-
-Important solver semantics:
-- default `scf_tuning_index=0` would allow `Omega_scf` shooting to tune `lambda`;
-- M07 forbids that because `lambda` is the physical model shape parameter;
-- M07 uses `scf_tuning_index=2`, so `A` is the normalization/shooting nuisance;
-- `attractor_ic_scf=no`, with explicit initial `phi`/`phi_prime`, avoids conflating the physical branch with CLASS tracking-attractor conventions.
-
-Reference logic:
-at `lambda=0` and zero field velocity, `p_phi=-rho_phi`; a split Lambda + constant-scalar control should reproduce total LambdaCDM response if solver/bookkeeping is correct.
+Frozen canonical branch:
+`V(phi)=(1+A)exp(-lambda phi)`, `alpha=0`, `B=0`, non-attractor IC, `phi_ini=1`, `phi_prime_ini=0`, physical `lambda`, nuisance `A`, `scf_tuning_index=2`.
 
 Current gate state:
-B0 `PASS_WITH_SCOPE`; B1 `PARTIAL`; B2 `PARTIAL`; B3-B8 open; B9 partial; overall `INCONCLUSIVE`.
+B0 PASS_WITH_SCOPE; B1 PASS_WITH_SCOPE; B2 PARTIAL; B3 PASS_WITH_SCOPE; B4 PASS_WITH_SCOPE; B5 OPEN; B6 PASS_WITH_SCOPE; B7 OPEN; B8 OPEN; B9 PARTIAL; overall `DSIR_COMPATIBLE`.
 
-## 7. M07 implementation-probe chronology
+### 5.1 Reference/numerical calibration
 
-Workflow:
-`.github/workflows/w03-m07-quintessence-probe.yml`
+Natural seed:
+`A_seed(lambda)=3 Omega_scf H0^2 exp(lambda phi_ini)-1`.
 
-Analyzer:
-`code/w03_m07_quintessence_probe.py`
+Run `34325977559` fixed the original shooting failure and established subdominant reference calibration.
 
-Run #1 / Actions run `34319481691`, head `89e0ba040900fa17ada29c35987d322ba9e36b8a`:
-- pinned CLASS build: PASS;
-- config generation: PASS;
-- mandatory REF + lambda-zero run step: FAIL before analysis;
-- no physical conclusion permitted;
-- original workflow failed before preserving diagnostics.
+Authoritative strict production/shooting audit: run `34338140447`, artifact `w03-m07-shooting-precision-audit`, digest `sha256:958708322566a2d36ce7522a3f705b543e0158c554a8de8e18e803c82a5c9cb8`.
 
-Workflow was immediately hardened so every case records an exit code and logs/artifacts are uploaded even if mandatory controls fail.
+Dark-energy-dominant lambda-zero reference:
+- target Omega_scf `0.682686955086854`;
+- achieved `0.682686955181768`;
+- `max|lnH|=1.08876e-10`;
+- `max|lnP|=2.16648e-10`;
+- `w=-1`, `phi=1`, `phi'=0`.
 
-Current diagnostic rerun at this checkpoint:
-Actions run `34319672901`, head `f0fbbf2043c4bf6b29c259d5ccd29aec893030f4`.
+Default shooting tolerance created fake target drift up to `1.23798e-3` at lambda=.30; strict `tol_shooting_deltax_rel=1e-13` reduced that error to about `3.01e-10`. Default vs strict lambda=.30 matter responses differ ~38.1% in relative norm. Use only strict vectors for science.
 
-Mandatory cases:
-1. `REF_LCDM`: `Omega_scf=0`;
-2. `SCF_SPLIT_L0`: `Omega_scf=0.10`, `lambda=0`, zero explicit initial velocity;
-3. finite `lambda={0.05,0.10,0.20}` are **diagnostic only** and cannot become B8 evidence.
+### 5.2 B6 nearest comparator
 
-Do not freeze a production science threshold from the finite-lambda probe. First diagnose plumbing and numerical reference floor; then preregister the hard production tolerance before production science.
+Run `34358089618`.
+Common block: unwhitened 7x5 low-k `r_Delta(k,z)`.
 
-## 8. Immediate restoration actions
+M07 vs C1 smooth-w acute angles:
+`.025:15.9702`, `.075:6.9206`, `.15:6.6924`, `.30:6.6114 deg`.
 
-1. inspect Actions run `34319672901` status and artifact `w03-m07-quintessence-probe`;
-2. read `probe_logs/ref.log`, `probe_logs/scf_l0.log` and `*.exit` first;
-3. if config/plumbing error exists, fix it without altering W03 scientific hypotheses;
-4. obtain successful REF + lambda-zero control;
-5. only then freeze a hard M07 B1 production reference tolerance based on the measured infrastructure floor plus explicit safety margin;
-6. run a production scalar branch on the standard DSIR 7x5 low-k grid;
-7. attack M07 against M01 smooth-w and M05 designer f(R);
-8. no observation-space promotion without pinned covariance/operator.
+M07 vs frozen designer-f(R):
+`.025:73.0805`, `.075:62.1181`, `.15:61.0432`, `.30:60.7968 deg`.
 
-## 9. Never infer
+Interpretation: strong low-k matter near-degeneracy with smooth-w; far from frozen f(R). Exact non-collinearity is theory-space only. No observational promotion.
 
-- gate failure == global theory falsification;
+### 5.3 Fixed-coordinate parity test — FAIL_WITH_SCOPE
+
+Run `34358465646`, artifact digest `sha256:807e935cfa758df81c251531a672c829f430ab41a44e3219fe67a0fbbbe6cb40`.
+Test changed `lambda -> -lambda` at fixed `phi_ini=+1`; preregistered lnP odd/even threshold `1e-3`.
+
+- |lambda|=.025: `7.4666e-3` FAIL
+- |lambda|=.075: `2.0277e-3` FAIL
+
+Preserve this failure; do not loosen threshold. See `M07_FIXED_COORDINATE_PARITY_FAILURE.md`.
+
+### 5.4 Exact field-reflection quotient parity — PASS_WITH_SCOPE
+
+Exact canonical quotient for B=0:
+`(lambda,phi_ini)->(-lambda,-phi_ini)`.
+
+Run `34359042959`, artifact `w03-m07-field-reflection-quotient-parity`, digest `sha256:d5e747fc54aee3a8fe3c50372f5788d6c95bcddc47b3598cf1646d114ff041b1`.
+Preregistered odd-fraction max: `1e-6`.
+
+At |lambda|=.025 and .075:
+- lnP odd/even = `0`;
+- lnH odd/even = `0`;
+- response angle = `0 deg`.
+
+Therefore sign(lambda) is redundant on this physical quotient. `q=lambda^2` is a valid invariant coordinate candidate, but q-linearity is still a separate test.
+
+Evidence: `M07_FIELD_REFLECTION_QUOTIENT_PARITY.md`.
+
+### 5.5 q-linearity diagnostic
+
+q-scaled H response already converges well:
+- lambda .025 vs .075 relative difference ~`9.97e-4`;
+- angle ~`0.0294 deg`.
+
+q-scaled low-k P response does not under baseline perturbation precision:
+- relative difference ~`0.2307`;
+- angle `12.5058 deg`.
+
+This channel split motivates a perturbation precision audit rather than immediate rejection of q.
+
+Active run at this recovery checkpoint:
+`34359536106`, workflow `.github/workflows/w03-m07-perturbation-precision-q-audit.yml`.
+
+It reruns lambda=.025/.075 with the same strict shooting but tight perturbation settings:
+`tol_perturbations_integration=1e-8`, `perturbations_sampling_stepsize=0.01`.
+
+Frozen before result:
+- tight q-scaled P relative difference <= `0.05`;
+- tight q-scaled P angle <= `2.0 deg`.
+
+Do not change these thresholds after reading the run.
+
+## 6. Future-model design ledger
+
+`matrices/design_prior_ledger.csv` currently has 41 ACTIVE requirements, DP-0001..DP-0807.
+
+W03 additions DP-0801..DP-0807 include:
+- physical/nuisance separation;
+- natural-scale initialization;
+- reference regression before finite science;
+- perturbation/time treatment of microphysical DE;
+- phenomenological-DE nearest comparator;
+- solver tolerance conditioning;
+- quotient exact redundancies before parity/derivative/Jacobian/local-coordinate claims.
+
+These are evidence priors, not axioms. Promotion remains ACTIVE -> REINFORCED -> CORE -> RETIRED.
+
+## 7. Immediate continuation
+
+1. Inspect run `34359536106` and artifact.
+2. If frozen tight q gate passes, freeze `q=lambda^2` as the local quotient coordinate within tested M07 scope and construct the q-response direction.
+3. If it fails, keep q parity but classify the residual as perturbation numerical floor vs true q nonlinearity; do not alter thresholds.
+4. Then address B2 explicit gauge/additional-response bookkeeping and build an orthogonal response channel to break M07/C1 near-degeneracy.
+5. Next B5 observational whitening; B7 quotient novelty only after orthogonal-channel survival.
+6. B8 remains untouched until a prospective relation is frozen before holdout exposure.
+
+## 8. Never infer
+
+- numerical failure == physical failure;
+- exact field-reflection parity == q-linearity;
 - theory-space angle == observational discrimination;
-- missing channel == zero;
+- near-alignment == physical equivalence;
 - missing comparator == uniqueness;
-- solver threshold == physical tangent;
-- one scalar characteristic epoch == mechanism identity;
-- infrastructure finite-lambda samples == prospective holdout support;
-- newest DSIR main == authority for every historical audit.
+- production grid == B8 evidence;
+- newest DSIR main == authority for old waves.
 
-## 10. Maintenance rule
+## 9. Maintenance rule
 
-At every meaningful frontier change synchronize:
-- evidence: audit/result and computation artifacts;
-- synthesis: benchmark/wave/design-prior matrices;
-- methodology: future-model construction rules when durable evidence changes them;
-- recovery: `STATE.md`, this file, `AUTHORITY_DELTAS.md` when relevant;
-- chronology: `logs/research_log.md`.
+Every meaningful frontier change must synchronize:
+- per-model audit/result;
+- wave evidence;
+- benchmark/design-prior matrices;
+- future-model methodology;
+- `recovery/STATE.md` and this manual;
+- `logs/research_log.md`.
 
-A new chat must be able to continue from repository state alone.
+A new chat must be able to continue from repository evidence alone.
