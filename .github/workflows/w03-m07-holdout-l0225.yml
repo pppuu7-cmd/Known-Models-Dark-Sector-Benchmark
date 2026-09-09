@@ -1,4 +1,5 @@
 name: W03 M07 prospective lambda 0.225 holdout
+# Execution-only trigger 2026-09-09: frozen prediction and acceptance logic below are unchanged; preregistration JSON is immutable.
 
 on:
   workflow_dispatch:
@@ -150,6 +151,8 @@ jobs:
             echo "CLASS_REMOTE=$(git -C class_public remote get-url origin)"
             echo "PREREG_SHA256=$(sha256sum waves/wave_03_expanded_dark_energy/M07_HOLDOUT_L0225_PREREGISTRATION.json | cut -d' ' -f1)"
             echo "SHOOT_REL_TOL=${SHOOT_REL_TOL}"
+            echo "PRE_EXECUTION_WORKFLOW_BLOB=ba3c256a11e6f1c8381c5061e9e7566479abed6d"
+            echo "EXECUTION_TRIGGER_ONLY_COMMENT=true"
           } > holdout_provenance.txt
 
       - name: Upload immutable holdout bundle before enforcement
