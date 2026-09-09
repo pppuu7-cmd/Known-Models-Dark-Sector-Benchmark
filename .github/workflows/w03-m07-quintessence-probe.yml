@@ -7,8 +7,6 @@ on:
     paths:
       - '.github/workflows/w03-m07-quintessence-probe.yml'
       - 'code/w03_m07_quintessence_probe.py'
-      - 'models/canonical_quintessence/**'
-      - 'waves/wave_03_expanded_dark_energy/**'
 
 jobs:
   probe:
