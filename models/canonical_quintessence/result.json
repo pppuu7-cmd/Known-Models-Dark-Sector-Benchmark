@@ -1,0 +1,49 @@
+{
+  "schema_version": "KMDSB-model-result-v0.1",
+  "model_id": "M07",
+  "model_name": "Canonical scalar-field / quintessence",
+  "wave": "W03",
+  "status": "INCONCLUSIVE",
+  "dsir_authority": "328f2ca80b724870b851c7fe6366cce1ca5086cd",
+  "solver": {
+    "repository": "lesgourg/class_public",
+    "commit": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+    "sector": "scf"
+  },
+  "branch": {
+    "potential": "V(phi)=(1+A) exp(-lambda phi)",
+    "alpha": 0,
+    "B": 0,
+    "attractor_ic_scf": false,
+    "phi_ini": 0,
+    "phi_prime_ini": 0,
+    "physical_shape_parameter": "lambda",
+    "shooting_nuisance": "A",
+    "scf_tuning_index": 2
+  },
+  "gates": {
+    "B0": "PASS_WITH_SCOPE",
+    "B1": "PARTIAL",
+    "B2": "PARTIAL",
+    "B3": "OPEN",
+    "B4": "OPEN",
+    "B5": "OPEN",
+    "B6": "OPEN",
+    "B7": "OPEN",
+    "B8": "OPEN",
+    "B9": "PARTIAL"
+  },
+  "current_probe": {
+    "workflow": ".github/workflows/w03-m07-quintessence-probe.yml",
+    "run_id": 34319481691,
+    "head_sha": "89e0ba040900fa17ada29c35987d322ba9e36b8a",
+    "scope": "implementation/reference probe only",
+    "mandatory_cases": ["REF_LCDM", "SCF_SPLIT_L0"],
+    "descriptive_finite_lambda": [0.05, 0.1, 0.2]
+  },
+  "anti_overclaim": [
+    "finite-lambda probe points are not prospective B8 evidence",
+    "B1 is not closed until the numerical lambda=0 split-reference is checked",
+    "no observational discrimination claim exists"
+  ]
+}
