@@ -1,0 +1,29 @@
+{
+  "schema_version": "KMDSB-edge-result-v0.1",
+  "wave": "W02",
+  "edge": "E3",
+  "pair": ["M04_thermal_WDM", "alternative_small_scale_suppression"],
+  "status": "BLOCKED_IMPLEMENTATION",
+  "scope": "pairwise high-k suppression comparison",
+  "dsir_authority": "e3276e2193f6a5200b541a194e3175356ae5a1c1",
+  "available_left_block": {
+    "source": "DSIR Exp050A thermal-WDM high-k time atlas",
+    "k_h_mpc": [0.1, 0.3, 1.0, 3.0, 10.0, 20.0],
+    "z": [0.295, 0.51, 0.706, 0.934, 1.317, 1.491, 2.33],
+    "masses_keV": [2.0, 3.0, 5.0]
+  },
+  "blocking_reason": "No second non-WDM small-scale suppression family is pinned in the frozen DSIR C0-C6 authority on a valid same-grid/matched-baseline high-k response product.",
+  "not_a_claim": [
+    "not evidence that thermal WDM is unique",
+    "not physical falsification of fuzzy/axion/SIDM or other suppression mechanisms",
+    "not observational discrimination"
+  ],
+  "unblock_requirements": [
+    "pinned alternative model and solver provenance",
+    "valid common high-k support",
+    "matched or explicitly mapped baseline conventions",
+    "frozen discriminator before comparator output",
+    "no zero-imputation",
+    "observation operator/covariance before observational promotion"
+  ]
+}
