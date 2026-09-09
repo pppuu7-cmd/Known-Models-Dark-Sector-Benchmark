@@ -3,7 +3,7 @@
   "model_id": "M07",
   "model_name": "Canonical scalar-field / quintessence",
   "wave": "W03",
-  "status": "INCONCLUSIVE",
+  "status": "DSIR_COMPATIBLE",
   "dsir_authority": "328f2ca80b724870b851c7fe6366cce1ca5086cd",
   "solver": {
     "repository": "lesgourg/class_public",
@@ -20,58 +20,78 @@
     "physical_shape_parameter": "lambda",
     "shooting_nuisance": "A",
     "scf_tuning_index": 2,
-    "shooting_seed": "A_seed(lambda)=3 Omega_scf H0^2 exp(lambda phi_ini)-1"
+    "shooting_seed": "A_seed(lambda)=3 Omega_scf H0^2 exp(lambda phi_ini)-1",
+    "authoritative_shooting_tolerance": 1e-13
   },
   "gates": {
     "B0": "PASS_WITH_SCOPE",
     "B1": "PASS_WITH_SCOPE",
     "B2": "PARTIAL",
-    "B3": "PARTIAL",
-    "B4": "PARTIAL",
+    "B3": "PASS_WITH_SCOPE",
+    "B4": "PASS_WITH_SCOPE",
     "B5": "OPEN",
-    "B6": "OPEN",
+    "B6": "PASS_WITH_SCOPE",
     "B7": "OPEN",
     "B8": "OPEN",
     "B9": "PARTIAL"
   },
   "calibration_probe": {
-    "workflow": ".github/workflows/w03-m07-quintessence-probe.yml",
     "run_id": 34325977559,
-    "head_sha": "e74f798a685f8b92f75ef3afe0b4be03eb51a576",
-    "conclusion": "success",
     "scope": "implementation/reference calibration only",
     "target_Omega_scf": 0.1,
     "lambda0": {
       "achieved_Omega_scf_today": 0.10000000013560413,
       "max_abs_lnH": 5.462919005900343e-11,
-      "max_abs_lnP": 4.111520165089289e-7,
-      "w_scf_all_frozen_z": -1.0,
-      "phi_all_frozen_z": 1.0,
-      "phi_prime_all_frozen_z": 0.0
-    },
-    "descriptive_finite_lambda": [0.05, 0.1, 0.2],
-    "finite_lambda_B8_eligible": false
+      "max_abs_lnP": 4.111520165089289e-7
+    }
   },
-  "production_preregistration": {
-    "document": "waves/wave_03_expanded_dark_energy/M07_PRODUCTION_PREREGISTRATION.md",
+  "strict_production": {
+    "run_id": 34338140447,
+    "artifact": "w03-m07-shooting-precision-audit",
+    "artifact_digest": "sha256:958708322566a2d36ce7522a3f705b543e0158c554a8de8e18e803c82a5c9cb8",
     "target_Omega_scf": 0.682686955086854,
     "lambda_grid": [0.025, 0.075, 0.15, 0.3],
-    "lambda_grid_B8_eligible": false,
-    "reference_tolerances": {
-      "max_abs_lnH": 1e-8,
-      "max_abs_lnP": 1e-5,
-      "abs_Omega_scf_error": 1e-6,
-      "max_abs_w_plus_1": 1e-10,
-      "max_abs_phi_prime": 1e-12
+    "lambda0_reference": {
+      "achieved_Omega_scf_today": 0.682686955181768,
+      "max_abs_lnH": 1.088764633945931e-10,
+      "max_abs_lnP": 2.1664792184809906e-10,
+      "w_scf": -1.0,
+      "phi": 1.0,
+      "phi_prime": 0.0
     },
-    "active_workflow": ".github/workflows/w03-m07-quintessence-production.yml",
-    "active_run_id": 34337676199,
-    "active_run_head": "eb7e24d62c90466ea5c1445f0b4dbc48f78f4c21"
+    "max_abs_target_error_finite_lambda": 2.5731859532e-8,
+    "frozen_acceptance_max_abs_target_error": 1e-6,
+    "result": "PASS_WITH_SCOPE"
+  },
+  "nearest_comparator": {
+    "run_id": 34358089618,
+    "artifact": "w03-m07-b6-comparator",
+    "artifact_digest": "sha256:aadf7fac0ae6ba3d10ddd8c1345c42bf5678ce4d7356b2b72880f8b0517d3fd6",
+    "scope": "unwhitened common 7x5 low-k r_Delta theory-response geometry",
+    "smooth_w_acute_angle_deg": {
+      "lambda_0p025": 15.9702279491,
+      "lambda_0p075": 6.9205844342,
+      "lambda_0p15": 6.6924046609,
+      "lambda_0p30": 6.6113579620
+    },
+    "designer_fR_acute_angle_deg": {
+      "lambda_0p025": 73.0804921067,
+      "lambda_0p075": 62.1181389206,
+      "lambda_0p15": 61.0432301819,
+      "lambda_0p30": 60.7967629027
+    },
+    "interpretation": "M07 is near-aligned but not collinear with smooth-w on low-k matter response and is far from the frozen designer-f(R) ray; observational promotion remains open"
+  },
+  "active_local_geometry_audit": {
+    "workflow": ".github/workflows/w03-m07-parity-coordinate-audit.yml",
+    "run_id": 34358465646,
+    "question": "whether the near-reference response is even in lambda and the natural local coordinate is q=lambda^2",
+    "preregistered_odd_fraction_max": 0.001
   },
   "anti_overclaim": [
-    "calibration finite-lambda probe points are not prospective B8 evidence",
     "production response points are B3-B6 inputs, not B8 holdouts",
-    "B1 PASS_WITH_SCOPE refers to the calibrated subdominant reference intersection; the dark-energy-dominant production reference gate is separately frozen",
-    "no observational discrimination claim exists without a pinned operator/covariance"
+    "B6 is unwhitened theory-space geometry and is not observational discrimination",
+    "near-alignment with C1 means an orthogonal response channel or observation-space test is still required",
+    "B2 remains PARTIAL until explicit gauge/additional-response bookkeeping is audited"
   ]
 }
