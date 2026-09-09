@@ -49,22 +49,41 @@ def load_tk(directory,prefix):
 
 def metrics(a,b):
     a=np.asarray(a,float); b=np.asarray(b,float)
+    d=a-b
     scale=np.maximum(np.maximum(np.abs(a),np.abs(b)),1e-30)
-    rel=np.abs(a-b)/scale
-    return {'max_symmetric_relative_difference':float(rel.max()),'l2_relative_difference':float(np.linalg.norm(a-b)/max(np.linalg.norm(a),np.linalg.norm(b),1e-30))}
+    rel=np.abs(d)/scale
+    na=float(np.linalg.norm(a)); nb=float(np.linalg.norm(b)); nd=float(np.linalg.norm(d))
+    return {
+        'max_symmetric_relative_difference':float(rel.max()),
+        'l2_relative_difference':float(nd/max(na,nb,1e-30)),
+        'l2_absolute_difference':nd,
+        'l2_norm_a':na,
+        'l2_norm_b':nb,
+        'max_absolute_difference':float(np.max(np.abs(d)))
+    }
 
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument('--sync',required=True); ap.add_argument('--newt',required=True); ap.add_argument('--json',required=True); args=ap.parse_args()
-    out={'schema':'KMDSB-W03-M07-gauge-bookkeeping-v0.1','grid':{'z':Z.tolist(),'k_h_mpc':K.tolist()},'comparisons':{}}
+    out={'schema':'KMDSB-W03-M07-gauge-bookkeeping-v0.2','grid':{'z':Z.tolist(),'k_h_mpc':K.tolist()},'comparisons':{}}
+    p={}
     for case,prefix in [('ref','ref_'),('m07','m07_')]:
         ps=load_pk(args.sync,prefix); pn=load_pk(args.newt,prefix)
+        p[(case,'sync')]=ps; p[(case,'newt')]=pn
         out['comparisons'][f'{case}_P']=metrics(ps,pn)
         ts=load_tk(args.sync,prefix); tn=load_tk(args.newt,prefix)
         for name in ('d_m','phi','psi'): out['comparisons'][f'{case}_{name}']=metrics(ts[name],tn[name])
-    # response comparison is more stringent than comparing only raw model outputs
-    rps=np.log(load_pk(args.sync,'m07_')/load_pk(args.sync,'ref_'))
-    rpn=np.log(load_pk(args.newt,'m07_')/load_pk(args.newt,'ref_'))
+    rps=np.log(p[('m07','sync')]/p[('ref','sync')])
+    rpn=np.log(p[('m07','newt')]/p[('ref','newt')])
     out['comparisons']['response_lnP']=metrics(rps,rpn)
+    # Cross-gauge raw-log errors for common-mode calibration diagnosis.
+    dg_ref=np.log(p[('ref','sync')]/p[('ref','newt')])
+    dg_m07=np.log(p[('m07','sync')]/p[('m07','newt')])
+    out['gauge_error_common_mode']={
+        'ref_logP_gauge_error_norm':float(np.linalg.norm(dg_ref)),
+        'm07_logP_gauge_error_norm':float(np.linalg.norm(dg_m07)),
+        'model_minus_ref_gauge_error_norm':float(np.linalg.norm(dg_m07-dg_ref)),
+        'cosine_ref_vs_model_gauge_error':float(np.dot(dg_ref.reshape(-1),dg_m07.reshape(-1))/(max(np.linalg.norm(dg_ref)*np.linalg.norm(dg_m07),1e-30)))
+    }
     Path(args.json).write_text(json.dumps(out,indent=2)+'\n')
     print(json.dumps(out,indent=2))
 if __name__=='__main__': main()
