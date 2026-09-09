@@ -1,0 +1,197 @@
+name: W03 M07 prospective lambda 0.225 holdout
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m07-holdout-l0225.yml'
+
+jobs:
+  holdout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      OMEGA_SCF_TARGET: '0.682686955086854'
+      SHOOT_REL_TOL: '1.0e-13'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check numpy
+
+      - name: Fetch and build pinned official CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/lesgourg/class_public.git class_public
+          cd class_public
+          git checkout e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          make -j2
+
+      - name: Write frozen holdout configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p holdout_configs holdout_outputs holdout_logs
+          cat > holdout_configs/common.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          Omega_fld = 0
+          reio_parametrization = reio_none
+          output = mPk,mTk
+          modes = s
+          ic = ad
+          gauge = synchronous
+          non linear = none
+          z_pk = 0.295,0.51,0.706,0.934,1.317,1.491,2.33
+          P_k_max_h/Mpc = 0.2
+          write background = yes
+          headers = yes
+          format = class
+          tol_shooting_deltax_rel = ${SHOOT_REL_TOL}
+          EOF
+
+          cat holdout_configs/common.ini > holdout_configs/ref.ini
+          cat >> holdout_configs/ref.ini <<EOF
+          Omega_scf = 0
+          root = ${GITHUB_WORKSPACE}/holdout_outputs/ref_
+          EOF
+
+          make_scf () {
+            local lam="$1"
+            local tag="$2"
+            local Aseed
+            Aseed=$(python3 -c 'import math,sys; lam=float(sys.argv[1]); Om=float(sys.argv[2]); h=0.67; H0=100*h/299792.458; phi=1.0; print(f"{3*Om*H0*H0*math.exp(lam*phi)-1.0:.17g}")' "$lam" "$OMEGA_SCF_TARGET")
+            cat holdout_configs/common.ini > "holdout_configs/${tag}.ini"
+            cat >> "holdout_configs/${tag}.ini" <<EOF
+          Omega_scf = ${OMEGA_SCF_TARGET}
+          scf_parameters = ${lam},0.0,${Aseed},0.0,1.0,0.0
+          attractor_ic_scf = no
+          scf_tuning_index = 2
+          root = ${GITHUB_WORKSPACE}/holdout_outputs/${tag}_
+          EOF
+          }
+
+          make_scf 0.0 scf_l0
+          make_scf 0.225 scf_l0225
+
+      - name: Execute holdout without exposing acceptance logic
+        shell: bash
+        run: |
+          set +e
+          for tag in ref scf_l0 scf_l0225; do
+            ./class_public/class "holdout_configs/${tag}.ini" > "holdout_logs/${tag}.log" 2>&1
+            rc=$?
+            echo "$rc" > "holdout_logs/${tag}.exit"
+            echo "${tag}: exit ${rc}"
+          done
+          exit 0
+
+      - name: Analyze frozen response grid
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 code/w03_m07_quintessence_probe.py \
+            --directory holdout_outputs \
+            --case REF_LCDM:ref_:nan \
+            --case SCF_SPLIT_L0:scf_l0_:0.0 \
+            --case M07_HOLDOUT_L0225:scf_l0225_:0.225 \
+            --json holdout_result.json
+
+      - name: Score preregistered vector prediction
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, math
+          import numpy as np
+          pre=json.load(open('waves/wave_03_expanded_dark_energy/M07_HOLDOUT_L0225_PREREGISTRATION.json'))
+          res=json.load(open('holdout_result.json'))
+          cmp=next(x for x in res['comparisons_to_LCDM'] if x['label']=='M07_HOLDOUT_L0225')
+          case=next(x for x in res['cases'] if x['label']=='M07_HOLDOUT_L0225')
+          def score(actual,pred):
+              a=np.asarray(actual,float); p=np.asarray(pred,float)
+              rel=float(np.linalg.norm(a-p)/np.linalg.norm(p))
+              cos=float(np.dot(a,p)/(np.linalg.norm(a)*np.linalg.norm(p)))
+              cos=max(-1.0,min(1.0,cos))
+              ang=float(math.degrees(math.acos(cos)))
+              return rel,ang
+          relH,angH=score(cmp['response_lnH'],pre['predicted']['response_lnH'])
+          relP,angP=score(cmp['response_vector_lnP'],pre['predicted']['response_vector_lnP'])
+          out={
+            'schema':'KMDSB-W03-M07-holdout-score-v0.1',
+            'lambda':0.225,
+            'Omega_scf_today':case['background']['Omega_scf_today'],
+            'Omega_target_error':case['background']['Omega_scf_today']-0.682686955086854,
+            'actual':{
+              'l2_lnH':cmp['l2_lnH'],'max_abs_lnH':cmp['max_abs_lnH'],
+              'l2_lnP':cmp['l2_lnP'],'max_abs_lnP':cmp['max_abs_lnP']},
+            'prediction_error':{
+              'relative_l2_lnH':relH,'angle_deg_lnH':angH,
+              'relative_l2_lnP':relP,'angle_deg_lnP':angP}
+          }
+          json.dump(out,open('holdout_score.json','w'),indent=2); open('holdout_score.json','a').write('\n')
+          print(json.dumps(out,indent=2))
+          PY
+
+      - name: Record immutable provenance
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "KMDSB_HEAD=$(git rev-parse HEAD)"
+            echo "CLASS_HEAD=$(git -C class_public rev-parse HEAD)"
+            echo "CLASS_REMOTE=$(git -C class_public remote get-url origin)"
+            echo "PREREG_SHA256=$(sha256sum waves/wave_03_expanded_dark_energy/M07_HOLDOUT_L0225_PREREGISTRATION.json | cut -d' ' -f1)"
+            echo "SHOOT_REL_TOL=${SHOOT_REL_TOL}"
+          } > holdout_provenance.txt
+
+      - name: Upload immutable holdout bundle before enforcement
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m07-holdout-l0225
+          path: |
+            holdout_result.json
+            holdout_score.json
+            holdout_provenance.txt
+            holdout_configs/
+            holdout_outputs/
+            holdout_logs/
+            waves/wave_03_expanded_dark_energy/M07_HOLDOUT_L0225_PREREGISTRATION.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce frozen prospective holdout
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in ref scf_l0 scf_l0225; do
+            test "$(cat holdout_logs/${tag}.exit)" = "0"
+          done
+          test -f holdout_result.json
+          test -f holdout_score.json
+          python3 - <<'PY'
+          import json
+          pre=json.load(open('waves/wave_03_expanded_dark_energy/M07_HOLDOUT_L0225_PREREGISTRATION.json'))
+          res=json.load(open('holdout_result.json'))
+          sc=json.load(open('holdout_score.json'))
+          acc=pre['acceptance']
+          rc=res['lambda0_reference_control']
+          assert rc['max_abs_lnH'] <= acc['lambda0_reference_max_abs_lnH'], rc
+          assert rc['max_abs_lnP'] <= acc['lambda0_reference_max_abs_lnP'], rc
+          assert abs(sc['Omega_target_error']) <= acc['max_abs_Omega_scf_target_error'], sc
+          pe=sc['prediction_error']
+          assert pe['relative_l2_lnH'] <= acc['max_relative_l2_error_lnH'], pe
+          assert pe['angle_deg_lnH'] <= acc['max_angle_deg_lnH'], pe
+          assert pe['relative_l2_lnP'] <= acc['max_relative_l2_error_lnP'], pe
+          assert pe['angle_deg_lnP'] <= acc['max_angle_deg_lnP'], pe
+          print('M07_PROSPECTIVE_WITHIN_FAMILY_HOLDOUT=PASS')
+          PY
