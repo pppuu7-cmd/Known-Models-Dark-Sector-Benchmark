@@ -33,3 +33,7 @@ DP-0701,W02_cross_edge,W02,"candidate uniqueness claims require implemented near
 DP-0702,W02_cross_edge,W02,"theory-space and observation-space comparator graphs remain separate until a pinned operator and covariance justify promotion",ACTIVE
 DP-0703,W02_E4,W02,"portable characteristic scalar summaries are stress-tested against fuller profiles; a close scalar centroid does not establish mechanism equivalence or distinction",ACTIVE
 DP-0704,W02_cross_edge,W02,"nearest-comparator tests use the smallest sufficient common response block with frozen masks baselines and provenance, not the smallest convenient summary",ACTIVE
+DP-0801,M07,W03,"physical theory parameters are kept distinct from solver shooting/closure nuisance parameters and nuisance fitting may not redefine the theory branch",ACTIVE
+DP-0802,M07,W03,"dimensionful or exponentially sensitive nuisance parameters receive an analytic natural-scale initialization before automated shooting or fitting",ACTIVE
+DP-0803,M07,W03,"an analytic reference intersection is numerically regressed and a hard production reference tolerance is frozen before finite-deformation science",ACTIVE
+DP-0804,M07,W03,"microphysical dark-energy candidates are tested through perturbation and time-response channels rather than being identified only through an effective background w(z)",ACTIVE
