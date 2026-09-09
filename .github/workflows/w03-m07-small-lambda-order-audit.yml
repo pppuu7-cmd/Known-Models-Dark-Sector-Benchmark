@@ -1,0 +1,176 @@
+name: W03 M07 small-lambda response-order audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m07-small-lambda-order-audit.yml'
+      - 'code/w03_m07_small_lambda_order_audit.py'
+
+jobs:
+  order-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      OMEGA_SCF_TARGET: '0.682686955086854'
+      SHOOT_REL_TOL: '1.0e-13'
+      OMEGA_TOL: '1.0e-6'
+      MAX_LNH_TOL: '1.0e-8'
+      MAX_LNP_TOL: '1.0e-5'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check numpy
+
+      - name: Fetch and build pinned official CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/lesgourg/class_public.git class_public
+          cd class_public
+          git checkout e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          make -j2
+
+      - name: Write frozen small-lambda configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p order_configs order_outputs order_logs
+          cat > order_configs/common.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          Omega_fld = 0
+          reio_parametrization = reio_none
+          output = mPk,mTk
+          modes = s
+          ic = ad
+          gauge = synchronous
+          non linear = none
+          z_pk = 0.295,0.51,0.706,0.934,1.317,1.491,2.33
+          P_k_max_h/Mpc = 0.2
+          write background = yes
+          headers = yes
+          format = class
+          tol_shooting_deltax_rel = ${SHOOT_REL_TOL}
+          input_verbose = 1
+          EOF
+
+          cat order_configs/common.ini > order_configs/ref.ini
+          cat >> order_configs/ref.ini <<EOF
+          Omega_scf = 0
+          root = ${GITHUB_WORKSPACE}/order_outputs/ref_
+          EOF
+
+          make_scf () {
+            local lam="$1"
+            local tag="$2"
+            local Aseed
+            Aseed=$(python3 -c 'import math,sys; lam=float(sys.argv[1]); Om=float(sys.argv[2]); h=0.67; H0=100*h/299792.458; phi=1.0; print(f"{3*Om*H0*H0*math.exp(lam*phi)-1.0:.17g}")' "$lam" "$OMEGA_SCF_TARGET")
+            cat order_configs/common.ini > "order_configs/${tag}.ini"
+            cat >> "order_configs/${tag}.ini" <<EOF
+          Omega_scf = ${OMEGA_SCF_TARGET}
+          scf_parameters = ${lam},0.0,${Aseed},0.0,1.0,0.0
+          attractor_ic_scf = no
+          scf_tuning_index = 2
+          root = ${GITHUB_WORKSPACE}/order_outputs/${tag}_
+          EOF
+          }
+
+          make_scf 0.0 scf_l0
+          make_scf 0.005 scf_l0005
+          make_scf 0.010 scf_l0010
+          make_scf 0.020 scf_l0020
+          make_scf 0.040 scf_l0040
+
+      - name: Run frozen order cases and preserve exit codes
+        shell: bash
+        run: |
+          set +e
+          for tag in ref scf_l0 scf_l0005 scf_l0010 scf_l0020 scf_l0040; do
+            ./class_public/class "order_configs/${tag}.ini" > "order_logs/${tag}.log" 2>&1
+            rc=$?
+            echo "$rc" > "order_logs/${tag}.exit"
+            echo "${tag}: exit ${rc}"
+          done
+          exit 0
+
+      - name: Build response payload and run order audit
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 code/w03_m07_quintessence_probe.py \
+            --directory order_outputs \
+            --case REF_LCDM:ref_:nan \
+            --case SCF_SPLIT_L0:scf_l0_:0.0 \
+            --case M07_L0005:scf_l0005_:0.005 \
+            --case M07_L0010:scf_l0010_:0.010 \
+            --case M07_L0020:scf_l0020_:0.020 \
+            --case M07_L0040:scf_l0040_:0.040 \
+            --json order_probe_result.json
+          python3 code/w03_m07_small_lambda_order_audit.py \
+            order_probe_result.json --json m07_small_lambda_order_result.json
+
+      - name: Enforce numerical and preregistered science gates
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in ref scf_l0 scf_l0005 scf_l0010 scf_l0020 scf_l0040; do
+            test "$(cat order_logs/${tag}.exit)" = "0"
+          done
+          test -f order_probe_result.json
+          test -f m07_small_lambda_order_result.json
+          python3 - "$OMEGA_SCF_TARGET" "$OMEGA_TOL" "$MAX_LNH_TOL" "$MAX_LNP_TOL" <<'PY'
+          import json,sys
+          target,otol,htol,ptol=map(float,sys.argv[1:])
+          d=json.load(open('order_probe_result.json'))
+          for c in d['cases']:
+              if c['label'].startswith('M07_') or c['label']=='SCF_SPLIT_L0':
+                  err=abs(c['background']['Omega_scf_today']-target)
+                  if err>otol:
+                      raise SystemExit(f"{c['label']} Omega target error {err} > {otol}")
+          rc=d['lambda0_reference_control']
+          if rc['max_abs_lnH']>htol or rc['max_abs_lnP']>ptol:
+              raise SystemExit('lambda-zero reference tolerance failed')
+          r=json.load(open('m07_small_lambda_order_result.json'))
+          if r['verdict']!='PASS_WITH_SCOPE':
+              raise SystemExit(f"order audit verdict {r['verdict']}")
+          print('M07_SMALL_LAMBDA_ORDER_AUDIT=PASS_WITH_SCOPE')
+          PY
+
+      - name: Record provenance
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "KMDSB_HEAD=$(git rev-parse HEAD)"
+            echo "CLASS_HEAD=$(git -C class_public rev-parse HEAD)"
+            echo "OMEGA_SCF_TARGET=${OMEGA_SCF_TARGET}"
+            echo "SHOOT_REL_TOL=${SHOOT_REL_TOL}"
+            echo 'LAMBDA_GRID=0.005,0.010,0.020,0.040'
+            echo 'FITTED_POWER_PASS_RANGE=1.8,2.2'
+            echo 'REFERENCE_FLOOR_FACTOR_MIN=100'
+            echo "PREREG_SHA256=$(sha256sum waves/wave_03_expanded_dark_energy/M07_SMALL_LAMBDA_ORDER_PREREGISTRATION.md | cut -d' ' -f1)"
+          } > order_provenance.txt
+
+      - name: Upload immutable order bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m07-small-lambda-order-audit
+          path: |
+            order_probe_result.json
+            m07_small_lambda_order_result.json
+            order_provenance.txt
+            order_configs/
+            order_outputs/
+            order_logs/
+            waves/wave_03_expanded_dark_energy/M07_SMALL_LAMBDA_ORDER_PREREGISTRATION.md
+          if-no-files-found: error
+          retention-days: 90
