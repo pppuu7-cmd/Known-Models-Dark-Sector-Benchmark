@@ -68,76 +68,157 @@ Cross-model methodology extracted:
 - dark-sector claims must be attacked by modified-gravity comparators;
 - holdout tests must remain prospective and relation-specific.
 
-The design-prior ledger now contains DP-0001..DP-0604, 30 ACTIVE requirements.
+The design-prior ledger contains DP-0001..DP-0604, 30 ACTIVE requirements at this checkpoint.
 
 ### Wave 02 active degeneracy attack
 
-E1 IDE vs GDM is stored as `PASS_WITH_SCOPE` in the frozen unwhitened common low-k `r_Delta(k,z)` tangent block.
+E1 IDE vs GDM stored `PASS_WITH_SCOPE` in frozen unwhitened common low-k `r_Delta(k,z)` tangent geometry.
+Closest pair: IDE alpha_negative vs GDM cv2, acute angle `24.786398074293924 deg`.
 
-Exact source: `waves/wave_02_degeneracy_attack/E1_result.json`.
+E2 IDE vs designer f(R) stored `PASS_WITH_SCOPE`; acute angles `42.450272692967864 deg` and `59.40410068973369 deg` against the minimum-resolved f(R) production ray.
 
-Closest adversarial pair:
-- IDE alpha_negative vs GDM cv2;
-- acute line angle `24.786398074293924 deg`.
+E3 lacked a valid second same-convention non-WDM high-k comparator and was held for explicit `BLOCKED_IMPLEMENTATION` handling rather than synthetic comparison.
 
-Other stored pairs:
-- IDE alpha_negative vs GDM cs2: `24.93454727387643 deg`;
-- IDE beta vs GDM cs2: oriented `123.71491585045106 deg`, acute `56.285084149548936 deg`;
-- IDE beta vs GDM cv2: oriented `123.70661502967042 deg`, acute `56.29338497032958 deg`.
+E4 remained open pending a common temporal coordinate.
 
-Interpretation is limited to rejection of exact theory-response collinearity in the frozen block. Observation-space promotion remains open.
+### Future-model methodology/recovery
 
-E2 IDE vs designer f(R) is stored as `PASS_WITH_SCOPE` in the same class of frozen unwhitened low-k comparison.
+Created the F0-F9 construction methodology and full restore-from-new-chat manual. Repository evidence was frozen as the authority if chat memory conflicts.
 
-Exact source: `waves/wave_02_degeneracy_attack/E2_result.json`.
+---
 
-Stored acute angles:
-- IDE alpha_negative vs designer f(R): `42.450272692967864 deg`, scalar-projection residual fraction `0.6749500663877402`;
-- IDE beta vs designer f(R): `59.40410068973369 deg`, residual fraction `0.8607784571671175`.
+## 2026-09-09 — Iteration 003: Wave 02 closure, authority transition, Wave 03 microphysical DE launch
 
-The f(R) direction is the minimum resolved `B0=1e-6` production ray, not an exact B0->0 tangent because of the pinned solver GR threshold. Slip cannot be claimed as a separator in this frozen edge because the observability atlas marks it unknown for the relevant sides.
+### DSIR authority delta
 
-E3 WDM vs alternative small-scale suppression: no already pinned fuzzy/axion/SIDM-like high-k response family was found in the frozen DSIR authority on a directly valid common implementation. The protocol must prefer `BLOCKED_IMPLEMENTATION` to constructing a synthetic comparator.
+DSIR `main` advanced from the W00-W02 frozen authority
+`e3276e2193f6a5200b541a194e3175356ae5a1c1`
+to
+`328f2ca80b724870b851c7fe6366cce1ca5086cd`.
 
-E4 DCDM vs alternative temporal-history mechanism remains the active same-coordinate provenance check. If no second mechanism exists in the same temporal-localization coordinate, the terminal result must be `BLOCKED_IMPLEMENTATION`.
+The inspected 11-commit delta contains DSIR4 ordered-join/radial-support/process-recovery work. W00-W02 were not silently rebased. The transition is recorded in `recovery/AUTHORITY_DELTAS.md` AD-001; W03 may start from the newer authority.
 
-### Future-model methodology created
+### W02 E3 — WDM vs alternative suppression
+
+Terminal state: `BLOCKED_IMPLEMENTATION`.
+
+The pinned WDM high-k block exists, but the frozen DSIR C0-C6 authority contains no second non-WDM small-scale suppression family implemented on a valid matched high-k response grid/baseline. No uniqueness claim is permitted from this coverage gap.
+
+Stored:
+- `waves/wave_02_degeneracy_attack/E3_WDM_vs_alt_suppression.md`
+- `waves/wave_02_degeneracy_attack/E3_result.json`
+
+### W02 E4 — DCDM vs temporal alternatives
+
+A common amplitude-invariant temporal coordinate was built from the same 7x5 low-k response grid:
+
+`q_z(z)=sum_k r(k,z)^2/sum_{z,k}r(k,z)^2`
+
+`z_R=exp[sum_z q_z ln(1+z)]-1`.
+
+DCDM Exp053A sequence:
+`{0.6304573019,0.6343829813,0.6419613202,0.6562403431}`.
+
+Applying the identical coordinate to frozen local response directions gave:
+- C1 smooth-w `0.6214182972`;
+- IDE alpha-negative `0.9516948867`;
+- IDE beta `1.0839529728`;
+- GDM cs2 `0.7315736878`;
+- GDM cv2 `0.7362246207`;
+- designer f(R) `0.4547904059`.
+
+C1 is the nearest scalar comparator to all sampled DCDM points, with absolute gaps about `{0.0090390,0.0129647,0.0205430,0.0348220}`.
+
+Because no preregistered cross-model scalar-distance threshold or observational covariance exists, and one scalar compresses the full temporal profile, E4 is `INCONCLUSIVE`, not PASS and not BLOCKED.
+
+Reproducible calculator:
+`code/wave02_temporal_centroid_comparator.py`.
+
+### W02 closure
+
+Wave 02 is COMPLETE.
+
+Frozen edge states:
+- PC1 GDM vs f(R): `PASS_WITH_SCOPE`;
+- E1 IDE vs GDM: `PASS_WITH_SCOPE`;
+- E2 IDE vs f(R): `PASS_WITH_SCOPE`;
+- E3 WDM vs alternative suppression: `BLOCKED_IMPLEMENTATION`;
+- E4 DCDM vs temporal alternatives: `INCONCLUSIVE`.
+
+All W02 hypotheses H1-H4 are `SUPPORTED` within scope:
+1. restricted-block degeneracy != full equivalence;
+2. missing implementation creates legitimate blocked edges;
+3. minimum discriminating suite is a graph problem;
+4. observational promotion is separate.
+
+Separate synthesis files were created:
+- `THEORY_SPACE_GRAPH.md`;
+- `OBSERVATION_SPACE_GRAPH.md`.
+
+No new W02 pairwise edge was promoted to observational discrimination.
+
+### W02 design-prior deltas
+
+Added DP-0701..DP-0704. Ledger count is now 34 ACTIVE requirements.
+
+Key new constraints:
+- no uniqueness from missing comparator implementation;
+- separate theory-space and observation-space graphs;
+- scalar characteristic summaries require full-profile stress tests;
+- use smallest sufficient common response block, not smallest convenient summary.
+
+### W03 opened — Expanded dark-energy mechanisms
+
+W03 status: ACTIVE.
+Starting DSIR authority: `328f2ca80b724870b851c7fe6366cce1ca5086cd`.
+
+First target: M07 canonical scalar-field / quintessence using pinned official CLASS
+`lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540`.
+
+Pinned scalar-field branch:
+`V(phi)=(1+A)exp(-lambda phi)` (`alpha=0`, `B=0`).
+
+Critical provenance decision:
+CLASS default scalar shooting can tune `lambda` (`scf_tuning_index=0`) when `Omega_scf` is targeted. KMDSB forbids this because `lambda` is the physical shape parameter. M07 sets `scf_tuning_index=2`, using `A` only as potential-normalization/shooting nuisance. Explicit non-attractor initial conditions are used.
+
+At `lambda=0` and zero field velocity, the canonical stress has `p_phi=-rho_phi`; a split Lambda + constant scalar should therefore reproduce LambdaCDM total response if implementation/bookkeeping is clean. This is a numerical control to be tested, not assumed.
+
+M07 current gate ledger:
+- B0 `PASS_WITH_SCOPE`;
+- B1 `PARTIAL`;
+- B2 `PARTIAL`;
+- B3-B8 open;
+- B9 `PARTIAL`;
+- overall `INCONCLUSIVE`.
+
+### M07 Actions probe chronology
 
 Created:
-`protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.1.md`
+- `.github/workflows/w03-m07-quintessence-probe.yml`;
+- `code/w03_m07_quintessence_probe.py`;
+- `models/canonical_quintessence/audit.md`;
+- `models/canonical_quintessence/result.json`.
 
-The methodology converts benchmark pressure into an F0-F9 construction pipeline:
-- F0 authority/provenance freeze;
-- F1 recoverable reference/decoupling limit;
-- F2 physical parameter geometry before differentiation;
-- F3 conservation/gauge/frame closure;
-- F4 multi-channel response architecture;
-- F5 covariance-aware observation-space identifiability;
-- F6 nearest-comparator attack;
-- F7 quotient-surviving novelty;
-- F8 prospective holdout prediction;
-- F9 candidate synthesis/promotion.
+First Actions run `34319481691` at head `89e0ba040900fa17ada29c35987d322ba9e36b8a`:
+- pinned CLASS checkout/build: PASS;
+- configs written: PASS;
+- mandatory REF + lambda-zero run step: FAIL immediately;
+- analysis/artifact steps skipped by original fail-fast workflow.
 
-It also introduces a conceptual design-prior maturation ladder `ACTIVE -> REINFORCED -> CORE -> RETIRED`. This does not silently rewrite the CSV ledger; promotion evidence is to be recorded explicitly as future waves accumulate.
+Interpretation: infrastructure/configuration failure only. No physical M07 conclusion.
 
-### Recovery system hardened
+The workflow was hardened in commit `f0fbbf2043c4bf6b29c259d5ccd29aec893030f4` to preserve every case exit code, logs and artifact even on mandatory failure, and to enforce the mandatory control only after diagnostics are uploaded.
 
-Created:
-`recovery/RESTORE_FROM_NEW_CHAT.md`
+Diagnostic rerun: Actions run `34319672901`.
 
-Updated:
-`recovery/STATE.md`
-
-Updated README entry points so a fresh chat can recover the project without dependence on conversation memory.
-
-Recovery rule frozen:
-if chat memory conflicts with repository evidence, repository evidence wins.
+Finite `lambda={0.05,0.10,0.20}` points in this probe are explicitly descriptive only. They cannot be promoted to B8 evidence. A hard production reference tolerance will be preregistered only after the infrastructure/reference floor is measured.
 
 ### Current frontier
 
-1. finish E4 same-coordinate comparator provenance check;
-2. write terminal E3/E4 result records;
-3. build separate theory-space and observation-space comparator graphs;
-4. close W02 only when every frozen edge has a terminal status;
-5. update matrices/methodology/recovery/log;
-6. then open W03 expanded dark-energy family.
+1. finish diagnostic Actions run `34319672901`;
+2. inspect preserved REF/lambda-zero logs;
+3. repair configuration/plumbing without changing W03 hypotheses;
+4. obtain clean lambda-zero split-reference;
+5. preregister production B1 tolerance;
+6. compute standard DSIR response for a controlled production scalar branch;
+7. attack M07 against M01 smooth-w and M05 designer f(R).
