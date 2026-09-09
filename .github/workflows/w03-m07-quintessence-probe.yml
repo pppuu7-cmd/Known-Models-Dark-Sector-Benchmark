@@ -67,7 +67,12 @@ jobs:
             cat probe_configs/common.ini > "probe_configs/${tag}.ini"
             cat >> "probe_configs/${tag}.ini" <<EOF
           Omega_scf = 0.10
-          scf_parameters = ${lam},0.0,0.0,0.0,0.0,0.0
+          # alpha=0 gives the pure-exponential branch. Keep phi_ini-B != 0
+          # because pinned CLASS evaluates alpha*(phi-B)^(alpha-1)
+          # literally; phi_ini=B would create a numerical 0*0^-1 singularity.
+          # For alpha=0 a constant field shift is absorbed into potential
+          # normalization, which A-shooting already calibrates.
+          scf_parameters = ${lam},0.0,0.0,0.0,1.0,0.0
           attractor_ic_scf = no
           scf_tuning_index = 2
           root = ${GITHUB_WORKSPACE}/probe_outputs/${tag}_
