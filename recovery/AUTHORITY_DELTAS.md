@@ -1,6 +1,6 @@
 # KMDSB authority deltas
 
-Updated: 2026-09-09
+Updated: 2026-09-10
 
 ## Rule
 
@@ -71,6 +71,33 @@ The important change for KMDSB is not a rewrite of the C1-C6 or M07 physical res
 - Starting with the corrected M08 execution after the initial configuration-only failure, observation-space/B5-B7 methodology adopts `864952e...` as an explicit overlay authority while preserving the original preregistration record.
 - M08 B0-B4 solver/model results remain tied to the pinned CLASS implementation and their own run provenance; the new DSIR snapshot chiefly governs any observation-space promotion and cross-family robustness claim.
 - Any future classifying cross-family G5-style test must bind a machine-readable operator/covariance manifest before output inspection.
+
+## AD-003 — M09 launch after DSIR4 angular authority closure
+
+### Previous observation-methodology overlay
+
+`pppuu7-cmd/Dark-Sector-Influence-Reconstruction@864952e1520d82473a9e976edfeb69f9899d174d`
+
+### New DSIR main inspected on 2026-09-10
+
+`pppuu7-cmd/Dark-Sector-Influence-Reconstruction@bc28acc47cc5facba046741fd09f710ae8da9689`
+
+This snapshot is exactly 2 commits ahead of the AD-002 overlay.
+
+### Delta inspection
+
+The two-commit delta contains only DSIR4 authority work:
+- completion of the `EXP073IM` angular-byte materialization audit at 14/14;
+- addition of `EXP073IN_C2_WM_S0_AUTHORITY_SUCCESSION_V0_1.json`.
+
+No file in the delta modifies the Article-2 G5 common-operator/covariance contract, C1-C6 response definitions, M07/M08 solver semantics, or the KMDSB ShapeFit coordinate construction.
+
+### Decision
+
+- M07 and M08 remain historically pinned to their own scientific and methodology authorities; no rebase is performed.
+- The successful M07/M08 common-ShapeFit observation control remains valid under its frozen manifest and `864952e...` overlay; the two newer DSIR4 commits do not alter that operator contract.
+- M09 may cite `bc28acc...` as the current methodology overlay because the inspected delta is authority/provenance-only with respect to the M09 response questions.
+- If later DSIR commits modify G5, response definitions, masks or operator binding, create a new authority delta before observation-space promotion.
 
 ## Recovery instruction
 
