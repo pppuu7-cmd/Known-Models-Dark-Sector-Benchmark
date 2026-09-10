@@ -14,6 +14,7 @@ OMEGA_DM = 0.1200
 M_WDM_EV = 3000.0
 T_NCDM = 0.71611
 PREREG = "protocol/W04_M21_MIXED_COLD_WARM_K1_REFERENCE_PREREGISTRATION_v0.1.md"
+OUTPUT_RECOVERY = "protocol/W04_M21_CLASS_OUTPUT_ROOT_NAMING_RECOVERY_v0.1.md"
 
 
 def common_ini(root: str, omega_cdm: float) -> list[str]:
@@ -78,6 +79,20 @@ def prepare(out: Path):
         manifest["cases"][f"f{i}"] = {"fraction": f, "omega_cdm": oc, "omega_ncdm": ow, "N_ncdm": 1}
 
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+
+
+def resolve_output(root: Path, prefix: str, suffix: str) -> Path:
+    outdir = root / "output"
+    candidates = []
+    exact = outdir / f"{prefix}_{suffix}.dat"
+    if exact.exists():
+        candidates.append(exact)
+    for p in sorted(outdir.glob(f"{prefix}_*_{suffix}.dat")):
+        if p not in candidates:
+            candidates.append(p)
+    if len(candidates) != 1:
+        raise RuntimeError(f"output discovery {prefix}/{suffix}: {[str(p) for p in candidates]}")
+    return candidates[0]
 
 
 def load_table(path: Path) -> np.ndarray:
@@ -160,6 +175,7 @@ def analyze(root: Path, status_path: Path, out: Path):
         "schema": "KMDSB.M21.mixedColdWarm.K1Reference.v1",
         "class_pin": CLASS_PIN,
         "preregistration": PREREG,
+        "output_naming_recovery": OUTPUT_RECOVERY,
         "fractions": FRACS,
         "omega_dm": OMEGA_DM,
         "m_wdm_eV": M_WDM_EV,
@@ -177,9 +193,9 @@ def analyze(root: Path, status_path: Path, out: Path):
         out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
         return
 
-    ref_cl = load_table(root / "output/ref_cl.dat")
-    ref_pk = load_table(root / "output/ref_pk.dat")
-    ref_bg_raw = load_table(root / "output/ref_background.dat")
+    ref_cl = load_table(resolve_output(root, "ref", "cl"))
+    ref_pk = load_table(resolve_output(root, "ref", "pk"))
+    ref_bg_raw = load_table(resolve_output(root, "ref", "background"))
     if ref_cl.shape[1] < 4:
         raise RuntimeError(f"unexpected Cl schema {ref_cl.shape}")
     if ref_bg_raw.shape[1] < 4:
@@ -188,9 +204,9 @@ def analyze(root: Path, status_path: Path, out: Path):
 
     finite = []
     for i in range(5):
-        cl = load_table(root / f"output/f{i}_cl.dat")
-        pk = load_table(root / f"output/f{i}_pk.dat")
-        bg_raw = load_table(root / f"output/f{i}_background.dat")
+        cl = load_table(resolve_output(root, f"f{i}", "cl"))
+        pk = load_table(resolve_output(root, f"f{i}", "pk"))
+        bg_raw = load_table(resolve_output(root, f"f{i}", "background"))
         if cl.shape[1] != ref_cl.shape[1]:
             raise RuntimeError(f"Cl schema mismatch f{i}: {cl.shape} ref={ref_cl.shape}")
         finite.append({"cl": cl, "pk": pk, "bg": bg_raw[:, [0, 3]]})
