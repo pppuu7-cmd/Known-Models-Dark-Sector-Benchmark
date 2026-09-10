@@ -1,0 +1,109 @@
+name: W03 M17 linear ePPF background-CPL transport
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m17-linear-eppf-cpl-transport.yml'
+      - 'verification/m17/linear_eppf_cpl_transport.py'
+      - 'protocol/W03_M17_LINEAR_EPPF_BACKGROUND_CPL_TRANSPORT_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  transport-attack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build exact pinned linear IDECAMB provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update >/dev/null
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync python3 >/dev/null
+          git clone -q https://github.com/cmbant/CosmoMC.git cosmomc
+          git -C cosmomc checkout -q eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone -q https://github.com/liaocrane/IDECAMB.git patch
+          git -C patch checkout -q 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          printf 'cosmomc=%s\nidecamb=%s\n' "$(git -C cosmomc rev-parse HEAD)" "$(git -C patch rev-parse HEAD)" > m17tr_pins.txt
+          rsync -a --exclude='.git' patch/ cosmomc/
+          make -C cosmomc cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > m17tr_build.log 2>&1
+      - name: Prepare frozen HDE and background-fit CPL cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m17/linear_eppf_cpl_transport.py prepare cosmomc/test_ide.ini m17tr_cases
+      - name: Execute nine linear cases
+        shell: bash
+        run: |
+          set +e
+          printf '{' > m17tr_status.json
+          first=1
+          for c in r0 h06 c06 h08 c08 h10 c10 h12 c12; do
+            start=$(date +%s)
+            (cd cosmomc && timeout --signal=TERM --kill-after=15s 120s ./cosmomc ../m17tr_cases/$c.ini > ../m17tr_$c.log 2>&1)
+            rc=$?
+            stop=$(date +%s)
+            [ $first -eq 0 ] && printf ',' >> m17tr_status.json
+            printf '"%s":%d,"%s_elapsed":%d' "$c" "$rc" "$c" "$((stop-start))" >> m17tr_status.json
+            first=0
+          done
+          printf '}\n' >> m17tr_status.json
+          cat m17tr_status.json
+          exit 0
+      - name: Analyze frozen transport metrics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m17/linear_eppf_cpl_transport.py analyze cosmomc m17tr_status.json m17tr_result.json
+          cat m17tr_result.json
+          test -s m17tr_result.json
+      - name: Persist result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m17tr_result.json /tmp/m17tr_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/holographic_dark_energy waves/wave_03_expanded_dark_energy
+          cp /tmp/m17tr_result.json models/holographic_dark_energy/M17_LINEAR_EPPF_BACKGROUND_CPL_TRANSPORT_RESULT.json
+          cp /tmp/m17tr_result.json waves/wave_03_expanded_dark_energy/M17_LINEAR_EPPF_BACKGROUND_CPL_TRANSPORT_RESULT.json
+          git add models/holographic_dark_energy/M17_LINEAR_EPPF_BACKGROUND_CPL_TRANSPORT_RESULT.json waves/wave_03_expanded_dark_energy/M17_LINEAR_EPPF_BACKGROUND_CPL_TRANSPORT_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M17 linear ePPF CPL transport result'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Enforce output gate only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('/tmp/m17tr_result.json').read_text())
+          print(r['classification'])
+          if r['classification']=='M17_LINEAR_EPPF_TRANSPORT_OUTPUT_BLOCKED': raise SystemExit(1)
+          PY
+      - name: Upload immutable transport bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m17-linear-eppf-cpl-transport
+          path: |
+            m17tr_pins.txt
+            m17tr_build.log
+            m17tr_cases/
+            m17tr_*.log
+            m17tr_status.json
+            m17tr_result.json
+            cosmomc/m17tr_*.theory_cl
+            verification/m17/linear_eppf_cpl_transport.py
+            protocol/W03_M17_LINEAR_EPPF_BACKGROUND_CPL_TRANSPORT_PREREGISTRATION_v0.1.md
+          retention-days: 90
