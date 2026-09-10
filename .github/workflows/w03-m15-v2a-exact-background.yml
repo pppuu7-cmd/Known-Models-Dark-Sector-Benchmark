@@ -1,0 +1,57 @@
+name: W03 M15 V2a exact four-component background
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m15-v2a-exact-background.yml'
+      - 'verification/m15/v2a_exact_background.py'
+      - 'protocol/W03_M15_V2A_EXACT_BACKGROUND_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  v2a-background:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Execute preregistered exact-background gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m15/v2a_exact_background.py | tee m15_v2a_console.txt
+          test -s m15_v2a_background_result.json
+      - name: Persist canonical result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m15_v2a_background_result.json /tmp/m15_v2a_background_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/generalized_chaplygin waves/wave_03_expanded_dark_energy
+          cp /tmp/m15_v2a_background_result.json models/generalized_chaplygin/M15_V2A_EXACT_BACKGROUND_RESULT.json
+          cp /tmp/m15_v2a_background_result.json waves/wave_03_expanded_dark_energy/M15_V2A_EXACT_BACKGROUND_RESULT.json
+          git add models/generalized_chaplygin/M15_V2A_EXACT_BACKGROUND_RESULT.json waves/wave_03_expanded_dark_energy/M15_V2A_EXACT_BACKGROUND_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M15 V2a exact background result'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Upload immutable V2a bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m15-v2a-exact-background
+          path: |
+            m15_v2a_background_result.json
+            m15_v2a_console.txt
+            verification/m15/v2a_exact_background.py
+            protocol/W03_M15_V2A_EXACT_BACKGROUND_PREREGISTRATION_v0.1.md
+          retention-days: 90
