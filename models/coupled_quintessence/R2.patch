@@ -1,0 +1,23 @@
+diff --git a/class_CDE/source/perturbations.c b/class_CDE/source/perturbations.c
+index e1b9d12..725650c 100755
+--- a/class_CDE/source/perturbations.c
++++ b/class_CDE/source/perturbations.c
+@@ -6258,8 +6258,7 @@ int perturb_sources(
+     /* NEW */
+     if (ppt->has_source_theta_scf == _TRUE_) {
+       rho_plus_p_theta_scf = k*k/a2_rel*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_scf];
+-      _set_source_(ppt->index_tp_theta_scf) = rho_plus_p_theta_scf/
+-        (pvecback[pba->index_bg_rho_scf]+pvecback[pba->index_bg_p_scf]);
++      _set_source_(ppt->index_tp_theta_scf) = (((pvecback[pba->index_bg_rho_scf]+pvecback[pba->index_bg_p_scf]) == 0.0) ? 0.0 : rho_plus_p_theta_scf/(pvecback[pba->index_bg_rho_scf]+pvecback[pba->index_bg_p_scf]));
+     }
+     /* */
+ 
+@@ -6637,7 +6636,7 @@ int perturb_print_variables(double tau,
+       /* */
+ 
+       delta_scf = delta_rho_scf/pvecback[pba->index_bg_rho_scf];
+-      theta_scf = rho_plus_p_theta_scf/(pvecback[pba->index_bg_rho_scf]+pvecback[pba->index_bg_p_scf]);
++      theta_scf = (((pvecback[pba->index_bg_rho_scf]+pvecback[pba->index_bg_p_scf]) == 0.0) ? 0.0 : rho_plus_p_theta_scf/(pvecback[pba->index_bg_rho_scf]+pvecback[pba->index_bg_p_scf]));
+ 
+     }
+ 

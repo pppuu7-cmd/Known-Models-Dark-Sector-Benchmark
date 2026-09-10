@@ -1,0 +1,498 @@
+{
+  "schema": "KMDSB.W03.M14.CDERegularizationSplitNoninterference.v0.1",
+  "upstream": "LisaGoh/CDE@b85a675af7544a5183e402964550811aa805b698",
+  "runtime": "OMP_NUM_THREADS=1",
+  "threshold": 1e-12,
+  "exits": {
+    "O_authorA": 0,
+    "O_authorB": 0,
+    "O_b0tinyA": 0,
+    "O_b0tinyB": 0,
+    "R1_author": 0,
+    "R1_b0tiny": 0,
+    "R1_exact": 0,
+    "R2_author": 0,
+    "R2_b0tiny": 0,
+    "R2_exact": 1,
+    "R12_author": 0,
+    "R12_b0tiny": 0
+  },
+  "baseline": {
+    "author": {
+      "files": {
+        "background": {
+          "pass": true,
+          "finite": true,
+          "rows": 5281,
+          "cols": 32,
+          "max_symmetric_relative": 0.0,
+          "max_abs": 0.0
+        },
+        "pk": {
+          "pass": true,
+          "finite": true,
+          "rows": 607,
+          "cols": 2,
+          "max_symmetric_relative": 0.0,
+          "max_abs": 0.0
+        },
+        "pk_cb": {
+          "pass": true,
+          "finite": true,
+          "rows": 607,
+          "cols": 2,
+          "max_symmetric_relative": 0.0,
+          "max_abs": 0.0
+        },
+        "cl": {
+          "pass": true,
+          "finite": true,
+          "rows": 2999,
+          "cols": 8,
+          "max_symmetric_relative": 0.0,
+          "max_abs": 0.0
+        },
+        "cl_lensed": {
+          "pass": true,
+          "finite": true,
+          "rows": 2499,
+          "cols": 8,
+          "max_symmetric_relative": 0.0,
+          "max_abs": 0.0
+        },
+        "tk": {
+          "pass": true,
+          "finite": true,
+          "rows": 607,
+          "cols": 8,
+          "max_symmetric_relative": 0.0,
+          "max_abs": 0.0
+        }
+      },
+      "pass": true
+    },
+    "b0tiny": {
+      "files": {
+        "background": {
+          "pass": true,
+          "finite": true,
+          "rows": 5281,
+          "cols": 32,
+          "max_symmetric_relative": 0.0,
+          "max_abs": 0.0
+        },
+        "pk": {
+          "pass": true,
+          "finite": true,
+          "rows": 614,
+          "cols": 2,
+          "max_symmetric_relative": 0.0,
+          "max_abs": 0.0
+        },
+        "pk_cb": {
+          "pass": true,
+          "finite": true,
+          "rows": 614,
+          "cols": 2,
+          "max_symmetric_relative": 0.0,
+          "max_abs": 0.0
+        },
+        "cl": {
+          "pass": true,
+          "finite": true,
+          "rows": 2999,
+          "cols": 8,
+          "max_symmetric_relative": 0.0,
+          "max_abs": 0.0
+        },
+        "cl_lensed": {
+          "pass": true,
+          "finite": true,
+          "rows": 2499,
+          "cols": 8,
+          "max_symmetric_relative": 0.0,
+          "max_abs": 0.0
+        },
+        "tk": {
+          "pass": true,
+          "finite": true,
+          "rows": 614,
+          "cols": 8,
+          "max_symmetric_relative": 0.0,
+          "max_abs": 0.0
+        }
+      },
+      "pass": true
+    }
+  },
+  "variants": {
+    "R1": {
+      "author": {
+        "files": {
+          "background": {
+            "pass": true,
+            "finite": true,
+            "rows": 5281,
+            "cols": 32,
+            "max_symmetric_relative": 0.0,
+            "max_abs": 0.0
+          },
+          "pk": {
+            "pass": false,
+            "finite": true,
+            "rows": 607,
+            "cols": 2,
+            "max_symmetric_relative": 3.6285109128641513e-06,
+            "max_abs": 0.03173211999819614
+          },
+          "pk_cb": {
+            "pass": false,
+            "finite": true,
+            "rows": 607,
+            "cols": 2,
+            "max_symmetric_relative": 3.6285107586713773e-06,
+            "max_abs": 0.03195599999889964
+          },
+          "cl": {
+            "pass": false,
+            "finite": true,
+            "rows": 2999,
+            "cols": 8,
+            "max_symmetric_relative": 0.0035533264089911577,
+            "max_abs": 0.0012980591200033587
+          },
+          "cl_lensed": {
+            "pass": false,
+            "finite": true,
+            "rows": 2499,
+            "cols": 8,
+            "max_symmetric_relative": 0.012323316657268579,
+            "max_abs": 0.0008621891000757387
+          },
+          "tk": {
+            "pass": false,
+            "finite": true,
+            "rows": 607,
+            "cols": 8,
+            "max_symmetric_relative": 1.8890433823438529e-06,
+            "max_abs": 6.936691001057625
+          }
+        },
+        "pass": false
+      },
+      "b0tiny": {
+        "files": {
+          "background": {
+            "pass": true,
+            "finite": true,
+            "rows": 5281,
+            "cols": 32,
+            "max_symmetric_relative": 0.0,
+            "max_abs": 0.0
+          },
+          "pk": {
+            "pass": false,
+            "finite": true,
+            "rows": 614,
+            "cols": 2,
+            "max_symmetric_relative": 1.5016237992373277e-09,
+            "max_abs": 2.1849999143341847e-07
+          },
+          "pk_cb": {
+            "pass": false,
+            "finite": true,
+            "rows": 614,
+            "cols": 2,
+            "max_symmetric_relative": 1.5011125830737977e-09,
+            "max_abs": 2.204000111305504e-07
+          },
+          "cl": {
+            "pass": false,
+            "finite": true,
+            "rows": 2999,
+            "cols": 8,
+            "max_symmetric_relative": 3.0235196559559734e-08,
+            "max_abs": 1.000444171950221e-10
+          },
+          "cl_lensed": {
+            "pass": false,
+            "finite": true,
+            "rows": 2499,
+            "cols": 8,
+            "max_symmetric_relative": 3.0235196559559734e-08,
+            "max_abs": 1.000444171950221e-09
+          },
+          "tk": {
+            "pass": false,
+            "finite": true,
+            "rows": 614,
+            "cols": 8,
+            "max_symmetric_relative": 5.037493833976291e-08,
+            "max_abs": 0.00011510000331327319
+          }
+        },
+        "pass": false
+      },
+      "noninterfering_pass": false
+    },
+    "R2": {
+      "author": {
+        "files": {
+          "background": {
+            "pass": true,
+            "finite": true,
+            "rows": 5281,
+            "cols": 32,
+            "max_symmetric_relative": 0.0,
+            "max_abs": 0.0
+          },
+          "pk": {
+            "pass": true,
+            "finite": true,
+            "rows": 607,
+            "cols": 2,
+            "max_symmetric_relative": 0.0,
+            "max_abs": 0.0
+          },
+          "pk_cb": {
+            "pass": true,
+            "finite": true,
+            "rows": 607,
+            "cols": 2,
+            "max_symmetric_relative": 0.0,
+            "max_abs": 0.0
+          },
+          "cl": {
+            "pass": true,
+            "finite": true,
+            "rows": 2999,
+            "cols": 8,
+            "max_symmetric_relative": 0.0,
+            "max_abs": 0.0
+          },
+          "cl_lensed": {
+            "pass": true,
+            "finite": true,
+            "rows": 2499,
+            "cols": 8,
+            "max_symmetric_relative": 0.0,
+            "max_abs": 0.0
+          },
+          "tk": {
+            "pass": true,
+            "finite": true,
+            "rows": 607,
+            "cols": 8,
+            "max_symmetric_relative": 0.0,
+            "max_abs": 0.0
+          }
+        },
+        "pass": true
+      },
+      "b0tiny": {
+        "files": {
+          "background": {
+            "pass": true,
+            "finite": true,
+            "rows": 5281,
+            "cols": 32,
+            "max_symmetric_relative": 0.0,
+            "max_abs": 0.0
+          },
+          "pk": {
+            "pass": true,
+            "finite": true,
+            "rows": 614,
+            "cols": 2,
+            "max_symmetric_relative": 0.0,
+            "max_abs": 0.0
+          },
+          "pk_cb": {
+            "pass": true,
+            "finite": true,
+            "rows": 614,
+            "cols": 2,
+            "max_symmetric_relative": 0.0,
+            "max_abs": 0.0
+          },
+          "cl": {
+            "pass": true,
+            "finite": true,
+            "rows": 2999,
+            "cols": 8,
+            "max_symmetric_relative": 0.0,
+            "max_abs": 0.0
+          },
+          "cl_lensed": {
+            "pass": true,
+            "finite": true,
+            "rows": 2499,
+            "cols": 8,
+            "max_symmetric_relative": 0.0,
+            "max_abs": 0.0
+          },
+          "tk": {
+            "pass": true,
+            "finite": true,
+            "rows": 614,
+            "cols": 8,
+            "max_symmetric_relative": 0.0,
+            "max_abs": 0.0
+          }
+        },
+        "pass": true
+      },
+      "noninterfering_pass": true
+    },
+    "R12": {
+      "author": {
+        "files": {
+          "background": {
+            "pass": true,
+            "finite": true,
+            "rows": 5281,
+            "cols": 32,
+            "max_symmetric_relative": 0.0,
+            "max_abs": 0.0
+          },
+          "pk": {
+            "pass": false,
+            "finite": true,
+            "rows": 607,
+            "cols": 2,
+            "max_symmetric_relative": 3.6285109128641513e-06,
+            "max_abs": 0.03173211999819614
+          },
+          "pk_cb": {
+            "pass": false,
+            "finite": true,
+            "rows": 607,
+            "cols": 2,
+            "max_symmetric_relative": 3.6285107586713773e-06,
+            "max_abs": 0.03195599999889964
+          },
+          "cl": {
+            "pass": false,
+            "finite": true,
+            "rows": 2999,
+            "cols": 8,
+            "max_symmetric_relative": 0.0035533264089911577,
+            "max_abs": 0.0012980591200033587
+          },
+          "cl_lensed": {
+            "pass": false,
+            "finite": true,
+            "rows": 2499,
+            "cols": 8,
+            "max_symmetric_relative": 0.012323316657268579,
+            "max_abs": 0.0008621891000757387
+          },
+          "tk": {
+            "pass": false,
+            "finite": true,
+            "rows": 607,
+            "cols": 8,
+            "max_symmetric_relative": 1.8890433823438529e-06,
+            "max_abs": 6.936691001057625
+          }
+        },
+        "pass": false
+      },
+      "b0tiny": {
+        "files": {
+          "background": {
+            "pass": true,
+            "finite": true,
+            "rows": 5281,
+            "cols": 32,
+            "max_symmetric_relative": 0.0,
+            "max_abs": 0.0
+          },
+          "pk": {
+            "pass": false,
+            "finite": true,
+            "rows": 614,
+            "cols": 2,
+            "max_symmetric_relative": 1.5016237992373277e-09,
+            "max_abs": 2.1849999143341847e-07
+          },
+          "pk_cb": {
+            "pass": false,
+            "finite": true,
+            "rows": 614,
+            "cols": 2,
+            "max_symmetric_relative": 1.5011125830737977e-09,
+            "max_abs": 2.204000111305504e-07
+          },
+          "cl": {
+            "pass": false,
+            "finite": true,
+            "rows": 2999,
+            "cols": 8,
+            "max_symmetric_relative": 3.0235196559559734e-08,
+            "max_abs": 1.000444171950221e-10
+          },
+          "cl_lensed": {
+            "pass": false,
+            "finite": true,
+            "rows": 2499,
+            "cols": 8,
+            "max_symmetric_relative": 3.0235196559559734e-08,
+            "max_abs": 1.000444171950221e-09
+          },
+          "tk": {
+            "pass": false,
+            "finite": true,
+            "rows": 614,
+            "cols": 8,
+            "max_symmetric_relative": 5.037493833976291e-08,
+            "max_abs": 0.00011510000331327319
+          }
+        },
+        "pass": false
+      },
+      "noninterfering_pass": false
+    }
+  },
+  "exact_split": {
+    "R1": {
+      "exit": 0,
+      "required_outputs": {
+        "background": [
+          "R1/class_CDE/output/exact_background.dat"
+        ],
+        "perturbation": [
+          "R1/class_CDE/output/exact_perturbations_k0_s.dat"
+        ],
+        "pk": [
+          "R1/class_CDE/output/exact_pk.dat"
+        ],
+        "cl": [
+          "R1/class_CDE/output/exact_cl.dat"
+        ],
+        "tk": [
+          "R1/class_CDE/output/exact_tk.dat"
+        ]
+      },
+      "full_output_pass": true
+    },
+    "R2": {
+      "exit": 1,
+      "required_outputs": {
+        "background": [],
+        "perturbation": [],
+        "pk": [],
+        "cl": [],
+        "tk": []
+      },
+      "full_output_pass": false
+    }
+  },
+  "baseline_repeatability_pass": true,
+  "classification": "M14_CDE_SPLIT_NONINTERFERENCE_AUDIT_COMPLETE",
+  "noninterfering_variants": [
+    "R2"
+  ],
+  "K4_K5_authorized": false,
+  "physical_falsification_authorized": false
+}
