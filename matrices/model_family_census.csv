@@ -1,0 +1,48 @@
+family_id,family_name,sector,tier,benchmark_id_or_representation,status,planned_wave,distinctive_response_or_reason,notes
+F00,LambdaCDM / cold collisionless DM + cosmological constant,reference,A,M00,TESTED,W00,reference origin and null residual,"Particle realizations that are cosmologically cold/collisionless and add no new response map here unless they introduce a distinct interaction/free-streaming/isocurvature channel"
+F01,constant-w smooth dark energy,dark_energy,A,M01,TESTED,W00,late-time background/growth smooth-DE ray,local nonphantom control currently tested
+F02,interacting dark energy / phenomenological IDE,dark_sector_interaction,A,M02,TESTED,W01,energy-momentum exchange and tangent-cone geometry,alpha/beta control family
+F03,generalized dark matter effective fluid,dark_matter,A,M03,TESTED,W01,sound-speed/viscosity closure and slip response,GDM cs2/cv2
+F04,thermal warm dark matter,dark_matter,A,M04,TESTED,W01,free-streaming cutoff / high-k suppression,thermal WDM representative
+F05,designer f(R) gravity,modified_gravity,A,M05,TESTED,W01,scale/time dependent modified Poisson/slip response,representative scalar MG control
+F06,decaying CDM to dark radiation,dark_matter_interaction,A,M06,TESTED,W01,decay-time localization and dark-radiation injection,DCDM->DR
+F07,canonical quintessence,dark_energy,A,M07,TESTED,W03,canonical scalar dynamics with quotient q=lambda^2,exponential-potential branch currently tested
+F08,CPL / two-parameter smooth w(a),dark_energy,A,M08,TESTED,W03,flexible 2D late-time smooth-DE manifold,PPF fluid implementation
+F09,solver-native unfinished EDE branch,implementation_control,B,M09,TESTED_BLOCKED,W03,implementation-coverage control,not a physical EDE family verdict
+F10,axion-like scalar early dark energy,dark_energy,A,M10,TESTED_THEORY_DISCRIMINATED,W03,early-time scale/shape response with near-null late H,CLASS_EDE representative
+F11,k-essence / kinetic dark energy,dark_energy,A,M11,QUEUED,W03,noncanonical kinetic structure and variable sound speed,includes broad kinetic-DE class; ghost-condensate escape checked separately if needed
+F12,phantom scalar dark energy,dark_energy,A,M12,QUEUED,W03,w<-1 branch with stability/ghost-domain stress,physical-pathology classification must remain separate from fit quality
+F13,quintom / phantom-divide crossing dark energy,dark_energy,A,M13,QUEUED,W03,crossing w=-1 with extra degree(s) of freedom,distinct from single canonical quintessence and CPL phenomenology
+F14,coupled quintessence / conformal scalar-DM coupling,dark_sector_interaction,A,M14,QUEUED,W03,field-mediated exchange plus scalar perturbations,stronger microphysical comparator to M02
+F15,generalized Chaplygin / unified dark fluid,unified_dark_sector,A,M15,QUEUED,W03/W06,unified background plus nontrivial sound-speed/structure response,tests whether DE/DM split is necessary
+F16,running/decaying vacuum Lambda(H) / interacting vacuum,dark_energy,B,M16,QUEUED,W03/W06,time-dependent vacuum with exchange/modified conservation,representative running-vacuum class
+F17,holographic dark energy,dark_energy,B,M17,QUEUED,W03,nonlocal/horizon-linked background history,requires explicit perturbation prescription for K3-K5
+F18,ghost condensate / kinetic vacuum branch,dark_energy,B,M18,QUEUED,W03,noncanonical scalar around kinetic condensate with distinctive sound-speed/stability structure,kept separate from generic k-essence as adversarial escape
+F19,fuzzy / ultralight axion dark matter,dark_matter,A,M19,QUEUED,W04,wave/Jeans-scale suppression with oscillatory scalar dynamics,distinct high-k scale law from thermal WDM
+F20,self-interacting dark matter,dark_matter,A,M20,QUEUED,W04,collisional/nonlinear halo response and possible dark-sector heat transport,linear cosmology may be near-CDM; nonlinear channel mandatory
+F21,mixed cold+warm dark matter,dark_matter,A,M21,QUEUED,W04,partial free-streaming fraction plus cold component,attacks single-cutoff WDM inference
+F22,annihilating dark matter,dark_matter_interaction,A,M22,QUEUED,W04,time/redshift dependent depletion and energy injection,requires deposition/known-sector bookkeeping
+F23,dark-matter--dark-radiation scattering / dark acoustic oscillations,dark_matter_interaction,A,M23,QUEUED,W04,DAO scale/oscillation plus drag,nearest comparator to WDM/FDM suppression
+F24,ETHOS-like interacting dark sector,dark_matter_interaction,B,M24,QUEUED,W04,multi-parameter dark-radiation interaction and transfer-function structure,tests whether simple DAO representative span is sufficient
+F25,resonantly produced sterile-neutrino-like WDM,dark_matter,B,M25,QUEUED,W04,nonthermal phase-space/free-streaming transfer shape,tests thermal-WDM representativeness
+F26,primordial-black-hole dark matter,dark_matter,B,M26,QUEUED,W04,compact-object discreteness/Poisson/isocurvature and possible accretion/evaporation channels,mass windows are subcases
+F27,dynamical dark matter ensemble,dark_matter,B,M27,QUEUED,W04,mass-lifetime-abundance ensemble and distributed temporal response,distinct from single-lifetime DCDM
+F28,superfluid / emergent collective dark matter,dark_matter,C,M28,QUEUED,W04/W09,phase-dependent collective/nonlinear response,linear-cosmology equivalence to CDM must be tested before top-level promotion
+F29,Brans-Dicke / Jordan-frame scalar-tensor gravity,modified_gravity,A,M29,QUEUED,W05,running effective Planck mass and scalar-mediated growth,foundational scalar-tensor comparator
+F30,Horndeski / EFT-of-DE scalar-tensor manifold,modified_gravity,A,M30,QUEUED,W05,multi-function alpha response including braiding/Planck-mass/tensor channels,strong flexible MG manifold
+F31,beyond-Horndeski / DHOST,modified_gravity,A,M31,QUEUED,W05,beyond-Horndeski degeneracy structure and altered scalar response,tests escape beyond Horndeski manifold
+F32,DGP braneworld,modified_gravity,A,M32,QUEUED,W05,brane leakage / crossover scale and modified growth,extra-dimensional comparator
+F33,covariant Galileon,modified_gravity,A,M33,QUEUED,W05,derivative self-interactions and screening/time response,may overlap Horndeski but retained as explicit adversarial subfamily
+F34,massive gravity / bimetric gravity,modified_gravity,A,M34,QUEUED,W05,massive spin-2 / second metric with background+perturbation branches,distinct tensor/metric response
+F35,Einstein-Aether / vector-tensor gravity,modified_gravity,A,M35,QUEUED,W05,preferred-frame vector degree and scalar/vector/tensor response,tests non-scalar MG channel
+F36,TeVeS / relativistic MOND-like gravity,modified_gravity,B,M36,QUEUED,W05,scalar-vector metric sector and lensing/growth relation,galaxy-scale assumptions separated from cosmological test
+F37,f(T) teleparallel gravity,modified_gravity,B,M37,QUEUED,W05,torsion-based modified expansion/growth,response-distinct if not absorbed by scalar-tensor manifold
+F38,f(Q) symmetric-teleparallel gravity,modified_gravity,B,M38,QUEUED,W05,nonmetricity-based modified expansion/growth,response-distinct if not absorbed by scalar-tensor manifold
+F39,nonlocal gravity,modified_gravity,B,M39,QUEUED,W05,history-dependent nonlocal response and extra effective fields,temporal-memory comparator
+F40,Hořava-Lifshitz / preferred-foliation cosmology,modified_gravity,C,M40,QUEUED,W05/W09,preferred-foliation scale-dependent gravity,tensor/scalar stability scope required
+F41,mimetic gravity / mimetic dark matter,unified_dark_sector,B,M41,QUEUED,W05/W06,constrained scalar mimicking dust plus modified perturbations,tests gravity-vs-dark-matter attribution
+F42,inhomogeneous LTB/void acceleration,geometry_alternative,B,M42,QUEUED,W06,breaks homogeneous-FLRW assumption rather than adding standard dark fluid,requires different observation operator
+F43,cosmological backreaction / averaging alternatives,geometry_alternative,C,M43,QUEUED,W06/W09,effective acceleration from inhomogeneity/averaging,operator and closure definitions must be explicit
+F44,particle CDM realizations WIMP/FIMP/heavy axion with cold collisionless cosmology,dark_matter_realization,B,REPRESENTED_BY:M00,REPRESENTED,W04,no distinct linear cosmological response unless interactions/free-streaming added,"freeze-out/freeze-in/particle identity alone does not earn a new DSIR family ID; escape channels promote to separate family"
+F45,standard QCD axion cold misalignment branch,dark_matter_realization,B,REPRESENTED_BY:M00,REPRESENTED,W04,cold collisionless branch is CDM-like on benchmark scales,ultralight wave regime represented by M19
+F46,hot dark matter / massive-neutrino free-streaming comparator,known_sector_comparator,B,external_known_sector,QUEUED_COMPARATOR,W04,free-streaming suppression comparator with known-sector subtraction sensitivity,not automatically counted as dark-sector candidate
