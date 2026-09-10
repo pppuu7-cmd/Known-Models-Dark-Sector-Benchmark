@@ -1,0 +1,43 @@
+{
+  "K1_promoted": false,
+  "classification": "M20_PROVIDER_CONTROL_PASS_EXACT_ZERO_CDM_BOUNDARY",
+  "exact_zero": {
+    "core_threshold": 1e-10,
+    "executed": true,
+    "identity_threshold": 1e-10,
+    "max_abs_core_over_rs": 0.0,
+    "max_structural_relative_residual": 0.0,
+    "n_retained": 615,
+    "pair_stats": {
+      "VmaxSIDM_z0_vs_VmaxCDM_z0": {
+        "finite": true,
+        "max_relative_residual": 0.0,
+        "n": 615
+      },
+      "rhosSIDM_z0_vs_rhosCDM_z0": {
+        "finite": true,
+        "max_relative_residual": 0.0,
+        "n": 615
+      },
+      "rmaxSIDM_z0_vs_rmaxCDM_z0": {
+        "finite": true,
+        "max_relative_residual": 0.0,
+        "n": 615
+      },
+      "rsSIDM_z0_vs_rsCDM_z0": {
+        "finite": true,
+        "max_relative_residual": 0.0,
+        "n": 615
+      }
+    },
+    "physical_outputs_finite": true,
+    "tt_ratio_all_finite": true,
+    "tt_ratio_nonfinite_count": 0
+  },
+  "physical_falsification": false,
+  "pin": "e17d3664dac677b604fd4ff02fb2af105a6937fa",
+  "preregistration": "protocol/W04_M20_SASHIMI_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md",
+  "provider": "shinichiroando/sashimi-si",
+  "pytest_status": 0,
+  "schema": "KMDSB.M20.SashimiProviderControl.v1"
+}
