@@ -1,0 +1,110 @@
+name: W04 M19 exact-zero value trace
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m19-zero-path-value-trace.yml'
+      - 'verification/m19/axioncamb2_zero_value_trace.py'
+      - 'protocol/W04_M19_ZERO_PATH_VALUE_TRACE_PREREGISTRATION_v0.1.md'
+permissions:
+  contents: write
+jobs:
+  trace-zero-path:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PIN: 891e779cc0bd422e49f97533e6c2fc761149737d
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Pin source and apply frozen recovery plus trace-only instrumentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/dgrin1/axionCAMB.git axc_trace
+          git -C axc_trace checkout -q --detach "$PIN"
+          test "$(git -C axc_trace rev-parse HEAD)" = "$PIN"
+          python3 verification/m19/axioncamb2_zero_probe.py prepare axc_trace/params.ini m19_trace_cases
+          python3 verification/m19/axioncamb2_zero_bypass_recovery.py patch axc_trace
+          python3 verification/m19/axioncamb2_zero_value_trace.py axc_trace
+      - name: Build checked binary and execute frozen exact-zero case
+        shell: bash
+        run: |
+          set +e
+          (cd axc_trace && make -j1 FFLAGS='-O0 -g -fbacktrace -fcheck=all -ffree-line-length-none -fallow-argument-mismatch' > ../m19_trace_build.log 2>&1)
+          be=$?
+          ex=999
+          if [ "$be" -eq 0 ]; then
+            (cd axc_trace && ./camb ../m19_trace_cases/r0f.ini > ../m19_trace_run.log 2>&1); ex=$?
+          fi
+          printf '{"build_exit":%d,"run_exit":%d}\n' "$be" "$ex" > m19_trace_status.json
+          exit 0
+      - name: Parse trace evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, math, re
+          from pathlib import Path
+          status=json.loads(Path('m19_trace_status.json').read_text())
+          text=Path('m19_trace_run.log').read_text(errors='replace') if Path('m19_trace_run.log').exists() else ''
+          trace=[ln.strip() for ln in text.splitlines() if 'M19TRACE' in ln]
+          nonfinite=[]
+          for ln in trace:
+              low=ln.lower()
+              if re.search(r'(^|[^a-z])(nan|[+-]?infinity|[+-]?inf)([^a-z]|$)', low):
+                  nonfinite.append(ln)
+          if status['build_exit']!=0:
+              cls='M19_ZERO_TRACE_BUILD_BLOCKED'
+          elif not trace:
+              cls='M19_ZERO_TRACE_NO_MARKERS'
+          elif nonfinite:
+              cls='M19_ZERO_TRACE_NONFINITE_LOCATED'
+          elif status['run_exit']==0:
+              cls='M19_ZERO_TRACE_UNEXPECTED_EXECUTION_PASS'
+          else:
+              cls='M19_ZERO_TRACE_FINITE_MARKERS_BEFORE_FAILURE'
+          out={
+            'schema':'KMDSB.M19.zeroPathValueTrace.v1',
+            'provider_pin':'891e779cc0bd422e49f97533e6c2fc761149737d',
+            'preregistration':'protocol/W04_M19_ZERO_PATH_VALUE_TRACE_PREREGISTRATION_v0.1.md',
+            'status':status,
+            'classification':cls,
+            'trace_lines':trace,
+            'nonfinite_trace_lines':nonfinite,
+            'physical_falsification':False,
+            'scientific_promotion':{'K1':False,'K2_K9':False}
+          }
+          Path('m19_trace_result.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - name: Persist trace result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m19_trace_result.json /tmp/m19_trace_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/fuzzy_ultralight_axion waves/wave_04_dark_matter
+          cp /tmp/m19_trace_result.json models/fuzzy_ultralight_axion/M19_ZERO_PATH_VALUE_TRACE_RESULT.json
+          cp /tmp/m19_trace_result.json waves/wave_04_dark_matter/M19_ZERO_PATH_VALUE_TRACE_RESULT.json
+          git add models/fuzzy_ultralight_axion/M19_ZERO_PATH_VALUE_TRACE_RESULT.json waves/wave_04_dark_matter/M19_ZERO_PATH_VALUE_TRACE_RESULT.json
+          git diff --cached --quiet || { git commit -m 'Record M19 zero-path value trace'; git pull --rebase origin main; git push origin HEAD:main; }
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m19-zero-path-value-trace
+          path: |
+            m19_trace_cases/
+            m19_trace_build.log
+            m19_trace_run.log
+            m19_trace_status.json
+            m19_trace_result.json
+            verification/m19/axioncamb2_zero_value_trace.py
+            protocol/W04_M19_ZERO_PATH_VALUE_TRACE_PREREGISTRATION_v0.1.md
+          retention-days: 90
