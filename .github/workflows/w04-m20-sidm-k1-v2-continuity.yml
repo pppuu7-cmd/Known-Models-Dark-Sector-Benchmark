@@ -1,0 +1,63 @@
+name: W04 M20 SIDM K1 v2 continuity
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m20-sidm-k1-v2-continuity.yml'
+      - 'verification/m20/sidm_k1_nonlinear_reference_v2.py'
+      - 'protocol/W04_M20_SIDM_K1_NONLINEAR_REFERENCE_V2_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  k1v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PROVIDER_PIN: e17d3664dac677b604fd4ff02fb2af105a6937fa
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Pin provider and dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/shinichiroando/sashimi-si.git sashimi
+          git -C sashimi checkout -q --detach "$PROVIDER_PIN"
+          test "$(git -C sashimi rev-parse HEAD)" = "$PROVIDER_PIN"
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3 scipy==1.16.1 numexpr==2.11.0 tqdm==4.67.1
+      - name: Run preregistered K1 v2 tail
+        run: |
+          python3 verification/m20/sidm_k1_nonlinear_reference_v2.py sashimi m20_k1_v2_result.json
+          cat m20_k1_v2_result.json
+      - name: Persist canonical result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m20_k1_v2_result.json /tmp/result.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main; git reset --hard origin/main
+          mkdir -p models/self_interacting_dark_matter waves/wave_04_dark_matter
+          cp /tmp/result.json models/self_interacting_dark_matter/M20_K1_V2_NONLINEAR_REFERENCE_RESULT.json
+          cp /tmp/result.json waves/wave_04_dark_matter/M20_K1_V2_NONLINEAR_REFERENCE_RESULT.json
+          git add models/self_interacting_dark_matter/M20_K1_V2_NONLINEAR_REFERENCE_RESULT.json waves/wave_04_dark_matter/M20_K1_V2_NONLINEAR_REFERENCE_RESULT.json
+          git diff --cached --quiet || { git commit -m 'Record M20 SIDM K1 v2 continuity result'; git pull --rebase origin main; git push origin HEAD:main; }
+      - name: Enforce K1 v2 classification
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/result.json'))
+          assert r['physical_falsification'] is False and r['K4_promoted'] is False
+          assert r['classification'] in {'M20_K1_V2_NONLINEAR_REFERENCE_LIMIT_PASS_WITH_SCOPE','M20_K1_V2_NONLINEAR_REFERENCE_LIMIT_NOT_ESTABLISHED'}
+          if r['classification']!='M20_K1_V2_NONLINEAR_REFERENCE_LIMIT_PASS_WITH_SCOPE': raise SystemExit(1)
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m20-sidm-k1-v2-continuity
+          path: m20_k1_v2_result.json
+          retention-days: 90
