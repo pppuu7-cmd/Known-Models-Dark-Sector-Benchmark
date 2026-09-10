@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check numpy
       - name: Fetch pinned provider and build
         shell: bash
         run: |
@@ -111,7 +113,6 @@ jobs:
               bg=float('inf')
               if ba and bb: bg=maxsym(ba[0],bb[0])
               pk=[]
-              # pair by basename suffix after root prefix
               amap={os.path.basename(f).replace('idm_zero','',1):f for f in pa}
               bmap={os.path.basename(f).replace('standard_cdm','',1):f for f in pb}
               for k in sorted(set(amap)&set(bmap)):
