@@ -1,0 +1,194 @@
+name: W03 M14 IDECAMB K4 K5 local response
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-idecamb-k4k5-local-response.yml'
+      - 'protocol/W03_M14_IDECAMB_K4K5_LOCAL_RESPONSE_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  k4k5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync python3
+      - name: Fetch pinned provider and build
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/cmbant/CosmoMC.git cosmomc_base
+          git -C cosmomc_base checkout eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone https://github.com/liaocrane/IDECAMB.git idecamb_patch
+          git -C idecamb_patch checkout 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          rsync -a --exclude='.git' idecamb_patch/ cosmomc_base/
+          set +e
+          make -C cosmomc_base cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > build.log 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > build.exit
+      - name: Prepare frozen beta grid
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path('cosmomc_base/test_ide.ini').read_text()
+          likes=['DEFAULT(batch3/plik_rd12_HM_v22_TTTEEE.ini)','DEFAULT(batch3/lowl.ini)','DEFAULT(batch3/lowE.ini)','DEFAULT(batch3/lensing.ini)','DEFAULT(batch3/BAO.ini)','DEFAULT(batch3/Pantheon18.ini)']
+          for tag,beta in [('b000','0'),('b005','0.005'),('b010','0.010')]:
+              s=base
+              pairs=[('Class_IDE = 1 ','Class_IDE = 2 '),
+                     ('param[alpha_quint]= 0.02 0 1.4 0.1 0.1','param[alpha_quint]= 0.02'),
+                     ('param[beta_cq]= 0.01 0 0.15 0.05 0.05',f'param[beta_cq]= {beta}'),
+                     ('#test_output_root = output_ide',f'test_output_root = m14_{tag}'),
+                     ('test_check_compare = 1820.775','#test_check_compare = 1820.775')]
+              for old,new in pairs:
+                  if s.count(old)!=1: raise SystemExit(f'{tag}: unexpected count {old!r}={s.count(old)}')
+                  s=s.replace(old,new,1)
+              for x in likes:
+                  if s.count(x)!=1: raise SystemExit(f'{tag}: likelihood count {x}={s.count(x)}')
+                  s=s.replace(x,'#'+x,1)
+              if 'DEFAULT(batch3/common.ini)' not in s: raise SystemExit('common.ini missing')
+              Path(f'{tag}.ini').write_text(s)
+          PY
+      - name: Execute beta grid
+        shell: bash
+        run: |
+          set +e
+          : > case_exits.tsv
+          if [ "$(cat build.exit)" != "0" ]; then exit 0; fi
+          for tag in b000 b005 b010; do
+            cp ${tag}.ini cosmomc_base/${tag}.ini
+            (cd cosmomc_base && rm -f m14_${tag}* && ./cosmomc ${tag}.ini) > ${tag}.log 2>&1
+            echo -e "${tag}\t$?" >> case_exits.tsv
+          done
+          exit 0
+      - name: Analyze frozen response and convergence
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, math, pathlib
+          build=int(pathlib.Path('build.exit').read_text())
+          exits={}
+          if pathlib.Path('case_exits.tsv').exists():
+              for line in pathlib.Path('case_exits.tsv').read_text().splitlines():
+                  if line.strip():
+                      k,v=line.split(); exits[k]=int(v)
+          def load(path):
+              rows=[]
+              for line in pathlib.Path(path).read_text(errors='replace').splitlines():
+                  y=line.strip()
+                  if not y or y.startswith('#'): continue
+                  try: vals=[float(x.replace('D','E').replace('d','e')) for x in y.split()]
+                  except Exception: continue
+                  rows.append(vals)
+              return rows
+          ok=(build==0 and all(exits.get(x)==0 for x in ('b000','b005','b010')))
+          data={}
+          for tag in ('b000','b005','b010'):
+              q=pathlib.Path('cosmomc_base')/f'm14_{tag}.quantity'
+              c=pathlib.Path('cosmomc_base')/f'm14_{tag}.theory_cl'
+              if not q.exists() or not c.exists(): ok=False; data[tag]=( [], [] ); continue
+              qq,cc=load(q),load(c); data[tag]=(qq,cc)
+              if len(qq)!=2000 or any(len(r)!=11 for r in qq) or not cc or any(len(r)!=6 for r in cc): ok=False
+              if any(not math.isfinite(v) for r in qq for v in r) or any(not math.isfinite(v) for r in cc for v in r): ok=False
+              if 'The cosmological model is coupled quintessence model' not in pathlib.Path(f'{tag}.log').read_text(errors='replace'): ok=False
+          names=['dln_rho_de','dln_rho_c','dln_H','dw','qhat','dln_TT','dln_EE','dln_PP']
+          channel_vectors={}
+          def response(tag):
+              q0,c0=data['b000']; q,c=data[tag]
+              if len(q)!=len(q0) or len(c)!=len(c0): raise ValueError('shape mismatch')
+              chans={n:[] for n in names}
+              tiny=1e-300
+              for r0,r in zip(q0,q):
+                  if r0[0]!=r[0]: raise ValueError('a-grid mismatch')
+                  for n,j in [('dln_rho_de',2),('dln_rho_c',3),('dln_H',4)]:
+                      if r0[j]>0 and r[j]>0: chans[n].append(math.log(r[j]/r0[j]))
+                  chans['dw'].append(r[5]-r0[5])
+                  den=abs(r[4])*(abs(r[2])+abs(r[3]))+tiny
+                  chans['qhat'].append(r[6]/den)
+              for r0,r in zip(c0,c):
+                  if r0[0]!=r[0]: raise ValueError('ell-grid mismatch')
+                  for n,j in [('dln_TT',1),('dln_EE',3),('dln_PP',5)]:
+                      if r0[j]>0 and r[j]>0: chans[n].append(math.log(r[j]/r0[j]))
+              if any(len(chans[n])==0 for n in names): raise ValueError('empty required channel')
+              return chans
+          metrics={}; classification='M14_IDECAMB_K4_BLOCKED_IMPLEMENTATION'; k5='NOT_SCORED'
+          if ok:
+              try:
+                  rh=response('b005'); r2=response('b010')
+                  th=[]; t2=[]
+                  for n in names:
+                      if len(rh[n])!=len(r2[n]): raise ValueError('channel size mismatch')
+                      th.extend(x/0.005 for x in rh[n]); t2.extend(x/0.010 for x in r2[n])
+                  nh=math.sqrt(sum(x*x for x in th)); n2=math.sqrt(sum(x*x for x in t2))
+                  dot=sum(x*y for x,y in zip(th,t2))
+                  cos=max(-1.0,min(1.0,dot/(nh*n2))) if nh and n2 else float('nan')
+                  angle=math.degrees(math.acos(cos)) if math.isfinite(cos) else float('inf')
+                  mismatch=abs(nh-n2)/max(nh,n2) if max(nh,n2)>0 else float('inf')
+                  channel={}
+                  fine_max=0.0
+                  for n in names:
+                      norm=math.sqrt(sum(x*x for x in rh[n]))
+                      mx=max(abs(x) for x in rh[n]); fine_max=max(fine_max,mx)
+                      channel[n]={'fine_response_norm':norm,'fine_max_abs':mx,'points':len(rh[n])}
+                  k4pass=mismatch<=0.10 and angle<=3.0
+                  nonnull=fine_max>=5e-5
+                  classification='M14_IDECAMB_K4_LOCAL_CONVERGENCE_PASS' if k4pass else 'M14_IDECAMB_K4_FAIL_LOCAL_CONVERGENCE'
+                  if not k4pass: k5='BLOCKED_BY_K4'
+                  elif nonnull: k5='PASS_WITH_SCOPE_RANK1'
+                  else: k5='NONIDENTIFIABLE_AT_OUTPUT_FLOOR'
+                  metrics={'fine_h':0.005,'coarse_h':0.010,'tangent_norm_fine':nh,'tangent_norm_coarse':n2,
+                           'relative_norm_mismatch':mismatch,'norm_threshold':0.10,'angle_deg':angle,'angle_threshold_deg':3.0,
+                           'fine_max_abs_response':fine_max,'nonnull_floor':5e-5,'channel_metrics':channel}
+              except Exception as e:
+                  ok=False; classification='M14_IDECAMB_K4_ANALYZER_INPUT_BLOCKED'; metrics={'error':repr(e)}
+          out={'schema':'KMDSB.W03.M14.IDECAMBK4K5LocalResponse.v0.1','provider_base':'cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4','provider_overlay':'liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075','beta_grid':[0.0,0.005,0.010],'case_exits':exits,'classification':classification,'K5_status':k5,'metrics':metrics,'observational_claim_authorized':False,'physical_falsification_authorized':False}
+          pathlib.Path('m14_idecamb_k4k5.json').write_text(json.dumps(out,indent=2,allow_nan=False)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+      - name: Persist canonical result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m14_idecamb_k4k5.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/coupled_quintessence
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_IDECAMB_K4K5_LOCAL_RESPONSE_RESULT.json
+          cp /tmp/result.json models/coupled_quintessence/idecamb_k4k5_local_response.json
+          git add waves/wave_03_expanded_dark_energy/M14_IDECAMB_K4K5_LOCAL_RESPONSE_RESULT.json models/coupled_quintessence/idecamb_k4k5_local_response.json
+          if ! git diff --cached --quiet; then git commit -m 'Record IDECAMB M14 K4 K5 local response'; git push origin HEAD:main; fi
+      - name: Upload immutable bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m14-idecamb-k4k5-local-response
+          path: |
+            m14_idecamb_k4k5.json
+            build.log
+            build.exit
+            case_exits.tsv
+            b000.ini
+            b005.ini
+            b010.ini
+            b000.log
+            b005.log
+            b010.log
+            cosmomc_base/m14_b000.quantity
+            cosmomc_base/m14_b000.theory_cl
+            cosmomc_base/m14_b005.quantity
+            cosmomc_base/m14_b005.theory_cl
+            cosmomc_base/m14_b010.quantity
+            cosmomc_base/m14_b010.theory_cl
+          retention-days: 90
