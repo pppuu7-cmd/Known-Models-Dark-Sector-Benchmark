@@ -10,7 +10,7 @@ F07,canonical quintessence,dark_energy,A,M07,TESTED,W03,canonical scalar dynamic
 F08,CPL / two-parameter smooth w(a),dark_energy,A,M08,TESTED,W03,flexible 2D late-time smooth-DE manifold,PPF fluid implementation
 F09,solver-native unfinished EDE branch,implementation_control,B,M09,TESTED_BLOCKED,W03,implementation-coverage control,not a physical EDE family verdict
 F10,axion-like scalar early dark energy,dark_energy,A,M10,TESTED_THEORY_DISCRIMINATED,W03,early-time scale/shape response with near-null late H,CLASS_EDE representative
-F11,k-essence / kinetic dark energy,dark_energy,A,M11,QUEUED,W03,noncanonical kinetic structure and variable sound speed,includes broad kinetic-DE class; ghost-condensate escape checked separately if needed
+F11,k-essence / kinetic dark energy,dark_energy,A,M11,ACTIVE,W03,noncanonical kinetic structure and variable sound speed,"first stage is effective CLASS sound-speed representative; covariant P(phi,X) subcase required if response escapes or microphysical validation is needed"
 F12,phantom scalar dark energy,dark_energy,A,M12,QUEUED,W03,w<-1 branch with stability/ghost-domain stress,physical-pathology classification must remain separate from fit quality
 F13,quintom / phantom-divide crossing dark energy,dark_energy,A,M13,QUEUED,W03,crossing w=-1 with extra degree(s) of freedom,distinct from single canonical quintessence and CPL phenomenology
 F14,coupled quintessence / conformal scalar-DM coupling,dark_sector_interaction,A,M14,QUEUED,W03,field-mediated exchange plus scalar perturbations,stronger microphysical comparator to M02
