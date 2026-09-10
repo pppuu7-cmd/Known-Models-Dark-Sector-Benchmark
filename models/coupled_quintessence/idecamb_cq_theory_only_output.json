@@ -1,0 +1,32 @@
+{
+  "schema": "KMDSB.W03.M14.IDECAMBCQTheoryOnlyOutput.v0.1",
+  "provider_base": "cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4",
+  "provider_overlay": "liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075",
+  "build_exit": 0,
+  "run_exit": 0,
+  "cq_selected": true,
+  "files": [
+    {
+      "name": "m14_cq_theory0.pars",
+      "size": 4967,
+      "numeric_rows": 0,
+      "numeric_columns_first": null
+    },
+    {
+      "name": "m14_cq_theory0.quantity",
+      "size": 332000,
+      "numeric_rows": 2000,
+      "numeric_columns_first": 11
+    },
+    {
+      "name": "m14_cq_theory0.theory_cl",
+      "size": 204991,
+      "numeric_rows": 2499,
+      "numeric_columns_first": 6
+    }
+  ],
+  "numeric_output_present": true,
+  "classification": "THEORY_OUTPUT_ROUTE_PASS",
+  "scientific_promotion_authorized": false,
+  "interpretation": "Infrastructure/theory-output-route control only; no K1-K9 score and no physical falsification."
+}
