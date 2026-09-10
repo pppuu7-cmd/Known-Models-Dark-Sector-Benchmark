@@ -1,0 +1,90 @@
+name: W04 M20 SASHIMI provider control
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m20-sashimi-provider-control.yml'
+      - 'verification/m20/sashimi_provider_control.py'
+      - 'protocol/W04_M20_SASHIMI_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md'
+      - 'models/self_interacting_dark_matter/M20_PROVIDER_AUDIT_2026-09-11.md'
+
+permissions:
+  contents: write
+
+jobs:
+  control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PROVIDER_PIN: e17d3664dac677b604fd4ff02fb2af105a6937fa
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Pin provider and dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/shinichiroando/sashimi-si.git sashimi
+          git -C sashimi checkout -q --detach "$PROVIDER_PIN"
+          test "$(git -C sashimi rev-parse HEAD)" = "$PROVIDER_PIN"
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3 scipy==1.16.1 numexpr==2.11.0 tqdm==4.67.1 pytest==8.4.1
+      - name: Run upstream physics suite
+        shell: bash
+        run: |
+          set +e
+          (cd sashimi && pytest -q test_sashimi.py) > m20_pytest.log 2>&1
+          s=$?
+          printf '%d\n' "$s" > m20_pytest_status.txt
+          cat m20_pytest.log
+          exit 0
+      - name: Run exact zero provider control
+        shell: bash
+        run: |
+          s="$(cat m20_pytest_status.txt)"
+          python3 verification/m20/sashimi_provider_control.py sashimi "$s" m20_result.json
+          cat m20_result.json
+      - name: Persist canonical result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m20_result.json /tmp/m20_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/self_interacting_dark_matter waves/wave_04_dark_matter
+          cp /tmp/m20_result.json models/self_interacting_dark_matter/M20_SASHIMI_PROVIDER_CONTROL_RESULT.json
+          cp /tmp/m20_result.json waves/wave_04_dark_matter/M20_SASHIMI_PROVIDER_CONTROL_RESULT.json
+          git add models/self_interacting_dark_matter/M20_SASHIMI_PROVIDER_CONTROL_RESULT.json waves/wave_04_dark_matter/M20_SASHIMI_PROVIDER_CONTROL_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M20 SASHIMI provider control'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Enforce provider-control boundary
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/m20_result.json'))
+          assert r['K1_promoted'] is False
+          assert r['physical_falsification'] is False
+          assert r['classification'] in {
+              'M20_PROVIDER_CONTROL_PASS_EXACT_ZERO_CDM_BOUNDARY',
+              'M20_PROVIDER_CONTROL_PASS_SMALL_SIGMA_EXACT_ZERO_BLOCKED',
+              'M20_PROVIDER_CONTROL_BLOCKED'}
+          if r['classification']=='M20_PROVIDER_CONTROL_BLOCKED':
+              raise SystemExit(1)
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m20-sashimi-provider-control
+          path: |
+            m20_pytest.log
+            m20_pytest_status.txt
+            m20_result.json
+          retention-days: 90
