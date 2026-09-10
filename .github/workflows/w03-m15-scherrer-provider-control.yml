@@ -1,0 +1,119 @@
+name: W03 M15 Scherrer provider control
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m15-scherrer-provider-control.yml'
+      - 'protocol/W03_M15_SCHERRER_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  provider-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch exact provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/Eladio-Moreno/k-essence-dynamics.git ked
+          git -C ked checkout -q f3f010e1ed74c86ce6a431a435fa93988f749ee2
+          test "$(git -C ked rev-parse HEAD)" = "f3f010e1ed74c86ce6a431a435fa93988f749ee2"
+
+      - name: Build exact Cuadratico binary
+        shell: bash
+        run: |
+          set +e
+          make -C ked/Cuadratico -j2 class > scherrer_build.log 2>&1
+          echo "$?" > scherrer_build.exit
+          exit 0
+
+      - name: Run unmodified author hi.ini
+        shell: bash
+        run: |
+          set +e
+          echo 999 > scherrer_hi.exit
+          mkdir -p ked/Cuadratico/output
+          rm -f ked/Cuadratico/output/hi*
+          if [ "$(cat scherrer_build.exit)" = 0 ]; then
+            (cd ked/Cuadratico && ./class hi.ini) > scherrer_hi.log 2>&1
+            echo "$?" > scherrer_hi.exit
+          fi
+          exit 0
+
+      - name: Classify provider control
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib, hashlib
+          build=int(pathlib.Path('scherrer_build.exit').read_text().strip())
+          run=int(pathlib.Path('scherrer_hi.exit').read_text().strip())
+          base=pathlib.Path('ked/Cuadratico/output')
+          files=[]
+          for p in sorted(base.glob('hi*')):
+              if p.is_file():
+                  h=hashlib.sha256(p.read_bytes()).hexdigest()
+                  files.append({'path':str(p.relative_to(pathlib.Path('ked/Cuadratico'))),'size':p.stat().st_size,'sha256':h})
+          if build != 0:
+              cls='SCHERRER_PROVIDER_CONTROL_FAIL_BUILD'
+          elif run != 0 or not files:
+              cls='SCHERRER_PROVIDER_CONTROL_FAIL_EXAMPLE'
+          else:
+              cls='SCHERRER_PROVIDER_CONTROL_PASS'
+          out={
+            'schema':'KMDSB.W03.M15.Scherrer.ProviderControl.v0.1',
+            'provider':'Eladio-Moreno/k-essence-dynamics@f3f010e1ed74c86ce6a431a435fa93988f749ee2',
+            'subtree':'Cuadratico',
+            'input':'author-supplied hi.ini unmodified',
+            'scope':'PROVIDER_EXECUTION_ONLY_NO_K1_K9_PROMOTION',
+            'bookkeeping_classification':'UNIFIED_DARK_SECTOR_CANDIDATE_NOT_M11_DE_ONLY_VALIDATION',
+            'build_exit':build,
+            'run_exit':run,
+            'fresh_outputs':files,
+            'classification':cls,
+            'scientific_promotion_authorized':False,
+            'next_if_pass':'Audit Scherrer reference/decoupling path, stability domain and unified-sector response before scientific grid.'
+          }
+          pathlib.Path('m15_scherrer_provider_control.json').write_text(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+
+      - name: Persist result race-safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m15_scherrer_provider_control.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/scherrer_unified_dark_sector
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M15_SCHERRER_PROVIDER_CONTROL_RESULT.json
+          cp /tmp/result.json models/scherrer_unified_dark_sector/provider_control_result.json
+          git add waves/wave_03_expanded_dark_energy/M15_SCHERRER_PROVIDER_CONTROL_RESULT.json models/scherrer_unified_dark_sector/provider_control_result.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M15 Scherrer provider control result'
+            git push origin HEAD:main
+          fi
+
+      - name: Upload immutable provider bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m15-scherrer-provider-control
+          path: |
+            m15_scherrer_provider_control.json
+            scherrer_build.log
+            scherrer_build.exit
+            scherrer_hi.log
+            scherrer_hi.exit
+            ked/Cuadratico/output/hi*
+          if-no-files-found: warn
+          retention-days: 90
