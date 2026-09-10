@@ -1,0 +1,110 @@
+name: Sync M17 HDE frontier bookkeeping
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-m17-hde-frontier-bookkeeping.yml'
+      - 'waves/wave_03_expanded_dark_energy/M17_IDECAMB_EPPF_PROVIDER_RESULT.json'
+
+permissions:
+  contents: write
+
+jobs:
+  sync-m17:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require canonical provider evidence
+        id: evidence
+        shell: bash
+        run: |
+          if [ -f waves/wave_03_expanded_dark_energy/M17_IDECAMB_EPPF_PROVIDER_RESULT.json ]; then
+            echo 'present=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'present=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Synchronize evidence-backed F17 rows
+        if: steps.evidence.outputs.present == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv, json
+          from pathlib import Path
+
+          result_path=Path('waves/wave_03_expanded_dark_energy/M17_IDECAMB_EPPF_PROVIDER_RESULT.json')
+          result=json.loads(result_path.read_text())
+          cls=result.get('classification','')
+          provider_pass=(cls=='M17_IDECAMB_EPPF_PROVIDER_EXECUTABLE_WITH_SCOPE')
+
+          def rewrite(path, updater):
+              p=Path(path)
+              with p.open(newline='') as f:
+                  rows=list(csv.DictReader(f))
+                  fields=list(rows[0].keys()) if rows else []
+              found=False
+              for row in rows:
+                  if row.get('family_id')=='F17':
+                      updater(row); found=True
+              if not found: raise SystemExit(f'F17 not found in {path}')
+              tmp=p.with_suffix(p.suffix+'.tmp')
+              with tmp.open('w', newline='') as f:
+                  w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n')
+                  w.writeheader(); w.writerows(rows)
+              tmp.replace(p)
+
+          def update_matrix(r):
+              r['K0_provenance']='PASS_WITH_SCOPE'
+              r['K1_reference_limit']='NO_NATIVE_LCDM_REFERENCE_INTERSECTION_WITH_SCOPE'
+              r['K2_physical_geometry']='FINITE_GLOBAL_GEOMETRY_ONLY'
+              r['K3_conservation_gauge_closure']='PASS_WITH_SCOPE_EPPF_PRESCRIPTION' if provider_pass else 'BLOCKED_PROVIDER_CONTROL'
+              r['K4_numerical_robustness']='PARTIAL_REPEATABILITY_ONLY' if provider_pass else 'NOT_TESTED'
+              r['K5_multichannel_rank']='FINITE_GLOBAL_REQUIRED_NO_LOCAL_LCDM_TANGENT'
+              r['K6_nearest_family_manifold']='BACKGROUND_CPL_ABSORBED_PERTURBATION_ATTACK_OPEN'
+              r['K7_common_observation_space']='NOT_TESTED'
+              r['K8_quotient_novelty']='NOT_TESTED'
+              r['K9_prospective_holdout']='NOT_TESTED'
+              r['coverage_state']='EPPF_K3_PASS_WITH_SCOPE_K4_K7_OPEN' if provider_pass else 'PROVIDER_CONTROL_BLOCKED_NO_PHYSICAL_FAIL'
+              r['notes']=(
+                  'Original future-event-horizon HDE: K0 scoped; no native LambdaCDM reference in c. '
+                  'Finite background c={0.6,0.8,1.0,1.2} is 96.7-98.9% absorbed by fitted CPL. '
+                  + ('Pinned IDECAMB source/execution supports an effective ePPF perturbation prescription; K3 PASS_WITH_SCOPE only. '
+                     'This is not a unique perturbation derivation from Li-2004; K4 dedicated precision and perturbation-level HDE-vs-CPL/K7 remain open.'
+                     if provider_pass else
+                     f'Pinned IDECAMB/ePPF provider control classified {cls}; no physical HDE falsification. Dedicated provider recovery/alternative route required before K3 promotion.')
+              )
+
+          def update_census(r):
+              r['status']='EPPF_K3_PASS_WITH_SCOPE_BACKGROUND_CPL_ABSORBED_K4_K7_OPEN' if provider_pass else 'EPPF_PROVIDER_CONTROL_BLOCKED'
+              r['notes']=(
+                  'K0 scoped provenance; K1 has no native LambdaCDM c-limit; finite background response is 96.7-98.9% absorbed by CPL. '
+                  + ('Pinned IDECAMB executes original-HDE background with explicit ePPF perturbation prescription, so K3 is promoted only with ePPF scope. '
+                     'Dedicated K4 finite-point robustness and perturbation-level nearest-manifold/common-observation attacks remain open.'
+                     if provider_pass else
+                     f'Pinned IDECAMB/ePPF control returned {cls}; this is not physical falsification and F17 remains nonterminal.')
+              )
+
+          rewrite('matrices/mandatory_properties_matrix.csv',update_matrix)
+          rewrite('matrices/model_family_census.csv',update_census)
+          print('classification=',cls)
+          print('provider_pass=',provider_pass)
+          PY
+      - name: Commit synchronized rows
+        if: steps.evidence.outputs.present == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/mandatory_properties_matrix.csv matrices/model_family_census.csv
+          if git diff --cached --quiet; then
+            echo 'No bookkeeping change required.'
+            exit 0
+          fi
+          git commit -m 'Sync M17 HDE evidence-backed frontier status'
+          git pull --rebase origin main
+          git push origin HEAD:main
