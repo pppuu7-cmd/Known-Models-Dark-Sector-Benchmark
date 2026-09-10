@@ -1,0 +1,119 @@
+name: W04 M21 mixed cold-warm K1 reference
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-mixed-cold-warm-k1-reference.yml'
+      - 'verification/m21/mixed_cold_warm_k1_reference.py'
+      - 'protocol/W04_M21_MIXED_COLD_WARM_K1_REFERENCE_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  k1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+      - name: Pin and build CLASS
+        shell: bash
+        run: |
+          set +e
+          git clone -q https://github.com/lesgourg/class_public.git class
+          clone=$?
+          checkout=999
+          build=999
+          if [ "$clone" -eq 0 ]; then
+            git -C class checkout -q --detach "$CLASS_PIN"
+            checkout=$?
+          fi
+          if [ "$checkout" -eq 0 ]; then
+            make -C class -j2 > m21_build.log 2>&1
+            build=$?
+          fi
+          printf '{"clone":%d,"checkout":%d,"build":%d}\n' "$clone" "$checkout" "$build" > m21_status.json
+          exit 0
+      - name: Prepare frozen cases
+        run: python3 verification/m21/mixed_cold_warm_k1_reference.py prepare m21_cases
+      - name: Execute exact reference and finite ladder
+        shell: bash
+        run: |
+          set +e
+          build=$(python3 -c "import json;print(json.load(open('m21_status.json'))['build'])")
+          ref=999; f0=999; f1=999; f2=999; f3=999; f4=999
+          mkdir -p class/output
+          if [ "$build" -eq 0 ]; then
+            (cd class && ./class ../m21_cases/ref.ini > ../m21_ref.log 2>&1); ref=$?
+            for i in 0 1 2 3 4; do
+              (cd class && ./class ../m21_cases/f${i}.ini > ../m21_f${i}.log 2>&1)
+              eval f${i}=$?
+            done
+          fi
+          python3 - <<PY
+          import json
+          p='m21_status.json'; d=json.load(open(p)); d.update({'ref':$ref,'f0':$f0,'f1':$f1,'f2':$f2,'f3':$f3,'f4':$f4}); open(p,'w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          cat m21_status.json
+          exit 0
+      - name: Analyze preregistered K1 gate
+        run: |
+          python3 verification/m21/mixed_cold_warm_k1_reference.py analyze class m21_status.json m21_result.json
+          cat m21_result.json
+      - name: Persist canonical result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m21_result.json /tmp/m21_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/mixed_cold_warm_dark_matter waves/wave_04_dark_matter
+          cp /tmp/m21_result.json models/mixed_cold_warm_dark_matter/M21_K1_REFERENCE_RESULT.json
+          cp /tmp/m21_result.json waves/wave_04_dark_matter/M21_K1_REFERENCE_RESULT.json
+          git add models/mixed_cold_warm_dark_matter/M21_K1_REFERENCE_RESULT.json waves/wave_04_dark_matter/M21_K1_REFERENCE_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M21 mixed cold-warm K1 reference result'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Enforce scientific classification
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/m21_result.json'))
+          allowed={'M21_K1_REFERENCE_LIMIT_PASS_WITH_SCOPE','M21_K1_REFERENCE_LIMIT_NOT_ESTABLISHED','M21_K1_PROVIDER_EXECUTION_BLOCKED'}
+          assert r['classification'] in allowed
+          assert r['physical_falsification'] is False
+          assert r['K4_promoted'] is False
+          if r['classification']!='M21_K1_REFERENCE_LIMIT_PASS_WITH_SCOPE':
+              raise SystemExit(1)
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m21-mixed-cold-warm-k1-reference
+          path: |
+            m21_cases/
+            m21_status.json
+            m21_result.json
+            m21_build.log
+            m21_*.log
+            class/output/ref_background.dat
+            class/output/ref_pk.dat
+            class/output/ref_cl.dat
+            class/output/f*_background.dat
+            class/output/f*_pk.dat
+            class/output/f*_cl.dat
+          retention-days: 90
