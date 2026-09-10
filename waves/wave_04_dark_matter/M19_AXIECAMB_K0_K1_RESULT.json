@@ -1,12 +1,117 @@
 {
-  "build_exit": 2,
+  "build_exit": 0,
   "case_exits": {
-    "p1": 999,
-    "r0d": 999,
-    "r0f": 999
+    "p1": 0,
+    "r0d": 139,
+    "r0f": 139
   },
-  "cases": {},
-  "classification": "M19_AXIECAMB_BLOCKED_BUILD",
+  "cases": {
+    "p1": {
+      "exit": 0,
+      "outputs": {
+        "lensedCls.dat": {
+          "cols": 5,
+          "exists": true,
+          "parse_finite": true,
+          "path": "external_axiecamb/p1_lensedCls.dat",
+          "rows": 2593,
+          "size": 184103
+        },
+        "matterpower.dat": {
+          "cols": 2,
+          "exists": true,
+          "parse_finite": true,
+          "path": "external_axiecamb/p1_matterpower.dat",
+          "rows": 544,
+          "size": 17408
+        },
+        "scalCls.dat": {
+          "cols": 6,
+          "exists": true,
+          "parse_finite": true,
+          "path": "external_axiecamb/p1_scalCls.dat",
+          "rows": 2699,
+          "size": 234813
+        },
+        "transfer_out.dat": {
+          "cols": 9,
+          "exists": true,
+          "parse_finite": true,
+          "path": "external_axiecamb/p1_transfer_out.dat",
+          "rows": 215,
+          "size": 30960
+        }
+      }
+    },
+    "r0d": {
+      "exit": 139,
+      "outputs": {
+        "lensedCls.dat": {
+          "exists": false,
+          "parse_finite": false,
+          "path": "external_axiecamb/r0d_lensedCls.dat",
+          "size": 0
+        },
+        "matterpower.dat": {
+          "exists": false,
+          "parse_finite": false,
+          "path": "external_axiecamb/r0d_matterpower.dat",
+          "size": 0
+        },
+        "scalCls.dat": {
+          "exists": false,
+          "parse_finite": false,
+          "path": "external_axiecamb/r0d_scalCls.dat",
+          "size": 0
+        },
+        "transfer_out.dat": {
+          "exists": false,
+          "parse_finite": false,
+          "path": "external_axiecamb/r0d_transfer_out.dat",
+          "size": 0
+        }
+      }
+    },
+    "r0f": {
+      "exit": 139,
+      "outputs": {
+        "lensedCls.dat": {
+          "exists": false,
+          "parse_finite": false,
+          "path": "external_axiecamb/r0f_lensedCls.dat",
+          "size": 0
+        },
+        "matterpower.dat": {
+          "exists": false,
+          "parse_finite": false,
+          "path": "external_axiecamb/r0f_matterpower.dat",
+          "size": 0
+        },
+        "scalCls.dat": {
+          "exists": false,
+          "parse_finite": false,
+          "path": "external_axiecamb/r0f_scalCls.dat",
+          "size": 0
+        },
+        "transfer_out.dat": {
+          "exists": false,
+          "parse_finite": false,
+          "path": "external_axiecamb/r0f_transfer_out.dat",
+          "size": 0
+        }
+      }
+    }
+  },
+  "classification": "M19_AXIECAMB_BLOCKED_ZERO_REFERENCE_EXECUTION",
+  "gates": {
+    "build_pass": true,
+    "finite_provider_control_pass": true,
+    "output_contract_pass": false,
+    "reference_identity_pass": false,
+    "zero_reference_execution_pass": false
+  },
+  "next_if_pass": "preregister M19 K2-K5 finite fraction/mass geometry and thermal-WDM suppression attack",
+  "physical_falsification": false,
   "preregistration": "protocol/W04_M19_AXIECAMB_K0_K1_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md",
   "provider": "Ra-yne/AxiECAMB",
   "provider_pin": "b7ca9ba80aca178da5003d864b8e20cb5905555b",
