@@ -1,0 +1,111 @@
+name: Sync M17 M19 frontier bookkeeping
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-m17-m19-frontier-bookkeeping.yml'
+      - 'models/holographic_dark_energy/M17_C060_JOINT_CPL_K6_REFINEMENT_RESULT.json'
+      - 'models/holographic_dark_energy/M17_IDECAMB_LINEAR_EPPF_RECOVERY_RESULT.json'
+      - 'models/fuzzy_ultralight_axion/M19_AXIONCAMB2_ZERO_PROBE_RESULT.json'
+      - 'models/fuzzy_ultralight_axion/m19_exact_zero_failure_diagnosis_2026-09-10.md'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify evidence and update only F17/F19 rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv,json
+          from pathlib import Path
+
+          m17p=json.loads(Path('models/holographic_dark_energy/M17_IDECAMB_LINEAR_EPPF_RECOVERY_RESULT.json').read_text())
+          m17k6=json.loads(Path('models/holographic_dark_energy/M17_C060_JOINT_CPL_K6_REFINEMENT_RESULT.json').read_text())
+          m19=json.loads(Path('models/fuzzy_ultralight_axion/M19_AXIONCAMB2_ZERO_PROBE_RESULT.json').read_text())
+          diag=Path('models/fuzzy_ultralight_axion/m19_exact_zero_failure_diagnosis_2026-09-10.md').read_text()
+          assert m17p['classification']=='M17_IDECAMB_LINEAR_EPPF_PROVIDER_PASS_WITH_SCOPE'
+          assert m17p['K3_interpretation']=='PASS_WITH_SCOPE_EPPF_PRESCRIPTION'
+          assert m17k6['classification']=='M17_C060_K6_REFINEMENT_SURVIVOR'
+          assert m17k6['best']['R_joint']>0.30
+          assert m19['classification']=='M19_AXIONCAMB2_ZERO_REFERENCE_BLOCKED'
+          assert m19['cases']['p1']['exit']==0
+          assert m19['cases']['r0f']['exit']==139 and m19['cases']['r0d']['exit']==139
+          assert 'PROVIDER_ZERO_LIMIT_IMPLEMENTATION_DEFECT_LOCALIZED' in diag
+
+          mp=Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(mp.open(newline=''))); fields=list(rows[0].keys())
+          seen=set()
+          for r in rows:
+              if r['family_id']=='F17':
+                  seen.add('F17')
+                  r.update({
+                    'K0_provenance':'PASS_WITH_SCOPE',
+                    'K1_reference_limit':'NO_NATIVE_LCDM_REFERENCE_INTERSECTION_WITH_SCOPE',
+                    'K2_physical_geometry':'FINITE_GLOBAL_GEOMETRY_ONLY',
+                    'K3_conservation_gauge_closure':'PASS_WITH_SCOPE_EPPF_PRESCRIPTION',
+                    'K4_numerical_robustness':'PARTIAL_LINEAR_EXECUTION_ONLY',
+                    'K5_multichannel_rank':'FINITE_GLOBAL_REQUIRED_NO_LOCAL_LCDM_TANGENT',
+                    'K6_nearest_family_manifold':'PASS_WITH_SCOPE_C060_AGAINST_FROZEN_CPL_MANIFOLD',
+                    'K7_common_observation_space':'NOT_TESTED',
+                    'K8_quotient_novelty':'NOT_TESTED',
+                    'K9_prospective_holdout':'NOT_TESTED',
+                    'coverage_state':'LINEAR_EPPF_K3_PASS_C060_CPL_K6_SURVIVOR_K7_OPEN',
+                    'notes':'Original future-event-horizon HDE. Linear IDECAMB/ePPF recovered after isolating HMCode nonlinear-lensing timeout; K3 is scoped to the ePPF prescription, not a unique physical nonlocal perturbation derivation. Fixed background-CPL transport is mixed. For c=0.6, a prospectively frozen joint H+TT+TE+EE 5x5 coarse grid followed by its predeclared 5x5 refinement leaves best R_joint=0.3519047 and R_max=0.3921917 at w0=-1.2498701, wa=0.8082965, so c=0.6 survives this frozen CPL nearest-family attack in theory space. K7 covariance/observation-space profiling remains open; no observational significance or physical falsification claim.'
+                  })
+              elif r['family_id']=='F19':
+                  seen.add('F19')
+                  r.update({
+                    'K0_provenance':'PASS_WITH_SCOPE_TWO_PINNED_AXIONCAMB_LINEAGE_PROVIDERS',
+                    'K1_reference_limit':'BLOCKED_PROVIDER_EXACT_ZERO_IMPLEMENTATION_DEFECT',
+                    'K2_physical_geometry':'NOT_TESTED',
+                    'K3_conservation_gauge_closure':'BLOCKED_BY_K1_REFERENCE_RECOVERY',
+                    'K4_numerical_robustness':'NOT_TESTED',
+                    'K5_multichannel_rank':'NOT_TESTED',
+                    'K6_nearest_family_manifold':'NOT_TESTED',
+                    'K7_common_observation_space':'NOT_TESTED',
+                    'K8_quotient_novelty':'NOT_TESTED',
+                    'K9_prospective_holdout':'NOT_TESTED',
+                    'coverage_state':'FINITE_PROVIDER_CONTROLS_PASS_EXACT_ZERO_K1_IMPLEMENTATION_BLOCKED',
+                    'notes':'Fuzzy/ultralight axion DM. Ra-yne/AxiECAMB and dgrin1/axionCAMB2 both execute finite axion controls with finite CMB/P(k)/transfer outputs, while exact axion-density/fraction zero exits 139. Diagnostic bounds build localizes the inherited zero-path defect: Omega_ax=0 drives as_scalar=0, a_init=0 and log(a_init)=-Inf; the scalar shooting guesses also take log(0) at fax=0, eventually corrupting MassiveNu::Nu_rho spline indexing. This is a provider exact-reference defect, not physical FDM falsification. A true zero-axion bypass plus independent CDM identity test is required before K1 promotion.'
+                  })
+          assert seen=={'F17','F19'}
+          with mp.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n');w.writeheader();w.writerows(rows)
+
+          cp=Path('matrices/model_family_census.csv')
+          crows=list(csv.DictReader(cp.open(newline=''))); cfields=list(crows[0].keys()); cseen=set()
+          for r in crows:
+              if r['family_id']=='F17':
+                  cseen.add('F17')
+                  r['status']='LINEAR_EPPF_K3_PASS_C060_CPL_K6_SURVIVOR_K7_OPEN'
+                  r['notes']='Linear IDECAMB/ePPF provider recovery PASS_WITH_SCOPE. The previous HMCode timeout is isolated to nonlinear lensing. c=0.6 survives the prospectively frozen shared-CPL H+TT+TE+EE coarse+refinement attack with best R_joint=0.3519047 and R_max=0.3921917; this is theory-space K6 evidence only. K7 covariance/observation-space profiling is next.'
+              elif r['family_id']=='F19':
+                  cseen.add('F19')
+                  r['status']='FINITE_AXION_PROVIDERS_PASS_EXACT_ZERO_K1_IMPLEMENTATION_BLOCKED'
+                  r['notes']='Two pinned axionCAMB-lineage providers execute finite ULA controls but both crash at the exact zero-axion reference. Debug runtime checking localizes the inherited singular shooting path at Omega_ax=0; zero-reference bypass/recovery is required. Not a physical FDM failure.'
+          assert cseen=={'F17','F19'}
+          with cp.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=cfields,lineterminator='\n');w.writeheader();w.writerows(crows)
+          PY
+      - name: Commit synchronized frontier
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/mandatory_properties_matrix.csv matrices/model_family_census.csv
+          if ! git diff --cached --quiet; then
+            git commit -m 'Sync M17 K6 survivor and M19 exact-zero blocker'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
