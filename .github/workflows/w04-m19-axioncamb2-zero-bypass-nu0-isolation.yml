@@ -1,0 +1,208 @@
+name: W04 M19 axionCAMB2 zero-bypass plus neutrino-off isolation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m19-axioncamb2-zero-bypass-nu0-isolation.yml'
+      - 'protocol/W04_M19_AXIONCAMB2_ZERO_BYPASS_NU0_ISOLATION_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  isolate-zero-path:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PIN: 891e779cc0bd422e49f97533e6c2fc761149737d
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pin providers, apply frozen bypass, prepare cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in axc_orig axc_patch axc_debug; do
+            git clone -q https://github.com/dgrin1/axionCAMB.git "$d"
+            git -C "$d" checkout -q --detach "$PIN"
+            test "$(git -C "$d" rev-parse HEAD)" = "$PIN"
+          done
+          python3 verification/m19/axioncamb2_zero_probe.py prepare axc_orig/params.ini m19_combo_cases
+          python3 verification/m19/axioncamb2_zero_bypass_recovery.py patch axc_patch
+          python3 verification/m19/axioncamb2_zero_bypass_recovery.py patch axc_debug
+          python3 - <<'PY'
+          from pathlib import Path
+          for fn in ['r0f.ini','r0d.ini']:
+              p=Path('m19_combo_cases')/fn
+              s=p.read_text()
+              repl={
+                'omnuh2 = 0.0006':'omnuh2 = 0',
+                'massive_neutrinos  = 1':'massive_neutrinos  = 0',
+                'nu_mass_eigenstates = 1':'nu_mass_eigenstates = 0',
+              }
+              for a,b in repl.items():
+                  if a not in s:
+                      raise SystemExit(f'{fn}: missing frozen anchor {a!r}')
+                  s=s.replace(a,b,1)
+              p.write_text(s)
+          PY
+          printf 'provider=%s\n' "$PIN" > m19_combo_pin.txt
+
+      - name: Build providers
+        shell: bash
+        run: |
+          set +e
+          (cd axc_orig && make -j1 FFLAGS='-O3 -ffree-line-length-none -fallow-argument-mismatch' > ../m19_combo_build_orig.log 2>&1); bo=$?
+          (cd axc_patch && make -j1 FFLAGS='-O3 -ffree-line-length-none -fallow-argument-mismatch' > ../m19_combo_build_patch.log 2>&1); bp=$?
+          (cd axc_debug && make -j1 FFLAGS='-O0 -g -fbacktrace -fcheck=all -ffree-line-length-none -fallow-argument-mismatch' > ../m19_combo_build_debug.log 2>&1); bd=$?
+          printf '{"build_orig":%d,"build_patch":%d,"build_debug":%d}\n' "$bo" "$bp" "$bd" > m19_combo_status.json
+          exit 0
+
+      - name: Execute frozen cases
+        shell: bash
+        run: |
+          set +e
+          bo=$(python3 -c "import json;print(json.load(open('m19_combo_status.json'))['build_orig'])")
+          bp=$(python3 -c "import json;print(json.load(open('m19_combo_status.json'))['build_patch'])")
+          bd=$(python3 -c "import json;print(json.load(open('m19_combo_status.json'))['build_debug'])")
+          zf=999; zd=999; pp=999; po=999; dz=999
+          if [ "$bp" -eq 0 ]; then
+            (cd axc_patch && ./camb ../m19_combo_cases/r0f.ini > ../m19_combo_zf.log 2>&1); zf=$?
+            (cd axc_patch && ./camb ../m19_combo_cases/r0d.ini > ../m19_combo_zd.log 2>&1); zd=$?
+            (cd axc_patch && ./camb ../m19_combo_cases/p1.ini > ../m19_combo_pp.log 2>&1); pp=$?
+          fi
+          if [ "$bo" -eq 0 ]; then
+            (cd axc_orig && ./camb ../m19_combo_cases/p1.ini > ../m19_combo_po.log 2>&1); po=$?
+          fi
+          if [ "$bd" -eq 0 ]; then
+            (cd axc_debug && ./camb ../m19_combo_cases/r0f.ini > ../m19_combo_debug_zf.log 2>&1); dz=$?
+          fi
+          python3 - <<PY
+          import json
+          p='m19_combo_status.json'; d=json.load(open(p)); d.update({'zf':$zf,'zd':$zd,'pp':$pp,'po':$po,'debug_zf':$dz}); open(p,'w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          cat m19_combo_status.json
+          exit 0
+
+      - name: Analyze frozen gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+          import numpy as np
+          status=json.load(open('m19_combo_status.json'))
+          products=['scalCls.dat','matterpower.dat','transfer_out.dat']
+          def load(case_root, stem):
+              out={}
+              for prod in products:
+                  p=Path(case_root)/(stem+'_'+prod)
+                  if not p.exists():
+                      out[prod]={'exists':False,'finite':False}
+                      continue
+                  a=np.loadtxt(p)
+                  out[prod]={'exists':True,'finite':bool(np.isfinite(a).all()),'rows':int(a.shape[0]),'cols':int(a.shape[1]) if a.ndim>1 else 1}
+              return out
+          def symdiff(roota,stema,rootb,stemb):
+              vals={}; mx=0.0; ok=True
+              for prod in products:
+                  pa=Path(roota)/(stema+'_'+prod); pb=Path(rootb)/(stemb+'_'+prod)
+                  if not(pa.exists() and pb.exists()): vals[prod]=None; ok=False; continue
+                  a=np.loadtxt(pa); b=np.loadtxt(pb)
+                  if a.shape!=b.shape: vals[prod]={'shape_mismatch':[list(a.shape),list(b.shape)]}; ok=False; continue
+                  den=np.maximum(np.abs(a),np.abs(b)); rel=np.zeros_like(a,dtype=float); m=den>0; rel[m]=np.abs(a[m]-b[m])/den[m]
+                  v=float(np.max(rel)); vals[prod]=v; mx=max(mx,v)
+              return ok,mx,vals
+          zf=load('axc_patch','r0f'); zd=load('axc_patch','r0d'); pp=load('axc_patch','p1'); po=load('axc_orig','p1')
+          zok, zmax, zdiffs=symdiff('axc_patch','r0f','axc_patch','r0d')
+          fok, fmax, fdiffs=symdiff('axc_patch','p1','axc_orig','p1')
+          contracts=lambda x: all(v.get('exists') and v.get('finite') and v.get('rows',0)>0 for v in x.values())
+          gates={
+            'builds': status['build_orig']==0 and status['build_patch']==0 and status['build_debug']==0,
+            'zero_fraction_execution': status['zf']==0 and contracts(zf),
+            'zero_density_execution': status['zd']==0 and contracts(zd),
+            'zero_parameterization_identity': zok and zmax<=1e-10,
+            'finite_noninterference': status['pp']==0 and status['po']==0 and contracts(pp) and contracts(po) and fok and fmax<=1e-10,
+            'runtime_check_zero_fraction': status['debug_zf']==0,
+          }
+          passed=all(gates.values())
+          result={
+            'schema':'KMDSB.M19.axionCAMB2.zeroBypassNu0Isolation.v1',
+            'provider_pin':'891e779cc0bd422e49f97533e6c2fc761149737d',
+            'preregistration':'protocol/W04_M19_AXIONCAMB2_ZERO_BYPASS_NU0_ISOLATION_PREREGISTRATION_v0.1.md',
+            'classification':'M19_ZERO_BYPASS_NU0_ISOLATION_PASS_WITH_SCOPE' if passed else 'M19_ZERO_BYPASS_NU0_ISOLATION_BLOCKED',
+            'physical_falsification':False,
+            'scientific_promotion':{'K1':False,'K2_K9':False},
+            'status':status,'gates':gates,'zero_fraction_outputs':zf,'zero_density_outputs':zd,
+            'finite_patch_outputs':pp,'finite_original_outputs':po,
+            'zero_identity_max_sym_rel':zmax,'zero_identity_by_product':zdiffs,
+            'finite_noninterference_max_sym_rel':fmax,'finite_noninterference_by_product':fdiffs,
+            'tolerance':1e-10,
+          }
+          open('m19_combo_result.json','w').write(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(result,indent=2,sort_keys=True))
+          PY
+          test -s m19_combo_result.json
+
+      - name: Persist result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m19_combo_result.json /tmp/m19_combo_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/fuzzy_ultralight_axion waves/wave_04_dark_matter
+          cp /tmp/m19_combo_result.json models/fuzzy_ultralight_axion/M19_AXIONCAMB2_ZERO_BYPASS_NU0_ISOLATION_RESULT.json
+          cp /tmp/m19_combo_result.json waves/wave_04_dark_matter/M19_AXIONCAMB2_ZERO_BYPASS_NU0_ISOLATION_RESULT.json
+          git add models/fuzzy_ultralight_axion/M19_AXIONCAMB2_ZERO_BYPASS_NU0_ISOLATION_RESULT.json waves/wave_04_dark_matter/M19_AXIONCAMB2_ZERO_BYPASS_NU0_ISOLATION_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M19 zero-bypass plus neutrino-off isolation result'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Enforce classification
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/m19_combo_result.json'))
+          print('classification=',r['classification'])
+          if r['classification']!='M19_ZERO_BYPASS_NU0_ISOLATION_PASS_WITH_SCOPE': raise SystemExit(1)
+          PY
+
+      - name: Upload immutable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m19-axioncamb2-zero-bypass-nu0-isolation
+          path: |
+            m19_combo_pin.txt
+            m19_combo_cases/
+            m19_combo_build_*.log
+            m19_combo_*.log
+            m19_combo_status.json
+            m19_combo_result.json
+            axc_patch/r0f_scalCls.dat
+            axc_patch/r0f_matterpower.dat
+            axc_patch/r0f_transfer_out.dat
+            axc_patch/r0d_scalCls.dat
+            axc_patch/r0d_matterpower.dat
+            axc_patch/r0d_transfer_out.dat
+            axc_patch/p1_scalCls.dat
+            axc_patch/p1_matterpower.dat
+            axc_patch/p1_transfer_out.dat
+            axc_orig/p1_scalCls.dat
+            axc_orig/p1_matterpower.dat
+            axc_orig/p1_transfer_out.dat
+            verification/m19/axioncamb2_zero_bypass_recovery.py
+            protocol/W04_M19_AXIONCAMB2_ZERO_BYPASS_NU0_ISOLATION_PREREGISTRATION_v0.1.md
+          retention-days: 90
