@@ -84,3 +84,18 @@ K1 is `PASS_WITH_SCOPE` for this provider/anchor. K2-K9 remain open. Next author
 - Run `34448063620`, job `102777173085`, artifact `10140443081`: all five c=0,+-.01,+-.02 cases execute; K4 local convergence FAIL (norm mismatch 0.398207, angle 16.0238 deg), K5 blocked.
 - K3 PARTIAL: `cdm_c` background/KG coupling active, but interacting delta_cdm perturbation correction is commented out in provider perturbations source. Do not call its spectra full M14 perturbation closure.
 - Exact next priority: independent/source-complete M14 perturbation provider; optional smaller-step background-only mapping must be newly preregistered and cannot overwrite the failed K4 result.
+
+
+## 2026-09-10 — M14 independent IDECAMB frontier after K1/K2/K4 scale audit
+
+Pinned independent provider: `liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075` over `cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4`. Compatibility-only `-fallow-argument-mismatch` build recovery does not edit physics.
+
+- theory-only output route: PASS, run `34463892501`, job `102827831899`, artifact `10146717720`, result commit `de0debf99827200ab9cc503d7351b811e73cf8ec`; emits 2000x11 `.quantity` and 2499-row `.theory_cl`.
+- K1 interaction-off invariants: PASS_WITH_SCOPE, run `34464322763`, job `102829203132`, artifact `10146904871`, result commit `3af4e94ae84186dd0644af48a2da48199dbabbfe`. Previously unseen `alpha_quint={0.2,0.8}`, exact `beta=0`: all finite, `gQ=0` exactly, relative drift of `a*grhoc_t=1.1147809168407837e-4 <=2e-4`.
+- K2: PASS_WITH_SCOPE one-sided `q_beta=beta_cq>=0`; author prior is `[0,0.15]`; no beta^2 quotient.
+- K4 parent local grid: FAIL_LOCAL_CONVERGENCE, run `34464786896`, job `102830709421`, artifact `10147076509`, result commit `a88ff59137e0bf4e7b97f27cc8122a79063f1f6f`; beta `.005/.01` gives norm mismatch `0.425623`, angle `4.3851 deg`. K5 blocked.
+- prospectively frozen smaller-step recovery: FAIL, run `34465008067`, job `102831413732`, artifact `10147169505`; even finest `.00005/.00010` gives norm mismatch `0.298317`, angle `11.3215 deg`, with large `max|dln rho_de|=4.1418` and `max|dw|=1.9590`. This result does not erase the parent K4 fail.
+
+Do **not** keep shrinking beta steps. The source equations are algebraically continuous at beta=0, while the numerical solution does not approach the beta=0 branch smoothly. Next M14 gate is a provider branch/shooting-continuity audit focused on `GetCorrect_initial` / Broyden root selection and solved `(gU0,gphi0)` continuity. No K5/K6 promotion until this is resolved.
+
+M15 side finding: IDECAMB contains an explicitly commented NGCG coupled-fluid branch with the decomposed-NGCG background interaction form. This makes it a serious candidate rather than an automatic representative mismatch, but perturbation prescription/input-selector provenance remains open. See `models/generalized_chaplygin/idecamb_ngcg_candidate_audit.md`.

@@ -417,3 +417,7 @@ When a provider contains more than one independent interaction law, a reference/
 
 ### Interaction-closure rule from M14
 An executable interacting background plus generated CMB/P(k) products is not evidence that the interaction is closed at perturbation level. Before a response channel from an interacting model is promoted, source-bind the interaction in both background conservation/Klein-Gordon equations and the corresponding perturbation equations. Commented-out or absent interaction perturbation terms force K3 to remain partial and block K5 promotion for perturbation-derived channels. Also, a large finite response cannot substitute for step-converged tangent geometry: when prospectively frozen derivative steps fail norm/direction convergence, retain that K4 failure and map a smaller or nonlinear regime only in a new preregistration.
+
+
+### Branch-continuity rule from M14 IDECAMB
+When a model has an analytically continuous decoupling parameter but finite-difference responses remain order-unity and fail tangent convergence after a prospectively fixed smaller-step ladder, do not continue shrinking the step indefinitely. First audit numerical branch/root/shooting continuity and record the solved latent initial-condition/shooting variables versus the physical parameter. A solver that jumps between solution branches cannot provide a valid local tangent even if every run exits successfully. Preserve all earlier failed scales; a later local recovery never rewrites them as PASS.

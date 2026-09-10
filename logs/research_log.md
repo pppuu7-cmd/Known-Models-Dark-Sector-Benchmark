@@ -262,3 +262,13 @@ K1 is `PASS_WITH_SCOPE` for this provider/anchor. K2-K9 remain open. Next author
 K2 was source-bound before execution: at the author hyperbolic anchor, signed `cdm_c` is a two-sided physical coordinate rather than a c^2 quotient. A preregistered c={0,+-.01,+-.02} gate was run. Initial run `34447848716` had analyzer-only missing-numpy failure after all physical cases executed. Dependency-only repair preserved frozen physics and thresholds. Terminal run `34448063620`, job `102777173085`, artifact `10140443081`, result commit `c43727de9316b76a7b8be8a7f7fb127e4b14b326` executed all five cases. Frozen K4 failed: tangent norm mismatch 0.398207 (>0.10), angle 16.0238 deg (>3 deg). K5 is blocked even though finite response amplitude is large (max |Delta ln O|~1.015 at |c|=.01). This means the .01/.02 grid is not a reliable local linear tangent; it is not a model falsification.
 
 Independent K3 source audit found the cdm_c interaction active in background/CDM density and the scalar KG equation, while `source/perturbations.c` contains the intended interacting `delta_cdm` mass-density correction only as commented code. K3=`PARTIAL`; provider spectra cannot be promoted as a complete conservation-consistent coupled-quintessence perturbation prediction.
+
+
+### 2026-09-10 M14 IDECAMB K1/K2/K4 scale-localization
+- Recovered author-supported theory output without external likelihoods: run 34463892501 PASS infrastructure only.
+- Prospective K1 at unseen alpha=.2,.8: run 34464322763 PASS_WITH_SCOPE; exact gQ=0 and standard CDM dilution invariant.
+- K2 source geometry: provider-supported one-sided beta>=0 tangent cone; no sign quotient asserted.
+- Frozen K4 beta=.005/.01: run 34464786896 FAIL_LOCAL_CONVERGENCE; K5 blocked.
+- Separate preregistered smaller-step ladder down to 5e-5/1e-4: run 34465008067 also FAIL. Norm mismatch improves to 29.83% but angle worsens to 11.32 deg and response remains O(1) in early DE/w. Stop step chasing; audit Broyden/shooting branch continuity.
+- No family-level physical falsification and no observational discrimination claim.
+- M15: recorded IDECAMB NGCG decomposed-background candidate; perturbation/source-selector binding remains open.
