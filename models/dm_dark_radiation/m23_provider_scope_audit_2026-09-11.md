@@ -11,7 +11,20 @@ The pinned source contains a source-complete interacting-DM / interacting-dark-r
 
 For the NADM parameterization, CLASS documents
 `Gamma_DM-DR = -(1+z) Gamma_0_nadm`
-and maps it to the internal `a_idm_dr` rate. Passing `Gamma_0_nadm` fixes the interaction temperature index to the NADM convention (`n_index_idm_dr=0`).
+and maps it to the internal `a_idm_dr` rate.
+
+## Parser-side-effect audit
+Presence of the `Gamma_0_nadm` key changes two defaults in the provider even when the numerical value is zero:
+- the IDM-DR temperature-law index switches to the NADM convention `n_index_idm_dr=0` (versus the ETHOS default 4);
+- `idr_nature` switches to `fluid` (versus the no-Gamma default `free_streaming`).
+
+Therefore an omitted-Gamma reference and an explicit `Gamma_0_nadm=0` case are NOT a clean identity comparison unless these two properties are explicitly frozen on both sides. This is a provider-input semantics issue, not a physical discontinuity.
+
+The M23 K1 reference must explicitly set on every case, including the omitted-coupling reference:
+- `nindex_idm_dr = 0`;
+- `idr_nature = fluid`.
+
+Only the coupling strength may vary.
 
 ## Reference-map audit
 A scientifically valid K1 reference for the *interaction mechanism* keeps the dark-sector species content fixed and sends only the interaction rate to zero.
@@ -19,10 +32,10 @@ A scientifically valid K1 reference for the *interaction mechanism* keeps the da
 Therefore M23 K1 must NOT compare finite IDM-DR scattering directly with ordinary LambdaCDM while simultaneously deleting DR. The K1 decoupling reference is instead:
 - fixed interacting-DM fraction/species assignment;
 - fixed nonzero dark-radiation density;
-- identical cosmology and radiation nature;
-- `Gamma_0_nadm = 0` or coupling omitted.
+- identical cosmology, `nindex_idm_dr` and radiation nature;
+- coupling omitted versus explicit `Gamma_0_nadm = 0` only after the above defaults are frozen.
 
-This reference is an uncoupled DM + DR cosmology, not pure LambdaCDM. A later family-level comparison to LambdaCDM belongs to K6/K7 after the DR-density direction and nuisance/comparator manifold are handled explicitly.
+This reference is an uncoupled DM + fluid-DR cosmology, not pure LambdaCDM. A later family-level comparison to LambdaCDM belongs to K6/K7 after the DR-density direction and nuisance/comparator manifold are handled explicitly.
 
 ## Source-bound anchor
 An independent public FisherLens configuration tied to arXiv:2307.01662 uses a DRDM benchmark with:
