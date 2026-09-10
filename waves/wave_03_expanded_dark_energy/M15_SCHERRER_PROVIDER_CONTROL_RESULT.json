@@ -1,0 +1,14 @@
+{
+  "schema": "KMDSB.W03.M15.Scherrer.ProviderControl.v0.1",
+  "provider": "Eladio-Moreno/k-essence-dynamics@f3f010e1ed74c86ce6a431a435fa93988f749ee2",
+  "subtree": "Cuadratico",
+  "input": "author-supplied hi.ini unmodified",
+  "scope": "PROVIDER_EXECUTION_ONLY_NO_K1_K9_PROMOTION",
+  "bookkeeping_classification": "UNIFIED_DARK_SECTOR_CANDIDATE_NOT_M11_DE_ONLY_VALIDATION",
+  "build_exit": 0,
+  "run_exit": 0,
+  "fresh_outputs": [],
+  "classification": "SCHERRER_PROVIDER_CONTROL_FAIL_EXAMPLE",
+  "scientific_promotion_authorized": false,
+  "next_if_pass": "Audit Scherrer reference/decoupling path, stability domain and unified-sector response before scientific grid."
+}
