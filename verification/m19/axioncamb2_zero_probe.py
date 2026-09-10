@@ -15,7 +15,8 @@ def prep(base,outdir):
  for n,c in CASES.items():
   t=s
   for k,v in common.items(): t=repl(t,k,v)
-  t=repl(t,'output_root',n+'_')
+  # axionCAMB appends its own underscore to output_root; use bare case name here.
+  t=repl(t,'output_root',n)
   for k,v in c.items(): t=repl(t,k,v)
   (outdir/f'{n}.ini').write_text(t)
 def rows(p):
