@@ -9,6 +9,7 @@ FILES=['scalCls.dat','matterpower.dat','transfer_out.dat']
 AXPIN='891e779cc0bd422e49f97533e6c2fc761149737d'
 CDMPIN='dc437acd8c90aa7e5595fcb25c615b03de8357a7'
 TRANSFER_SCHEMA_AMENDMENT='protocol/W04_M19_EXTERNAL_CDM_REFERENCE_TRANSFER_SCHEMA_AMENDMENT_v0.1.md'
+BLOCKWISE_RECOVERY='protocol/W04_M19_EXTERNAL_LIMIT_BLOCKWISE_CONFORMANCE_RECOVERY_v0.1.md'
 
 def repl(s,k,v,required=True):
     p=re.compile(rf'(?m)^(\s*{re.escape(k)}\s*=).*?$')
@@ -34,19 +35,17 @@ def prepare(axbase:Path, cdmbase:Path, out:Path):
       'transfer_num_redshifts':'1','transfer_interp_matterpower':'T','transfer_redshift(1)':'0','transfer_filename(1)':'transfer_out.dat',
       'transfer_matterpower(1)':'matterpower.dat','scalar_output_file':'scalCls.dat','l_max_scalar':'5000'
     }
-    # Axion cases: fixed total dark matter split by fraction.
     for i,f in enumerate(FRACS):
         t=ax
         for k,v in shared.items(): t=repl(t,k,v,required=False)
         for k,v in {'output_root':f'a{i}','use_axfrac':'T','omdah2':'0.1200','axfrac':str(f),'m_ax':'1.e-27','axion_isocurvature':'F'}.items(): t=repl(t,k,v)
         (out/f'a{i}.ini').write_text(t)
-    # Historical pure CDM: same total physical dark matter density entirely in CDM.
     t=cdm
     for k,v in shared.items(): t=repl(t,k,v,required=False)
     t=repl(t,'output_root','c0')
     t=repl(t,'omch2','0.1200')
     (out/'c0.ini').write_text(t)
-    (out/'manifest.json').write_text(json.dumps({'fractions':FRACS,'axion_pin':AXPIN,'cdm_pin':CDMPIN,'shared':shared,'transfer_schema_amendment':TRANSFER_SCHEMA_AMENDMENT},indent=2,sort_keys=True)+'\n')
+    (out/'manifest.json').write_text(json.dumps({'fractions':FRACS,'axion_pin':AXPIN,'cdm_pin':CDMPIN,'shared':shared,'transfer_schema_amendment':TRANSFER_SCHEMA_AMENDMENT,'blockwise_recovery':BLOCKWISE_RECOVERY},indent=2,sort_keys=True)+'\n')
 
 def load(path:Path):
     rows=[]
@@ -61,12 +60,13 @@ def load(path:Path):
     return a
 
 def project_transfer(model,ref):
-    # Prospectively frozen semantic projection from the transfer-schema amendment:
-    # axionCAMB [kh,cdm,b,g,r,nu,axion,f,tot] -> [kh,cdm,b,g,r,nu,tot]
-    # historical CAMB [kh,cdm,b,g,r,nu,tot] stays unchanged.
     if model.shape[1] != 9: raise RuntimeError(f'OUTPUT_SCHEMA_BLOCKED axion transfer columns={model.shape[1]} expected=9')
     if ref.shape[1] != 7: raise RuntimeError(f'OUTPUT_SCHEMA_BLOCKED historical transfer columns={ref.shape[1]} expected=7')
     return model[:,[0,1,2,3,4,5,8]], ref[:,[0,1,2,3,4,5,6]]
+
+def channel(a,col):
+    if col<=0 or col>=a.shape[1]: raise RuntimeError(f'channel column {col} outside shape {a.shape}')
+    return a[:,[0,col]]
 
 def interp_reference(model,ref):
     x=model[:,0]; xr=ref[:,0]
@@ -75,8 +75,6 @@ def interp_reference(model,ref):
     x=x[mask]; ym=model[mask,1:]
     if len(x)<3: raise RuntimeError('insufficient overlap')
     if model.shape[1]!=ref.shape[1]: raise RuntimeError('column mismatch')
-    # CMB ell grids are integer: linear interpolation is exact on shared nodes.
-    # Other products are compared only inside their strict common coordinate domain.
     yr=np.column_stack([np.interp(x,xr,ref[:,j]) for j in range(1,ref.shape[1])])
     return x,ym,yr
 
@@ -95,30 +93,45 @@ def fit_exp(fs,rs):
     p,b=np.polyfit(np.log(f),np.log(r),1)
     return {'p':float(p),'logA':float(b),'valid':True}
 
+def judge(vals):
+    r95=[q['p95_abs'] for q in vals]
+    monotonic=all(r95[i+1] <= r95[i]*1.02 for i in range(len(r95)-1))
+    decreased=r95[-1] < r95[0]
+    fit=fit_exp(FRACS,r95)
+    exponent=bool(fit.get('valid') and fit.get('p') is not None and fit['p']>0)
+    bp=monotonic and decreased and exponent
+    return {'points':vals,'r95':r95,'monotonic_with_2pct_slack':monotonic,'smallest_lower_than_largest':decreased,'fit_smallest3':fit,'pass':bp}
+
 def analyze(axroot:Path,cdmroot:Path,statusp:Path,out:Path):
     st=json.loads(statusp.read_text())
-    res={'schema':'KMDSB.M19.externalCDMConvergence.v1','axion_pin':AXPIN,'cdm_pin':CDMPIN,'fractions':FRACS,'status':st,'physical_falsification':False,'K1_promoted':False,'blocks':{},'transfer_schema_amendment':TRANSFER_SCHEMA_AMENDMENT}
+    res={'schema':'KMDSB.M19.externalCDMConvergence.v2.blockwise','axion_pin':AXPIN,'cdm_pin':CDMPIN,'fractions':FRACS,'status':st,'physical_falsification':False,'K1_promoted':False,'blocks':{},'transfer_schema_amendment':TRANSFER_SCHEMA_AMENDMENT,'blockwise_recovery':BLOCKWISE_RECOVERY}
     if st.get('build_ax')!=0 or st.get('build_cdm')!=0 or st.get('c0')!=0 or any(st.get(f'a{i}')!=0 for i in range(len(FRACS))):
         res['classification']='M19_EXTERNAL_CDM_REFERENCE_EXECUTION_BLOCKED'; out.write_text(json.dumps(res,indent=2,sort_keys=True)+'\n'); return
-    cfiles={f:load(cdmroot/('c0_'+f)) for f in FILES}
-    # Both classic providers prefix output_root directly; generated files are c0_scalCls.dat etc.
+    cref={f:load(cdmroot/('c0_'+f)) for f in FILES}
+    ax=[{f:load(axroot/(f'a{i}_'+f)) for f in FILES} for i in range(len(FRACS))]
+    if cref['scalCls.dat'].shape[1]!=4 or any(x['scalCls.dat'].shape[1]!=4 for x in ax):
+        res['classification']='M19_EXTERNAL_CDM_REFERENCE_OUTPUT_SCHEMA_BLOCKED'; res['reason']='scalar output must be [ell,TT,EE,TE]'; out.write_text(json.dumps(res,indent=2,sort_keys=True)+'\n'); return
+    trefs=[]
+    try:
+        for i in range(len(FRACS)):
+            m,r=project_transfer(ax[i]['transfer_out.dat'],cref['transfer_out.dat']); trefs.append((m,r))
+    except Exception as e:
+        res['classification']='M19_EXTERNAL_CDM_REFERENCE_OUTPUT_SCHEMA_BLOCKED'; res['reason']=str(e); out.write_text(json.dumps(res,indent=2,sort_keys=True)+'\n'); return
+    specs=[]
+    # Classic scalar convention: [ell, TT, EE, TE].
+    for name,col in [('CMB_TT',1),('CMB_EE',2),('CMB_TE',3)]:
+        specs.append((name,[channel(ax[i]['scalCls.dat'],col) for i in range(len(FRACS))],channel(cref['scalCls.dat'],col)))
+    specs.append(('Pk',[ax[i]['matterpower.dat'] for i in range(len(FRACS))],cref['matterpower.dat']))
+    for name,col in [('T_cdm',1),('T_b',2),('T_g',3),('T_r',4),('T_nu',5),('T_tot',6)]:
+        specs.append((name,[channel(trefs[i][0],col) for i in range(len(FRACS))],channel(trefs[0][1],col)))
     allpass=True
-    for f in FILES:
+    for name,models,ref in specs:
         vals=[]
         for i,frac in enumerate(FRACS):
-            model=load(axroot/(f'a{i}_'+f)); ref=cfiles[f]
-            if f=='transfer_out.dat': model,ref=project_transfer(model,ref)
-            q=metrics(model,ref); q['fraction']=frac; vals.append(q)
-        r95=[q['p95_abs'] for q in vals]
-        monotonic=all(r95[i+1] <= r95[i]*1.02 for i in range(len(r95)-1))
-        decreased=r95[-1] < r95[0]
-        fit=fit_exp(FRACS,r95)
-        exponent=bool(fit.get('valid') and fit.get('p') is not None and fit['p']>0)
-        bp=monotonic and decreased and exponent
-        res['blocks'][f]={'points':vals,'r95':r95,'monotonic_with_2pct_slack':monotonic,'smallest_lower_than_largest':decreased,'fit_smallest3':fit,'pass':bp}
-        if f=='transfer_out.dat':
-            res['blocks'][f]['semantic_projection']={'common':['kh','cdm','b','g','r','nu','tot'],'axion_raw_columns_1based':[1,2,3,4,5,6,9],'historical_raw_columns_1based':[1,2,3,4,5,6,7],'excluded_axion_only':['Transfer_axion','Transfer_f']}
-        allpass=allpass and bp
+            q=metrics(models[i],ref); q['fraction']=frac; vals.append(q)
+        res['blocks'][name]=judge(vals); allpass=allpass and res['blocks'][name]['pass']
+    res['channel_contract']={'scalar':['ell','TT','EE','TE'],'transfer_common':['kh','cdm','b','g','r','nu','tot'],'excluded_axion_only':['Transfer_axion','Transfer_f']}
+    res['failing_blocks']=[k for k,v in res['blocks'].items() if not v['pass']]
     res['classification']='M19_EXTERNAL_CDM_REFERENCE_CONVERGENCE_PASS_WITH_SCOPE' if allpass else 'M19_EXTERNAL_CDM_REFERENCE_CONVERGENCE_NOT_ESTABLISHED'
     res['K1_promoted']=allpass
     res['K1_scope']='PASS_WITH_SCOPE_EXTERNAL_LIMIT_CONVERGENCE' if allpass else 'NOT_PROMOTED'
