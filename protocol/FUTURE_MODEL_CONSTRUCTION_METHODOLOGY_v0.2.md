@@ -394,3 +394,14 @@ After every scientifically meaningful frontier change:
 8. keep failed/blocked evidence rather than rewriting it away.
 
 KMDSB remains the evidence-producing benchmark. The future original model should be moved to a separate repository only when enough requirements have matured from ACTIVE evidence into a stable architecture.
+
+
+---
+
+## Provider execution versus representative validity (2026-09-10)
+
+A successful build and author example is only an infrastructure/provenance control. Before K1/K5 or family-level promotion, independently audit that the executed source branch and stress-energy bookkeeping actually instantiate the intended census family. In particular, verify which sector supplies matter-like density, acceleration/vacuum energy, interaction terms and closure. A similar Lagrangian label or scalar-field implementation is insufficient if a separate Lambda/CDM component supplies the target behaviour.
+
+Conversely, a README command or benchmark timing is not a reproducible provider control when the referenced author input is absent from the immutable pinned source. Never reconstruct a missing author configuration post hoc from defaults, prose or nearby files and call it provider validation. Recover an immutable archival configuration or choose another provider.
+
+Durable rule: **executable provider != valid representative; documented-but-missing input != reproducible provider.**

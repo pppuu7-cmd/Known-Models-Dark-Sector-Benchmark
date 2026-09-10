@@ -51,16 +51,16 @@ Authority: `models/scherrer_unified_dark_sector/representative_scope_audit.md`, 
 ## Current frontier
 - F11/M11: theory survivor, covariant promotion blocked pending an independent justified DE implementation.
 - F13/M13: true covariant multi-DOF quintom provider/provenance search open.
-- F14/M14: next priority. Candidate `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df`; source-audit exact author build/run/input contract and coupling-off coordinate before preregistering anything.
+- F14/M14: `BLOCKED_PROVENANCE_PROVIDER_SEARCH` for `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df`. README and committed benchmark/regression records refer to `iDM.ini`, but that file is absent from the exact public pinned tree. No unchanged author provider-control is possible from this snapshot; search the cited archival exact config or another provider.
 - F15/M15: genuine GCG/unified-dark-fluid provider search open; Scherrer author example is rejected as representative mismatch.
 - F16-F18 queued after Tier-A frontier.
 
 Strict F00-F45 coverage bookkeeping: 4/46 terminal/represented (F00, F09, F44, F45), 42 still require strict closure. This is not a probability statement.
 
 ## Immediate continuation
-1. Source-audit pinned M14 candidate; identify exact author executable example and true decoupling/coupling-off parameter.
-2. If and only if an unchanged author example is reproducible, preregister provider-control; provider PASS does not equal K1-K9 PASS.
-3. If provider-control passes, separately freeze K1 reference/decoupling regression before production grids.
+1. For M14, locate an immutable author-published exact configuration (prefer archival products cited by the provider) or an independent provider; never synthesize the missing `iDM.ini`.
+2. If and only if an unchanged author example becomes reproducible, preregister provider-control; provider PASS does not equal K1-K9 PASS.
+3. If provider-control passes, separately source-bind and freeze K1 reference/decoupling regression before production grids.
 4. Continue M13b/M15/M11 independent provenance searches without repurposing convenient but mismatched implementations.
 5. Update census, K-matrix, STATE, RESTORE and research log after every terminal result.
 

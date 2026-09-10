@@ -58,7 +58,7 @@ Authority files: `models/scherrer_unified_dark_sector/representative_scope_audit
 ## 8. Current frontier
 - F11/M11: `THEORY_SURVIVOR_COVARIANT_VALIDATION_BLOCKED`; search for independent covariant DE implementation remains open.
 - F13/M13: partial; true multifield quintom provider/provenance open.
-- F14/M14 coupled quintessence: current priority. Candidate public implementation `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df` identified; exact author build/run/input contract and coupling-off reference parameter must be source-audited before any provider-control/grid is frozen.
+- F14/M14 coupled quintessence: `BLOCKED_PROVENANCE_PROVIDER_SEARCH` for `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df`. README documents `./class iDM.ini`, regression/benchmark records reference successful runs, but the exact public pinned tree does not contain `iDM.ini`; no unchanged author point can be reproduced from this GitHub snapshot. Search the cited archival exact config or an independent provider.
 - F15/M15: `QUEUED_REPRESENTATIVE_SEARCH`; Scherrer candidate rejected on family-identity bookkeeping, so a genuine generalized-Chaplygin/unified-dark-fluid provider is still required.
 - F16-F18 remain W03 Tier-B queue.
 
@@ -71,8 +71,8 @@ A provider executable control is necessary infrastructure evidence but is not re
 No `NEW_REQUIRED` before sufficient census closure + adversarial cross-family waves + exact common observation/covariance profiling + numerical/gauge/systematic/stability floors + prospective holdout. Current permitted global conclusion: new model may be motivated, but necessity is not established.
 
 ## 11. Immediate next allowed gates
-1. M14: finish provenance/source audit of `kabeleh/iDM@dc55e59...`; identify the exact author executable example and exact physical decoupling/coupling-off coordinate from source.
-2. Only if a reproducible author example exists, preregister and run provider-control unchanged. Green workflow alone is not science.
-3. If provider-control PASSes, separately preregister K1 coupling-off/reference regression before production response grids.
+1. M14: recover an immutable author-published exact configuration for `kabeleh/iDM` (prefer the archival products cited in its README) or select a different public provider; do not reconstruct missing `iDM.ini` from prose/defaults.
+2. Only after an exact tracked author configuration exists, preregister and run provider-control unchanged. Green workflow alone is not science.
+3. If provider-control PASSes, separately source-bind and preregister K1 coupling-off/reference regression before production response grids.
 4. In parallel continue M13b and M15 genuine-provider searches; do not repurpose Scherrer or CPL as coverage shortcuts.
 5. Keep M11b CLASS_GSF terminal and search only independently justified covariant DE routes.

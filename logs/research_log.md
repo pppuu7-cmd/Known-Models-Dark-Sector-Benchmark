@@ -222,3 +222,20 @@ Finite `lambda={0.05,0.10,0.20}` points in this probe are explicitly descriptive
 5. preregister production B1 tolerance;
 6. compute standard DSIR response for a controlled production scalar branch;
 7. attack M07 against M01 smooth-w and M05 designer f(R).
+
+
+---
+
+## 2026-09-10 — Iteration: M11b/M14/M15 provider and representative hardening
+
+### M11b CLASS_GSF
+Pinned `KunhaoZhong/CLASS_GSF@07e015246c4b40f4e22bb50c9a0a63a621bb61f7`. Model-6 target cases remained non-executable after the prospectively frozen nonzero kinetic-seed recovery (run `34429876130`: LCDM PASS, 16/16 GSF diagnostics exit 1), while the provider's unmodified model-1 `dgf.ini` executed successfully (provider-control run `34429997792`). The route is terminal provider-specific `BLOCKED_IMPLEMENTATION_PROVENANCE`, not k-essence falsification.
+
+### M15 Scherrer candidate
+Pinned `Eladio-Moreno/k-essence-dynamics@f3f010e1ed74c86ce6a431a435fa93988f749ee2`. Provider execution was recovered in run `34430793576`; the earlier apparent failure was an output-prefix harness mistake (`root=output/test_`). Source audit then showed the author example has `Omega_Lambda=0.69`, a matter-like scalar target `DM_schm=0.26`, and stored `f0_schm=0`: separate Lambda supplies acceleration. Classification `REPRESENTATIVE_MISMATCH_NO_M15_PROMOTION`; this example is neither a genuine single-sector M15 unified DM+DE representative nor an M11 DE-only covariant validator. No physical falsification.
+
+### M14 coupled quintessence candidate
+Pinned `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df`. README documents `make clean; make class -j` then `./class iDM.ini`; committed regression/benchmark files reference `iDM.ini` and timing tables record historical exit-code-0 runs. However `iDM.ini` itself is absent from the exact public pinned tree (direct contents fetch 404). KMDSB therefore refuses to reconstruct an author point post hoc. Classification `BLOCKED_PROVENANCE_MISSING_AUTHOR_INPUT`; next recovery is an immutable archival exact config (prefer the provider-cited archive) or another provider. No physics conclusion.
+
+### Methodology delta
+Provider execution and family-representative validity are distinct gates. A working solver/example must still pass stress-energy/sector bookkeeping before scientific promotion; a documented but untracked author input cannot be reconstructed and treated as immutable provenance.
