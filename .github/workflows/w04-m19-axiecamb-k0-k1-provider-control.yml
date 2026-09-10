@@ -1,0 +1,133 @@
+name: W04 M19 AxiECAMB K0-K1 provider control
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m19-axiecamb-k0-k1-provider-control.yml'
+      - 'verification/m19/axiecamb_k0_k1_harness.py'
+      - 'protocol/W04_M19_AXIECAMB_K0_K1_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md'
+      - 'models/fuzzy_ultralight_axion/m19_axiecamb_provider_provenance_2026-09-10.md'
+
+permissions:
+  contents: write
+
+jobs:
+  provider-k0-k1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      AXIECAMB_PIN: b7ca9ba80aca178da5003d864b8e20cb5905555b
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pin external provider and prepare frozen cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/Ra-yne/AxiECAMB.git external_axiecamb
+          cd external_axiecamb
+          git checkout --detach "$AXIECAMB_PIN"
+          test "$(git rev-parse HEAD)" = "$AXIECAMB_PIN"
+          cd ..
+          python3 verification/m19/axiecamb_k0_k1_harness.py prepare external_axiecamb/params.ini m19_cases
+          git -C external_axiecamb rev-parse HEAD > m19_provider_pin.txt
+
+      - name: Build and execute all preregistered cases
+        shell: bash
+        run: |
+          set -uo pipefail
+          r0f_exit=999
+          r0d_exit=999
+          p1_exit=999
+          cd external_axiecamb
+          make -j2 > ../m19_build.log 2>&1
+          build_exit=$?
+          if [ "$build_exit" -eq 0 ]; then
+            ./camb ../m19_cases/r0f.ini > ../m19_r0f.log 2>&1
+            r0f_exit=$?
+            ./camb ../m19_cases/r0d.ini > ../m19_r0d.log 2>&1
+            r0d_exit=$?
+            ./camb ../m19_cases/p1.ini > ../m19_p1.log 2>&1
+            p1_exit=$?
+          fi
+          cd ..
+          printf '{"build_exit":%d,"r0f_exit":%d,"r0d_exit":%d,"p1_exit":%d}\n' \
+            "$build_exit" "$r0f_exit" "$r0d_exit" "$p1_exit" > m19_status.json
+          cat m19_status.json
+
+      - name: Analyze frozen gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m19/axiecamb_k0_k1_harness.py analyze \
+            external_axiecamb m19_status.json m19_result.json
+          cat m19_result.json
+          test -s m19_result.json
+
+      - name: Persist evidence-backed result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m19_result.json /tmp/m19_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/fuzzy_ultralight_axion waves/wave_04_dark_matter
+          cp /tmp/m19_result.json models/fuzzy_ultralight_axion/M19_AXIECAMB_K0_K1_RESULT.json
+          cp /tmp/m19_result.json waves/wave_04_dark_matter/M19_AXIECAMB_K0_K1_RESULT.json
+          git add models/fuzzy_ultralight_axion/M19_AXIECAMB_K0_K1_RESULT.json waves/wave_04_dark_matter/M19_AXIECAMB_K0_K1_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M19 AxiECAMB K0-K1 result'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Enforce preregistered gate classification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('/tmp/m19_result.json').read_text())
+          print('classification=',r['classification'])
+          if r['classification'] != 'M19_AXIECAMB_K0_K1_PASS_WITH_SCOPE':
+              raise SystemExit(1)
+          PY
+
+      - name: Upload immutable provider bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m19-axiecamb-k0-k1
+          path: |
+            m19_provider_pin.txt
+            m19_cases/
+            m19_build.log
+            m19_r0f.log
+            m19_r0d.log
+            m19_p1.log
+            m19_status.json
+            m19_result.json
+            external_axiecamb/r0f_scalCls.dat
+            external_axiecamb/r0f_lensedCls.dat
+            external_axiecamb/r0f_matterpower.dat
+            external_axiecamb/r0f_transfer_out.dat
+            external_axiecamb/r0d_scalCls.dat
+            external_axiecamb/r0d_lensedCls.dat
+            external_axiecamb/r0d_matterpower.dat
+            external_axiecamb/r0d_transfer_out.dat
+            external_axiecamb/p1_scalCls.dat
+            external_axiecamb/p1_lensedCls.dat
+            external_axiecamb/p1_matterpower.dat
+            external_axiecamb/p1_transfer_out.dat
+            verification/m19/axiecamb_k0_k1_harness.py
+            protocol/W04_M19_AXIECAMB_K0_K1_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md
+            models/fuzzy_ultralight_axion/m19_axiecamb_provider_provenance_2026-09-10.md
+          retention-days: 90
