@@ -1,0 +1,242 @@
+name: W03 M14 IDECAMB amin sensitivity
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-idecamb-amin-sensitivity.yml'
+      - 'protocol/W03_M14_IDECAMB_AMIN_SENSITIVITY_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  amin-sensitivity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync python3
+
+      - name: Fetch pinned provider and freeze diagnostic source template
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/cmbant/CosmoMC.git cosmomc_base
+          git -C cosmomc_base checkout eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone https://github.com/liaocrane/IDECAMB.git idecamb_patch
+          git -C idecamb_patch checkout 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          rsync -a --exclude='.git' idecamb_patch/ cosmomc_base/
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('cosmomc_base/camb/equations_ppfi.f90')
+          s=p.read_text()
+          old="write (1,'(11E15.5)')"
+          if s.count(old)!=1:
+              raise SystemExit(f'quantity format count={s.count(old)}')
+          s=s.replace(old,"write (1,'(11ES25.15E3)')",1)
+          amin='real(dl), parameter :: amin = 1.d-12'
+          if s.count(amin)!=2:
+              raise SystemExit(f'expected CF and CQ amin declarations, found {s.count(amin)}')
+          p.write_text(s)
+          Path('equations_ppfi.template').write_text(s)
+          PY
+          mkdir -p amin_results
+
+      - name: Execute frozen start-surface ladder
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > build_exits.tsv
+          : > case_exits.tsv
+          for spec in e12:1.d-12 e8:1.d-8 e6:1.d-6 e5:1.d-5; do
+            surf=${spec%%:*}
+            aval=${spec#*:}
+            cp equations_ppfi.template cosmomc_base/camb/equations_ppfi.f90
+            SURF="$surf" AVAL="$aval" python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path('cosmomc_base/camb/equations_ppfi.f90')
+          s=p.read_text()
+          old='real(dl), parameter :: amin = 1.d-12'
+          pos=[]; start=0
+          while True:
+              i=s.find(old,start)
+              if i<0: break
+              pos.append(i); start=i+len(old)
+          if len(pos)!=2: raise SystemExit(f'amin declaration count={len(pos)}')
+          i=pos[1]
+          new=f"real(dl), parameter :: amin = {os.environ['AVAL']}"
+          s=s[:i]+new+s[i+len(old):]
+          p.write_text(s)
+          PY
+            find cosmomc_base -type f \( -name '*.o' -o -name '*.mod' \) -delete
+            rm -f cosmomc_base/cosmomc
+            set +e
+            make -C cosmomc_base cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > "amin_results/${surf}_build.log" 2>&1
+            b=$?
+            set -e
+            echo -e "${surf}\t${b}" >> build_exits.tsv
+            if [ "$b" != "0" ]; then
+              continue
+            fi
+            for pair in b0:0 b5e8:0.00000005 b1e7:0.00000010; do
+              tag=${pair%%:*}
+              beta=${pair#*:}
+              SURF="$surf" TAG="$tag" BETA="$beta" python3 - <<'PY'
+          import os
+          from pathlib import Path
+          base=Path('cosmomc_base/test_ide.ini').read_text()
+          likes=['DEFAULT(batch3/plik_rd12_HM_v22_TTTEEE.ini)','DEFAULT(batch3/lowl.ini)','DEFAULT(batch3/lowE.ini)','DEFAULT(batch3/lensing.ini)','DEFAULT(batch3/BAO.ini)','DEFAULT(batch3/Pantheon18.ini)']
+          surf=os.environ['SURF']; tag=os.environ['TAG']; beta=os.environ['BETA']
+          s=base
+          repl=[
+              ('Class_IDE = 1 ','Class_IDE = 2 '),
+              ('param[alpha_quint]= 0.02 0 1.4 0.1 0.1','param[alpha_quint]= 0.02'),
+              ('param[beta_cq]= 0.01 0 0.15 0.05 0.05',f'param[beta_cq]= {beta}'),
+              ('#test_output_root = output_ide',f'test_output_root = m14am_{surf}_{tag}'),
+              ('test_check_compare = 1820.775','#test_check_compare = 1820.775')]
+          for old,new in repl:
+              if s.count(old)!=1: raise SystemExit(f'{surf}/{tag}: {old!r} count={s.count(old)}')
+              s=s.replace(old,new,1)
+          for x in likes:
+              if s.count(x)!=1: raise SystemExit(f'{surf}/{tag}: likelihood count {x}={s.count(x)}')
+              s=s.replace(x,'#'+x,1)
+          Path(f'{surf}_{tag}.ini').write_text(s)
+          PY
+              cp "${surf}_${tag}.ini" "cosmomc_base/${surf}_${tag}.ini"
+              set +e
+              (cd cosmomc_base && rm -f "m14am_${surf}_${tag}"* && ./cosmomc "${surf}_${tag}.ini") > "amin_results/${surf}_${tag}.log" 2>&1
+              ec=$?
+              set -e
+              echo -e "${surf}\t${tag}\t${ec}" >> case_exits.tsv
+              if [ "$ec" = "0" ]; then
+                cp "cosmomc_base/m14am_${surf}_${tag}.quantity" "amin_results/${surf}_${tag}.quantity"
+                cp "cosmomc_base/m14am_${surf}_${tag}.theory_cl" "amin_results/${surf}_${tag}.theory_cl"
+              fi
+            done
+          done
+
+      - name: Analyze start-surface sensitivity
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,math,pathlib
+          surfaces=['e12','e8','e6','e5']; tags=['b0','b5e8','b1e7']
+          amin={'e12':1e-12,'e8':1e-8,'e6':1e-6,'e5':1e-5}
+          beta_star={'e12':1.1252471939903163e-14,'e8':9.376484939207142e-11,'e6':8.559258877595895e-9,'e5':8.177750829217472e-8}
+          builds={}
+          for line in pathlib.Path('build_exits.tsv').read_text().splitlines():
+              if line.strip(): s,e=line.split(); builds[s]=int(e)
+          exits={s:{} for s in surfaces}
+          for line in pathlib.Path('case_exits.tsv').read_text().splitlines():
+              if line.strip(): s,t,e=line.split(); exits[s][t]=int(e)
+          def load(p):
+              out=[]
+              for line in pathlib.Path(p).read_text(errors='replace').splitlines():
+                  y=line.strip()
+                  if not y or y.startswith('#'): continue
+                  try: out.append([float(x.replace('D','E').replace('d','e')) for x in y.split()])
+                  except Exception: pass
+              return out
+          data={}; valid={}
+          for s in surfaces:
+              data[s]={}; valid[s]=builds.get(s)==0 and all(exits[s].get(t)==0 for t in tags)
+              for t in tags:
+                  q=pathlib.Path('amin_results')/f'{s}_{t}.quantity'; c=pathlib.Path('amin_results')/f'{s}_{t}.theory_cl'
+                  if not q.exists() or not c.exists(): data[s][t]=([],[]); valid[s]=False; continue
+                  qq,cc=load(q),load(c); data[s][t]=(qq,cc)
+                  if len(qq)!=2000 or any(len(r)!=11 for r in qq) or len(cc)!=2499 or any(len(r)!=6 for r in cc): valid[s]=False
+                  if any(not math.isfinite(v) for r in qq for v in r) or any(not math.isfinite(v) for r in cc for v in r): valid[s]=False
+          names=['dln_rho_de','dln_rho_c','dln_H','dw','qhat','dln_TT','dln_EE','dln_PP']
+          def response(s,t):
+              q0,c0=data[s]['b0']; q,c=data[s][t]; ch={n:[] for n in names}; tiny=1e-300
+              for r0,r in zip(q0,q):
+                  if r0[0]!=r[0]: raise ValueError(f'{s}/{t}: a grid')
+                  for n,j in [('dln_rho_de',2),('dln_rho_c',3),('dln_H',4)]:
+                      if r0[j]>0 and r[j]>0: ch[n].append(math.log(r[j]/r0[j]))
+                  ch['dw'].append(r[5]-r0[5]); ch['qhat'].append(r[6]/(abs(r[4])*(abs(r[2])+abs(r[3]))+tiny))
+              for r0,r in zip(c0,c):
+                  if r0[0]!=r[0]: raise ValueError(f'{s}/{t}: ell grid')
+                  for n,j in [('dln_TT',1),('dln_EE',3),('dln_PP',5)]:
+                      if r0[j]>0 and r[j]>0: ch[n].append(math.log(r[j]/r0[j]))
+              if any(not ch[n] for n in names): raise ValueError(f'{s}/{t}: empty channel')
+              return ch
+          def drift(s):
+              if s=='e12': return {'max_abs':0.0,'l2':0.0}
+              q0,c0=data['e12']['b0']; q,c=data[s]['b0']; v=[]
+              if len(q)!=len(q0) or len(c)!=len(c0): return None
+              tiny=1e-300
+              for r0,r in zip(q0,q):
+                  for j in [2,3,4]:
+                      if r0[j]>0 and r[j]>0: v.append(math.log(r[j]/r0[j]))
+                  v.append(r[5]-r0[5])
+              for r0,r in zip(c0,c):
+                  for j in [1,3,5]:
+                      if r0[j]>0 and r[j]>0: v.append(math.log(r[j]/r0[j]))
+              return {'max_abs':max(abs(x) for x in v),'l2':math.sqrt(sum(x*x for x in v)),'points':len(v)}
+          per={}; angles=[]
+          for s in surfaces:
+              entry={'amin':amin[s],'beta_star_prediction':beta_star[s],'fine_beta_over_beta_star':5e-8/beta_star[s], 'build_exit':builds.get(s), 'case_exits':exits[s], 'valid':valid[s]}
+              if valid[s]:
+                  try:
+                      a=response(s,'b5e8'); b=response(s,'b1e7'); ta=[];tb=[]; channel={}; fine_max=0.
+                      for n in names:
+                          ta += [x/5e-8 for x in a[n]]; tb += [x/1e-7 for x in b[n]]
+                          mx=max(abs(x) for x in a[n]); fine_max=max(fine_max,mx)
+                          channel[n]={'fine_max_abs':mx,'fine_norm':math.sqrt(sum(x*x for x in a[n])),'points':len(a[n])}
+                      na=math.sqrt(sum(x*x for x in ta)); nb=math.sqrt(sum(x*x for x in tb)); cs=max(-1.,min(1.,sum(x*y for x,y in zip(ta,tb))/(na*nb)))
+                      mismatch=abs(na-nb)/max(na,nb); angle=math.degrees(math.acos(cs)); passed=mismatch<=0.10 and angle<=3.0
+                      entry['metrics']={'relative_norm_mismatch':mismatch,'norm_threshold':0.10,'angle_deg':angle,'angle_threshold_deg':3.0,'fine_max_abs_response':fine_max,'channel_metrics':channel}
+                      entry['K4_diagnostic_pass']=passed; entry['beta0_reference_drift_vs_e12']=drift(s); angles.append((s,angle))
+                  except Exception as e:
+                      entry['valid']=False; entry['error']=repr(e)
+              per[s]=entry
+          result={'schema':'KMDSB.W03.M14.IDECAMBAminSensitivity.v0.1','provider_amin_baseline':1e-12,'surfaces':per,'physical_falsification_authorized':False,'observational_claim_authorized':False,'scientific_provider_promotion_authorized':False}
+          if not all(per[s].get('valid') for s in surfaces):
+              result['classification']='M14_IDECAMB_AMIN_SENSITIVITY_BLOCKED_IMPLEMENTATION'
+          else:
+              base=per['e12']['metrics']['angle_deg']; last=per['e5']['metrics']['angle_deg']
+              monotone=all(angles[i+1][1] <= angles[i][1] for i in range(len(angles)-1))
+              result['angle_monotone_nonincreasing']=monotone
+              result['e5_angle_ratio_to_e12']=last/base if base else None
+              if per['e5']['K4_diagnostic_pass'] and not per['e12']['K4_diagnostic_pass']:
+                  result['classification']='M14_IDECAMB_AMIN_SUPPORTS_NONUNIFORM_INITIAL_ASYMPTOTIC_CAUSE'
+              elif last < 0.5*base and monotone:
+                  result['classification']='M14_IDECAMB_AMIN_PARTIAL_SUPPORT_TREND'
+              else:
+                  result['classification']='M14_IDECAMB_AMIN_SENSITIVITY_NOT_SUFFICIENT'
+          pathlib.Path('m14_amin_sensitivity.json').write_text(json.dumps(result,indent=2,allow_nan=False)+'\n')
+          print(json.dumps(result,indent=2))
+          PY
+
+      - name: Persist canonical result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m14_amin_sensitivity.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/coupled_quintessence
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_IDECAMB_AMIN_SENSITIVITY_RESULT.json
+          cp /tmp/result.json models/coupled_quintessence/idecamb_amin_sensitivity.json
+          git add waves/wave_03_expanded_dark_energy/M14_IDECAMB_AMIN_SENSITIVITY_RESULT.json models/coupled_quintessence/idecamb_amin_sensitivity.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record IDECAMB M14 initial-surface sensitivity'
+            git push origin HEAD:main
+          fi
+
+      - name: Upload immutable diagnostic bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m14-idecamb-amin-sensitivity
+          path: |
+            m14_amin_sensitivity.json
+            build_exits.tsv
+            case_exits.tsv
+            amin_results/
+          retention-days: 90
