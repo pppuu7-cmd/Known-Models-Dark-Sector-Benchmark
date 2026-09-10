@@ -1,0 +1,110 @@
+name: W03 M17 c060 joint CPL K6 coarse grid
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m17-c060-joint-cpl-k6-coarse.yml'
+      - 'verification/m17/c060_joint_cpl_k6_grid.py'
+      - 'protocol/W03_M17_C060_JOINT_CPL_K6_COARSE_GRID_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  coarse-grid:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build exact pinned linear IDECAMB provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update >/dev/null
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync python3 >/dev/null
+          git clone -q https://github.com/cmbant/CosmoMC.git cosmomc
+          git -C cosmomc checkout -q eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone -q https://github.com/liaocrane/IDECAMB.git patch
+          git -C patch checkout -q 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          printf 'cosmomc=%s\nidecamb=%s\n' "$(git -C cosmomc rev-parse HEAD)" "$(git -C patch rev-parse HEAD)" > m17k6_pins.txt
+          rsync -a --exclude='.git' patch/ cosmomc/
+          make -C cosmomc cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > m17k6_build.log 2>&1
+      - name: Prepare preregistered target/reference/grid cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m17/c060_joint_cpl_k6_grid.py prepare cosmomc/test_ide.ini m17k6_cases
+      - name: Execute all 27 frozen cases
+        shell: bash
+        run: |
+          set +e
+          printf '{' > m17k6_status.json
+          first=1
+          for c in r0 h06 g00 g01 g02 g03 g04 g10 g11 g12 g13 g14 g20 g21 g22 g23 g24 g30 g31 g32 g33 g34 g40 g41 g42 g43 g44; do
+            start=$(date +%s)
+            (cd cosmomc && timeout --signal=TERM --kill-after=15s 120s ./cosmomc ../m17k6_cases/$c.ini > ../m17k6_$c.log 2>&1)
+            rc=$?
+            stop=$(date +%s)
+            [ $first -eq 0 ] && printf ',' >> m17k6_status.json
+            printf '"%s":%d,"%s_elapsed":%d' "$c" "$rc" "$c" "$((stop-start))" >> m17k6_status.json
+            first=0
+          done
+          printf '}\n' >> m17k6_status.json
+          cat m17k6_status.json
+          exit 0
+      - name: Analyze frozen joint metric
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m17/c060_joint_cpl_k6_grid.py analyze cosmomc m17k6_status.json m17k6_result.json
+          cat m17k6_result.json
+          test -s m17k6_result.json
+      - name: Persist result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m17k6_result.json /tmp/m17k6_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/holographic_dark_energy waves/wave_03_expanded_dark_energy
+          cp /tmp/m17k6_result.json models/holographic_dark_energy/M17_C060_JOINT_CPL_K6_COARSE_RESULT.json
+          cp /tmp/m17k6_result.json waves/wave_03_expanded_dark_energy/M17_C060_JOINT_CPL_K6_COARSE_RESULT.json
+          git add models/holographic_dark_energy/M17_C060_JOINT_CPL_K6_COARSE_RESULT.json waves/wave_03_expanded_dark_energy/M17_C060_JOINT_CPL_K6_COARSE_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M17 c060 joint CPL K6 coarse result'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Enforce output gate only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('/tmp/m17k6_result.json').read_text())
+          print(r['classification'])
+          if r['classification']=='M17_C060_K6_COARSE_OUTPUT_BLOCKED': raise SystemExit(1)
+          PY
+      - name: Upload immutable K6 coarse bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m17-c060-joint-cpl-k6-coarse
+          path: |
+            m17k6_pins.txt
+            m17k6_build.log
+            m17k6_cases/
+            m17k6_*.log
+            m17k6_status.json
+            m17k6_result.json
+            cosmomc/m17k6_*.theory_cl
+            cosmomc/m17k6_*.quantity
+            verification/m17/c060_joint_cpl_k6_grid.py
+            protocol/W03_M17_C060_JOINT_CPL_K6_COARSE_GRID_PREREGISTRATION_v0.1.md
+          retention-days: 90
