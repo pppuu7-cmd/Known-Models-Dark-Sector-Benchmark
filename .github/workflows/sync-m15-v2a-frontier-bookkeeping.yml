@@ -1,0 +1,83 @@
+name: Sync M15 V1 V2a frontier bookkeeping
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-m15-v2a-frontier-bookkeeping.yml'
+      - 'models/generalized_chaplygin/M15_V2A_EXACT_BACKGROUND_RESULT.json'
+
+permissions:
+  contents: write
+
+jobs:
+  sync-m15:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Synchronize only machine-backed M15 frontier state
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f models/generalized_chaplygin/M15_INDEPENDENT_V1_RESULT.json
+          test -f models/generalized_chaplygin/M15_V2A_EXACT_BACKGROUND_RESULT.json
+          python3 - <<'PY'
+          import csv,json
+          from pathlib import Path
+          v1=json.loads(Path('models/generalized_chaplygin/M15_INDEPENDENT_V1_RESULT.json').read_text())
+          v2=json.loads(Path('models/generalized_chaplygin/M15_V2A_EXACT_BACKGROUND_RESULT.json').read_text())
+          assert v1['classification']=='M15_INDEPENDENT_REPRO_REFERENCE_PASS'
+          assert v2['classification']=='M15_V2A_EXACT_BACKGROUND_PASS'
+          assert all(v2['gates'].values())
+
+          def rewrite(path, fn):
+              p=Path(path)
+              with p.open(newline='') as f:
+                  r=csv.DictReader(f); rows=list(r); fields=r.fieldnames
+              hit=0
+              for row in rows:
+                  if row.get('family_id')=='F15': fn(row); hit+=1
+              if hit!=1: raise SystemExit(f'expected one F15 row in {path}, got {hit}')
+              with p.open('w',newline='') as f:
+                  w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows)
+
+          def matrix(row):
+              row['K0_provenance']='PASS_WITH_SCOPE_INDEPENDENT_REPRODUCTION'
+              row['K1_reference_limit']='PASS_WITH_SCOPE_ALPHA0_LCDM_EXACT'
+              row['K2_physical_geometry']='PASS_WITH_SCOPE_FINITE_ALPHA_BACKGROUND'
+              row['K3_conservation_gauge_closure']='BLOCKED_EXACT_AUTHOR_SOUND_SPEED_PROVENANCE'
+              row['K4_numerical_robustness']='PARTIAL_BACKGROUND_ONLY'
+              row['K5_multichannel_rank']='BLOCKED_BY_K3'
+              row['K6_nearest_family_manifold']='NOT_TESTED'
+              row['K7_common_observation_space']='NOT_TESTED'
+              row['K8_quotient_novelty']='NOT_TESTED'
+              row['K9_prospective_holdout']='NOT_TESTED'
+              row['coverage_state']='INDEPENDENT_REPRO_V1_REFERENCE_PASS_V2A_BACKGROUND_PASS_V2B_PERTURBATION_CLOSURE_OPEN'
+              row['notes']=('IDECAMB exact perturbation identity rejected despite background NGCG equivalence. '
+                  'Independent CLASS verification path: V0 upstream control PASS; V1 alpha=0 scaffold is exactly identical to untouched CLASS in background, TT/TE/EE, P(k) and transfer with nonzero-alpha negative control PASS. '
+                  'V2a exact four-component finite-alpha background PASS on alpha={-0.50,-0.25,-0.05,0,+0.05,+0.25}: reference, nested convergence, positivity and interaction-sign gates all pass. '
+                  'Exact perturbation reproduction remains blocked because accessible author numerics do not fix c_s,Lambda^2 appearing in Eqs.45-48. No physical family falsification; K5-K9 remain closed.')
+
+          def census(row):
+              row['status']='V1_EXACT_REFERENCE_V2A_BACKGROUND_PASS_V2B_CLOSURE_PROVENANCE_OPEN'
+              row['notes']=('Independent verification now preserves LambdaCDM exactly at alpha=0 and validates a stable positive exact four-component finite-alpha background branch. '
+                  'The remaining strict blocker is perturbation closure: the published equations retain c_s,Lambda^2 but the accessible author numerical implementation does not specify its value. '
+                  'IDECAMB background duality cannot substitute because its delta-Q/ePPF closure is not the same explicit published perturbation system. A separately preregistered closure-sensitivity study may proceed, but cannot be labeled author-code reproduction.')
+
+          rewrite('matrices/mandatory_properties_matrix.csv',matrix)
+          rewrite('matrices/model_family_census.csv',census)
+          PY
+      - name: Commit synchronized M15 rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/mandatory_properties_matrix.csv matrices/model_family_census.csv
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Sync M15 V1 V2a evidence-backed frontier status'
+          git pull --rebase origin main
+          git push origin HEAD:main
