@@ -1,0 +1,75 @@
+{
+  "schema": "KMDSB.W03.M14.IDECAMBDiagnosticPrecisionAudit.v0.1",
+  "grid": [
+    0,
+    5e-08,
+    1e-07
+  ],
+  "diagnostic_format_before": "11E15.5",
+  "diagnostic_format_after": "11ES25.15E3",
+  "prior_low_precision": {
+    "relative_norm_mismatch": 0.00855452675915267,
+    "angle_deg": 8.688271660612795
+  },
+  "case_exits": {
+    "b0": 0,
+    "b5e8": 0,
+    "b1e7": 0
+  },
+  "physics_source_changed": false,
+  "physical_falsification_authorized": false,
+  "observational_claim_authorized": false,
+  "metrics": {
+    "relative_norm_mismatch": 0.009270610485819343,
+    "norm_threshold": 0.1,
+    "angle_deg": 8.04171613320909,
+    "angle_threshold_deg": 3.0,
+    "fine_max_abs_response": 0.0006952538064874516,
+    "nonnull_floor": 5e-05,
+    "channel_metrics": {
+      "dln_rho_de": {
+        "fine_max_abs": 0.0006952538064874516,
+        "fine_norm": 0.007350173520005694,
+        "points": 2000
+      },
+      "dln_rho_c": {
+        "fine_max_abs": 6.506408501899267e-09,
+        "fine_norm": 2.7181685260916267e-07,
+        "points": 2000
+      },
+      "dln_H": {
+        "fine_max_abs": 2.678329110460805e-09,
+        "fine_norm": 9.433654373666726e-08,
+        "points": 2000
+      },
+      "dw": {
+        "fine_max_abs": 0.0005811728903638569,
+        "fine_norm": 0.005429986545939653,
+        "points": 2000
+      },
+      "qhat": {
+        "fine_max_abs": 2.971291007141114e-09,
+        "fine_norm": 4.473262763631569e-08,
+        "points": 2000
+      },
+      "dln_TT": {
+        "fine_max_abs": 9.536979645790045e-05,
+        "fine_norm": 0.00019507988581069183,
+        "points": 2499
+      },
+      "dln_EE": {
+        "fine_max_abs": 6.322911070361179e-05,
+        "fine_norm": 0.0001023463409932745,
+        "points": 2499
+      },
+      "dln_PP": {
+        "fine_max_abs": 8.523332628202676e-05,
+        "fine_norm": 0.0005808552039411753,
+        "points": 2499
+      }
+    }
+  },
+  "classification": "DIAGNOSTIC_SERIALIZATION_NOT_SUFFICIENT",
+  "K4_interpretation": "LOW_PRECISION_NOT_SOLE_CAUSE_OF_K4_FAILURE",
+  "K5_status": "BLOCKED_BY_K4"
+}
