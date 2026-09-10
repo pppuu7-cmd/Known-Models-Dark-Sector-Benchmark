@@ -6,31 +6,44 @@ from pathlib import Path
 TOL=1e-12
 FILES=['scalCls.dat','matterpower.dat','transfer_out.dat']
 PIN='891e779cc0bd422e49f97533e6c2fc761149737d'
-
+PREREG='protocol/W04_M19_AXIONCAMB2_ZERO_BYPASS_RECOVERY_V2_PREREGISTRATION_v0.1.md'
 
 def replace_once(text, old, new, label):
     n=text.count(old)
-    if n!=1: raise RuntimeError(f'{label}: expected one anchor, found {n}')
+    if n!=1:
+        raise RuntimeError(f'{label}: expected one anchor, found {n}')
     return text.replace(old,new,1)
 
-
 def patch(src:Path):
-    ini=src/'inidriver_axion.F90'
-    s=ini.read_text()
-    old='call   w_evolve(P, badflag)'
-    new='''if (P%omegaax .eq. 0._dl) then
-   P%a_osc = 0._dl
-   P%drefp_hsq = 0._dl
-   P%phiinit = 0._dl
-   P%ainit = 0._dl
-   P%aeq = 0._dl
-   P%omegar = P%omegah2_rad / ((P%H0/100._dl)**2)
-   badflag = 0
-else
-   call   w_evolve(P, badflag)
-endif'''
-    ini.write_text(replace_once(s,old,new,'inidriver zero bypass'))
+    # Keep w_evolve itself: it owns shared Nu_init/Nu_masses/radiation setup.
+    # Return only after that common prefix, before axion shooting/integrator setup.
+    bg=src/'axion_background.f90'
+    s=bg.read_text()
+    old='''enddo
+!print*,lhsqcont_massive(1)/Params%Nu_mass_degeneracies(1)
 
+!! Params%omegah2_rad=Params%omegah2_rad+'''
+    new='''enddo
+
+! KMDSB M19 exact-zero recovery v2: shared neutrino/radiation initialization above
+! is mandatory even at Omega_ax=0. Bypass only the axion scalar-field shooting below.
+if (Params%omegaax .eq. 0._dl) then
+   Params%a_osc = 0._dl
+   Params%drefp_hsq = 0._dl
+   Params%phiinit = 0._dl
+   Params%axfrac = 0._dl
+   Params%omegar = Params%omegah2_rad/hsq
+   Params%aeq = (Params%omegah2_rad + sum(lhsqcont_massive))/(omegah2_b+omegah2_dm)
+   badflag = 0
+   return
+endif
+!print*,lhsqcont_massive(1)/Params%Nu_mass_degeneracies(1)
+
+!! Params%omegah2_rad=Params%omegah2_rad+'''
+    bg.write_text(replace_once(s,old,new,'background zero return'))
+
+    # recfast_axion has one unconditional auxiliary spline read for d rho_ax / da.
+    # At exact zero this derivative is exactly zero and the table must not be read.
     rec=src/'recfast_axion.f90'
     s=rec.read_text()
     old1='''deriv_eps=1.d-3*real(sfac)
@@ -48,19 +61,6 @@ endif
 !above calculate derivative of dimensionless axion density'''
     rec.write_text(replace_once(s,old2,new2,'recfast zero derivative close'))
 
-    eq=src/'equations_ppf.f90'
-    s=eq.read_text()
-    expr='dorp=grhom*CP%drefp_hsq*((CP%a_osc/a)**3.0d0)'
-    n=s.count(expr)
-    if n!=2: raise RuntimeError(f'equations zero-density anchors: expected 2, found {n}')
-    repl='''if (CP%omegaax .eq. 0._dl) then
-          dorp=0._dl
-       else
-          dorp=grhom*CP%drefp_hsq*((CP%a_osc/a)**3.0d0)
-       endif'''
-    eq.write_text(s.replace(expr,repl))
-
-
 def rows(p:Path):
     out=[]
     for line in p.read_text(errors='replace').splitlines():
@@ -76,7 +76,6 @@ def rows(p:Path):
     if any(len(r)!=n for r in out): raise RuntimeError(f'{p}: ragged')
     return out
 
-
 def compare(a,b):
     if len(a)!=len(b) or len(a[0])!=len(b[0]):
         return {'pass':False,'shape_match':False,'shape_a':[len(a),len(a[0])],'shape_b':[len(b),len(b[0])]}
@@ -85,7 +84,6 @@ def compare(a,b):
     ss=sum((x-y)**2 for ra,rb in zip(a,b) for x,y in zip(ra,rb)); n=len(a)*len(a[0])
     d=md/scale
     return {'pass':d<=TOL,'shape_match':True,'D_inf':d,'max_abs_difference':md,'rms_normalized':math.sqrt(ss/n)/scale,'scale':scale,'rows':len(a),'cols':len(a[0]),'tolerance':TOL}
-
 
 def load_case(root:Path,name:str):
     d={}; ok=True
@@ -97,40 +95,39 @@ def load_case(root:Path,name:str):
             d[f]={'finite':False,'error':str(e)}; ok=False
     return d,ok
 
-
-def clean(d): return {f:{k:v for k,v in q.items() if k!='_rows'} for f,q in d.items()}
-
+def clean(d):
+    return {f:{k:v for k,v in q.items() if k!='_rows'} for f,q in d.items()}
 
 def analyze(patched:Path, original:Path, statusp:Path, out:Path):
     st=json.loads(statusp.read_text())
-    res={'schema':'KMDSB.M19.axionCAMB2.zeroBypassRecovery.v2','provider_pin':PIN,'tolerance':TOL,'status':st,'physical_falsification':False,'scientific_promotion':{'K1':False,'K2_K9':False},'preregistration':'protocol/W04_M19_AXIONCAMB2_ZERO_BYPASS_RECOVERY_PREREGISTRATION_v0.2.md'}
+    res={'schema':'KMDSB.M19.axionCAMB2.zeroBypassRecoveryV2.v1','provider_pin':PIN,'tolerance':TOL,'status':st,'physical_falsification':False,'scientific_promotion':{'K1':False,'K2_K9':False},'preregistration':PREREG}
     if st.get('build_orig')!=0 or st.get('build_patch')!=0 or st.get('build_debug')!=0:
-        res['classification']='M19_ZERO_BYPASS_V2_EXECUTION_BLOCKED'; res['reason']='build'; out.write_text(json.dumps(res,indent=2,sort_keys=True)+'\n'); return
-    parsed={}; contracts={}; cases={}
+        res['classification']='M19_ZERO_BYPASS_RECOVERY_V2_BUILD_BLOCKED'; out.write_text(json.dumps(res,indent=2,sort_keys=True)+'\n'); return
+    cases={}; parsed={}; contracts={}
     for label,root,name,exitkey in [('zf',patched,'r0f','zf'),('zd',patched,'r0d','zd'),('pp',patched,'p1','pp'),('po',original,'p1','po')]:
         d,ok=load_case(root,name); parsed[label]=d; contracts[label]=ok and st.get(exitkey)==0; cases[label]={'exit':st.get(exitkey),'outputs':clean(d),'contract_pass':contracts[label]}
     res['cases']=cases
     if not contracts['zf'] or not contracts['zd']:
-        cls='M19_ZERO_BYPASS_V2_EXECUTION_BLOCKED'
+        cls='M19_ZERO_BYPASS_RECOVERY_V2_EXECUTION_BLOCKED'
     elif not contracts['pp'] or not contracts['po']:
-        cls='M19_ZERO_BYPASS_V2_EXECUTION_BLOCKED'
+        cls='M19_ZERO_BYPASS_RECOVERY_V2_OUTPUT_BLOCKED'
     else:
         zcmp={}; pcmp={}; zok=True; pok=True
         for f in FILES:
             q=compare(parsed['zf'][f]['_rows'],parsed['zd'][f]['_rows']); zcmp[f]=q; zok=zok and q['pass']
             q=compare(parsed['pp'][f]['_rows'],parsed['po'][f]['_rows']); pcmp[f]=q; pok=pok and q['pass']
         res['zero_parameterization_identity']=zcmp; res['finite_noninterference']=pcmp
-        if not pok: cls='M19_ZERO_BYPASS_V2_REJECTED_FINITE_PATH_CHANGED'
-        elif not zok: cls='M19_ZERO_BYPASS_V2_IDENTITY_BLOCKED'
-        elif st.get('debug_zf')!=0: cls='M19_ZERO_BYPASS_V2_RUNTIME_CHECK_BLOCKED'
+        if not pok: cls='M19_ZERO_BYPASS_RECOVERY_V2_REJECTED_FINITE_PATH_CHANGED'
+        elif not zok: cls='M19_ZERO_BYPASS_RECOVERY_V2_IDENTITY_BLOCKED'
+        elif st.get('debug_zf')!=0: cls='M19_ZERO_BYPASS_RECOVERY_V2_DEBUG_BLOCKED'
         else: cls='M19_AXIONCAMB2_ZERO_BYPASS_RECOVERY_V2_PASS_WITH_SCOPE'
     res['classification']=cls
-    res['next_if_pass']='separately preregister historical pure-CAMB CDM comparator; K1 remains unpromoted by recovery alone'
+    res['next_if_pass']='run separately preregistered historical pure-CAMB CDM comparator; recovery alone does not promote K1'
     out.write_text(json.dumps(res,indent=2,sort_keys=True)+'\n')
-
 
 if __name__=='__main__':
     ap=argparse.ArgumentParser(); sp=ap.add_subparsers(dest='cmd',required=True)
     p=sp.add_parser('patch'); p.add_argument('source',type=Path)
     a=sp.add_parser('analyze'); a.add_argument('patched',type=Path); a.add_argument('original',type=Path); a.add_argument('status',type=Path); a.add_argument('output',type=Path)
-    ns=ap.parse_args(); patch(ns.source) if ns.cmd=='patch' else analyze(ns.patched,ns.original,ns.status,ns.output)
+    ns=ap.parse_args()
+    patch(ns.source) if ns.cmd=='patch' else analyze(ns.patched,ns.original,ns.status,ns.output)
