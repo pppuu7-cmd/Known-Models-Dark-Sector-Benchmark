@@ -46,7 +46,10 @@ jobs:
           r0d_exit=999
           p1_exit=999
           cd external_axiecamb
-          make -j2 FFLAGS='-O3 -fopenmp -ffpe-summary=none -ffree-line-length-none' > ../m19_build.log 2>&1
+          # The provider Makefile omits a complete Fortran module dependency graph;
+          # parallel make can compile halofit_ppf before LambdaGeneral exists.
+          # Serialize compilation only; external source and frozen model inputs are unchanged.
+          make -j1 FFLAGS='-O3 -fopenmp -ffpe-summary=none -ffree-line-length-none' > ../m19_build.log 2>&1
           build_exit=$?
           if [ "$build_exit" -eq 0 ]; then
             ./camb ../m19_cases/r0f.ini > ../m19_r0f.log 2>&1
@@ -57,7 +60,7 @@ jobs:
             p1_exit=$?
           fi
           cd ..
-          printf '{"build_exit":%d,"r0f_exit":%d,"r0d_exit":%d,"p1_exit":%d,"compatibility_flag":"-ffree-line-length-none"}\n' \
+          printf '{"build_exit":%d,"r0f_exit":%d,"r0d_exit":%d,"p1_exit":%d,"compatibility_flag":"-ffree-line-length-none","build_jobs":1}\n' \
             "$build_exit" "$r0f_exit" "$r0d_exit" "$p1_exit" > m19_status.json
           cat m19_status.json
           exit 0
