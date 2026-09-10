@@ -1,0 +1,27 @@
+{
+  "schema": "KMDSB.W03.M15.independent_reproduction.V0.v0.1",
+  "date": "2026-09-10",
+  "classification": "M15_INDEPENDENT_REPRO_V0_UPSTREAM_CONTROL_PASS",
+  "scientific_promotion": false,
+  "upstream_repository": "lesgourg/class_public",
+  "upstream_commit": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "gauge": "newtonian",
+  "workflow_run": 34499646016,
+  "artifact_id": 10161331129,
+  "class_exit": 0,
+  "source_map_anchors": "PASS",
+  "products": {
+    "background": {"file": "lcdm_00_background.dat", "finite_rows": 40000},
+    "cl": {"file": "lcdm_00_cl.dat", "finite_rows": 1799},
+    "pk": {"file": "lcdm_00_pk.dat", "finite_rows": 470},
+    "tk": {"file": "lcdm_00_tk.dat", "finite_rows": 470}
+  },
+  "initial_failed_run": {
+    "workflow_run": 34499248965,
+    "classification": "HARNESS_FILENAME_ONLY",
+    "reason": "CLASS emitted indexed lcdm_00_* output names while the first validator expected unindexed lcdm_* names; solver execution itself completed successfully",
+    "physics_configuration_changed_in_recovery": false
+  },
+  "meaning": "The exact untouched upstream CLASS pin, frozen Newtonian-gauge route and required background/CMB/matter output products are executable. This is infrastructure evidence only; it does not validate the M15 alpha=0 scaffold or any finite-alpha physics.",
+  "next_gate": "V1 alpha=0 scaffold/reference differential test"
+}
