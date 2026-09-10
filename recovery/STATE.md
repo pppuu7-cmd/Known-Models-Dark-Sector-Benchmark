@@ -192,3 +192,13 @@ Consumed run `34490297354`, job `102914977778`, artifact `10157548938`, digest `
 - New durable reference-semantics rules are recorded in `protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_W04_ADDENDUM_2026-09-11.md`: parameter-key presence can alter physical defaults; qualitative 'unaffected' statements are not strict null theorems; interaction decoupling normally preserves species content.
 - Strict terminal/represented census remains 4/46. Operational polygon readiness estimate advances conservatively to approximately 55%; this is not a strict census metric.
 - `NEW_MODEL: DESIGN_AUTHORIZED / NOT_YET_REQUIRED` remains unchanged.
+
+
+## 2026-09-11 — M21 precision excursion survives support-aware and ncdm-tight audit
+- Hosted precision diagnostic run `34540437512` completed successfully with classification `M21_DEFAULT_PRECISION_EXCURSION_PERSISTS`; it is diagnostic-only and does not promote K1.
+- Default-v1 CMB excursion factors at f_w=0.003 relative to neighboring f=0.01/0.001 were TT=21.014, EE=75.213, TE=54.340.
+- P1 cl_permille leaves the excursion essentially unchanged. P2 adds source-bound ncdm-tight settings including `tol_ncdm_bg=1e-10`, `l_max_ncdm=50`, `ncdm_fluid_approximation=3`, `tol_ncdm_synchronous/newtonian=1e-10`, tighter perturbation integration/sampling; excursion persists and neighboring-point numerical floors shrink, producing a maximum factor 381.554.
+- Independent normalized-L2 audit of immutable artifact `10177473119` (digest `sha256:0d03e232511d5da8ba85e16967c7460d68ef0c6868ae07abd09a14efac942151`) also retains the f_w=0.003 anomaly, so this is not merely a pointwise-p95 support artifact.
+- CLASS source audit confirms that when fixed `m_ncdm`/`T_ncdm` and an explicit `omega_ncdm` are supplied, the code rescales `factor_ncdm` and `deg_ncdm` to the target abundance; the mixed-fraction coordinate is therefore not rejected as trivially overdetermined.
+- Current interpretation: deterministic numerical/solver-branch discontinuity remains localized in CMB. Next clean diagnostic should change the ODE evolver/solver branch at otherwise identical P2 physics and precision. No physical M21 failure.
+- Global operational readiness remains approximately 55%; strict terminal/represented coverage remains 4/46.
