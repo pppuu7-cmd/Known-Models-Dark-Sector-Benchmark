@@ -7,7 +7,9 @@ on:
     paths:
       - '.github/workflows/w04-m19-external-cdm-reference-convergence.yml'
       - 'verification/m19/external_cdm_reference_convergence.py'
+      - 'verification/m19/historical_camb_outtransf_compat.py'
       - 'protocol/W04_M19_EXTERNAL_CDM_REFERENCE_CONVERGENCE_PREREGISTRATION_v0.1.md'
+      - 'protocol/W04_M19_EXTERNAL_CDM_REFERENCE_COMPATIBILITY_PREREGISTRATION_v0.1.md'
 
 permissions:
   contents: write
@@ -38,14 +40,15 @@ jobs:
           test "$(git -C axc rev-parse HEAD)" = "$AXPIN"
           test "$(git -C camb0 rev-parse HEAD)" = "$CDMPIN"
           python3 verification/m19/external_cdm_reference_convergence.py prepare axc/params.ini camb0/params.ini m19_ext_cases
+          python3 verification/m19/historical_camb_outtransf_compat.py camb0
+          git -C camb0 diff -- equations.f90 > m19_ext_camb_compat.diff
+          test -s m19_ext_camb_compat.diff
 
       - name: Build pinned providers
         shell: bash
         run: |
           set +e
           (cd axc && make -j1 FFLAGS='-O3 -ffree-line-length-none -fallow-argument-mismatch' > ../m19_ext_build_ax.log 2>&1); ba=$?
-          # The 2013 CAMB Makefile defaults to Intel ifort. Override only compiler/linker selection;
-          # the physical source pin and preregistered cases remain unchanged.
           (cd camb0 && make -j1 F90C=gfortran F90CRLINK='' FFLAGS='-O3 -fopenmp -ffast-math -funroll-loops -ffree-line-length-none -fallow-argument-mismatch -std=legacy' > ../m19_ext_build_cdm.log 2>&1); bc=$?
           printf '{"build_ax":%d,"build_cdm":%d}\n' "$ba" "$bc" > m19_ext_status.json
           exit 0
@@ -108,10 +111,13 @@ jobs:
             m19_ext_*.log
             m19_ext_status.json
             m19_ext_result.json
+            m19_ext_camb_compat.diff
             axc/a*_scalCls.dat
             axc/a*_matterpower.dat
             axc/a*_transfer_out.dat
             camb0/c0_scalCls.dat
             camb0/c0_matterpower.dat
             camb0/c0_transfer_out.dat
+            verification/m19/historical_camb_outtransf_compat.py
+            protocol/W04_M19_EXTERNAL_CDM_REFERENCE_COMPATIBILITY_PREREGISTRATION_v0.1.md
           retention-days: 90
