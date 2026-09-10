@@ -1,0 +1,62 @@
+{
+  "schema_version": "KMDSB-result-v0.1",
+  "model_id": "M16",
+  "model_slug": "interacting_vacuum",
+  "tested_scope": "interacting-vacuum Q=beta H rho_de, Q_mu parallel u_c only; not full running-vacuum Lambda(H) class",
+  "provider_base": "cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4",
+  "provider_overlay": "liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075",
+  "gate_states": {
+    "K0": "PASS_WITH_SCOPE",
+    "K1": "PASS_WITH_SCOPE",
+    "K2": "NOT_TESTED",
+    "K3": "PARTIAL_SOURCE_BOUND",
+    "K4": "NOT_TESTED",
+    "K5": "NOT_TESTED",
+    "K6": "OPEN_FAMILY_IDENTITY_M02_OVERLAP_AUDIT",
+    "K7": "NOT_TESTED",
+    "K8": "NOT_TESTED",
+    "K9": "NOT_TESTED"
+  },
+  "machine_result": {
+    "schema": "KMDSB.W03.M16.IDECAMB.InteractingVacuumK0K1.v0.1",
+    "provider_base": "cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4",
+    "provider_overlay": "liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075",
+    "scope": "interacting-vacuum Q=beta H rho_de, Q_mu parallel u_c only; not full running-vacuum Lambda(H) class",
+    "build_exit": 0,
+    "case_exits": {
+      "m16_vacuum_beta0": 0,
+      "m16_lcdm_cmp": 0
+    },
+    "files": [
+      "m16_lcdm_cmp.quantity",
+      "m16_lcdm_cmp.theory_cl",
+      "m16_vacuum_beta0.quantity",
+      "m16_vacuum_beta0.theory_cl"
+    ],
+    "quantity_metric": {
+      "max_symmetric_relative_difference": 0.0,
+      "common_finite_entries": 16000,
+      "rows": 2000
+    },
+    "theory_cl_metric": {
+      "max_symmetric_relative_difference": 0.0,
+      "common_finite_entries": 14994,
+      "rows": 2499
+    },
+    "thresholds": {
+      "max_symmetric_relative_difference": 2e-08
+    },
+    "classification": "M16_INTERACTING_VACUUM_K1_PASS_WITH_SCOPE",
+    "K2_K9_promotion_authorized": false,
+    "physical_falsification": false
+  },
+  "provenance": {
+    "run": "34474389038",
+    "job": "102861550642",
+    "artifact": "10150882133",
+    "artifact_digest": "sha256:f549f3c02de47a4152b89be1a8cbfc4782ffaf8b4671494d45d4216b78520b50",
+    "result_commit": "9619a5c825f71906c4e872fee70fbd06876357f0"
+  },
+  "overall_verdict": "K1_PASS_WITH_SCOPE_FAMILY_IDENTITY_AUDIT_NEXT",
+  "physical_falsification": false
+}

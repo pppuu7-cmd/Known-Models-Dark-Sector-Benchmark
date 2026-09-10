@@ -102,3 +102,8 @@ M15 side finding: IDECAMB contains an explicitly commented NGCG coupled-fluid br
 
 ### Latest M14 IDECAMB diagnostic exclusion (2026-09-10)
 Full diagnostic serialization was prospectively tested without changing physics. Run `34467577947`, job `102839655588`, artifact `10148183299`, result commit `283bfac6650ea6683ceba288a1dd08341b16ecb9`: combined norm mismatch `0.00807` passes but angle `7.610 deg` fails the frozen `3 deg` K4 limit; TT/EE/dw remain unstable. Treat serialization precision as excluded, keep K5 blocked, and do not continue beta-step shrinking or post-hoc provider modifications.
+
+
+## 2026-09-10 — M16 interacting-vacuum K0/K1 terminal sync
+
+Pinned IDECAMB/CosmoMC interacting-vacuum subfamily `w=-1`, `Q=beta H rho_de`, `Q_mu || u_c` passed the prospectively frozen beta=0 K1 regression against the same-overlay noninteracting LambdaCDM branch. Run 34474389038, job 102861550642, artifact 10150882133, digest `sha256:f549f3c02de47a4152b89be1a8cbfc4782ffaf8b4671494d45d4216b78520b50`; `.quantity` and `.theory_cl` max symmetric relative difference are both exactly 0.0 on common finite support. K0/K1 are PASS_WITH_SCOPE only. F16 is not yet declared response-distinct from M02 and this does not cover all running-vacuum Lambda(H) models. Next gate: exact M16-vs-M02 family-identity/representation audit before any beta-grid promotion.
