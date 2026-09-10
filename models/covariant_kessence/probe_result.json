@@ -4,9 +4,8 @@
   "model_gsf": 6,
   "build_exit": 0,
   "case_exits": {
-    "base": 1,
-    "gsf_ref": 1,
     "lcdm": 0,
+    "gsf_ref": 1,
     "m0p5_c090": 1,
     "m0p5_c095": 1,
     "m0p5_c100": 1,
