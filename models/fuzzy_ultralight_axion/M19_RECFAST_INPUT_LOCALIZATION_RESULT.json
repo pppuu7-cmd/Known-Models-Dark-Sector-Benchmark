@@ -1,0 +1,32 @@
+{
+  "classification": "M19_RECFAST_INPUT_NONFINITE_LOCALIZED_WITH_SCOPE",
+  "last_values": {
+    "a": null,
+    "delta_z": null,
+    "z": null,
+    "zinitial": null,
+    "zst": null
+  },
+  "markers": {
+    "bad_a": true,
+    "bad_z": false,
+    "bad_zst": false
+  },
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M19_RECFAST_INPUT_LOCALIZATION_PREREGISTRATION_v0.1.md",
+  "provider_pin": "891e779cc0bd422e49f97533e6c2fc761149737d",
+  "schema": "KMDSB.M19.axionCAMB2.recfastInputLocalization.v1",
+  "scientific_promotion": {
+    "K1": false,
+    "K2_K9": false
+  },
+  "status": {
+    "build_debug": 0,
+    "build_orig": 0,
+    "build_patch": 0,
+    "debug_zf": 91,
+    "orig_p1": 0,
+    "patch_p1": 0,
+    "patch_zf": 139
+  }
+}
