@@ -1,0 +1,38 @@
+{
+  "schema": "KMDSB.W03.M14.SignedCLocalResponse.v0.1",
+  "provider": "kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df",
+  "anchor": "benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini",
+  "coordinate": "signed cdm_c in R; q1-q4 fixed zero",
+  "steps": [
+    0.01,
+    0.02
+  ],
+  "thresholds": {
+    "tangent_relative_norm_mismatch_max": 0.1,
+    "tangent_angle_deg_max": 3.0,
+    "non_null_max_abs_log_response_min": 1e-05
+  },
+  "case_exits": {
+    "c0": 0,
+    "cp01": 0,
+    "cm01": 0,
+    "cp02": 0,
+    "cm02": 0
+  },
+  "scientific_promotion_authorized": true,
+  "channel_layout": {
+    "H_n": 400,
+    "Pk_n": 1200
+  },
+  "tangent_norm_h001": 213.6978411807691,
+  "tangent_norm_h002": 316.99300123978907,
+  "tangent_relative_norm_mismatch": 0.3982074689691215,
+  "tangent_angle_deg": 16.023831966915793,
+  "max_abs_log_response_h001": 1.0152679911983955,
+  "K2": "PASS_WITH_SCOPE_SIGNED_COORDINATE_SOURCE_BOUND",
+  "K4": "FAIL_LOCAL_CONVERGENCE",
+  "K5": "BLOCKED_BY_K4",
+  "local_rank": 0,
+  "classification": "M14_K4_LOCAL_CONVERGENCE_FAIL",
+  "interpretation": "theory-space local response only; K3 and K6-K9 remain open; no observational discrimination claim"
+}
