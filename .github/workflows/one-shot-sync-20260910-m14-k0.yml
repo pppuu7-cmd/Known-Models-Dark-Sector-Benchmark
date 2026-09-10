@@ -1,0 +1,75 @@
+name: One-shot KMDSB M14 K0 sync
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-shot-sync-20260910-m14-k0.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synchronize M14 terminal provider-control evidence
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p=Path(path); s=p.read_text()
+              if old not in s:
+                  raise SystemExit(f'missing expected text in {path}: {old[:100]}')
+              p.write_text(s.replace(old,new,1))
+
+          # Census: provider search blocker -> K0 recovered, K1 source audit active.
+          p=Path('matrices/model_family_census.csv'); s=p.read_text()
+          lines=s.splitlines()
+          for i,l in enumerate(lines):
+              if l.startswith('F14,'):
+                  lines[i]='F14,coupled quintessence / conformal scalar-DM coupling,dark_sector_interaction,A,M14,K0_PASS_WITH_SCOPE_K1_SOURCE_AUDIT_REQUIRED,W03,field-mediated exchange plus scalar perturbations,"pinned kabeleh/iDM@dc55e59... now has a reproducible tracked author workload benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini; run 34439614496 build+CLASS PASS with fresh Cl/P(k) outputs after root-only plumbing edit. This closes provider K0 with scope, not K1. q1-q4 are zero in the tracked workload but cdm_c=0.1 remains, so full source-exact decoupling map must be audited before a coupling-off regression"'
+                  break
+          else: raise SystemExit('F14 census row missing')
+          p.write_text('\n'.join(lines)+'\n')
+
+          # Mandatory matrix.
+          p=Path('matrices/mandatory_properties_matrix.csv'); s=p.read_text(); lines=s.splitlines()
+          for i,l in enumerate(lines):
+              if l.startswith('F14,'):
+                  lines[i]='F14,M14,PASS_WITH_SCOPE,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,K0_PASS_WITH_SCOPE_K1_SOURCE_AUDIT_REQUIRED,"tracked author workload benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini at kabeleh/iDM@dc55e59... executes in run 34439614496 with build/class exit 0 and fresh products after root-only plumbing edit. K1 is deliberately not promoted: q1-q4=0 but cdm_c=0.1, and source contains cdm_c-dependent DM/scalar coupling terms; exact total decoupling map must be frozen prospectively"'
+                  break
+          else: raise SystemExit('F14 mandatory row missing')
+          p.write_text('\n'.join(lines)+'\n')
+
+          # STATE targeted replacements + append authoritative update.
+          replace('recovery/STATE.md',
+            '- F14/M14 coupled quintessence: `BLOCKED_PROVENANCE_PROVIDER_SEARCH` for `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df`. README documents `./class iDM.ini`, regression/benchmark records reference successful runs, but the exact public pinned tree does not contain `iDM.ini`; no unchanged author point can be reproduced from this GitHub snapshot. Search the cited archival exact config or an independent provider.',
+            '- F14/M14 coupled quintessence: `K0_PASS_WITH_SCOPE_K1_SOURCE_AUDIT_REQUIRED`. Although root `iDM.ini` is absent, the exact pinned tree contains tracked author-generated workload `benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini`. Prospectively preregistered run `34439614496` builds the provider and executes that workload with exit 0 and fresh Cl/P(k) products after a root-only plumbing edit. K1 is not promoted: q1-q4=0 but `cdm_c=0.1`, and source contains a separate cdm_c-dependent coupling path; audit the complete decoupling map before any reference regression.')
+          replace('recovery/STATE.md',
+            '1. M14: recover an immutable author-published exact configuration for `kabeleh/iDM` (prefer the archival products cited in its README) or select a different public provider; do not reconstruct missing `iDM.ini` from prose/defaults.\n2. Only after an exact tracked author configuration exists, preregister and run provider-control unchanged. Green workflow alone is not science.\n3. If provider-control PASSes, separately source-bind and preregister K1 coupling-off/reference regression before production response grids.',
+            '1. M14: K0 provider recovery is complete with scope via tracked author workload and run `34439614496`. Source-audit the complete coupling/decoupling map including q1-q4, exp1-exp2, `model_cdm` and `cdm_c`.\n2. Only after the total coupling-off transformation is source-bound, prospectively preregister a K1 regression against the correct uncoupled scalar+CDM comparator.\n3. If K1 PASSes, define physical coupling coordinates/tangent geometry and only then launch K2-K5 production response grids.')
+
+          # RESTORE frontier and continuation.
+          replace('recovery/RESTORE_FROM_NEW_CHAT.md',
+            '- F14/M14: `BLOCKED_PROVENANCE_PROVIDER_SEARCH` for `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df`. README and committed benchmark/regression records refer to `iDM.ini`, but that file is absent from the exact public pinned tree. No unchanged author provider-control is possible from this snapshot; search the cited archival exact config or another provider.',
+            '- F14/M14: `K0_PASS_WITH_SCOPE_K1_SOURCE_AUDIT_REQUIRED`. Root `iDM.ini` is absent, but a tracked author-generated workload exists at `benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini`. Preregistered run `34439614496` builds and executes it with fresh Cl/P(k) products after root-only plumbing. Do not call this K1: its q1-q4 are zero while `cdm_c=0.1`; source-exact full decoupling remains to be frozen.')
+          replace('recovery/RESTORE_FROM_NEW_CHAT.md',
+            '1. For M14, locate an immutable author-published exact configuration (prefer archival products cited by the provider) or an independent provider; never synthesize the missing `iDM.ini`.\n2. If and only if an unchanged author example becomes reproducible, preregister provider-control; provider PASS does not equal K1-K9 PASS.\n3. If provider-control passes, separately source-bind and freeze K1 reference/decoupling regression before production grids.',
+            '1. M14 provider K0 is recovered with scope through run `34439614496`; next source-audit all q/exp and `cdm_c` coupling paths and freeze the exact total decoupling map.\n2. Prospectively preregister K1 only after that map is unambiguous; compare the decoupled branch to the correct uncoupled scalar+CDM comparator in the same solver.\n3. Provider PASS does not equal K1-K9 PASS; only after K1 may physical nonzero-coupling grids be defined.')
+
+          # Research log append.
+          p=Path('logs/research_log.md')
+          p.write_text(p.read_text()+'''\n\n### M14 tracked-author-input provider recovery\nThe earlier broad statement that the pinned `kabeleh/iDM@dc55e59...` tree contained no exact author input was corrected after exhaustive tree search: tracked author-generated PGO inputs exist under `benchmark/*/tmp_ini/`. A prospective provider-control was frozen around `benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini`, permitting only the absolute output-root path to change. Actions run `34439614496` returned build exit 0, CLASS exit 0 and fresh Cl/lensed-Cl/P(k) products. K0 is therefore `PASS_WITH_SCOPE`. K1 remains untested because the workload has q1-q4=0 but `cdm_c=0.1`, and source inspection shows a separate cdm_c-dependent dark-matter/scalar coupling path. The next gate is a source-exact total-decoupling audit followed by a separately preregistered K1 regression. No physics FAIL.\n''')
+          PY
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          git diff --cached --check
+          git commit -m 'Synchronize M14 K0 provider recovery'
+          git push origin HEAD:main
