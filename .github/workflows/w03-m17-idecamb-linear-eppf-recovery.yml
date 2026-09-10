@@ -1,0 +1,194 @@
+name: W03 M17 IDECAMB linear ePPF recovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m17-idecamb-linear-eppf-recovery.yml'
+      - 'protocol/W03_M17_IDECAMB_LINEAR_EPPF_RECOVERY_PREREGISTRATION_v0.1.md'
+      - 'models/holographic_dark_energy/m17_hmcode_timeout_and_quantity_writer_audit_2026-09-10.md'
+
+permissions:
+  contents: write
+
+jobs:
+  linear-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build exact pinned IDECAMB overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update >/dev/null
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync python3 >/dev/null
+          git clone -q https://github.com/cmbant/CosmoMC.git cosmomc
+          git -C cosmomc checkout -q eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone -q https://github.com/liaocrane/IDECAMB.git patch
+          git -C patch checkout -q 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          printf 'cosmomc=%s\nidecamb=%s\n' \
+            "$(git -C cosmomc rev-parse HEAD)" "$(git -C patch rev-parse HEAD)" > m17_linear_pins.txt
+          rsync -a --exclude='.git' patch/ cosmomc/
+          make -C cosmomc cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > build.log 2>&1
+
+      - name: Prepare frozen linear-only HDE ePPF case
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('cosmomc/test_ide.ini').read_text()
+          def one(old,new):
+              global s
+              n=s.count(old)
+              if n!=1: raise SystemExit(f'anchor count {n} for {old!r}')
+              s=s.replace(old,new,1)
+          for x in ['DEFAULT(batch3/plik_rd12_HM_v22_TTTEEE.ini)','DEFAULT(batch3/lowl.ini)','DEFAULT(batch3/lowE.ini)','DEFAULT(batch3/lensing.ini)','DEFAULT(batch3/BAO.ini)','DEFAULT(batch3/Pantheon18.ini)']:
+              one(x,'#'+x)
+          one('DEFAULT(batch3/common.ini)','DEFAULT(batch3/common.ini)\nuse_nonlinear_lensing = F')
+          one('\nWForm_CF = 1\n','\nWForm_CF = 2\n')
+          one('#Use_PPF = F','Use_PPF = T')
+          one('param[c_hde]= 0.8','param[c_hde]= 0.8')
+          one('param[beta_cf]= 0.02 -0.2 0.2 0.05 0.05','param[beta_cf]= 0')
+          one('#test_output_root = output_ide','test_output_root = m17_linear_c080')
+          one('test_check_compare = 1820.775','#test_check_compare = 1820.775')
+          Path('cosmomc/m17_linear_c080.ini').write_text(s)
+          PY
+
+      - name: Execute isolated linear control
+        shell: bash
+        run: |
+          set +e
+          start=$(date +%s)
+          (cd cosmomc && /usr/bin/time -v timeout --signal=TERM --kill-after=30s 900s ./cosmomc m17_linear_c080.ini > ../m17_linear_c080.log 2> ../m17_linear_c080.time)
+          rc=$?
+          stop=$(date +%s)
+          elapsed=$((stop-start))
+          printf '{"exit_code":%d,"elapsed_seconds":%d}\n' "$rc" "$elapsed" > m17_linear_status.json
+          find cosmomc -maxdepth 2 -type f \( -name 'm17_linear_c080*.quantity' -o -name 'm17_linear_c080*.theory_cl' \) -exec cp {} . \;
+          exit 0
+
+      - name: Analyze preregistered recovery gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+
+          status=json.loads(Path('m17_linear_status.json').read_text())
+          log=Path('m17_linear_c080.log').read_text(errors='replace') if Path('m17_linear_c080.log').exists() else ''
+          flag_checks={
+              'nonlinear_pk_false':'Doing non-linear Pk: F' in log,
+              'cmb_lensing_true':'Doing CMB lensing: T' in log,
+              'nonlinear_lensing_false':'Doing non-linear lensing: F' in log,
+          }
+          harness_ok=all(flag_checks.values())
+
+          theory=Path('m17_linear_c080.theory_cl')
+          quantity=Path('m17_linear_c080.quantity')
+
+          def numeric_rows(path):
+              rows=[]
+              if not path.exists() or path.stat().st_size==0: return rows, 'missing_or_empty'
+              for no,raw in enumerate(path.read_text(errors='replace').splitlines(),1):
+                  s=raw.strip()
+                  if not s or s.startswith('#'): continue
+                  try: xs=[float(x.replace('D','E').replace('d','e')) for x in s.split()]
+                  except ValueError: continue
+                  if xs: rows.append((no,xs))
+              return rows, None
+
+          trows,terr=numeric_rows(theory)
+          qrows,qerr=numeric_rows(quantity)
+          theory_finite=bool(trows) and all(all(math.isfinite(x) for x in xs) for _,xs in trows)
+          theory_cols=sorted(set(len(xs) for _,xs in trows))
+          quantity_cols=sorted(set(len(xs) for _,xs in qrows))
+          q_first7_finite=(len(qrows)==2000 and all(len(xs)>=11 and all(math.isfinite(x) for x in xs[:7]) for _,xs in qrows))
+          gq_maxabs=max((abs(xs[6]) for _,xs in qrows if len(xs)>=7 and math.isfinite(xs[6])), default=float('inf'))
+          quantity_gate=(len(qrows)==2000 and q_first7_finite and gq_maxabs<=1e-14)
+          theory_gate=(len(trows)>=1000 and theory_finite)
+
+          rc=status['exit_code']
+          if not harness_ok:
+              cls='M17_IDECAMB_LINEAR_EPPF_INVALID_HARNESS'
+          elif rc != 0:
+              cls='M17_IDECAMB_LINEAR_EPPF_BLOCKED_EXECUTION'
+          elif not theory_gate or not quantity_gate:
+              cls='M17_IDECAMB_LINEAR_EPPF_OUTPUT_FAIL'
+          else:
+              cls='M17_IDECAMB_LINEAR_EPPF_PROVIDER_PASS_WITH_SCOPE'
+
+          out={
+              'schema':'KMDSB.W03.M17.linearEPPFRecovery.v0.1',
+              'classification':cls,
+              'provider':{
+                  'cosmomc':'eb08c2fe91d9711929802fede310ae58c020fcb4',
+                  'idecamb':'4f1093d9efe46f28cf7e2acb4d07ae116ad5e075'},
+              'model':{'c_hde':0.8,'beta_cf':0.0,'Use_PPF':True,'WForm_CF':2},
+              'isolation':{'use_nonlinear_lensing':False,'CMB_lensing':True,'flag_checks':flag_checks,'pass':harness_ok},
+              'execution':status,
+              'theory_cl':{'exists':theory.exists(),'rows':len(trows),'column_counts':theory_cols,'all_numeric_entries_finite':theory_finite,'pass':theory_gate,'parse_error':terr},
+              'quantity':{'exists':quantity.exists(),'rows':len(qrows),'column_counts':quantity_cols,'hde_columns_1_7_finite':q_first7_finite,'gQ_maxabs':gq_maxabs,'gQ_tolerance':1e-14,'masked_columns_8_11':'CQ-only writer fields; archived not zero-imputed','pass':quantity_gate,'parse_error':qerr},
+              'K3_interpretation':'PASS_WITH_SCOPE_EPPF_PRESCRIPTION' if cls.endswith('PASS_WITH_SCOPE') else 'NOT_PROMOTED',
+              'physical_falsification':False,
+              'default_hmcode_route_status':'retained blocked; not overwritten',
+              'next_if_pass':'finite global c={0.6,0.8,1.0,1.2} perturbation-level CPL/manifold attack on linear-ePPF route',
+          }
+          Path('m17_linear_result.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+
+      - name: Persist recovery result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m17_linear_result.json /tmp/m17_linear_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/holographic_dark_energy waves/wave_03_expanded_dark_energy
+          cp /tmp/m17_linear_result.json models/holographic_dark_energy/M17_IDECAMB_LINEAR_EPPF_RECOVERY_RESULT.json
+          cp /tmp/m17_linear_result.json waves/wave_03_expanded_dark_energy/M17_IDECAMB_LINEAR_EPPF_RECOVERY_RESULT.json
+          git add models/holographic_dark_energy/M17_IDECAMB_LINEAR_EPPF_RECOVERY_RESULT.json waves/wave_03_expanded_dark_energy/M17_IDECAMB_LINEAR_EPPF_RECOVERY_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M17 linear ePPF recovery result'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Enforce recovery gate
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('/tmp/m17_linear_result.json').read_text())
+          if r['classification']!='M17_IDECAMB_LINEAR_EPPF_PROVIDER_PASS_WITH_SCOPE':
+              raise SystemExit(1)
+          PY
+
+      - name: Upload immutable recovery bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m17-idecamb-linear-eppf-recovery
+          path: |
+            m17_linear_pins.txt
+            cosmomc/m17_linear_c080.ini
+            build.log
+            m17_linear_c080.log
+            m17_linear_c080.time
+            m17_linear_status.json
+            m17_linear_c080.quantity
+            m17_linear_c080.theory_cl
+            m17_linear_result.json
+            protocol/W03_M17_IDECAMB_LINEAR_EPPF_RECOVERY_PREREGISTRATION_v0.1.md
+            models/holographic_dark_energy/m17_hmcode_timeout_and_quantity_writer_audit_2026-09-10.md
+          retention-days: 90
