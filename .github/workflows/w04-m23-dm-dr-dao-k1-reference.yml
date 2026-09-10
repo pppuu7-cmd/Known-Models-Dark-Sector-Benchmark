@@ -1,0 +1,129 @@
+name: W04 M23 DM-DR DAO K1 reference
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m23-dm-dr-dao-k1-reference.yml'
+      - 'verification/m23/dm_dr_dao_k1_reference.py'
+      - 'protocol/W04_M23_DM_DR_DAO_K1_REFERENCE_PREREGISTRATION_v0.1.md'
+      - 'models/dm_dark_radiation/m23_provider_scope_audit_2026-09-11.md'
+
+permissions:
+  contents: write
+
+jobs:
+  k1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+
+      - name: Pin and build CLASS
+        shell: bash
+        run: |
+          set +e
+          git clone -q https://github.com/lesgourg/class_public.git class
+          clone=$?
+          checkout=999
+          build=999
+          if [ "$clone" -eq 0 ]; then
+            git -C class checkout -q --detach "$CLASS_PIN"
+            checkout=$?
+          fi
+          if [ "$checkout" -eq 0 ]; then
+            make -C class -j2 > m23_build.log 2>&1
+            build=$?
+          fi
+          printf '{"clone":%d,"checkout":%d,"build":%d}\n' "$clone" "$checkout" "$build" > m23_status.json
+          exit 0
+
+      - name: Prepare frozen cases
+        run: python3 verification/m23/dm_dr_dao_k1_reference.py prepare m23_cases
+
+      - name: Execute decoupled references and finite ladder
+        shell: bash
+        run: |
+          set +e
+          build=$(python3 -c "import json;print(json.load(open('m23_status.json'))['build'])")
+          ref=999; zero=999; g0=999; g1=999; g2=999; g3=999; g4=999
+          mkdir -p class/output
+          if [ "$build" -eq 0 ]; then
+            (cd class && ./class ../m23_cases/ref.ini > ../m23_ref.log 2>&1); ref=$?
+            (cd class && ./class ../m23_cases/zero.ini > ../m23_zero.log 2>&1); zero=$?
+            for i in 0 1 2 3 4; do
+              (cd class && ./class ../m23_cases/g${i}.ini > ../m23_g${i}.log 2>&1)
+              eval g${i}=$?
+            done
+          fi
+          python3 - <<PY
+          import json
+          p='m23_status.json'; d=json.load(open(p)); d.update({'ref':$ref,'zero':$zero,'g0':$g0,'g1':$g1,'g2':$g2,'g3':$g3,'g4':$g4}); open(p,'w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          cat m23_status.json
+          exit 0
+
+      - name: Analyze preregistered K1 gate
+        run: |
+          python3 verification/m23/dm_dr_dao_k1_reference.py analyze class m23_status.json m23_result.json
+          cat m23_result.json
+
+      - name: Persist canonical result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m23_result.json /tmp/m23_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/dm_dark_radiation waves/wave_04_dark_matter
+          cp /tmp/m23_result.json models/dm_dark_radiation/M23_K1_REFERENCE_RESULT.json
+          cp /tmp/m23_result.json waves/wave_04_dark_matter/M23_K1_REFERENCE_RESULT.json
+          git add models/dm_dark_radiation/M23_K1_REFERENCE_RESULT.json waves/wave_04_dark_matter/M23_K1_REFERENCE_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M23 DM-DR DAO K1 result'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Enforce scientific classification
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/m23_result.json'))
+          allowed={'M23_K1_DECOUPLING_PASS_WITH_SCOPE_FIXED_DM_DR_CONTENT','M23_K1_DECOUPLING_NOT_ESTABLISHED','M23_K1_PROVIDER_EXECUTION_BLOCKED'}
+          assert r['classification'] in allowed
+          assert r['physical_falsification'] is False
+          assert r['K4_promoted'] is False
+          if r['classification'] != 'M23_K1_DECOUPLING_PASS_WITH_SCOPE_FIXED_DM_DR_CONTENT':
+              raise SystemExit(1)
+          PY
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m23-dm-dr-dao-k1-reference
+          path: |
+            m23_cases/
+            m23_status.json
+            m23_result.json
+            m23_build.log
+            m23_*.log
+            class/output/ref_cl.dat
+            class/output/ref_pk.dat
+            class/output/zero_cl.dat
+            class/output/zero_pk.dat
+            class/output/g*_cl.dat
+            class/output/g*_pk.dat
+          retention-days: 90
