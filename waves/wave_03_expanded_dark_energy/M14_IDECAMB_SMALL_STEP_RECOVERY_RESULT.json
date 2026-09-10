@@ -1,0 +1,127 @@
+{
+  "schema": "KMDSB.W03.M14.IDECAMBSmallStepRecovery.v0.1",
+  "grid": [
+    0,
+    5e-05,
+    0.0001,
+    0.0005,
+    0.001
+  ],
+  "case_exits": {
+    "b0": 0,
+    "b5e5": 0,
+    "b1e4": 0,
+    "b5e4": 0,
+    "b1e3": 0
+  },
+  "prior_fail": {
+    "h": 0.005,
+    "relative_norm_mismatch": 0.42562333180235434,
+    "angle_deg": 4.3851064230011
+  },
+  "physical_falsification_authorized": false,
+  "intermediate_pair": {
+    "h": 0.0005,
+    "norm_fine": 308141.18323408597,
+    "norm_coarse": 188060.3858220868,
+    "relative_norm_mismatch": 0.38969408811796913,
+    "angle_deg": 6.414039412015557,
+    "fine_max_abs_response": 8.732828862655733,
+    "channel_metrics": {
+      "dln_rho_de": {
+        "fine_max_abs": 8.732828862655733,
+        "fine_norm": 144.96203682673456,
+        "points": 2000
+      },
+      "dln_rho_c": {
+        "fine_max_abs": 0.00012318305016818462,
+        "fine_norm": 0.002849923661632371,
+        "points": 2000
+      },
+      "dln_H": {
+        "fine_max_abs": 9.87215559318921e-05,
+        "fine_norm": 0.0012984423869600392,
+        "points": 2000
+      },
+      "dw": {
+        "fine_max_abs": 1.98713,
+        "fine_norm": 52.189596217245274,
+        "points": 2000
+      },
+      "qhat": {
+        "fine_max_abs": 2.9877495140165748e-05,
+        "fine_norm": 0.0004461964321970029,
+        "points": 2000
+      },
+      "dln_TT": {
+        "fine_max_abs": 0.00026866072789550737,
+        "fine_norm": 0.0045591388091217565,
+        "points": 2499
+      },
+      "dln_EE": {
+        "fine_max_abs": 0.00018112660799373878,
+        "fine_norm": 0.0026860455617523918,
+        "points": 2499
+      },
+      "dln_PP": {
+        "fine_max_abs": 0.0008726169575819789,
+        "fine_norm": 0.032999140606955864,
+        "points": 2499
+      }
+    }
+  },
+  "finest_pair": {
+    "h": 5e-05,
+    "norm_fine": 1215361.6500639755,
+    "norm_coarse": 852799.1043052049,
+    "relative_norm_mismatch": 0.29831659221737467,
+    "angle_deg": 11.321523281987094,
+    "fine_max_abs_response": 4.141774278541891,
+    "channel_metrics": {
+      "dln_rho_de": {
+        "fine_max_abs": 4.141774278541891,
+        "fine_norm": 49.835381129762304,
+        "points": 2000
+      },
+      "dln_rho_c": {
+        "fine_max_abs": 9.809210856840257e-05,
+        "fine_norm": 0.0006763197497058951,
+        "points": 2000
+      },
+      "dln_H": {
+        "fine_max_abs": 9.770873035264572e-05,
+        "fine_norm": 0.00039560372705427146,
+        "points": 2000
+      },
+      "dw": {
+        "fine_max_abs": 1.9590100000000001,
+        "fine_norm": 34.773465684598875,
+        "points": 2000
+      },
+      "qhat": {
+        "fine_max_abs": 2.9709472476193786e-06,
+        "fine_norm": 4.4730428869017746e-05,
+        "points": 2000
+      },
+      "dln_TT": {
+        "fine_max_abs": 0.00026485389048617195,
+        "fine_norm": 0.004149560014028322,
+        "points": 2499
+      },
+      "dln_EE": {
+        "fine_max_abs": 9.994503031650666e-05,
+        "fine_norm": 0.0008275235582381048,
+        "points": 2499
+      },
+      "dln_PP": {
+        "fine_max_abs": 0.0007254719828649339,
+        "fine_norm": 0.02654297222133392,
+        "points": 2499
+      }
+    }
+  },
+  "scale_trend_improves_norm": true,
+  "scale_trend_improves_angle": false,
+  "classification": "M14_IDECAMB_K4_SMALL_STEP_RECOVERY_FAIL",
+  "K5_status": "BLOCKED_BY_K4"
+}
