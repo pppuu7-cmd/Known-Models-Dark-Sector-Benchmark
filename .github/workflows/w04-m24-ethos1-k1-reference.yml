@@ -1,0 +1,102 @@
+name: W04 M24 ETHOS-1 K1 reference
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m24-ethos1-k1-reference.yml'
+      - 'verification/m24/ethos1_k1_reference.py'
+      - 'protocol/W04_M24_ETHOS1_K1_REFERENCE_PREREGISTRATION_v0.1.md'
+      - 'models/ethos_like_dark_sector/m24_ethos1_provider_scope_audit_2026-09-11.md'
+
+permissions:
+  contents: write
+
+jobs:
+  k1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+      - name: Pin and build CLASS
+        shell: bash
+        run: |
+          set +e
+          git clone -q https://github.com/lesgourg/class_public.git class
+          clone=$?; checkout=999; build=999
+          if [ "$clone" -eq 0 ]; then git -C class checkout -q --detach "$CLASS_PIN"; checkout=$?; fi
+          if [ "$checkout" -eq 0 ]; then make -C class -j2 > m24_build.log 2>&1; build=$?; fi
+          printf '{"clone":%d,"checkout":%d,"build":%d}\n' "$clone" "$checkout" "$build" > m24_status.json
+          exit 0
+      - name: Prepare frozen ETHOS-1 cases
+        run: python3 verification/m24/ethos1_k1_reference.py prepare m24_cases
+      - name: Execute decoupled reference and a4 ladder
+        shell: bash
+        run: |
+          set +e
+          build=$(python3 -c "import json;print(json.load(open('m24_status.json'))['build'])")
+          ref=999; zero=999; a0=999; a1=999; a2=999; a3=999; a4=999
+          mkdir -p class/output
+          if [ "$build" -eq 0 ]; then
+            (cd class && ./class ../m24_cases/ref.ini > ../m24_ref.log 2>&1); ref=$?
+            (cd class && ./class ../m24_cases/zero.ini > ../m24_zero.log 2>&1); zero=$?
+            for i in 0 1 2 3 4; do (cd class && ./class ../m24_cases/a${i}.ini > ../m24_a${i}.log 2>&1); eval a${i}=$?; done
+          fi
+          python3 - <<PY
+          import json
+          p='m24_status.json';d=json.load(open(p));d.update({'ref':$ref,'zero':$zero,'a0':$a0,'a1':$a1,'a2':$a2,'a3':$a3,'a4':$a4});open(p,'w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          cat m24_status.json
+          exit 0
+      - name: Analyze preregistered K1 gate
+        run: |
+          python3 verification/m24/ethos1_k1_reference.py analyze class m24_status.json m24_result.json
+          cat m24_result.json
+      - name: Persist canonical result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m24_result.json /tmp/result.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main; git reset --hard origin/main
+          mkdir -p models/ethos_like_dark_sector waves/wave_04_dark_matter
+          cp /tmp/result.json models/ethos_like_dark_sector/M24_ETHOS1_K1_REFERENCE_RESULT.json
+          cp /tmp/result.json waves/wave_04_dark_matter/M24_ETHOS1_K1_REFERENCE_RESULT.json
+          git add models/ethos_like_dark_sector/M24_ETHOS1_K1_REFERENCE_RESULT.json waves/wave_04_dark_matter/M24_ETHOS1_K1_REFERENCE_RESULT.json
+          if ! git diff --cached --quiet; then git commit -m 'Record M24 ETHOS-1 K1 result'; git pull --rebase origin main; git push origin HEAD:main; fi
+      - name: Enforce scientific classification
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/result.json'))
+          allowed={'M24_ETHOS1_K1_DECOUPLING_PASS_WITH_SCOPE_N4_FREE_STREAMING','M24_ETHOS1_K1_DECOUPLING_NOT_ESTABLISHED','M24_ETHOS1_K1_PROVIDER_EXECUTION_BLOCKED'}
+          assert r['classification'] in allowed
+          assert r['physical_falsification'] is False and r['K3_promoted'] is False and r['K4_promoted'] is False
+          if r['classification']!='M24_ETHOS1_K1_DECOUPLING_PASS_WITH_SCOPE_N4_FREE_STREAMING': raise SystemExit(1)
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m24-ethos1-k1-reference
+          path: |
+            m24_cases/
+            m24_status.json
+            m24_result.json
+            m24_build.log
+            m24_*.log
+            class/output/ref_cl.dat
+            class/output/ref_pk.dat
+            class/output/zero_cl.dat
+            class/output/zero_pk.dat
+            class/output/a*_cl.dat
+            class/output/a*_pk.dat
+          retention-days: 90
