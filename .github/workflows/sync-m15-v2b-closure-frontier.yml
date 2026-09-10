@@ -1,0 +1,75 @@
+name: Sync M15 V2b closure frontier
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-m15-v2b-closure-frontier.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify preregistration and audit exist
+        run: |
+          set -euo pipefail
+          test -f waves/wave_03_expanded_dark_energy/M15_V2B_CLOSURE_SENSITIVITY_PREREGISTRATION.md
+          test -f models/generalized_chaplygin/m15_v2b_closure_sensitivity_audit.md
+          grep -q 'FROZEN_BEFORE_V2B_IMPLEMENTATION' waves/wave_03_expanded_dark_energy/M15_V2B_CLOSURE_SENSITIVITY_PREREGISTRATION.md
+          grep -q 'CLOSURE_AXIS_STRUCTURALLY_NONCANCELLING' models/generalized_chaplygin/m15_v2b_closure_sensitivity_audit.md
+
+      - name: Synchronize frontier records
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          state_delta = '''\n\n## 2026-09-10 M15 V2b closure-axis delta\n\nThe independent M15 route has advanced beyond V2a background validation. The accessible primary paper keeps the vacuum/DE comoving sound speed `c_s,Lambda^2` explicit in perturbation Eqs. (45)-(46), while the inspected numerical section does not bind a numerical value. Exact author-numerics reproduction therefore remains provenance-blocked at K3.\n\nA source-level algebra audit shows the ambiguity is physically active rather than cosmetic: between `c_s^2=1` and `0`, holding the same state fixed, `Delta Qhat = 3 H rho_Lambda delta_Lambda/a` and `Delta fhat = rho_Lambda delta_Lambda/a`. These feed the CDM perturbation equations and are generically nonzero at finite alpha; both vanish at alpha=0 through Eq. (49).\n\nA separate independent-reproduction gate is now prospectively frozen in `waves/wave_03_expanded_dark_energy/M15_V2B_CLOSURE_SENSITIVITY_PREREGISTRATION.md`. Endpoints CS0=`c_s^2=0` and CS1=`1`, reference alpha=0, then finite alpha={-0.05,+0.05}. Neither endpoint may be described as the authors' choice. K3/K5 are not promoted by the algebra audit.\n\nExact next gate: implement and consume the alpha=0 CS0/CS1 reference scaffold on `lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540`; only after both recover the frozen LambdaCDM products may finite-alpha closure sensitivity run.\n'''
+
+          restore_delta = '''\n\n### M15 V2b closure sensitivity preregistered\n\nAfter V1 exact alpha=0 identity and V2a exact finite-alpha background PASS, the remaining perturbation blocker was audited against the accessible primary paper. `c_s,Lambda^2` is explicit in Eqs. (45)-(46) but is not numerically fixed in the inspected Section VII setup. Algebraically the CS1-CS0 difference is non-cancelling (`Delta Qhat = 3 H rho_Lambda delta_Lambda/a`, `Delta fhat = rho_Lambda delta_Lambda/a`) and feeds CDM perturbations. Treat sound-speed closure as a real M15 response axis, not a numerical nuisance.\n\nFrozen next file: `waves/wave_03_expanded_dark_energy/M15_V2B_CLOSURE_SENSITIVITY_PREREGISTRATION.md`. First execute alpha=0 for CS0 and CS1 on the exact pinned CLASS base. Do not open finite alpha until the reference artifact is consumed. Do not call either closure endpoint the author implementation.\n'''
+
+          log_delta = '''\n\n## 2026-09-10 — M15 V2b perturbation-closure axis frozen\n\nAuthority re-check confirmed M15 V1 exact alpha=0 reference PASS and V2a exact four-component finite-alpha background PASS. The primary 2017 perturbation equations retain `c_s,Lambda^2`; the numerical section inspected does not specify its value. Exact author-numerics K3 therefore remains blocked by provenance.\n\nAn algebraic audit established that the ambiguity is not removable by cancellation: CS1-CS0 gives `Delta Qhat = 3 H rho_Lambda delta_Lambda/a` and `Delta fhat = rho_Lambda delta_Lambda/a`, which enter the CDM continuity/Euler sources. At alpha=0 Eq. (49) enforces `delta_Lambda=0`, giving a clean prospective reference control.\n\nA distinct independent closure-sensitivity gate was preregistered before implementation: CS0=0 and CS1=1; alpha=0 reference first; finite alpha={-0.05,+0.05} only after reference PASS. This is not an author-code reproduction and provides no K3/K5 promotion yet. No physical M15 failure was recorded.\n'''
+
+          for path, marker, delta in [
+              ('recovery/STATE.md','## 2026-09-10 M15 V2b closure-axis delta',state_delta),
+              ('recovery/RESTORE_FROM_NEW_CHAT.md','### M15 V2b closure sensitivity preregistered',restore_delta),
+              ('logs/research_log.md','## 2026-09-10 — M15 V2b perturbation-closure axis frozen',log_delta),
+          ]:
+              p=Path(path); s=p.read_text()
+              if marker not in s:
+                  p.write_text(s.rstrip()+delta+'\n')
+
+          # Update only notes/coverage wording; K-gate verdicts do not change.
+          for path in ['matrices/model_family_census.csv','matrices/mandatory_properties_matrix.csv']:
+              p=Path(path); lines=p.read_text().splitlines(); out=[]
+              for line in lines:
+                  if line.startswith('F15,') and 'V2b closure endpoint axis is algebraically non-cancelling' not in line:
+                      # CSV line is already quoted where needed; append within final notes field.
+                      if line.endswith('"'):
+                          line=line[:-1]+' V2b closure endpoint axis is algebraically non-cancelling; CS0/CS1 sensitivity is preregistered as independent verification, not author reproduction."'
+                      else:
+                          line=line+',V2b closure endpoint axis is algebraically non-cancelling; CS0/CS1 sensitivity preregistered as independent verification'
+                  out.append(line)
+              p.write_text('\n'.join(out)+'\n')
+          PY
+
+      - name: Commit synchronized state
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv
+          if ! git diff --cached --quiet; then
+            git commit -m 'Sync M15 V2b closure-axis frontier'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
