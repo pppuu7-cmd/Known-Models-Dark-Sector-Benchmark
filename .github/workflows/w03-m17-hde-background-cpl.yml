@@ -1,0 +1,43 @@
+name: W03 M17 HDE finite background CPL attack
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'code/w03_m17_hde_background_cpl.py'
+      - 'waves/wave_03_expanded_dark_energy/M17_HDE_BACKGROUND_CPL_PREREG.md'
+      - '.github/workflows/w03-m17-hde-background-cpl.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  m17-background-cpl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install numerical dependencies
+        run: python -m pip install --disable-pip-version-check numpy scipy
+      - name: Run frozen M17 gate
+        run: python code/w03_m17_hde_background_cpl.py
+      - name: Upload immutable result
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m17-hde-background-cpl
+          path: waves/wave_03_expanded_dark_energy/M17_HDE_BACKGROUND_CPL_RESULT.json
+      - name: Persist machine result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add waves/wave_03_expanded_dark_energy/M17_HDE_BACKGROUND_CPL_RESULT.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Record M17 HDE finite-background CPL result'
+          git pull --rebase origin main
+          git push origin HEAD:main
