@@ -1,0 +1,249 @@
+name: W03 M15 independent GCG V1 alpha0 reference
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m15-independent-gcg-v1-alpha0-reference.yml'
+      - 'verification/m15/v1_patch_scaffold.py'
+
+permissions:
+  contents: write
+
+jobs:
+  v1-alpha0-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch two independent exact upstream trees
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/lesgourg/class_public.git class_ref
+          git clone https://github.com/lesgourg/class_public.git class_m15
+          git -C class_ref checkout "$CLASS_PIN"
+          git -C class_m15 checkout "$CLASS_PIN"
+          test "$(git -C class_ref rev-parse HEAD)" = "$CLASS_PIN"
+          test "$(git -C class_m15 rev-parse HEAD)" = "$CLASS_PIN"
+          git -C class_ref diff --exit-code
+          git -C class_m15 diff --exit-code
+
+      - name: Apply only the preregistered V1 scaffold
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp verification/m15/v1_patch_scaffold.py class_m15/v1_patch_scaffold.py
+          (cd class_m15 && python3 v1_patch_scaffold.py)
+          grep -q 'has_m15_gcg' class_m15/include/background.h
+          grep -q 'm15_alpha' class_m15/include/background.h
+          grep -q 'finite-alpha physics is not yet authorized' class_m15/source/input.c
+          # The scaffold is allowed to touch only state/parser files at V1.
+          changed="$(git -C class_m15 diff --name-only | sort)"
+          expected=$'include/background.h\nsource/input.c'
+          test "$changed" = "$expected"
+          git -C class_m15 diff > m15_v1_scaffold.patch
+
+      - name: Build reference and scaffold independently
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -C class_ref -j2 > ref_build.log 2>&1
+          make -C class_m15 -j2 > m15_build.log 2>&1
+          test -x class_ref/class
+          test -x class_m15/class
+
+      - name: Write matched Newtonian configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p v1/ref/output v1/ref/logs v1/m15/output v1/m15/logs v1/negative/output v1/negative/logs
+          cat > v1/base.ini <<'EOF'
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          T_cmb = 2.7255
+          N_ur = 3.044
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = tCl,pCl,mPk,mTk
+          modes = s
+          ic = ad
+          gauge = newtonian
+          non linear = none
+          l_max_scalars = 1800
+          lensing = no
+          z_pk = 0
+          P_k_max_h/Mpc = 0.3
+          write background = yes
+          write thermodynamics = no
+          headers = yes
+          format = class
+          EOF
+          cp v1/base.ini v1/ref/run.ini
+          cp v1/base.ini v1/m15/run.ini
+          cp v1/base.ini v1/negative/run.ini
+          echo "root = ${GITHUB_WORKSPACE}/v1/ref/output/ref_" >> v1/ref/run.ini
+          echo "m15_alpha = 0" >> v1/m15/run.ini
+          echo "root = ${GITHUB_WORKSPACE}/v1/m15/output/m15_" >> v1/m15/run.ini
+          echo "m15_alpha = 0.01" >> v1/negative/run.ini
+          echo "root = ${GITHUB_WORKSPACE}/v1/negative/output/negative_" >> v1/negative/run.ini
+
+      - name: Execute reference, alpha0 scaffold and forbidden-alpha control
+        shell: bash
+        run: |
+          set +e
+          ./class_ref/class v1/ref/run.ini > v1/ref/logs/run.log 2>&1
+          echo $? > v1/ref/logs/exit
+          ./class_m15/class v1/m15/run.ini > v1/m15/logs/run.log 2>&1
+          echo $? > v1/m15/logs/exit
+          ./class_m15/class v1/negative/run.ini > v1/negative/logs/run.log 2>&1
+          echo $? > v1/negative/logs/exit
+          exit 0
+
+      - name: Apply frozen V1 identity metrics
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+
+          ref_exit=int(Path('v1/ref/logs/exit').read_text())
+          m15_exit=int(Path('v1/m15/logs/exit').read_text())
+          neg_exit=int(Path('v1/negative/logs/exit').read_text())
+          neg_log=Path('v1/negative/logs/run.log').read_text(errors='replace')
+
+          def locate(root,prefix,suffix):
+              xs=sorted(Path(root).glob(f'{prefix}_*{suffix}'))
+              if len(xs)!=1:
+                  return None
+              return xs[0]
+
+          pairs={
+            'background':(locate('v1/ref/output','ref','background.dat'),locate('v1/m15/output','m15','background.dat')),
+            'cl':(locate('v1/ref/output','ref','cl.dat'),locate('v1/m15/output','m15','cl.dat')),
+            'pk':(locate('v1/ref/output','ref','pk.dat'),locate('v1/m15/output','m15','pk.dat')),
+            'tk':(locate('v1/ref/output','ref','tk.dat'),locate('v1/m15/output','m15','tk.dat')),
+          }
+
+          def rows(path):
+              if path is None: return []
+              out=[]
+              for line in path.read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  try: vals=[float(x.replace('D','E').replace('d','e')) for x in s.split()]
+                  except ValueError: continue
+                  if vals: out.append(vals)
+              return out
+
+          def compare(pa,pb,skip_first=False):
+              a,b=rows(pa),rows(pb)
+              if not a or len(a)!=len(b) or any(len(x)!=len(y) for x,y in zip(a,b)):
+                  return {'shape_match':False}
+              diffs=[]; absdiff=[]; count=0
+              for ra,rb in zip(a,b):
+                  start=1 if skip_first else 0
+                  for x,y in zip(ra[start:],rb[start:]):
+                      if not(math.isfinite(x) and math.isfinite(y)):
+                          return {'shape_match':True,'finite':False}
+                      absdiff.append(abs(x-y))
+                      if x==0. and y==0.: continue
+                      diffs.append(2.*abs(x-y)/max(abs(x)+abs(y),1e-300)); count+=1
+              return {
+                'shape_match':True,'finite':True,'rows':len(a),'compared_entries':count,
+                'max_symmetric_relative_difference':max(diffs) if diffs else 0.,
+                'rms_symmetric_relative_difference':math.sqrt(sum(d*d for d in diffs)/len(diffs)) if diffs else 0.,
+                'max_absolute_difference':max(absdiff) if absdiff else 0.
+              }
+
+          metrics={
+            'background':compare(*pairs['background']),
+            'cl_all_spectra':compare(*pairs['cl'],skip_first=True),
+            'pk':compare(*pairs['pk'],skip_first=True),
+            'tk':compare(*pairs['tk'],skip_first=True),
+          }
+
+          # Also report standard CLASS scalar Cl columns separately: l, TT, EE, TE, BB, ...
+          cla,clb=rows(pairs['cl'][0]),rows(pairs['cl'][1])
+          cl_channels={}
+          if cla and len(cla)==len(clb) and min(len(r) for r in cla+clb)>=4:
+              for name,col in [('TT',1),('EE',2),('TE',3)]:
+                  ds=[]
+                  for ra,rb in zip(cla,clb):
+                      x,y=ra[col],rb[col]
+                      if x==0. and y==0.: continue
+                      ds.append(2.*abs(x-y)/max(abs(x)+abs(y),1e-300))
+                  cl_channels[name]={
+                    'rms_symmetric_relative_difference':math.sqrt(sum(d*d for d in ds)/len(ds)) if ds else 0.,
+                    'max_symmetric_relative_difference':max(ds) if ds else 0.,
+                    'entries':len(ds)
+                  }
+
+          bg_ok=metrics['background'].get('shape_match') and metrics['background'].get('finite') and metrics['background']['max_symmetric_relative_difference']<=1e-8
+          cmb_ok=bool(cl_channels) and all(v['rms_symmetric_relative_difference']<=1e-5 for v in cl_channels.values())
+          pk_ok=metrics['pk'].get('shape_match') and metrics['pk'].get('finite') and metrics['pk']['rms_symmetric_relative_difference']<=1e-5
+          tk_ok=metrics['tk'].get('shape_match') and metrics['tk'].get('finite') and metrics['tk']['rms_symmetric_relative_difference']<=1e-5
+          neg_ok=neg_exit!=0 and 'finite-alpha physics is not yet authorized' in neg_log
+          exits_ok=(ref_exit==0 and m15_exit==0)
+          passed=bool(exits_ok and bg_ok and cmb_ok and pk_ok and tk_ok and neg_ok)
+          classification='M15_INDEPENDENT_REPRO_REFERENCE_PASS' if passed else 'M15_INDEPENDENT_REPRO_REFERENCE_FAIL'
+          out={
+            'schema':'KMDSB.W03.M15.independent_reproduction.V1.v0.1',
+            'upstream':'lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540',
+            'scope':'alpha=0 selector/state scaffold only; no finite-alpha physics implemented',
+            'gauge':'newtonian',
+            'exits':{'reference':ref_exit,'m15_alpha0':m15_exit,'forbidden_alpha001':neg_exit},
+            'negative_nonzero_rejection_pass':neg_ok,
+            'metrics':metrics,
+            'cl_channels':cl_channels,
+            'frozen_thresholds':{'background_max_symrel':1e-8,'cmb_channel_rms_symrel':1e-5,'pk_rms_symrel':1e-5,'tk_rms_symrel':1e-5},
+            'classification':classification,
+            'scientific_promotion':False,
+            'finite_alpha_authorized':passed,
+            'physical_falsification':False
+          }
+          Path('m15_v1_result.json').write_text(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+
+      - name: Persist canonical V1 result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m15_v1_result.json /tmp/m15_v1_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/generalized_chaplygin waves/wave_03_expanded_dark_energy
+          cp /tmp/m15_v1_result.json models/generalized_chaplygin/M15_INDEPENDENT_V1_RESULT.json
+          cp /tmp/m15_v1_result.json waves/wave_03_expanded_dark_energy/M15_INDEPENDENT_V1_RESULT.json
+          git add models/generalized_chaplygin/M15_INDEPENDENT_V1_RESULT.json waves/wave_03_expanded_dark_energy/M15_INDEPENDENT_V1_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M15 independent alpha0 V1 result'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Upload immutable V1 bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m15-independent-gcg-v1-alpha0-reference
+          path: |
+            m15_v1_result.json
+            m15_v1_scaffold.patch
+            ref_build.log
+            m15_build.log
+            v1/
+          if-no-files-found: warn
+          retention-days: 90
