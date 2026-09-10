@@ -91,36 +91,35 @@ jobs:
         run: |
           set -euo pipefail
           test "$(cat v0/logs/lcdm.exit)" = "0"
-          test -s v0/output/lcdm_background.dat
-          test -s v0/output/lcdm_cl.dat
-          test -s v0/output/lcdm_pk.dat
-          test -s v0/output/lcdm_tk.dat
           python3 - <<'PY'
           from pathlib import Path
           import math
-          files = [
-              Path('v0/output/lcdm_background.dat'),
-              Path('v0/output/lcdm_cl.dat'),
-              Path('v0/output/lcdm_pk.dat'),
-              Path('v0/output/lcdm_tk.dat'),
-          ]
-          for path in files:
+
+          out = Path('v0/output')
+          suffixes = ['background.dat','cl.dat','pk.dat','tk.dat']
+          selected = []
+          for suffix in suffixes:
+              hits = sorted(out.glob(f'lcdm_*{suffix}'))
+              if len(hits) != 1:
+                  raise SystemExit(f'expected exactly one CLASS output for {suffix}, found {[p.name for p in hits]}')
+              selected.append(hits[0])
+
+          for path in selected:
               finite = 0
               rows = 0
               for line in path.read_text().splitlines():
                   s=line.strip()
                   if not s or s.startswith('#'):
                       continue
-                  vals=[]
                   try:
-                      vals=[float(x) for x in s.split()]
+                      vals=[float(x.replace('D','E').replace('d','e')) for x in s.split()]
                   except ValueError:
                       continue
                   rows += 1
                   if vals and all(math.isfinite(x) for x in vals):
                       finite += 1
-              if rows == 0 or finite == 0:
-                  raise SystemExit(f'no finite numerical rows in {path}')
+              if rows == 0 or finite != rows:
+                  raise SystemExit(f'invalid numerical product {path}: rows={rows}, finite={finite}')
               print(f'{path}: rows={rows} all_finite_rows={finite}')
           print('M15_V0_UPSTREAM_CONTROL=PASS')
           PY
