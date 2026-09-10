@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 -m pip install --disable-pip-version-check numpy
-      - name: Fetch and attempt pinned CLASS_GSF build
+      - name: Fetch and attempt pinned CLASS_GSF binary build
         shell: bash
         run: |
           set -euo pipefail
@@ -28,7 +28,7 @@ jobs:
           git checkout 07e015246c4b40f4e22bb50c9a0a63a621bb61f7
           test "$(git rev-parse HEAD)" = "07e015246c4b40f4e22bb50c9a0a63a621bb61f7"
           set +e
-          make -j2 > ../class_gsf_build.log 2>&1
+          make -j2 class > ../class_gsf_build.log 2>&1
           rc=$?
           set -e
           echo "$rc" > ../class_gsf_build.exit
@@ -40,7 +40,7 @@ jobs:
           set -euo pipefail
           mkdir -p cfg out logs
           if [ "$(cat class_gsf_build.exit)" != "0" ]; then
-            echo 'build failed; configs intentionally not executed' > logs/BUILD_BLOCKED.txt
+            echo 'binary build failed; configs intentionally not executed' > logs/BUILD_BLOCKED.txt
             exit 0
           fi
           cat > cfg/base.ini <<EOF
@@ -118,7 +118,7 @@ jobs:
             'build_log_tail':log[-80:],
             'probe_pass':False,
             'classification':'M11B_BLOCKED_IMPLEMENTATION_BUILD',
-            'interpretation':'pinned external solver did not build in this environment; no cosmological case ran and this is not physical evidence against k-essence'
+            'interpretation':'pinned external solver binary did not build in this environment; no cosmological case ran and this is not physical evidence against k-essence'
           }
           open('m11b_covariant_probe.json','w').write(json.dumps(out,indent=2)+'\n')
           print(json.dumps(out,indent=2))
@@ -137,7 +137,7 @@ jobs:
             'case_exits':exits,
             'probe_pass':False,
             'classification':'M11B_BLOCKED_IMPLEMENTATION_PROBE_CASE_FAILURE',
-            'interpretation':'one or more preregistered solver cases failed after a successful build; configuration/implementation blocker only, not physical falsification'
+            'interpretation':'one or more preregistered solver cases failed after a successful binary build; configuration/implementation blocker only, not physical falsification'
           }
           open('m11b_covariant_probe.json','w').write(json.dumps(out,indent=2)+'\n')
           print(json.dumps(out,indent=2))
@@ -173,6 +173,7 @@ jobs:
             echo "KMDSB_TRIGGER_HEAD=${GITHUB_SHA}"
             echo "CLASS_GSF_HEAD=$(git -C class_gsf rev-parse HEAD 2>/dev/null || true)"
             echo "CLASS_GSF_BUILD_EXIT=$(cat class_gsf_build.exit 2>/dev/null || echo missing)"
+            echo 'build_target=class (python wrapper intentionally not required)'
             echo 'model_gsf=6'
             echo 'physical_grid=m:{0.5,1,2,4};cs2:{1,.95,.90}'
             echo 'reference=m0,cs2=1'
