@@ -99,3 +99,6 @@ Pinned independent provider: `liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae11
 Do **not** keep shrinking beta steps. The source equations are algebraically continuous at beta=0, while the numerical solution does not approach the beta=0 branch smoothly. Next M14 gate is a provider branch/shooting-continuity audit focused on `GetCorrect_initial` / Broyden root selection and solved `(gU0,gphi0)` continuity. No K5/K6 promotion until this is resolved.
 
 M15 side finding: IDECAMB contains an explicitly commented NGCG coupled-fluid branch with the decomposed-NGCG background interaction form. This makes it a serious candidate rather than an automatic representative mismatch, but perturbation prescription/input-selector provenance remains open. See `models/generalized_chaplygin/idecamb_ngcg_candidate_audit.md`.
+
+### Latest M14 IDECAMB diagnostic exclusion (2026-09-10)
+Full diagnostic serialization was prospectively tested without changing physics. Run `34467577947`, job `102839655588`, artifact `10148183299`, result commit `283bfac6650ea6683ceba288a1dd08341b16ecb9`: combined norm mismatch `0.00807` passes but angle `7.610 deg` fails the frozen `3 deg` K4 limit; TT/EE/dw remain unstable. Treat serialization precision as excluded, keep K5 blocked, and do not continue beta-step shrinking or post-hoc provider modifications.

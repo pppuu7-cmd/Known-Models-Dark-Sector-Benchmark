@@ -129,3 +129,11 @@ Classification: `M14_IDECAMB_K1_DECOUPLING_PASS_WITH_SCOPE`. Scope is explicit: 
 2. After K2 is frozen, preregister an IDECAMB K4/K5 local response/convergence grid around `beta_cq=0` using the now validated theory-output schema.
 3. If K4 passes, measure multichannel rank and then attack with the nearest full comparator manifold (M02 phenomenological IDE and smooth-DE/CPL directions as appropriate).
 4. Keep the original iDM K4 failure and K3 limitation as provider-specific authoritative results; the independent IDECAMB route does not erase them.
+
+## 2026-09-10 — IDECAMB full-serialization terminal control
+
+A prospectively isolated output-precision control tested whether the residual K4 rotation was an artifact of text serialization. No physical equations, beta grid, shooting logic, cosmological parameters, or frozen thresholds were changed. Only serialization precision was increased to `11ES25.15E3` for `.quantity` and `1I6+ES25.15E3` for `.theory_cl`.
+
+Actions run `34467577947`, job `102839655588`, immutable artifact `10148183299` (sha256 `8e306b488c4d1992f2c922854cb3fbd76fed44212b7705298933a3a5515e866c`) executed beta `{0,5e-8,1e-7}` with all cases exit 0. Machine result: `waves/wave_03_expanded_dark_energy/M14_IDECAMB_FULL_SERIALIZATION_RESULT.json`, commit `283bfac6650ea6683ceba288a1dd08341b16ecb9`.
+
+Frozen K4 remains FAIL: combined relative norm mismatch `0.00807248 <= 0.10`, but angle `7.61003 deg > 3 deg`. Channel angles: `dln_rho_de=4.03237 deg`, `dw=6.84459 deg`, TT `11.18374 deg`, EE `53.37577 deg`; `dln_rho_c`, `dln_H`, and `qhat` are stable. Limited text precision is therefore excluded as a sufficient explanation. K5 remains `BLOCKED_BY_K4`; no further beta shrinking or formatting changes are authorized. This is not a family-level physical falsification.

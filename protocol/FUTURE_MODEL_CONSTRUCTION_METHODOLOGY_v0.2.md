@@ -421,3 +421,6 @@ An executable interacting background plus generated CMB/P(k) products is not evi
 
 ### Branch-continuity rule from M14 IDECAMB
 When a model has an analytically continuous decoupling parameter but finite-difference responses remain order-unity and fail tangent convergence after a prospectively fixed smaller-step ladder, do not continue shrinking the step indefinitely. First audit numerical branch/root/shooting continuity and record the solved latent initial-condition/shooting variables versus the physical parameter. A solver that jumps between solution branches cannot provide a valid local tangent even if every run exits successfully. Preserve all earlier failed scales; a later local recovery never rewrites them as PASS.
+
+### Serialization-control lesson (M14 IDECAMB)
+When a local-response tangent fails direction convergence, isolate diagnostic serialization before changing physical step sizes or solver physics. A higher-precision serialization control that leaves the frozen angle failure intact rules out output quantization as a sufficient explanation; subsequent recovery must move upstream to branch selection, initialization, solver continuity, or an independent implementation. Never use improved norm convergence alone to waive a prospectively frozen direction criterion.

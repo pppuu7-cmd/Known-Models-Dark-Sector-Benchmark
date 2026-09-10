@@ -272,3 +272,7 @@ Independent K3 source audit found the cdm_c interaction active in background/CDM
 - Separate preregistered smaller-step ladder down to 5e-5/1e-4: run 34465008067 also FAIL. Norm mismatch improves to 29.83% but angle worsens to 11.32 deg and response remains O(1) in early DE/w. Stop step chasing; audit Broyden/shooting branch continuity.
 - No family-level physical falsification and no observational discrimination claim.
 - M15: recorded IDECAMB NGCG decomposed-background candidate; perturbation/source-selector binding remains open.
+
+## 2026-09-10 — M14 full-serialization control closes output-precision hypothesis
+
+Consumed run `34467577947` / job `102839655588` / artifact `10148183299` / machine-result commit `283bfac6650ea6683ceba288a1dd08341b16ecb9`. Only serialization precision was increased; physical source, beta `{0,5e-8,1e-7}`, and frozen K4 thresholds were unchanged. All cases exit 0. Combined norm mismatch is `0.00807248`, but angle remains `7.61003 deg >3 deg`. Instability persists in rho_de, w, TT and especially EE, whereas rho_c, H and qhat are stable. Classification: `M14_IDECAMB_FULL_SERIALIZATION_NOT_SUFFICIENT`; K4 remains FAIL and K5 blocked. This excludes output-text precision as the explanation but is not a physical failure of M14.
