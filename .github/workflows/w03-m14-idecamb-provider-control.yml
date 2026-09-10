@@ -1,0 +1,88 @@
+name: W03 M14 IDECAMB provider control
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-idecamb-provider-control.yml'
+      - 'protocol/W03_M14_IDECAMB_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md'
+
+jobs:
+  provider-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compiler dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev make
+          gfortran --version | head -n 2 | tee gfortran_version.txt
+      - name: Fetch exact providers and overlay literally
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/cmbant/CosmoMC.git cosmomc_base
+          git -C cosmomc_base checkout eb08c2fe91d9711929802fede310ae58c020fcb4
+          test "$(git -C cosmomc_base rev-parse HEAD)" = "eb08c2fe91d9711929802fede310ae58c020fcb4"
+          git clone https://github.com/liaocrane/IDECAMB.git idecamb_patch
+          git -C idecamb_patch checkout 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          test "$(git -C idecamb_patch rev-parse HEAD)" = "4f1093d9efe46f28cf7e2acb4d07ae116ad5e075"
+          rsync -a --exclude='.git' idecamb_patch/ cosmomc_base/
+          for f in camb/equations_ppfi.f90 source/Calculator_CAMB.f90 source/CosmologyParameterizations.f90 source/CosmologyTypes.f90 source/Makefile test_ide.ini; do
+            test -f "cosmomc_base/$f"
+          done
+          {
+            echo "COSMOMC_HEAD=$(git -C cosmomc_base rev-parse HEAD)"
+            echo "IDECAMB_HEAD=$(git -C idecamb_patch rev-parse HEAD)"
+            sha256sum cosmomc_base/camb/equations_ppfi.f90 cosmomc_base/source/Calculator_CAMB.f90 cosmomc_base/source/CosmologyParameterizations.f90 cosmomc_base/source/CosmologyTypes.f90 cosmomc_base/source/Makefile cosmomc_base/test_ide.ini
+          } > overlay_provenance.txt
+      - name: Build serial provider control
+        shell: bash
+        run: |
+          set +e
+          make -C cosmomc_base cosmomc BUILD= > build.log 2>&1
+          rc=$?
+          echo "$rc" > build.exit
+          tail -n 160 build.log
+          exit 0
+      - name: Classify build result
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os
+          rc=int(open('build.exit').read().strip())
+          exe=os.path.isfile('cosmomc_base/cosmomc')
+          if rc==0 and exe:
+              cls='M14_IDECAMB_PROVIDER_BUILD_PASS'
+          else:
+              cls='M14_IDECAMB_BLOCKED_BUILD'
+          out={
+            'schema':'KMDSB.W03.M14.IDECAMBProviderControl.v0.1',
+            'patch':'liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075',
+            'base':'cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4',
+            'overlay':'literal recursive copy per author README',
+            'build_command':'make -C cosmomc_base cosmomc BUILD=',
+            'build_exit':rc,
+            'executable_present':exe,
+            'classification':cls,
+            'scientific_promotion_authorized':False,
+            'next_gate':'source-bind active CQ background/perturbation equations and beta_cq -> 0 decoupling map before any K1/K3 promotion'
+          }
+          open('m14_idecamb_provider_control.json','w').write(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+      - name: Upload immutable provider-control bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m14-idecamb-provider-control
+          path: |
+            m14_idecamb_provider_control.json
+            overlay_provenance.txt
+            gfortran_version.txt
+            build.log
+            build.exit
+          if-no-files-found: warn
+          retention-days: 90
