@@ -44,7 +44,9 @@ jobs:
         run: |
           set +e
           (cd axc && make -j1 FFLAGS='-O3 -ffree-line-length-none -fallow-argument-mismatch' > ../m19_ext_build_ax.log 2>&1); ba=$?
-          (cd camb0 && make -j1 FFLAGS='-O3 -ffree-line-length-none -fallow-argument-mismatch -std=legacy' > ../m19_ext_build_cdm.log 2>&1); bc=$?
+          # The 2013 CAMB Makefile defaults to Intel ifort. Override only compiler/linker selection;
+          # the physical source pin and preregistered cases remain unchanged.
+          (cd camb0 && make -j1 F90C=gfortran F90CRLINK='' FFLAGS='-O3 -fopenmp -ffast-math -funroll-loops -ffree-line-length-none -fallow-argument-mismatch -std=legacy' > ../m19_ext_build_cdm.log 2>&1); bc=$?
           printf '{"build_ax":%d,"build_cdm":%d}\n' "$ba" "$bc" > m19_ext_status.json
           exit 0
 
