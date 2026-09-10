@@ -1,0 +1,65 @@
+{
+  "schema": "KMDSB.W03.M17.IDECAMB.ePPFProvider.v0.1-recovery",
+  "date": "2026-09-10",
+  "provider_base": "cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4",
+  "provider_overlay": "liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075",
+  "model_scope": "original future-event-horizon HDE background with explicit IDECAMB ePPF perturbation prescription; beta_cf=0",
+  "native_LCDM_reference": false,
+  "source_binding": {
+    "hde_enum": true,
+    "hde_parameter_c": true,
+    "hde_eos_branch": true,
+    "hde_perturbations_enabled": true,
+    "ppf_state_evolved": true,
+    "ppf_sources_returned": true,
+    "ppf_sources_enter_totals": true,
+    "coupled_fluid_default_ppf": true,
+    "ini_exposes_hde_selector": true,
+    "all_source_binding_checks_pass": true
+  },
+  "build": "PASS",
+  "canonical_recovery_run": {
+    "run_id": 34496665472,
+    "artifact_id": 10162067465,
+    "job_conclusion": "cancelled",
+    "job_timeout_minutes": 45,
+    "completed_case_shell_exits": {
+      "c_0.6": 0,
+      "c_0.8_a": 0,
+      "c_0.8_b": 0
+    },
+    "completed_case_internal_status": "STOP SIGINT1: Integration timed out",
+    "c_1.0": "not completed before job timeout",
+    "c_1.2": "not started/completed before job timeout",
+    "theory_cl_outputs_for_completed_cases": 0,
+    "quantity_rows_per_completed_case": 2000,
+    "quantity_columns": 11,
+    "finite_rows_all_columns": 0,
+    "finite_entries_by_column_for_each_completed_case": [2000,2000,2000,2000,2000,2000,2000,0,0,2000,0]
+  },
+  "independent_c080_timing_smoke": {
+    "run_id": 34500194596,
+    "artifact_id": 10162045722,
+    "shell_exit_code": 0,
+    "elapsed_seconds": 700,
+    "cpu_percent_reported": 398,
+    "internal_status": "STOP SIGINT1: Integration timed out",
+    "quantity_present": true,
+    "quantity_fully_finite_rows": 0,
+    "theory_cl_present": false,
+    "classification": "M17_C080_SMOKE_EXECUTION_ERROR"
+  },
+  "interpretation": "The pinned public source is strongly source-bound to an HDE/ePPF prescription, but the frozen noninteracting HDE cases do not complete a valid Einstein-Boltzmann theory calculation on the tested route. The provider's integration stops internally with a timeout while returning shell exit 0, and perturbation-related output columns are NaN. A longer outer GitHub timeout is not sufficient evidence of validity because the solver itself reports the internal timeout and fails to produce theory_cl.",
+  "classification": "M17_IDECAMB_EPPF_BLOCKED_EXECUTION",
+  "K3": "NOT_PROMOTED",
+  "K4": "NOT_TESTED",
+  "K5": "NOT_AUTHORIZED_NO_NATIVE_LCDM_REFERENCE_AND_K3_BLOCKED",
+  "background_CPL_result_retained": "BACKGROUND_ABSORBED_BY_CPL_WITH_SCOPE",
+  "physical_falsification": false,
+  "provider_falsification": "PINNED_EXECUTION_ROUTE_BLOCKED",
+  "next_authorized_routes": [
+    "search for an independent published HDE perturbation implementation/provider",
+    "audit whether a documented IDECAMB precision/integration setting resolves the internal timeout without changing the physical closure",
+    "if no independent provider is recoverable, retain M17 as background-tested but perturbation-provider-blocked"
+  ]
+}
