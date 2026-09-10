@@ -1,0 +1,276 @@
+name: W03 M14 CDE independent reference regularization
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-cde-independent-reference-regularization.yml'
+      - 'protocol/W03_M14_CDE_INDEPENDENT_REFERENCE_REGULARIZATION_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  verify-regularization:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch two identical pinned upstream copies
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/LisaGoh/CDE.git orig
+          git clone https://github.com/LisaGoh/CDE.git patched
+          for d in orig patched; do
+            git -C "$d" checkout b85a675af7544a5183e402964550811aa805b698
+            test "$(git -C "$d" rev-parse HEAD)" = "b85a675af7544a5183e402964550811aa805b698"
+          done
+
+      - name: Apply only the preregistered exact-null regularization
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          p=Path('patched/class_CDE/source/perturbations.c')
+          s=p.read_text()
+
+          # R1: exact beta_z == 0 branch before beta_z/phi' literal division.
+          pat1=re.compile(r'-\s*pvecback\[pba->index_bg_beta_prime\]\*a2\*pow\(6,0\.5\)\*ppw->pvecback\[pba->index_bg_rho_cdm\]\*y\[pv->index_pt_phi_scf\]\*pvecback\[pba->index_bg_H\]/pvecback\[pba->index_bg_phi_prime_scf\]')
+          original_expr='pvecback[pba->index_bg_beta_prime]*a2*pow(6,0.5)*ppw->pvecback[pba->index_bg_rho_cdm]*y[pv->index_pt_phi_scf]*pvecback[pba->index_bg_H]/pvecback[pba->index_bg_phi_prime_scf]'
+          repl1='- ((pvecback[pba->index_bg_beta_prime] == 0.0) ? 0.0 : '+original_expr+')'
+          s,n1=pat1.subn(repl1,s)
+          if n1 != 1:
+              raise RuntimeError(f'R1 expected exactly one source replacement, got {n1}')
+
+          # R2: exact rho+p == 0 branch for the derived scalar velocity only.
+          den=r'pvecback\[pba->index_bg_rho_scf\]\s*\+\s*pvecback\[pba->index_bg_p_scf\]'
+          pat2=re.compile(r'rho_plus_p_theta_scf\s*/\s*\(\s*'+den+r'\s*\)')
+          den_c='pvecback[pba->index_bg_rho_scf]+pvecback[pba->index_bg_p_scf]'
+          repl2='((('+den_c+') == 0.0) ? 0.0 : rho_plus_p_theta_scf/('+den_c+'))'
+          s,n2=pat2.subn(repl2,s)
+          if n2 != 2:
+              raise RuntimeError(f'R2 expected exactly two derived-velocity replacements, got {n2}')
+
+          p.write_text(s)
+          Path('regularization_patch_counts.json').write_text(__import__('json').dumps({'R1':n1,'R2':n2},indent=2)+'\n')
+          PY
+          git -C patched diff -- class_CDE/source/perturbations.c > regularization.patch
+          cat regularization.patch
+
+      - name: Build original and independent verification copies identically
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in orig patched; do
+            cd "$d/class_CDE"
+            make clean >> ../../build_${d}.log 2>&1
+            make class -j2 >> ../../build_${d}.log 2>&1
+            mkdir -p output
+            cd ../..
+          done
+
+      - name: Generate frozen regression and exact-reference inputs
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          def setkey(txt,key,value):
+              pat=rf'(?m)^(\s*{re.escape(key)}\s*=\s*).*$'
+              out,n=re.subn(pat,lambda m:m.group(1)+value,txt,count=1)
+              if n!=1: raise RuntimeError(f'{key}: expected one active key, got {n}')
+              return out
+          for tree in ['orig','patched']:
+              src=Path(f'{tree}/class_CDE/CDE.ini').read_text()
+              author=src+'\nroot = output/author_\n'
+              Path(f'{tree}/class_CDE/author.ini').write_text(author)
+              tiny=src
+              for k in ['beta_1','beta_2','beta_3']:
+                  tiny=setkey(tiny,k,'0')
+              tiny+='\nroot = output/b0tiny_\n'
+              Path(f'{tree}/class_CDE/b0tiny.ini').write_text(tiny)
+              if tree=='patched':
+                  exact=tiny
+                  exact=setkey(exact,'phi_ini_scf','0')
+                  exact=setkey(exact,'phi_prime_ini_scf','0')
+                  exact=re.sub(r'(?m)^root\s*=.*$','root = output/b0exact_',exact,count=1)
+                  Path(f'{tree}/class_CDE/b0exact.ini').write_text(exact)
+          PY
+
+      - name: Execute frozen controls and exact reference
+        shell: bash
+        run: |
+          set +e
+          for spec in 'orig author' 'patched author' 'orig b0tiny' 'patched b0tiny' 'patched b0exact'; do
+            set -- $spec; tree=$1; case=$2
+            cd "$tree/class_CDE"
+            ./class "$case.ini" > "../../${tree}_${case}.log" 2>&1
+            echo "$?" > "../../${tree}_${case}.exit"
+            cd ../..
+          done
+          for f in *_*.log; do echo "=== $f ==="; tail -80 "$f"; done
+          exit 0
+
+      - name: Evaluate frozen non-interference and exact-reference gates
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, math, re
+          from pathlib import Path
+
+          def exitcode(tree,case): return int(Path(f'{tree}_{case}.exit').read_text().strip())
+          def numeric_rows(path):
+              rows=[]
+              for line in Path(path).read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  try: row=[float(x) for x in s.split()]
+                  except ValueError: continue
+                  rows.append(row)
+              return rows
+          def compare(pa,pb):
+              a=numeric_rows(pa); b=numeric_rows(pb)
+              if len(a)!=len(b) or any(len(x)!=len(y) for x,y in zip(a,b)):
+                  return {'pass':False,'shape_a':[len(a),len(a[0]) if a else 0],'shape_b':[len(b),len(b[0]) if b else 0],'reason':'shape'}
+              worst=0.0; maxabs=0.0; finite=True
+              for ra,rb in zip(a,b):
+                  for x,y in zip(ra,rb):
+                      if not (math.isfinite(x) and math.isfinite(y)):
+                          finite=False; continue
+                      d=abs(x-y); maxabs=max(maxabs,d)
+                      worst=max(worst,d/max(abs(x),abs(y),1e-300))
+              return {'pass':bool(finite and worst<=1e-12),'rows':len(a),'cols':len(a[0]) if a else 0,'finite':finite,'max_symmetric_relative':worst,'max_abs':maxabs}
+          suffixes={'background':'background.dat','pk':'pk.dat','pk_cb':'pk_cb.dat','cl':'cl.dat','cl_lensed':'cl_lensed.dat','tk':'tk.dat'}
+          regress={}
+          for case in ['author','b0tiny']:
+              r={'orig_exit':exitcode('orig',case),'patched_exit':exitcode('patched',case),'files':{}}
+              for key,suf in suffixes.items():
+                  pa=Path(f'orig/class_CDE/output/{case}_{suf}')
+                  pb=Path(f'patched/class_CDE/output/{case}_{suf}')
+                  if pa.exists() and pb.exists() and pa.stat().st_size and pb.stat().st_size:
+                      r['files'][key]=compare(pa,pb)
+                  else:
+                      r['files'][key]={'pass':False,'reason':'missing','orig_exists':pa.exists(),'patched_exists':pb.exists()}
+              r['pass']=bool(r['orig_exit']==0 and r['patched_exit']==0 and all(v.get('pass') for v in r['files'].values()))
+              regress[case]=r
+
+          # Exact reference output presence.
+          exact_exit=exitcode('patched','b0exact')
+          out=Path('patched/class_CDE/output')
+          required={
+            'background':[str(p) for p in out.glob('b0exact_*background.dat') if p.stat().st_size],
+            'perturbation':[str(p) for p in out.glob('b0exact_*perturbations*_s.dat') if p.stat().st_size],
+            'pk':[str(p) for p in out.glob('b0exact_*pk.dat') if p.stat().st_size],
+            'cl':[str(p) for p in out.glob('b0exact_*cl.dat') if p.stat().st_size],
+            'tk':[str(p) for p in out.glob('b0exact_*tk.dat') if p.stat().st_size]
+          }
+
+          def titles_and_rows(path):
+              lines=Path(path).read_text(errors='replace').splitlines(); rows=numeric_rows(path)
+              if not rows: raise RuntimeError('no numeric rows')
+              n=len(rows[0]); candidates=[]
+              for line in lines:
+                  if not line.lstrip().startswith('#'): continue
+                  raw=line.lstrip()[1:].strip()
+                  parts=[x.strip() for x in re.split(r'\s{2,}',raw) if x.strip()]
+                  if len(parts)==n: candidates.append(parts)
+              if not candidates: raise RuntimeError(f'no {n}-column title row')
+              return candidates[-1],rows
+          def norm(s):
+              s=re.sub(r'^\s*\d+\s*:\s*','',s)
+              return re.sub(r'[^a-z0-9]+','_',s.lower()).strip('_')
+          def choose(titles, terms, exclude=()):
+              nt=[norm(x) for x in titles]
+              hits=[i for i,s in enumerate(nt) if all(t in s for t in terms) and not any(e in s for e in exclude)]
+              if len(hits)!=1: raise RuntimeError(f'{terms}/{exclude}: {[(i,titles[i]) for i in hits]}')
+              return hits[0]
+          bg_metrics=None; pert_metrics=None; parse_error=None
+          try:
+              if required['background']:
+                  titles,rows=titles_and_rows(required['background'][0])
+                  iz=choose(titles,('z',)); irc=choose(titles,('rho_cdm',)); irs=choose(titles,('rho_scf',)); iw=choose(titles,('w_scf',)); ip=choose(titles,('phi', 'scf'),('rho','prime'))
+                  # Prefer explicit prime-labelled scalar column.
+                  nt=[norm(x) for x in titles]
+                  phits=[i for i,s in enumerate(nt) if 'phi' in s and 'scf' in s and ('prime' in s or "phi'_scf" in titles[i])]
+                  if len(phits)==1: ip=phits[0]
+                  ib=choose(titles,('beta',),('dbeta',)); idb=choose(titles,('dbeta',))
+                  def col(i): return [r[i] for r in rows]
+                  z,rc,rs,w,pp,b,db=[col(i) for i in [iz,irc,irs,iw,ip,ib,idb]]
+                  a=[1/(1+x) for x in z]; ca3=[r*q**3 for r,q in zip(rc,a)]
+                  def rspan(x): return (max(x)-min(x))/max(max(abs(v) for v in x),1e-300)
+                  bg_metrics={'finite':all(math.isfinite(v) for arr in [z,rc,rs,w,pp,b,db] for v in arr),'rows':len(rows),'max_abs_beta':max(abs(x) for x in b),'max_abs_dbeta_dz':max(abs(x) for x in db),'max_abs_phi_prime_scf':max(abs(x) for x in pp),'max_abs_w_plus_1':max(abs(x+1) for x in w),'rspan_rho_scf':rspan(rs),'rspan_rho_cdm_a3':rspan(ca3)}
+                  bg_metrics['pass']=bool(bg_metrics['finite'] and bg_metrics['max_abs_beta']<=1e-15 and bg_metrics['max_abs_dbeta_dz']<=1e-15 and bg_metrics['max_abs_phi_prime_scf']<=1e-14 and bg_metrics['max_abs_w_plus_1']<=1e-12 and bg_metrics['rspan_rho_scf']<=1e-12 and bg_metrics['rspan_rho_cdm_a3']<=1e-8)
+              if required['perturbation']:
+                  titles,rows=titles_and_rows(required['perturbation'][0]); nt=[norm(x) for x in titles]
+                  itc=choose(titles,('theta_cdm',)); ids=choose(titles,('delta_scf',)); its=choose(titles,('theta_scf',))
+                  allfinite=all(math.isfinite(v) for r in rows for v in r)
+                  pert_metrics={'finite_all':allfinite,'rows':len(rows),'max_abs_theta_cdm':max(abs(r[itc]) for r in rows),'max_abs_delta_scf':max(abs(r[ids]) for r in rows),'max_abs_theta_scf':max(abs(r[its]) for r in rows)}
+                  pert_metrics['pass']=bool(allfinite and pert_metrics['max_abs_theta_cdm']<=1e-12 and pert_metrics['max_abs_delta_scf']<=1e-12 and pert_metrics['max_abs_theta_scf']<=1e-12)
+          except Exception as e:
+              parse_error=repr(e)
+
+          exact_required=bool(exact_exit==0 and all(required[k] for k in required))
+          exact_pass=bool(exact_required and bg_metrics and bg_metrics.get('pass') and pert_metrics and pert_metrics.get('pass') and parse_error is None)
+          noninterference=bool(regress['author']['pass'] and regress['b0tiny']['pass'])
+          if noninterference and exact_pass:
+              cls='M14_CDE_INDEPENDENT_REFERENCE_REGULARIZATION_VALIDATED'
+          elif not noninterference:
+              cls='M14_CDE_REGULARIZATION_NONINTERFERENCE_FAIL'
+          elif not exact_pass:
+              cls='M14_CDE_EXACT_REFERENCE_STILL_BLOCKED'
+          else:
+              cls='M14_CDE_REGULARIZATION_TEST_BLOCKED_INFRASTRUCTURE'
+
+          hashes={}
+          for tree in ['orig','patched']:
+              hashes[tree]={}
+              for p in (Path(tree)/'class_CDE'/'output').glob('*'):
+                  if p.is_file(): hashes[tree][p.name]=hashlib.sha256(p.read_bytes()).hexdigest()
+          result={'schema':'KMDSB.W03.M14.CDEIndependentReferenceRegularization.v0.1','upstream':'LisaGoh/CDE@b85a675af7544a5183e402964550811aa805b698','implementation_label':'KMDSB_INDEPENDENT_REFERENCE_REGULARIZATION','patch_counts':json.loads(Path('regularization_patch_counts.json').read_text()),'exits':{f'{t}_{c}':exitcode(t,c) for t,c in [('orig','author'),('patched','author'),('orig','b0tiny'),('patched','b0tiny'),('patched','b0exact')]},'noninterference':regress,'exact_required_outputs':required,'exact_background_metrics':bg_metrics,'exact_perturbation_metrics':pert_metrics,'parse_error':parse_error,'classification':cls,'verification_K1':'PASS_WITH_SCOPE' if cls=='M14_CDE_INDEPENDENT_REFERENCE_REGULARIZATION_VALIDATED' else 'NOT_PASS','verification_K3_scope':'SYNCHRONOUS_SOURCE_COMPLETE_REFERENCE_REGULARIZED' if cls=='M14_CDE_INDEPENDENT_REFERENCE_REGULARIZATION_VALIDATED' else 'NOT_PROMOTED','original_provider_K1_retroactive_promotion':False,'K4_K5_authorized_for_verification_layer':bool(cls=='M14_CDE_INDEPENDENT_REFERENCE_REGULARIZATION_VALIDATED'),'physical_falsification_authorized':False,'sha256_outputs':hashes}
+          Path('m14_cde_independent_reference_regularization.json').write_text(json.dumps(result,indent=2)+'\n')
+          print(json.dumps(result,indent=2))
+          PY
+
+      - name: Persist canonical verification result
+        shell: bash
+        run: |
+          cp m14_cde_independent_reference_regularization.json /tmp/result.json
+          cp regularization.patch /tmp/patch.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/coupled_quintessence waves/wave_03_expanded_dark_energy
+          cp /tmp/result.json models/coupled_quintessence/cde_independent_reference_regularization.json
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_CDE_INDEPENDENT_REFERENCE_REGULARIZATION_RESULT.json
+          cp /tmp/patch.txt models/coupled_quintessence/cde_independent_reference_regularization.patch
+          git add models/coupled_quintessence/cde_independent_reference_regularization.json waves/wave_03_expanded_dark_energy/M14_CDE_INDEPENDENT_REFERENCE_REGULARIZATION_RESULT.json models/coupled_quintessence/cde_independent_reference_regularization.patch
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M14 independent CDE reference regularization'
+            git push origin HEAD:main
+          fi
+
+      - name: Upload immutable verification bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m14-cde-independent-reference-regularization
+          path: |
+            m14_cde_independent_reference_regularization.json
+            regularization.patch
+            regularization_patch_counts.json
+            build_orig.log
+            build_patched.log
+            orig_author.log
+            patched_author.log
+            orig_b0tiny.log
+            patched_b0tiny.log
+            patched_b0exact.log
+            *.exit
+            patched/class_CDE/output/b0exact_*background.dat
+            patched/class_CDE/output/b0exact_*perturbations*_s.dat
+          retention-days: 90
