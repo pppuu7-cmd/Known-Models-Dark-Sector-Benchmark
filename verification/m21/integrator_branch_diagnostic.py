@@ -31,6 +31,17 @@ def load(path: Path) -> np.ndarray:
     return a
 
 
+def one(root: Path, case: str, suffix: str) -> np.ndarray:
+    # CLASS may emit either case_suffix.dat or case_00_suffix.dat when root
+    # overwrite semantics are active. Accept exactly one native product; never
+    # merge or select among competing outputs post hoc.
+    direct = root / f"{case}_{suffix}.dat"
+    matches = [direct] if direct.exists() else sorted(root.glob(f"{case}_*_{suffix}.dat"))
+    if len(matches) != 1:
+        raise RuntimeError(f"expected exactly one {case}/{suffix} product in {root}: {matches}")
+    return load(matches[0])
+
+
 def nl2(y: np.ndarray, r: np.ndarray) -> float:
     return float(np.linalg.norm(y-r) / max(float(np.linalg.norm(r)), 1e-300))
 
@@ -70,9 +81,9 @@ def overlap_metric(a: np.ndarray, r: np.ndarray, xcol: int, ycol: int, logx: boo
 
 def files(root: Path, case: str) -> dict:
     return {
-        "cl": load(root / f"{case}_cl.dat"),
-        "pk": load(root / f"{case}_pk.dat"),
-        "bg": load(root / f"{case}_background.dat"),
+        "cl": one(root, case, "cl"),
+        "pk": one(root, case, "pk"),
+        "bg": one(root, case, "background"),
     }
 
 
@@ -87,7 +98,7 @@ def response_profile(root: Path) -> dict:
             "EE": cl_metric(x["cl"], ref["cl"], 2),
             "TE": cl_metric(x["cl"], ref["cl"], 3),
             "Pk": overlap_metric(x["pk"], ref["pk"], 0, 1, logx=True),
-            # CLASS background col0 is z and col3 is H [1/Mpc] for the pinned output schema.
+            # Pinned CLASS background output: col0 z, col3 H [1/Mpc].
             "H": overlap_metric(x["bg"], ref["bg"], 0, 3, logx=False),
         }
     for ch in ["TT", "EE", "TE", "Pk", "H"]:
