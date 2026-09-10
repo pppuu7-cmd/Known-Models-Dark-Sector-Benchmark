@@ -1,0 +1,119 @@
+name: W03 M17 c060 joint CPL K6 refinement
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m17-c060-joint-cpl-k6-refinement.yml'
+      - 'verification/m17/c060_joint_cpl_k6_refine.py'
+      - 'protocol/W03_M17_C060_JOINT_CPL_K6_REFINEMENT_EXECUTION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  refinement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify coarse authority and build pinned provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('models/holographic_dark_energy/M17_C060_JOINT_CPL_K6_COARSE_RESULT.json').read_text())
+          assert r['classification']=='M17_C060_K6_COARSE_SURVIVOR_CANDIDATE'
+          assert r['best']['case']=='g22'
+          assert abs(r['best']['w0']+1.299870066355541)<1e-14
+          assert abs(r['best']['wa']-0.9082964747357177)<1e-14
+          PY
+          sudo apt-get update >/dev/null
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync python3 >/dev/null
+          git clone -q https://github.com/cmbant/CosmoMC.git cosmomc
+          git -C cosmomc checkout -q eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone -q https://github.com/liaocrane/IDECAMB.git patch
+          git -C patch checkout -q 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          printf 'cosmomc=%s\nidecamb=%s\n' "$(git -C cosmomc rev-parse HEAD)" "$(git -C patch rev-parse HEAD)" > m17k6r_pins.txt
+          rsync -a --exclude='.git' patch/ cosmomc/
+          make -C cosmomc cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > m17k6r_build.log 2>&1
+      - name: Prepare mechanically frozen refinement
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m17/c060_joint_cpl_k6_refine.py prepare cosmomc/test_ide.ini m17k6r_cases
+      - name: Execute all 27 frozen cases
+        shell: bash
+        run: |
+          set +e
+          printf '{' > m17k6r_status.json
+          first=1
+          for c in r0 h06 r00 r01 r02 r03 r04 r10 r11 r12 r13 r14 r20 r21 r22 r23 r24 r30 r31 r32 r33 r34 r40 r41 r42 r43 r44; do
+            start=$(date +%s)
+            (cd cosmomc && timeout --signal=TERM --kill-after=15s 120s ./cosmomc ../m17k6r_cases/$c.ini > ../m17k6r_$c.log 2>&1)
+            rc=$?
+            stop=$(date +%s)
+            [ $first -eq 0 ] && printf ',' >> m17k6r_status.json
+            printf '"%s":%d,"%s_elapsed":%d' "$c" "$rc" "$c" "$((stop-start))" >> m17k6r_status.json
+            first=0
+          done
+          printf '}\n' >> m17k6r_status.json
+          cat m17k6r_status.json
+          exit 0
+      - name: Analyze frozen refinement metric
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m17/c060_joint_cpl_k6_refine.py analyze cosmomc m17k6r_status.json m17k6r_result.json
+          cat m17k6r_result.json
+          test -s m17k6r_result.json
+      - name: Persist result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m17k6r_result.json /tmp/m17k6r_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/holographic_dark_energy waves/wave_03_expanded_dark_energy
+          cp /tmp/m17k6r_result.json models/holographic_dark_energy/M17_C060_JOINT_CPL_K6_REFINEMENT_RESULT.json
+          cp /tmp/m17k6r_result.json waves/wave_03_expanded_dark_energy/M17_C060_JOINT_CPL_K6_REFINEMENT_RESULT.json
+          git add models/holographic_dark_energy/M17_C060_JOINT_CPL_K6_REFINEMENT_RESULT.json waves/wave_03_expanded_dark_energy/M17_C060_JOINT_CPL_K6_REFINEMENT_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M17 c060 joint CPL K6 refinement result'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Enforce output gate only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('/tmp/m17k6r_result.json').read_text())
+          print(r['classification'])
+          if r['classification']=='M17_C060_K6_REFINEMENT_OUTPUT_BLOCKED': raise SystemExit(1)
+          PY
+      - name: Upload immutable refinement bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m17-c060-joint-cpl-k6-refinement
+          path: |
+            m17k6r_pins.txt
+            m17k6r_build.log
+            m17k6r_cases/
+            m17k6r_*.log
+            m17k6r_status.json
+            m17k6r_result.json
+            cosmomc/m17k6r_*.theory_cl
+            cosmomc/m17k6r_*.quantity
+            verification/m17/c060_joint_cpl_k6_refine.py
+            protocol/W03_M17_C060_JOINT_CPL_K6_REFINEMENT_EXECUTION_v0.1.md
+          retention-days: 90
