@@ -1,0 +1,55 @@
+{
+  "K3_interpretation": "PASS_WITH_SCOPE_EPPF_PRESCRIPTION",
+  "classification": "M17_IDECAMB_LINEAR_EPPF_PROVIDER_PASS_WITH_SCOPE",
+  "default_hmcode_route_status": "retained blocked; not overwritten",
+  "execution": {
+    "elapsed_seconds": 3,
+    "exit_code": 0
+  },
+  "isolation": {
+    "CMB_lensing": true,
+    "flag_checks": {
+      "cmb_lensing_true": true,
+      "nonlinear_lensing_false": true,
+      "nonlinear_pk_false": true
+    },
+    "pass": true,
+    "use_nonlinear_lensing": false
+  },
+  "model": {
+    "Use_PPF": true,
+    "WForm_CF": 2,
+    "beta_cf": 0.0,
+    "c_hde": 0.8
+  },
+  "next_if_pass": "finite global c={0.6,0.8,1.0,1.2} perturbation-level CPL/manifold attack on linear-ePPF route",
+  "physical_falsification": false,
+  "provider": {
+    "cosmomc": "eb08c2fe91d9711929802fede310ae58c020fcb4",
+    "idecamb": "4f1093d9efe46f28cf7e2acb4d07ae116ad5e075"
+  },
+  "quantity": {
+    "column_counts": [
+      11
+    ],
+    "exists": true,
+    "gQ_maxabs": 0.0,
+    "gQ_tolerance": 1e-14,
+    "hde_columns_1_7_finite": true,
+    "masked_columns_8_11": "CQ-only writer fields; archived not zero-imputed",
+    "parse_error": null,
+    "pass": true,
+    "rows": 2000
+  },
+  "schema": "KMDSB.W03.M17.linearEPPFRecovery.v0.1",
+  "theory_cl": {
+    "all_numeric_entries_finite": true,
+    "column_counts": [
+      4
+    ],
+    "exists": true,
+    "parse_error": null,
+    "pass": true,
+    "rows": 2499
+  }
+}
