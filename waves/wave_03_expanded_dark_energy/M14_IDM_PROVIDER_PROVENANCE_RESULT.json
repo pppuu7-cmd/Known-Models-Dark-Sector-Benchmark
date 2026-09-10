@@ -1,0 +1,19 @@
+{
+  "schema": "KMDSB.W03.M14.iDMProviderProvenance.v0.1",
+  "provider": "kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df",
+  "target_family": "F14/M14 coupled quintessence",
+  "documented_build": "make clean; make class -j",
+  "documented_run": "./class iDM.ini",
+  "supporting_repository_evidence": [
+    "README documents the build/run command",
+    "baseline/run_regression.sh refers to iDM.ini",
+    "benchmark timing CSVs record repeated iDM.ini exit_code=0"
+  ],
+  "author_input_tracked_at_pin": false,
+  "author_input_fetch": "404 Not Found",
+  "classification": "BLOCKED_PROVENANCE_MISSING_AUTHOR_INPUT",
+  "scientific_promotion_authorized": false,
+  "physical_falsification": false,
+  "interpretation": "The exact public GitHub snapshot documents and historically benchmarks iDM.ini but does not expose the referenced input file, so an unchanged immutable author model point cannot be reproduced from this pin. KMDSB will not reconstruct it post hoc.",
+  "next_gate": "Locate an immutable author-published exact configuration (prefer the archival products cited by README) or choose another provider; then run provider-control before any K1 decoupling/reference test."
+}
