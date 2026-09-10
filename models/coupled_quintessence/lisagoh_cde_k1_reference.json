@@ -1,0 +1,56 @@
+{
+  "schema": "KMDSB.W03.M14.LisaGohCDEK1Reference.v0.1",
+  "provider": "LisaGoh/CDE@b85a675af7544a5183e402964550811aa805b698",
+  "parent_provider_control_run": 34487561326,
+  "exits": {
+    "exact_bg": 1,
+    "exact_full": 1,
+    "tiny_full": 0
+  },
+  "arm_A_background_metrics": null,
+  "arm_A_parse_error": null,
+  "required_outputs": {
+    "k1_exact_full": {
+      "background": [],
+      "perturbation": [],
+      "linear_pk": [],
+      "cl": [],
+      "transfer": []
+    },
+    "k1_tiny_full": {
+      "background": [
+        "provider/class_CDE/output/k1_tiny_full_background.dat"
+      ],
+      "perturbation": [
+        "provider/class_CDE/output/k1_tiny_full_perturbations_k0_s.dat"
+      ],
+      "linear_pk": [
+        "provider/class_CDE/output/k1_tiny_full_pk.dat",
+        "provider/class_CDE/output/k1_tiny_full_pk_cb.dat"
+      ],
+      "cl": [
+        "provider/class_CDE/output/k1_tiny_full_cl_lensed.dat",
+        "provider/class_CDE/output/k1_tiny_full_cl.dat"
+      ],
+      "transfer": [
+        "provider/class_CDE/output/k1_tiny_full_tk.dat"
+      ]
+    }
+  },
+  "arm_A_background_pass": false,
+  "arm_B_exact_full_pass": false,
+  "arm_C_tiny_seed_diagnostic_pass": true,
+  "classification": "M14_LISAGOH_CDE_K1_BLOCKED_INFRASTRUCTURE",
+  "K1": "NOT_PASS",
+  "K3_promotion_authorized": false,
+  "K4_K5_authorized": false,
+  "physical_falsification_authorized": false,
+  "frozen_thresholds": {
+    "max_abs_beta": 1e-15,
+    "max_abs_dbeta_dz": 1e-15,
+    "max_abs_phi_prime_scf": 1e-14,
+    "max_abs_w_plus_1": 1e-12,
+    "rspan_rho_scf": 1e-12,
+    "rspan_rho_cdm_a3": 1e-08
+  }
+}
