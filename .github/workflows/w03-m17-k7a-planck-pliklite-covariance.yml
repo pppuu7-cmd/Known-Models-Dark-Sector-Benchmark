@@ -1,0 +1,87 @@
+name: W03 M17 K7a Planck Plik_lite covariance
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m17-k7a-planck-pliklite-covariance.yml'
+      - 'verification/m17/k7a_planck_pliklite_covariance.py'
+      - 'protocol/W03_M17_K7A_PLANCK_PLIKLITE_COVARIANCE_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  k7a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Install numerical dependencies
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3 scipy==1.16.1
+      - name: Pin theory and observation providers
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update >/dev/null
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync >/dev/null
+          git clone -q https://github.com/cmbant/CosmoMC.git cosmomc
+          git -C cosmomc checkout -q eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone -q https://github.com/liaocrane/IDECAMB.git patch
+          git -C patch checkout -q 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          rsync -a --exclude='.git' patch/ cosmomc/
+          git clone -q https://github.com/heatherprince/planck-lite-py.git plancklite
+          git -C plancklite checkout -q 2c0d0f67e59ce781654cf62dd7fb10757b0e60be
+          printf 'cosmomc=%s\nidecamb=%s\nplancklite=%s\n' "$(git -C cosmomc rev-parse HEAD)" "$(git -C patch rev-parse HEAD)" "$(git -C plancklite rev-parse HEAD)" > m17k7a_pins.txt
+          make -C cosmomc cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > m17k7a_build.log 2>&1
+      - name: Prepare frozen HDE and CPL cases
+        run: python3 verification/m17/k7a_planck_pliklite_covariance.py prepare cosmomc/test_ide.ini m17k7a_cases
+      - name: Execute theory cases
+        shell: bash
+        run: |
+          set +e
+          h06=999;cpl=999
+          (cd cosmomc && timeout --signal=TERM --kill-after=15s 120s ./cosmomc ../m17k7a_cases/h06.ini > ../m17k7a_h06.log 2>&1); h06=$?
+          (cd cosmomc && timeout --signal=TERM --kill-after=15s 120s ./cosmomc ../m17k7a_cases/cpl.ini > ../m17k7a_cpl.log 2>&1); cpl=$?
+          printf '{"h06":%d,"cpl":%d}\n' "$h06" "$cpl" > m17k7a_status.json
+          exit 0
+      - name: Measure frozen Planck covariance metric
+        run: |
+          python3 verification/m17/k7a_planck_pliklite_covariance.py analyze cosmomc plancklite m17k7a_status.json m17k7a_result.json
+          cat m17k7a_result.json
+      - name: Persist result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m17k7a_result.json /tmp/result.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main; git reset --hard origin/main
+          mkdir -p models/holographic_dark_energy waves/wave_03_expanded_dark_energy
+          cp /tmp/result.json models/holographic_dark_energy/M17_K7A_PLANCK_PLIKLITE_COVARIANCE_RESULT.json
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M17_K7A_PLANCK_PLIKLITE_COVARIANCE_RESULT.json
+          git add models/holographic_dark_energy/M17_K7A_PLANCK_PLIKLITE_COVARIANCE_RESULT.json waves/wave_03_expanded_dark_energy/M17_K7A_PLANCK_PLIKLITE_COVARIANCE_RESULT.json
+          git diff --cached --quiet || { git commit -m 'Record M17 K7a Planck covariance measurement'; git pull --rebase origin main; git push origin HEAD:main; }
+      - name: Enforce operator/output success only
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/result.json')); print(r['classification'])
+          if r['classification']!='M17_K7A_PLANCK_PLIKLITE_COVARIANCE_MEASURED': raise SystemExit(1)
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m17-k7a-planck-pliklite-covariance
+          path: |
+            m17k7a_pins.txt
+            m17k7a_build.log
+            m17k7a_cases/
+            m17k7a_*.log
+            m17k7a_status.json
+            m17k7a_result.json
+            cosmomc/m17k7a_h06.theory_cl
+            cosmomc/m17k7a_cpl.theory_cl
+          retention-days: 90
