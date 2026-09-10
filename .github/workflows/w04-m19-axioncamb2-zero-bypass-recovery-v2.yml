@@ -1,0 +1,150 @@
+name: W04 M19 axionCAMB2 exact-zero bypass recovery v2
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m19-axioncamb2-zero-bypass-recovery-v2.yml'
+      - 'verification/m19/axioncamb2_zero_bypass_recovery_v2.py'
+      - 'verification/m19/axioncamb2_zero_probe.py'
+      - 'protocol/W04_M19_AXIONCAMB2_ZERO_BYPASS_RECOVERY_V2_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  recover-zero-path-v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PIN: 891e779cc0bd422e49f97533e6c2fc761149737d
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pin original patched and debug providers
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in axc_orig axc_patch axc_debug; do
+            git clone -q https://github.com/dgrin1/axionCAMB.git "$d"
+            git -C "$d" checkout -q --detach "$PIN"
+            test "$(git -C "$d" rev-parse HEAD)" = "$PIN"
+          done
+          python3 verification/m19/axioncamb2_zero_probe.py prepare axc_orig/params.ini m19_v2_cases
+          python3 verification/m19/axioncamb2_zero_bypass_recovery_v2.py patch axc_patch
+          python3 verification/m19/axioncamb2_zero_bypass_recovery_v2.py patch axc_debug
+
+      - name: Build optimized providers
+        shell: bash
+        run: |
+          set +e
+          (cd axc_orig && make -j1 FFLAGS='-O3 -ffree-line-length-none -fallow-argument-mismatch' > ../m19_v2_build_orig.log 2>&1); bo=$?
+          (cd axc_patch && make -j1 FFLAGS='-O3 -ffree-line-length-none -fallow-argument-mismatch' > ../m19_v2_build_patch.log 2>&1); bp=$?
+          printf '{"build_orig":%d,"build_patch":%d}\n' "$bo" "$bp" > m19_v2_status.json
+          exit 0
+
+      - name: Execute optimized frozen cases
+        shell: bash
+        run: |
+          set +e
+          bo=$(python3 -c "import json;print(json.load(open('m19_v2_status.json'))['build_orig'])")
+          bp=$(python3 -c "import json;print(json.load(open('m19_v2_status.json'))['build_patch'])")
+          zf=999; zd=999; pp=999; po=999
+          if [ "$bp" -eq 0 ]; then
+            (cd axc_patch && ./camb ../m19_v2_cases/r0f.ini > ../m19_v2_zf.log 2>&1); zf=$?
+            (cd axc_patch && ./camb ../m19_v2_cases/r0d.ini > ../m19_v2_zd.log 2>&1); zd=$?
+            (cd axc_patch && ./camb ../m19_v2_cases/p1.ini > ../m19_v2_pp.log 2>&1); pp=$?
+          fi
+          if [ "$bo" -eq 0 ]; then
+            (cd axc_orig && ./camb ../m19_v2_cases/p1.ini > ../m19_v2_po.log 2>&1); po=$?
+          fi
+          python3 - <<PY
+          import json
+          p='m19_v2_status.json'; d=json.load(open(p)); d.update({'zf':$zf,'zd':$zd,'pp':$pp,'po':$po}); open(p,'w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          cat m19_v2_status.json
+          exit 0
+
+      - name: Runtime-check exact-zero
+        shell: bash
+        run: |
+          set +e
+          (cd axc_debug && make -j1 FFLAGS='-O0 -g -fbacktrace -fcheck=all -ffree-line-length-none -fallow-argument-mismatch' > ../m19_v2_build_debug.log 2>&1); bd=$?
+          dz=999
+          if [ "$bd" -eq 0 ]; then
+            (cd axc_debug && ./camb ../m19_v2_cases/r0f.ini > ../m19_v2_debug_zf.log 2>&1); dz=$?
+          fi
+          python3 - <<PY
+          import json
+          p='m19_v2_status.json'; d=json.load(open(p)); d.update({'build_debug':$bd,'debug_zf':$dz}); open(p,'w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          cat m19_v2_status.json
+          exit 0
+
+      - name: Analyze preregistered gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m19/axioncamb2_zero_bypass_recovery_v2.py analyze axc_patch axc_orig m19_v2_status.json m19_v2_result.json
+          cat m19_v2_result.json
+
+      - name: Persist result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m19_v2_result.json /tmp/m19_v2_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/fuzzy_ultralight_axion waves/wave_04_dark_matter
+          cp /tmp/m19_v2_result.json models/fuzzy_ultralight_axion/M19_AXIONCAMB2_ZERO_BYPASS_RECOVERY_V2_RESULT.json
+          cp /tmp/m19_v2_result.json waves/wave_04_dark_matter/M19_AXIONCAMB2_ZERO_BYPASS_RECOVERY_V2_RESULT.json
+          git add models/fuzzy_ultralight_axion/M19_AXIONCAMB2_ZERO_BYPASS_RECOVERY_V2_RESULT.json waves/wave_04_dark_matter/M19_AXIONCAMB2_ZERO_BYPASS_RECOVERY_V2_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M19 exact-zero recovery v2 result'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Enforce scoped recovery PASS
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/m19_v2_result.json'))
+          print('classification=',r['classification'])
+          if r['classification']!='M19_AXIONCAMB2_ZERO_BYPASS_RECOVERY_V2_PASS_WITH_SCOPE':
+              raise SystemExit(1)
+          PY
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m19-axioncamb2-zero-bypass-recovery-v2
+          path: |
+            m19_v2_cases/
+            m19_v2_build_*.log
+            m19_v2_*.log
+            m19_v2_status.json
+            m19_v2_result.json
+            axc_patch/r0f_scalCls.dat
+            axc_patch/r0f_matterpower.dat
+            axc_patch/r0f_transfer_out.dat
+            axc_patch/r0d_scalCls.dat
+            axc_patch/r0d_matterpower.dat
+            axc_patch/r0d_transfer_out.dat
+            axc_patch/p1_scalCls.dat
+            axc_patch/p1_matterpower.dat
+            axc_patch/p1_transfer_out.dat
+            axc_orig/p1_scalCls.dat
+            axc_orig/p1_matterpower.dat
+            axc_orig/p1_transfer_out.dat
+            verification/m19/axioncamb2_zero_bypass_recovery_v2.py
+            protocol/W04_M19_AXIONCAMB2_ZERO_BYPASS_RECOVERY_V2_PREREGISTRATION_v0.1.md
+          retention-days: 90
