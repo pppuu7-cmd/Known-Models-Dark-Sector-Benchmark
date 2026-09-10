@@ -19,20 +19,20 @@ jobs:
         shell: bash
         run: |
           cat >> recovery/STATE.md <<'EOF'
-
-## 2026-09-10 — M14 LisaGoh/CDE regularization split + author-branch audit
-Consumed run `34490297354`, job `102914977778`, artifact `10157548938`, digest `sha256:1e5d006704453d6d71aea4626d3c105996eee4370886cc226a270fe21f2c888e`. Baseline repeatability passed. Of the prospectively split exact-reference regularizations, only R2 is noninterfering on author and beta=0 tiny-seed controls, but R2 still fails exact full-reference execution (`R2_exact=1`). R1 opens the exact route but changes nonsingular spectra, so it fails the frozen noninterference requirement; R12 inherits that interference. Upstream `LisaGoh/CDE` branch `7bin@2a572b39d4ae0a3c940b6f179585686ae1a03881` retains the same scalar-velocity zero denominator and `beta_prime/phi_prime_scf` structure; no author-supported regular exact-beta=0 prescription was found. Classification: `M14_LISAGOH_CDE_AUTHOR_BRANCH_REFERENCE_REGULARIZATION_NOT_FOUND`. This is a provider/reference blocker, not physical falsification. Do not continue denominator patches, seed tuning, beta shrinking or serialization changes on this route. Next M14 gate: independent public source-complete provider with author-supported regular reference and active perturbation closure.
-EOF
+          
+          ## 2026-09-10 — M14 LisaGoh/CDE regularization split + author-branch audit
+          Consumed run `34490297354`, job `102914977778`, artifact `10157548938`, digest `sha256:1e5d006704453d6d71aea4626d3c105996eee4370886cc226a270fe21f2c888e`. Baseline repeatability passed. Only R2 is noninterfering on author and beta=0 tiny-seed controls, but R2 still fails exact full-reference execution (`R2_exact=1`). R1 opens the exact route but changes nonsingular spectra, so it fails the frozen noninterference requirement; R12 inherits that interference. Upstream `LisaGoh/CDE` branch `7bin@2a572b39d4ae0a3c940b6f179585686ae1a03881` retains the same scalar-velocity zero denominator and `beta_prime/phi_prime_scf` structure; no author-supported regular exact-beta=0 prescription was found. Classification: `M14_LISAGOH_CDE_AUTHOR_BRANCH_REFERENCE_REGULARIZATION_NOT_FOUND`. This is a provider/reference blocker, not physical falsification. Do not continue denominator patches, seed tuning, beta shrinking or serialization changes on this route. Next M14 gate: independent public source-complete provider with author-supported regular reference and active perturbation closure.
+          EOF
           cat >> recovery/RESTORE_FROM_NEW_CHAT.md <<'EOF'
-
-### 2026-09-10 — M14 LisaGoh/CDE branch audit delta
-Run `34490297354` split the independent exact-reference patch into R1/R2. Only R2 is noninterfering, but R2 cannot execute the exact full reference; R1 enables exact execution only by changing nonsingular outputs and is therefore inadmissible. Alternate author branch `7bin@2a572b39d4ae0a3c940b6f179585686ae1a03881` contains the same problematic zero-state structures and supplies no documented exact-reference prescription. Keep exact background reference valid but full perturbation K1 provider-blocked; do not promote the KMDSB verification patch to K1/K3 or reopen K4/K5. Next gate is a different independent source-complete coupled-quintessence provider.
-EOF
+          
+          ### 2026-09-10 — M14 LisaGoh/CDE branch audit delta
+          Run `34490297354` split the independent exact-reference patch into R1/R2. Only R2 is noninterfering, but R2 cannot execute the exact full reference; R1 enables exact execution only by changing nonsingular outputs and is therefore inadmissible. Alternate author branch `7bin@2a572b39d4ae0a3c940b6f179585686ae1a03881` contains the same problematic zero-state structures and supplies no documented exact-reference prescription. Keep exact background reference valid but full perturbation K1 provider-blocked; do not promote the KMDSB verification patch to K1/K3 or reopen K4/K5. Next gate is a different independent source-complete coupled-quintessence provider.
+          EOF
           cat >> logs/research_log.md <<'EOF'
-
-## 2026-09-10 — M14 LisaGoh/CDE regularization split and upstream-branch audit
-Consumed Actions run `34490297354` / job `102914977778` / artifact `10157548938` (`sha256:1e5d006704453d6d71aea4626d3c105996eee4370886cc226a270fe21f2c888e`). Frozen split result: R2 alone is noninterfering but does not execute exact beta=0; R1 executes an exact route but perturbs nonsingular author/tiny-seed spectra, so it fails noninterference. `LisaGoh/CDE` has visible branches main and 7bin; 7bin head `2a572b39d4ae0a3c940b6f179585686ae1a03881` retains the same unguarded scalar theta denominator and beta-prime/phi-prime term. No author-supported regular exact-reference path found. Classification `M14_LISAGOH_CDE_AUTHOR_BRANCH_REFERENCE_REGULARIZATION_NOT_FOUND`; provider blocker only, no physical FAIL. Census count unchanged. Audit: `models/coupled_quintessence/lisagoh_author_branch_reference_audit_2026-09-10.md`.
-EOF
+          
+          ## 2026-09-10 — M14 LisaGoh/CDE regularization split and upstream-branch audit
+          Consumed Actions run `34490297354` / job `102914977778` / artifact `10157548938` (`sha256:1e5d006704453d6d71aea4626d3c105996eee4370886cc226a270fe21f2c888e`). Frozen split result: R2 alone is noninterfering but does not execute exact beta=0; R1 executes an exact route but perturbs nonsingular author/tiny-seed spectra, so it fails noninterference. `LisaGoh/CDE` has visible branches main and 7bin; 7bin head `2a572b39d4ae0a3c940b6f179585686ae1a03881` retains the same unguarded scalar theta denominator and beta-prime/phi-prime term. No author-supported regular exact-reference path found. Classification `M14_LISAGOH_CDE_AUTHOR_BRANCH_REFERENCE_REGULARIZATION_NOT_FOUND`; provider blocker only, no physical FAIL. Census count unchanged. Audit: `models/coupled_quintessence/lisagoh_author_branch_reference_audit_2026-09-10.md`.
+          EOF
       - name: Commit sync
         shell: bash
         run: |
