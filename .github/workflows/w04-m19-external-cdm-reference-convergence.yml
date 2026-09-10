@@ -1,0 +1,112 @@
+name: W04 M19 external CDM reference convergence
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m19-external-cdm-reference-convergence.yml'
+      - 'verification/m19/external_cdm_reference_convergence.py'
+      - 'protocol/W04_M19_EXTERNAL_CDM_REFERENCE_CONVERGENCE_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  external-limit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      AXPIN: 891e779cc0bd422e49f97533e6c2fc761149737d
+      CDMPIN: dc437acd8c90aa7e5595fcb25c615b03de8357a7
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+
+      - name: Pin providers and generate frozen cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/dgrin1/axionCAMB.git axc
+          git -C axc checkout -q --detach "$AXPIN"
+          git clone -q https://github.com/cmbant/CAMB.git camb0
+          git -C camb0 checkout -q --detach "$CDMPIN"
+          test "$(git -C axc rev-parse HEAD)" = "$AXPIN"
+          test "$(git -C camb0 rev-parse HEAD)" = "$CDMPIN"
+          python3 verification/m19/external_cdm_reference_convergence.py prepare axc/params.ini camb0/params.ini m19_ext_cases
+
+      - name: Build pinned providers
+        shell: bash
+        run: |
+          set +e
+          (cd axc && make -j1 FFLAGS='-O3 -ffree-line-length-none -fallow-argument-mismatch' > ../m19_ext_build_ax.log 2>&1); ba=$?
+          (cd camb0 && make -j1 FFLAGS='-O3 -ffree-line-length-none -fallow-argument-mismatch -std=legacy' > ../m19_ext_build_cdm.log 2>&1); bc=$?
+          printf '{"build_ax":%d,"build_cdm":%d}\n' "$ba" "$bc" > m19_ext_status.json
+          exit 0
+
+      - name: Execute finite sequence and pure CDM
+        shell: bash
+        run: |
+          set +e
+          ba=$(python3 -c "import json;print(json.load(open('m19_ext_status.json'))['build_ax'])")
+          bc=$(python3 -c "import json;print(json.load(open('m19_ext_status.json'))['build_cdm'])")
+          a0=999;a1=999;a2=999;a3=999;a4=999;c0=999
+          if [ "$ba" -eq 0 ]; then
+            for i in 0 1 2 3 4; do (cd axc && ./camb ../m19_ext_cases/a${i}.ini > ../m19_ext_a${i}.log 2>&1); eval a${i}=$?; done
+          fi
+          if [ "$bc" -eq 0 ]; then (cd camb0 && ./camb ../m19_ext_cases/c0.ini > ../m19_ext_c0.log 2>&1); c0=$?; fi
+          python3 - <<PY
+          import json
+          p='m19_ext_status.json';d=json.load(open(p));d.update({'a0':$a0,'a1':$a1,'a2':$a2,'a3':$a3,'a4':$a4,'c0':$c0});open(p,'w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          cat m19_ext_status.json
+          exit 0
+
+      - name: Analyze frozen convergence gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m19/external_cdm_reference_convergence.py analyze axc camb0 m19_ext_status.json m19_ext_result.json
+          cat m19_ext_result.json
+
+      - name: Persist result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m19_ext_result.json /tmp/result.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main; git reset --hard origin/main
+          mkdir -p models/fuzzy_ultralight_axion waves/wave_04_dark_matter
+          cp /tmp/result.json models/fuzzy_ultralight_axion/M19_EXTERNAL_CDM_REFERENCE_CONVERGENCE_RESULT.json
+          cp /tmp/result.json waves/wave_04_dark_matter/M19_EXTERNAL_CDM_REFERENCE_CONVERGENCE_RESULT.json
+          git add models/fuzzy_ultralight_axion/M19_EXTERNAL_CDM_REFERENCE_CONVERGENCE_RESULT.json waves/wave_04_dark_matter/M19_EXTERNAL_CDM_REFERENCE_CONVERGENCE_RESULT.json
+          git diff --cached --quiet || { git commit -m 'Record M19 external CDM convergence'; git pull --rebase origin main; git push origin HEAD:main; }
+
+      - name: Enforce classification
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/result.json')); print(r['classification'])
+          if r['classification']!='M19_EXTERNAL_CDM_REFERENCE_CONVERGENCE_PASS_WITH_SCOPE': raise SystemExit(1)
+          PY
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m19-external-cdm-reference-convergence
+          path: |
+            m19_ext_cases/
+            m19_ext_build_*.log
+            m19_ext_*.log
+            m19_ext_status.json
+            m19_ext_result.json
+            axc/a*_scalCls.dat
+            axc/a*_matterpower.dat
+            axc/a*_transfer_out.dat
+            camb0/c0_scalCls.dat
+            camb0/c0_matterpower.dat
+            camb0/c0_transfer_out.dat
+          retention-days: 90
