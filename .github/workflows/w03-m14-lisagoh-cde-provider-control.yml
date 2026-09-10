@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/w03-m14-lisagoh-cde-provider-control.yml'
       - 'protocol/W03_M14_LISAGOH_CDE_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md'
+      - 'protocol/W03_M14_LISAGOH_CDE_PROVIDER_CONTROL_RECOVERY_PREREGISTRATION_v0.2.md'
 
 permissions:
   contents: write
@@ -28,13 +29,13 @@ jobs:
           gcc --version | head -1 > runtime.txt
           python3 --version >> runtime.txt
 
-      - name: Compile exact committed source
+      - name: Compile exact committed standalone CLASS target
         shell: bash
         run: |
           set +e
           cd provider/class_CDE
           make clean > ../../build.log 2>&1
-          make -j2 >> ../../build.log 2>&1
+          make class -j2 >> ../../build.log 2>&1
           echo "$?" > ../../build.exit
           cd ../..
           cat build.log
@@ -64,7 +65,7 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          import json, os
+          import json
           from pathlib import Path
           build=int(Path('build.exit').read_text().strip())
           run=int(Path('run.exit').read_text().strip())
@@ -89,9 +90,10 @@ jobs:
           tk=hits(['tk.dat'])
           passed=build==0 and run==0 and bool(bg) and bool(pk) and bool(cl) and bool(tk)
           result={
-            'schema':'KMDSB.W03.M14.LisaGohCDEProviderControl.v0.1',
+            'schema':'KMDSB.W03.M14.LisaGohCDEProviderControl.v0.2',
             'provider':'LisaGoh/CDE@b85a675af7544a5183e402964550811aa805b698',
             'workload':'class_CDE/CDE.ini unmodified',
+            'build_target':'make class -j2 (standalone author executable; no source edits)',
             'build_exit':build,'run_exit':run,
             'fresh_counts':{'background':len(bg),'linear_pk':len(pk),'cl':len(cl),'transfer':len(tk)},
             'fresh_products':fresh,
@@ -119,7 +121,7 @@ jobs:
           cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_LISAGOH_CDE_PROVIDER_CONTROL_RESULT.json
           git add models/coupled_quintessence/lisagoh_cde_provider_control.json waves/wave_03_expanded_dark_energy/M14_LISAGOH_CDE_PROVIDER_CONTROL_RESULT.json
           if ! git diff --cached --quiet; then
-            git commit -m 'Record LisaGoh CDE M14 provider control'
+            git commit -m 'Record LisaGoh CDE M14 provider control recovery'
             git push origin HEAD:main
           fi
 
