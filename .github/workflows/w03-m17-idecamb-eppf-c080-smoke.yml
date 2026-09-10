@@ -1,0 +1,107 @@
+name: W03 M17 IDECAMB ePPF c080 timing smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m17-idecamb-eppf-c080-smoke.yml'
+
+jobs:
+  c080-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact pinned IDECAMB overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update >/dev/null
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync python3 >/dev/null
+          git clone -q https://github.com/cmbant/CosmoMC.git cosmomc
+          git -C cosmomc checkout -q eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone -q https://github.com/liaocrane/IDECAMB.git patch
+          git -C patch checkout -q 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          rsync -a --exclude='.git' patch/ cosmomc/
+          make -C cosmomc cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > build.log 2>&1
+
+      - name: Prepare exact c080 noninteracting HDE ePPF case
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('cosmomc/test_ide.ini').read_text()
+          def one(old,new):
+              global s
+              if s.count(old)!=1: raise SystemExit(f'anchor count {s.count(old)} for {old!r}')
+              s=s.replace(old,new,1)
+          for x in ['DEFAULT(batch3/plik_rd12_HM_v22_TTTEEE.ini)','DEFAULT(batch3/lowl.ini)','DEFAULT(batch3/lowE.ini)','DEFAULT(batch3/lensing.ini)','DEFAULT(batch3/BAO.ini)','DEFAULT(batch3/Pantheon18.ini)']:
+              one(x,'#'+x)
+          one('\nWForm_CF = 1\n','\nWForm_CF = 2\n')
+          one('#Use_PPF = F','Use_PPF = T')
+          one('param[c_hde]= 0.8','param[c_hde]= 0.8')
+          one('param[beta_cf]= 0.02 -0.2 0.2 0.05 0.05','param[beta_cf]= 0')
+          one('#test_output_root = output_ide','test_output_root = m17_c080_smoke')
+          one('test_check_compare = 1820.775','#test_check_compare = 1820.775')
+          Path('cosmomc/m17_c080_smoke.ini').write_text(s)
+          PY
+
+      - name: Execute one case with diagnostic wall-clock cap
+        shell: bash
+        run: |
+          set +e
+          start=$(date +%s)
+          (cd cosmomc && /usr/bin/time -v timeout --signal=TERM --kill-after=30s 900s ./cosmomc m17_c080_smoke.ini > ../m17_c080_smoke.log 2> ../m17_c080_smoke.time)
+          rc=$?
+          stop=$(date +%s)
+          elapsed=$((stop-start))
+          printf 'exit_code=%s\nelapsed_seconds=%s\n' "$rc" "$elapsed" > smoke_status.txt
+          find cosmomc -maxdepth 2 -type f \( -name 'm17_c080_smoke*.quantity' -o -name 'm17_c080_smoke*.theory_cl' \) -exec cp {} . \;
+          echo "SMOKE_EXIT=$rc ELAPSED_SECONDS=$elapsed"
+          exit 0
+
+      - name: Classify timing diagnostic only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+          vals={}
+          for line in Path('smoke_status.txt').read_text().splitlines():
+              k,v=line.split('=',1); vals[k]=int(v)
+          outs=sorted([p.name for p in Path('.').glob('m17_c080_smoke*.quantity')])+sorted([p.name for p in Path('.').glob('m17_c080_smoke*.theory_cl')])
+          def finite_rows(p):
+              n=0
+              for raw in p.read_text(errors='replace').splitlines():
+                  s=raw.strip()
+                  if not s or s.startswith('#'): continue
+                  try: xs=[float(x.replace('D','E').replace('d','e')) for x in s.split()]
+                  except: continue
+                  if xs and all(math.isfinite(x) for x in xs): n+=1
+              return n
+          rows={p.name:finite_rows(p) for p in Path('.').glob('m17_c080_smoke*.*') if p.suffix in ['.quantity','.theory_cl']}
+          rc=vals['exit_code']
+          if rc==0 and len(outs)>=2 and all(n>0 for n in rows.values()): cls='M17_C080_SMOKE_EXECUTABLE'
+          elif rc in (124,137,143): cls='M17_C080_SMOKE_TIMEOUT_900S'
+          else: cls='M17_C080_SMOKE_EXECUTION_ERROR'
+          out={'schema':'KMDSB.W03.M17.c080TimingSmoke.v0.1','classification':cls,'scientific_gate':False,'canonical_provider_status_changed':False,'c':0.8,'beta_cf':0,'Use_PPF':True,**vals,'outputs':outs,'finite_rows':rows}
+          Path('smoke_result.json').write_text(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+
+      - name: Upload diagnostic bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m17-c080-timing-smoke
+          path: |
+            smoke_result.json
+            smoke_status.txt
+            m17_c080_smoke.log
+            m17_c080_smoke.time
+            m17_c080_smoke*.quantity
+            m17_c080_smoke*.theory_cl
+            build.log
+          if-no-files-found: warn
+          retention-days: 30
