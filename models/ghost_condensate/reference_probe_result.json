@@ -1,0 +1,33 @@
+{
+  "schema": "KMDSB.W03.M18.GhostCondensateReferenceProbe.v0.1",
+  "solver": "KunhaoZhong/CLASS_GSF@07e015246c4b40f4e22bb50c9a0a63a621bb61f7",
+  "model_gsf": 1,
+  "lagrangian": "P=-X+c1*exp(lambda*phi)*X^2",
+  "cases": {
+    "lcdm": "Omega_gsf=0; Omega_Lambda inferred by closure",
+    "dgf_author": "author dgf.ini except output root",
+    "dgf_lambda0": "author dgf.ini except lambda 0.2 -> 0 and output root"
+  },
+  "case_exits": {
+    "lcdm": 0,
+    "dgf_author": 0,
+    "dgf_lambda0": 139
+  },
+  "fresh_outputs": [
+    "class_gsf/output/m18_author__background.dat",
+    "class_gsf/output/m18_author__cl.dat",
+    "class_gsf/output/m18_author__parameters.ini",
+    "class_gsf/output/m18_author__pk.dat",
+    "class_gsf/output/m18_author__thermodynamics.dat",
+    "class_gsf/output/m18_author__unused_parameters",
+    "class_gsf/output/m18_lcdm__background.dat",
+    "class_gsf/output/m18_lcdm__cl.dat",
+    "class_gsf/output/m18_lcdm__parameters.ini",
+    "class_gsf/output/m18_lcdm__pk.dat",
+    "class_gsf/output/m18_lcdm__thermodynamics.dat",
+    "class_gsf/output/m18_lcdm__unused_parameters"
+  ],
+  "classification": "BLOCKED_IMPLEMENTATION_REFERENCE_PROBE",
+  "scientific_promotion_authorized": false,
+  "interpretation": "diagnostic reference-floor execution gate only; no K5-K9/B4-B8 promotion"
+}
