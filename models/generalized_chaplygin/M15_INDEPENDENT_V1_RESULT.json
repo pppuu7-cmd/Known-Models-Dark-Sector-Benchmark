@@ -1,0 +1,77 @@
+{
+  "schema": "KMDSB.W03.M15.independent_reproduction.V1.v0.1",
+  "upstream": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "scope": "alpha=0 selector/state scaffold only; no finite-alpha physics implemented",
+  "gauge": "newtonian",
+  "exits": {
+    "reference": 0,
+    "m15_alpha0": 0,
+    "forbidden_alpha001": 1
+  },
+  "negative_nonzero_rejection_pass": true,
+  "metrics": {
+    "background": {
+      "shape_match": true,
+      "finite": true,
+      "rows": 40000,
+      "compared_entries": 839996,
+      "max_symmetric_relative_difference": 0.0,
+      "rms_symmetric_relative_difference": 0.0,
+      "max_absolute_difference": 0.0
+    },
+    "cl_all_spectra": {
+      "shape_match": true,
+      "finite": true,
+      "rows": 1799,
+      "compared_entries": 5397,
+      "max_symmetric_relative_difference": 0.0,
+      "rms_symmetric_relative_difference": 0.0,
+      "max_absolute_difference": 0.0
+    },
+    "pk": {
+      "shape_match": true,
+      "finite": true,
+      "rows": 470,
+      "compared_entries": 470,
+      "max_symmetric_relative_difference": 0.0,
+      "rms_symmetric_relative_difference": 0.0,
+      "max_absolute_difference": 0.0
+    },
+    "tk": {
+      "shape_match": true,
+      "finite": true,
+      "rows": 470,
+      "compared_entries": 3760,
+      "max_symmetric_relative_difference": 0.0,
+      "rms_symmetric_relative_difference": 0.0,
+      "max_absolute_difference": 0.0
+    }
+  },
+  "cl_channels": {
+    "TT": {
+      "rms_symmetric_relative_difference": 0.0,
+      "max_symmetric_relative_difference": 0.0,
+      "entries": 1799
+    },
+    "EE": {
+      "rms_symmetric_relative_difference": 0.0,
+      "max_symmetric_relative_difference": 0.0,
+      "entries": 1799
+    },
+    "TE": {
+      "rms_symmetric_relative_difference": 0.0,
+      "max_symmetric_relative_difference": 0.0,
+      "entries": 1799
+    }
+  },
+  "frozen_thresholds": {
+    "background_max_symrel": 1e-08,
+    "cmb_channel_rms_symrel": 1e-05,
+    "pk_rms_symrel": 1e-05,
+    "tk_rms_symrel": 1e-05
+  },
+  "classification": "M15_INDEPENDENT_REPRO_REFERENCE_PASS",
+  "scientific_promotion": false,
+  "finite_alpha_authorized": true,
+  "physical_falsification": false
+}
