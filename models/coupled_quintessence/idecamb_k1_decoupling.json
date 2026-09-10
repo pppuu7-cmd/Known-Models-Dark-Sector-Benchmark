@@ -1,0 +1,39 @@
+{
+  "schema": "KMDSB.W03.M14.IDECAMBK1Decoupling.v0.1",
+  "provider_base": "cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4",
+  "provider_overlay": "liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075",
+  "build_exit": 0,
+  "anchors": {
+    "a020": {
+      "alpha_quint": 0.2,
+      "beta_cq": 0.0,
+      "run_exit": 0,
+      "cq_selected": true,
+      "quantity_rows": 2000,
+      "quantity_cols": 11,
+      "theory_cl_rows": 2499,
+      "all_finite": true,
+      "gQ_exact_zero": true,
+      "a_times_grhoc_relative_drift": 0.00011147809168407837,
+      "drift_threshold": 0.0002,
+      "pass": true
+    },
+    "a080": {
+      "alpha_quint": 0.8,
+      "beta_cq": 0.0,
+      "run_exit": 0,
+      "cq_selected": true,
+      "quantity_rows": 2000,
+      "quantity_cols": 11,
+      "theory_cl_rows": 2499,
+      "all_finite": true,
+      "gQ_exact_zero": true,
+      "a_times_grhoc_relative_drift": 0.00011147809168407837,
+      "drift_threshold": 0.0002,
+      "pass": true
+    }
+  },
+  "classification": "M14_IDECAMB_K1_DECOUPLING_PASS_WITH_SCOPE",
+  "scope": "source-exact interaction-off invariants across two prospectively withheld scalar anchors; no independent cross-solver comparator",
+  "physical_falsification_authorized": false
+}
