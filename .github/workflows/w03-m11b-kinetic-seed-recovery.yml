@@ -1,0 +1,190 @@
+name: W03 M11b kinetic-seed recovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m11b-kinetic-seed-recovery.yml'
+      - 'protocol/W03_M11B_KINETIC_SEED_RECOVERY_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch pinned CLASS_GSF and build binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/KunhaoZhong/CLASS_GSF.git class_gsf
+          git -C class_gsf checkout -q 07e015246c4b40f4e22bb50c9a0a63a621bb61f7
+          test "$(git -C class_gsf rev-parse HEAD)" = "07e015246c4b40f4e22bb50c9a0a63a621bb61f7"
+          set +e
+          make -C class_gsf -j2 class > class_gsf_build.log 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > class_gsf_build.exit
+
+      - name: Write frozen recovery cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cfg out logs
+          cat > cfg/base.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          reio_parametrization = reio_none
+          output = mPk
+          modes = s
+          ic = ad
+          gauge = synchronous
+          non linear = none
+          z_pk = 0.295,0.51,0.706,0.934,1.317,1.491,2.33
+          P_k_max_h/Mpc = 0.2
+          write_background = yes
+          headers = yes
+          format = class
+          overwrite_root = yes
+          EOF
+          cp cfg/base.ini cfg/lcdm.ini
+          cat >> cfg/lcdm.ini <<EOF
+          Omega_fld = 0
+          Omega_gsf = 0
+          root = ${GITHUB_WORKSPACE}/out/lcdm
+          EOF
+
+          make_case(){
+            local tag="$1" m="$2" cs="$3" sign="$4" exponent="$5"
+            cp cfg/base.ini cfg/${tag}.ini
+            cat >> cfg/${tag}.ini <<EOF
+          Omega_fld = 0
+          Omega_Lambda = 0
+          Omega_gsf = -1
+          gsf_parameters = 6, 1, 0, ${sign}, ${exponent}, 1, 1, ${m}, ${cs}
+          attractor_ic_gsf = no
+          gsf_tuning_index = 6
+          gsf_dxdy_guess = 1
+          root = ${GITHUB_WORKSPACE}/out/${tag}
+          EOF
+          }
+
+          for exp in -20 -18 -17 -16; do
+            emag=${exp#-}
+            for s in p m; do
+              if [ "$s" = p ]; then sign=1; else sign=-1; fi
+              make_case ref_${s}e${emag} 0 1.0 "$sign" "$exp"
+              make_case nc_${s}e${emag} 1.0 0.90 "$sign" "$exp"
+            done
+          done
+
+      - name: Run pure control and frozen seed ladder
+        shell: bash
+        run: |
+          set +e
+          : > logs/case_exits.tsv
+          if [ "$(cat class_gsf_build.exit)" = 0 ]; then
+            ./class_gsf/class cfg/lcdm.ini > logs/lcdm.log 2>&1
+            echo -e "lcdm\t$?" >> logs/case_exits.tsv
+            for f in cfg/ref_*.ini cfg/nc_*.ini; do
+              tag=$(basename "$f" .ini)
+              ./class_gsf/class "$f" > "logs/${tag}.log" 2>&1
+              echo -e "${tag}\t$?" >> logs/case_exits.tsv
+            done
+          fi
+          exit 0
+
+      - name: Classify recovery gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib
+          build=int(pathlib.Path('class_gsf_build.exit').read_text().strip())
+          exits={}
+          p=pathlib.Path('logs/case_exits.tsv')
+          if p.exists():
+              for line in p.read_text().splitlines():
+                  if line.strip():
+                      k,v=line.split(); exits[k]=int(v)
+          successful_pairs=[]
+          partial=[]
+          for exp in (20,18,17,16):
+              for s in ('p','m'):
+                  r=exits.get(f'ref_{s}e{exp}')
+                  n=exits.get(f'nc_{s}e{exp}')
+                  if r==0 or n==0:
+                      partial.append({'sign':s,'exponent':-exp,'ref_exit':r,'nc_exit':n})
+                  if r==0 and n==0:
+                      successful_pairs.append({'sign':s,'exponent':-exp})
+          if build != 0 or exits.get('lcdm') not in (0,):
+              cls='RECOVERY_BUILD_OR_CONTROL_FAILURE'
+          elif successful_pairs:
+              cls='RECOVERY_EXECUTABLE_REGION_FOUND'
+          elif partial:
+              cls='RECOVERY_PARTIAL_EXECUTABLE_REGION'
+          else:
+              cls='RECOVERY_NO_EXECUTABLE_REGION_IN_FROZEN_LADDER'
+          out={
+            'schema':'KMDSB.W03.M11b.KineticSeedRecovery.v0.1',
+            'solver':'KunhaoZhong/CLASS_GSF@07e015246c4b40f4e22bb50c9a0a63a621bb61f7',
+            'model_gsf':6,
+            'scope':'IMPLEMENTATION_RECOVERY_ONLY_NO_B4_B8_PROMOTION',
+            'source_diagnosis':{
+              'lagrangian':'P=X^(n+1)/A^n-V0*phi^m; n=(1-cs2)/(2*cs2)',
+              'previous_phi_prime_ini':0.0,
+              'candidate_failure_mechanism':'PXX contains X^(n-1); zero-kinetic start can make the model-6 Jacobian singular/non-finite'
+            },
+            'frozen_seed_magnitudes':[1e-20,1e-18,1e-17,1e-16],
+            'signs':['positive','negative'],
+            'diagnostic_cases':{'reference_like':{'m':0,'cs2':1.0},'noncanonical':{'m':1.0,'cs2':0.90}},
+            'build_exit':build,
+            'case_exits':exits,
+            'successful_seed_pairs':successful_pairs,
+            'partially_successful_seed_pairs':partial,
+            'classification':cls,
+            'scientific_promotion_authorized':False,
+            'next_gate_if_executable':'Prospectively define and validate a physical initial-state prescription before any covariant response comparison to effective M11.'
+          }
+          pathlib.Path('m11b_kinetic_seed_recovery.json').write_text(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+
+      - name: Persist recovery result race-safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m11b_kinetic_seed_recovery.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/covariant_kessence
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M11B_KINETIC_SEED_RECOVERY_RESULT.json
+          cp /tmp/result.json models/covariant_kessence/kinetic_seed_recovery_result.json
+          git add waves/wave_03_expanded_dark_energy/M11B_KINETIC_SEED_RECOVERY_RESULT.json models/covariant_kessence/kinetic_seed_recovery_result.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M11b kinetic-seed recovery result'
+            git push origin HEAD:main
+          fi
+
+      - name: Upload immutable recovery bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m11b-kinetic-seed-recovery
+          path: |
+            m11b_kinetic_seed_recovery.json
+            class_gsf_build.exit
+            class_gsf_build.log
+            cfg/
+            logs/
+          if-no-files-found: warn
+          retention-days: 90
