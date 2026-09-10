@@ -1,0 +1,120 @@
+name: W03 M14 IDECAMB CQ execution control
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-idecamb-cq-execution-control.yml'
+      - 'protocol/W03_M14_IDECAMB_CQ_EXECUTION_CONTROL_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  cq-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync
+      - name: Fetch exact providers and build overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/cmbant/CosmoMC.git cosmomc_base
+          git -C cosmomc_base checkout eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone https://github.com/liaocrane/IDECAMB.git idecamb_patch
+          git -C idecamb_patch checkout 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          test "$(git -C cosmomc_base rev-parse HEAD)" = "eb08c2fe91d9711929802fede310ae58c020fcb4"
+          test "$(git -C idecamb_patch rev-parse HEAD)" = "4f1093d9efe46f28cf7e2acb4d07ae116ad5e075"
+          rsync -a --exclude='.git' idecamb_patch/ cosmomc_base/
+          make -C cosmomc_base cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > build.log 2>&1
+      - name: Prepare frozen author CQ selector
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp cosmomc_base/test_ide.ini cq_test.ini
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('cq_test.ini')
+          s=p.read_text()
+          old='Class_IDE = 1 '
+          if s.count(old) != 1:
+              raise SystemExit(f'expected exactly one active author selector {old!r}; found {s.count(old)}')
+          p.write_text(s.replace(old,'Class_IDE = 2 ',1))
+          PY
+          diff -u cosmomc_base/test_ide.ini cq_test.ini > selector.diff || true
+          grep -E '^Class_IDE[[:space:]]*=' cq_test.ini
+      - name: Execute CQ control
+        shell: bash
+        run: |
+          set +e
+          cp cq_test.ini cosmomc_base/cq_test.ini
+          cd cosmomc_base
+          ./cosmomc cq_test.ini > ../cq_run.log 2>&1
+          echo "$?" > ../cq_run.exit
+          cd ..
+          tail -n 180 cq_run.log || true
+          exit 0
+      - name: Classify CQ execution control
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,re
+          rc=int(open('cq_run.exit').read())
+          log=open('cq_run.log',errors='replace').read()
+          low=log.lower()
+          cq_hint=('coupled quintessence' in low) or bool(re.search(r'class_ide\s*[:=]?\s*2',low))
+          if rc==0 and cq_hint:
+              cls='M14_IDECAMB_CQ_EXECUTION_PASS'
+          elif rc==0:
+              cls='M14_IDECAMB_CQ_EXECUTION_AMBIGUOUS_IDENTITY'
+          else:
+              cls='M14_IDECAMB_CQ_EXECUTION_RUNTIME_BLOCKED'
+          out={
+            'schema':'KMDSB.W03.M14.IDECAMBCQExecutionControl.v0.1',
+            'base':'cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4',
+            'overlay':'liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075',
+            'frozen_change':'author test_ide.ini: active Class_IDE 1 -> 2 only',
+            'run_exit':rc,
+            'cq_identity_log_hint':cq_hint,
+            'classification':cls,
+            'scientific_promotion_authorized':False,
+            'next_if_pass':'Preregister numerical K1 beta_cq=0 decoupling regression before execution.'
+          }
+          open('m14_idecamb_cq_execution_control.json','w').write(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+      - name: Persist machine control result race-safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m14_idecamb_cq_execution_control.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/coupled_quintessence
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_IDECAMB_CQ_EXECUTION_CONTROL_RESULT.json
+          cp /tmp/result.json models/coupled_quintessence/idecamb_cq_execution_control.json
+          git add waves/wave_03_expanded_dark_energy/M14_IDECAMB_CQ_EXECUTION_CONTROL_RESULT.json models/coupled_quintessence/idecamb_cq_execution_control.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record IDECAMB CQ execution control result'
+            git push origin HEAD:main
+          fi
+      - name: Upload immutable bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m14-idecamb-cq-execution-control
+          path: |
+            m14_idecamb_cq_execution_control.json
+            cq_run.log
+            cq_run.exit
+            build.log
+            selector.diff
+            cq_test.ini
+          retention-days: 90
