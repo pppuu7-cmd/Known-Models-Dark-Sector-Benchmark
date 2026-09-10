@@ -1,0 +1,117 @@
+name: W03 M13b SimpleMC K1 reference
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-simplemc-k1-reference.yml'
+      - 'protocol/W03_M13B_SIMPLEMC_K1_REFERENCE_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  k1-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+      - name: Fetch pinned provider
+        run: |
+          git clone https://github.com/ja-vazquez/SimpleMC.git simplemc_provider
+          git -C simplemc_provider checkout a268fe5e2545428ddcf76b37b166a55dbf692fb0
+          test "$(git -C simplemc_provider rev-parse HEAD)" = "a268fe5e2545428ddcf76b37b166a55dbf692fb0"
+      - name: Install compatible runtime
+        run: |
+          python -m pip install --disable-pip-version-check --upgrade 'pip<25'
+          python -m pip install --disable-pip-version-check 'numpy==1.24.4' 'scipy==1.10.1' 'scikit-learn==1.1.3' 'matplotlib==3.7.5' 'pandas==1.5.3' 'numdifftools==0.9.41'
+      - name: Execute frozen K1 control
+        shell: bash
+        run: |
+          set +e
+          cd simplemc_provider
+          PYTHONPATH=. python - <<'PY' > ../m13b_k1.log 2>&1
+          import json, traceback, numpy as np
+          from simplemc.models.QuintomCosmology import QuintomCosmology
+          from simplemc.cosmo.paramDefs import mquin_par, mphan_par
+
+          mquin_par.setValue(1.7)
+          ref=QuintomCosmology(vary_mquin=True, vary_mphan=False)
+          ref.updateParams([mquin_par]); ref.call_functions()
+          aa=np.exp(ref.lna)
+          href=np.asarray([ref.Hubble_a(float(a)) for a in aa],float)
+          wref=np.asarray([ref.w_de(float(a)) for a in aa],float)
+          rhoref=np.asarray([ref.sf_rho(ref.solution[:,i]) for i in range(ref.solution.shape[1])],float)
+
+          result={'schema':'KMDSB.W03.M13b.SimpleMCK1Reference.v0.1','provider':'ja-vazquez/SimpleMC@a268fe5e2545428ddcf76b37b166a55dbf692fb0','anchor':{'mquin':1.7,'beta':0.0},'reference':{'branch':'canonical_one_field','phi_ini':float(ref.phi_ini),'finite':bool(np.all(np.isfinite(ref.solution)) and np.all(np.isfinite(href)) and np.all(np.isfinite(wref)) and np.all(np.isfinite(rhoref)))},'ladder':[],'thresholds':{'max_rel_H':1e-10,'max_rel_rho':1e-10,'max_abs_w':1e-10},'scientific_promotion_authorized':False,'physical_falsification_authorized':False}
+          for mp in [0.0,1e-3,5e-4,2.5e-4]:
+              try:
+                  mquin_par.setValue(1.7); mphan_par.setValue(mp)
+                  q=QuintomCosmology(vary_mquin=True,vary_mphan=True)
+                  q.updateParams([mquin_par,mphan_par]); q.call_functions()
+                  h=np.asarray([q.Hubble_a(float(a)) for a in aa],float)
+                  w=np.asarray([q.w_de(float(a)) for a in aa],float)
+                  rho=np.asarray([q.sf_rho(q.solution[:,i]) for i in range(q.solution.shape[1])],float)
+                  finite=bool(np.all(np.isfinite(q.solution)) and np.all(np.isfinite(h)) and np.all(np.isfinite(w)) and np.all(np.isfinite(rho)))
+                  dH=np.max(np.abs((h-href)/np.maximum(np.abs(href),1e-300)))
+                  dr=np.max(np.abs((rho-rhoref)/np.maximum(np.abs(rhoref),1e-300)))
+                  dw=np.max(np.abs(w-wref))
+                  result['ladder'].append({'mphan':mp,'phi_ini':float(q.phi_ini),'fallback':bool(q.phi_ini in (0,-1)),'finite':finite,'max_rel_H':float(dH),'max_rel_rho':float(dr),'max_abs_w':float(dw)})
+              except Exception as e:
+                  result['ladder'].append({'mphan':mp,'finite':False,'error':repr(e),'traceback':traceback.format_exc()[-2000:]})
+          z=result['ladder'][0]
+          exact=bool(z.get('finite') and not z.get('fallback') and z.get('max_rel_H',1)>1e-10 is False)
+          exact=bool(z.get('finite') and not z.get('fallback') and z['max_rel_H']<=1e-10 and z['max_rel_rho']<=1e-10 and z['max_abs_w']<=1e-10)
+          result['K1']='PASS_WITH_SCOPE' if exact else 'FAIL_OR_BRANCH_DISCONTINUITY'
+          result['classification']='M13B_SIMPLEMC_K1_REFERENCE_PASS_WITH_SCOPE' if exact else 'M13B_SIMPLEMC_K1_REFERENCE_FAIL_OR_BRANCH_DISCONTINUITY'
+          pos=[r for r in result['ladder'][1:] if r.get('finite')]
+          if len(pos)==3:
+              result['positive_mass_continuity_diagnostic']={'H_errors':[r['max_rel_H'] for r in pos],'rho_errors':[r['max_rel_rho'] for r in pos],'w_errors':[r['max_abs_w'] for r in pos],'phi_ini':[r['phi_ini'] for r in pos]}
+          result['limitations']=['background-only provider','two-field initial-condition search is marked unfinished by provider','positive-mass continuity is diagnostic and does not alter exact-zero K1 classification','K3/K4/K5 remain open']
+          open('../m13b_k1_reference.json','w').write(json.dumps(result,indent=2,allow_nan=False)+'\n')
+          print(json.dumps(result,indent=2))
+          PY
+          rc=$?
+          echo "$rc" > ../m13b_k1.exit
+          cd ..
+          cat m13b_k1.log || true
+          exit 0
+      - name: Ensure result exists
+        run: |
+          if [ ! -f m13b_k1_reference.json ]; then
+            python - <<'PY'
+          import json,os
+          r={'schema':'KMDSB.W03.M13b.SimpleMCK1Reference.v0.1','classification':'M13B_SIMPLEMC_K1_REFERENCE_BLOCKED_IMPLEMENTATION','python_exit':int(open('m13b_k1.exit').read()) if os.path.exists('m13b_k1.exit') else None,'scientific_promotion_authorized':False,'physical_falsification_authorized':False}
+          open('m13b_k1_reference.json','w').write(json.dumps(r,indent=2)+'\n')
+          PY
+          fi
+      - name: Persist canonical result
+        shell: bash
+        run: |
+          cp m13b_k1_reference.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/quintom
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M13B_SIMPLEMC_K1_REFERENCE_RESULT.json
+          cp /tmp/result.json models/quintom/simplemc_k1_reference.json
+          git add waves/wave_03_expanded_dark_energy/M13B_SIMPLEMC_K1_REFERENCE_RESULT.json models/quintom/simplemc_k1_reference.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M13b SimpleMC K1 reference control'
+            git push origin HEAD:main
+          fi
+      - name: Upload immutable bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m13b-simplemc-k1-reference
+          path: |
+            m13b_k1_reference.json
+            m13b_k1.log
+            m13b_k1.exit
+          retention-days: 90
