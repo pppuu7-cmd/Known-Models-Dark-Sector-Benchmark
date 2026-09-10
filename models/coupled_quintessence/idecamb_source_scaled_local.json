@@ -1,0 +1,70 @@
+{
+  "schema": "KMDSB.W03.M14.IDECAMBSourceScaledLocal.v0.1",
+  "beta_star_source_estimate": 7.813256771938583e-07,
+  "grid": [
+    0,
+    5e-08,
+    1e-07
+  ],
+  "case_exits": {
+    "b0": 0,
+    "b5e8": 0,
+    "b1e7": 0
+  },
+  "previous_failures_retained": true,
+  "physical_falsification_authorized": false,
+  "observational_claim_authorized": false,
+  "metrics": {
+    "h": 5e-08,
+    "relative_norm_mismatch": 0.00855452675915267,
+    "norm_threshold": 0.1,
+    "angle_deg": 8.688271660612795,
+    "angle_threshold_deg": 3.0,
+    "fine_max_abs_response": 0.0006947734370746082,
+    "nonnull_floor": 5e-05,
+    "channel_metrics": {
+      "dln_rho_de": {
+        "fine_max_abs": 0.0006947734370746082,
+        "fine_norm": 0.007349637685486697,
+        "points": 2000
+      },
+      "dln_rho_c": {
+        "fine_max_abs": 6.730607439865887e-05,
+        "fine_norm": 9.541209319633845e-05,
+        "points": 2000
+      },
+      "dln_H": {
+        "fine_max_abs": 0.0,
+        "fine_norm": 0.0,
+        "points": 2000
+      },
+      "dw": {
+        "fine_max_abs": 0.0005800000000000249,
+        "fine_norm": 0.005426536648729099,
+        "points": 2000
+      },
+      "qhat": {
+        "fine_max_abs": 2.971279999035135e-09,
+        "fine_norm": 4.4732647725540276e-08,
+        "points": 2000
+      },
+      "dln_TT": {
+        "fine_max_abs": 9.536979645790045e-05,
+        "fine_norm": 0.00019507988581069183,
+        "points": 2499
+      },
+      "dln_EE": {
+        "fine_max_abs": 6.322911070361179e-05,
+        "fine_norm": 0.0001023463409932745,
+        "points": 2499
+      },
+      "dln_PP": {
+        "fine_max_abs": 8.523332628202676e-05,
+        "fine_norm": 0.000579703378237794,
+        "points": 2499
+      }
+    }
+  },
+  "classification": "M14_IDECAMB_K4_SOURCE_SCALED_FAIL",
+  "K5_status": "BLOCKED_BY_K4"
+}
