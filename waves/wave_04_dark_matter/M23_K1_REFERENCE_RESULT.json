@@ -1,0 +1,245 @@
+{
+  "Gamma_0_nadm_Mpc^-1": [
+    2.371e-08,
+    7.113e-09,
+    2.371e-09,
+    7.113e-10,
+    2.371e-10
+  ],
+  "K0_provenance": "PASS_WITH_SCOPE_PINNED_NATIVE_CLASS_IDM_DR",
+  "K1_reference_limit": "PASS_WITH_SCOPE_FIXED_DM_DR_CONTENT_ONLY_COUPLING_TO_ZERO",
+  "K2_physical_geometry": "ONE_SIDED_GAMMA_GE_0_NO_SIGN_QUOTIENT",
+  "K4_promoted": false,
+  "blocks": {
+    "EE": {
+      "R2_sequence": [
+        0.001838728672063292,
+        0.0005620762341322728,
+        0.00018798375134162338,
+        5.6070845546963254e-05,
+        1.9373245701315395e-05
+      ],
+      "fit_smallest3": {
+        "logA": 11.01980756092246,
+        "p": 0.9872027898017689,
+        "valid": true
+      },
+      "largest_response_gt_1e-8": true,
+      "monotonic_with_2pct_slack": true,
+      "pass": true,
+      "points": [
+        {
+          "Gamma_0_nadm": 2.371e-08,
+          "R2": 0.001838728672063292,
+          "n": 2499
+        },
+        {
+          "Gamma_0_nadm": 7.113e-09,
+          "R2": 0.0005620762341322728,
+          "n": 2499
+        },
+        {
+          "Gamma_0_nadm": 2.371e-09,
+          "R2": 0.00018798375134162338,
+          "n": 2499
+        },
+        {
+          "Gamma_0_nadm": 7.113e-10,
+          "R2": 5.6070845546963254e-05,
+          "n": 2499
+        },
+        {
+          "Gamma_0_nadm": 2.371e-10,
+          "R2": 1.9373245701315395e-05,
+          "n": 2499
+        }
+      ],
+      "smallest_le_quarter_largest": true
+    },
+    "Pk": {
+      "R2_sequence": [
+        0.009865185525987814,
+        0.0030216204300359435,
+        0.001013449787410752,
+        0.00030462649969021814,
+        0.00010163022430924654
+      ],
+      "fit_smallest3": {
+        "logA": 12.941342925356118,
+        "p": 0.9987730740284927,
+        "valid": true
+      },
+      "largest_response_gt_1e-8": true,
+      "monotonic_with_2pct_slack": true,
+      "pass": true,
+      "points": [
+        {
+          "Gamma_0_nadm": 2.371e-08,
+          "R2": 0.009865185525987814,
+          "k_max": 17.84576293892,
+          "k_min": 1.044775322519e-05,
+          "n": 534
+        },
+        {
+          "Gamma_0_nadm": 7.113e-09,
+          "R2": 0.0030216204300359435,
+          "k_max": 22.46648378964,
+          "k_min": 1.044775322519e-05,
+          "n": 535
+        },
+        {
+          "Gamma_0_nadm": 2.371e-09,
+          "R2": 0.001013449787410752,
+          "k_max": 17.84576331598,
+          "k_min": 1.044775322519e-05,
+          "n": 534
+        },
+        {
+          "Gamma_0_nadm": 7.113e-10,
+          "R2": 0.00030462649969021814,
+          "k_max": 22.46648379624,
+          "k_min": 1.044775322519e-05,
+          "n": 535
+        },
+        {
+          "Gamma_0_nadm": 2.371e-10,
+          "R2": 0.00010163022430924654,
+          "k_max": 17.84576276631,
+          "k_min": 1.044775322519e-05,
+          "n": 534
+        }
+      ],
+      "smallest_le_quarter_largest": true
+    },
+    "TE": {
+      "R2_sequence": [
+        0.00324696691478721,
+        0.0009905160491101323,
+        0.00033476912642460083,
+        0.00010108221753108866,
+        3.3634086615471424e-05
+      ],
+      "fit_smallest3": {
+        "logA": 11.817705352328897,
+        "p": 0.9979125835412953,
+        "valid": true
+      },
+      "largest_response_gt_1e-8": true,
+      "monotonic_with_2pct_slack": true,
+      "pass": true,
+      "points": [
+        {
+          "Gamma_0_nadm": 2.371e-08,
+          "R2": 0.00324696691478721,
+          "n": 2499
+        },
+        {
+          "Gamma_0_nadm": 7.113e-09,
+          "R2": 0.0009905160491101323,
+          "n": 2499
+        },
+        {
+          "Gamma_0_nadm": 2.371e-09,
+          "R2": 0.00033476912642460083,
+          "n": 2499
+        },
+        {
+          "Gamma_0_nadm": 7.113e-10,
+          "R2": 0.00010108221753108866,
+          "n": 2499
+        },
+        {
+          "Gamma_0_nadm": 2.371e-10,
+          "R2": 3.3634086615471424e-05,
+          "n": 2499
+        }
+      ],
+      "smallest_le_quarter_largest": true
+    },
+    "TT": {
+      "R2_sequence": [
+        0.0018098322009463279,
+        0.0005535550551839803,
+        0.00018540878531518929,
+        5.5403047650934276e-05,
+        1.6921659632603343e-05
+      ],
+      "fit_smallest3": {
+        "logA": 12.057603145697028,
+        "p": 1.0391071334599702,
+        "valid": true
+      },
+      "largest_response_gt_1e-8": true,
+      "monotonic_with_2pct_slack": true,
+      "pass": true,
+      "points": [
+        {
+          "Gamma_0_nadm": 2.371e-08,
+          "R2": 0.0018098322009463279,
+          "n": 2499
+        },
+        {
+          "Gamma_0_nadm": 7.113e-09,
+          "R2": 0.0005535550551839803,
+          "n": 2499
+        },
+        {
+          "Gamma_0_nadm": 2.371e-09,
+          "R2": 0.00018540878531518929,
+          "n": 2499
+        },
+        {
+          "Gamma_0_nadm": 7.113e-10,
+          "R2": 5.5403047650934276e-05,
+          "n": 2499
+        },
+        {
+          "Gamma_0_nadm": 2.371e-10,
+          "R2": 1.6921659632603343e-05,
+          "n": 2499
+        }
+      ],
+      "smallest_le_quarter_largest": true
+    }
+  },
+  "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "classification": "M23_K1_DECOUPLING_PASS_WITH_SCOPE_FIXED_DM_DR_CONTENT",
+  "diagnostic_failing_blocks": [],
+  "exact_zero_identity_pass": true,
+  "exact_zero_vs_omitted": {
+    "EE": {
+      "R2": 0.0,
+      "n": 2499
+    },
+    "Pk": {
+      "R2": 0.0,
+      "k_max": 22.46648384458,
+      "k_min": 1.044775322519e-05,
+      "n": 535
+    },
+    "TE": {
+      "R2": 0.0,
+      "n": 2499
+    },
+    "TT": {
+      "R2": 0.0,
+      "n": 2499
+    }
+  },
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M23_DM_DR_DAO_K1_REFERENCE_PREREGISTRATION_v0.1.md",
+  "reference_scope": "FIXED_F_IDM_1_N_IDR_0P429_FLUID_DR_NINDEX0_ONLY_COUPLING_REMOVED",
+  "schema": "KMDSB.M23.dmDrDao.K1Reference.v1",
+  "status": {
+    "build": 0,
+    "checkout": 0,
+    "clone": 0,
+    "g0": 0,
+    "g1": 0,
+    "g2": 0,
+    "g3": 0,
+    "g4": 0,
+    "ref": 0,
+    "zero": 0
+  }
+}
