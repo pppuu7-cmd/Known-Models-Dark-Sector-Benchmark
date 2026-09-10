@@ -1,0 +1,153 @@
+name: W03 M15 independent GCG V0 upstream control
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m15-independent-gcg-v0-upstream-control.yml'
+
+jobs:
+  v0-upstream-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch exact official CLASS pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/lesgourg/class_public.git class_public
+          git -C class_public checkout "$CLASS_PIN"
+          test "$(git -C class_public rev-parse HEAD)" = "$CLASS_PIN"
+          git -C class_public diff --exit-code
+
+      - name: Assert frozen source-map anchors
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'struct background' class_public/include/background.h
+          grep -q 'int background_initial_conditions' class_public/source/background.c
+          grep -q 'int background_derivs' class_public/source/background.c
+          grep -q 'perturbations_derivs' class_public/include/perturbations.h
+          grep -q 'perturbations_derivs' class_public/source/perturbations.c
+          grep -q 'Omega0_cdm' class_public/include/background.h
+          grep -q 'Omega0_lambda' class_public/include/background.h
+          echo SOURCE_MAP_ANCHORS=PASS
+
+      - name: Build untouched upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -C class_public -j2
+          test -x class_public/class
+
+      - name: Write frozen V0 Newtonian LambdaCDM config
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p v0/config v0/output v0/logs
+          cat > v0/config/lcdm_newtonian.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          T_cmb = 2.7255
+          N_ur = 3.044
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = tCl,pCl,mPk,mTk
+          modes = s
+          ic = ad
+          gauge = newtonian
+          non linear = none
+          l_max_scalars = 1800
+          lensing = no
+          z_pk = 0
+          P_k_max_h/Mpc = 0.3
+          write background = yes
+          write thermodynamics = no
+          headers = yes
+          format = class
+          root = ${GITHUB_WORKSPACE}/v0/output/lcdm_
+          EOF
+
+      - name: Execute untouched upstream V0 case
+        shell: bash
+        run: |
+          set +e
+          ./class_public/class v0/config/lcdm_newtonian.ini > v0/logs/lcdm.log 2>&1
+          rc=$?
+          echo "$rc" > v0/logs/lcdm.exit
+          echo "CLASS_EXIT=$rc"
+          exit 0
+
+      - name: Validate V0 products
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat v0/logs/lcdm.exit)" = "0"
+          test -s v0/output/lcdm_background.dat
+          test -s v0/output/lcdm_cl.dat
+          test -s v0/output/lcdm_pk.dat
+          test -s v0/output/lcdm_tk.dat
+          python3 - <<'PY'
+          from pathlib import Path
+          import math
+          files = [
+              Path('v0/output/lcdm_background.dat'),
+              Path('v0/output/lcdm_cl.dat'),
+              Path('v0/output/lcdm_pk.dat'),
+              Path('v0/output/lcdm_tk.dat'),
+          ]
+          for path in files:
+              finite = 0
+              rows = 0
+              for line in path.read_text().splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'):
+                      continue
+                  vals=[]
+                  try:
+                      vals=[float(x) for x in s.split()]
+                  except ValueError:
+                      continue
+                  rows += 1
+                  if vals and all(math.isfinite(x) for x in vals):
+                      finite += 1
+              if rows == 0 or finite == 0:
+                  raise SystemExit(f'no finite numerical rows in {path}')
+              print(f'{path}: rows={rows} all_finite_rows={finite}')
+          print('M15_V0_UPSTREAM_CONTROL=PASS')
+          PY
+
+      - name: Record immutable provenance
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "KMDSB_HEAD=$(git rev-parse HEAD)"
+            echo "CLASS_REMOTE=$(git -C class_public remote get-url origin)"
+            echo "CLASS_HEAD=$(git -C class_public rev-parse HEAD)"
+            echo "CLASS_STATUS=$(git -C class_public status --porcelain | wc -l)"
+            echo "SOURCE_MAP_SHA256=$(sha256sum models/generalized_chaplygin/m15_independent_class_source_map.md | cut -d' ' -f1)"
+            echo "PREREG_SHA256=$(sha256sum protocol/W03_M15_INDEPENDENT_GCG_CLASS_REPRODUCTION_PREREGISTRATION_v0.1.md | cut -d' ' -f1)"
+            echo "CONFIG_SHA256=$(sha256sum v0/config/lcdm_newtonian.ini | cut -d' ' -f1)"
+          } > v0/provenance.txt
+
+      - name: Upload V0 immutable bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m15-independent-gcg-v0-upstream-control
+          path: |
+            v0/
+            models/generalized_chaplygin/m15_independent_class_source_map.md
+            protocol/W03_M15_INDEPENDENT_GCG_CLASS_REPRODUCTION_PREREGISTRATION_v0.1.md
+          if-no-files-found: error
+          retention-days: 90
