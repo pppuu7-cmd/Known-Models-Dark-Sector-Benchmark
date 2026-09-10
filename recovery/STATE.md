@@ -181,3 +181,14 @@ Consumed run `34490297354`, job `102914977778`, artifact `10157548938`, digest `
 - These two cases add two methodology constraints to the funnel: K1 continuity must not impose universal differentiability, and comparison metrics must canonicalize coordinate orientation plus respect localized response support.
 - Strict terminal/represented census remains 4/46. Operational polygon readiness estimate is approximately 53%; this is not a strict census metric.
 - `NEW_MODEL: DESIGN_AUTHORIZED / NOT_YET_REQUIRED` remains unchanged.
+
+
+## 2026-09-11 — W04 M22/M23 K1 closure and new reference-semantics rules
+- M22 annihilating-DM native CLASS v1 (`34540790113`) preserved as frozen NOT_ESTABLISHED solely because its preregistered P(k) negative-control threshold was violated. Exact zero/omitted identity was zero and TT/EE/TE passed; P(k) itself contracted smoothly.
+- M22 prospective v2 (`34541280629`) PASS: `M22_K1_V2_REFERENCE_LIMIT_PASS_WITH_SCOPE_NATIVE_ENERGY_INJECTION`. New sub-v1 tail down to 3.33e-26 m^3 s^-1 J^-1 gives no failing blocks. New-tail exponents: TT=0.915833, EE=0.739755, TE=0.474335, Pk=0.926422. K1 is promoted with effective-energy-injection scope only.
+- M22 K3 source audit is PARTIAL: CLASS deposits rho_cdm^2 p_ann energy into recombination/thermodynamics without an explicit matched background DM depletion sink. This is a provider/effective-approximation scope, not annihilating-DM falsification.
+- M23 DM-DR/DAO hosted run `34541145589` PASS: `M23_K1_DECOUPLING_PASS_WITH_SCOPE_FIXED_DM_DR_CONTENT`. Omitted-vs-zero coupling identity is exact in TT/EE/TE/P(k); finite Gamma_0 responses contract monotonically with tail exponents TT=1.039107, EE=0.987203, TE=0.997913, Pk=0.998773.
+- M23 source K3 is scoped PASS: paired IDM/DR Euler momentum-exchange terms are present; numerical cross-gauge residual regression remains open.
+- New durable reference-semantics rules are recorded in `protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_W04_ADDENDUM_2026-09-11.md`: parameter-key presence can alter physical defaults; qualitative 'unaffected' statements are not strict null theorems; interaction decoupling normally preserves species content.
+- Strict terminal/represented census remains 4/46. Operational polygon readiness estimate advances conservatively to approximately 55%; this is not a strict census metric.
+- `NEW_MODEL: DESIGN_AUTHORIZED / NOT_YET_REQUIRED` remains unchanged.
