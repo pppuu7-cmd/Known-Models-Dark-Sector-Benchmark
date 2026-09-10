@@ -1,10 +1,44 @@
 {
   "K7": "PARTIAL_COVARIANCE_WEIGHTING_ONLY",
-  "classification": "M17_K7A_OPERATOR_OR_OUTPUT_BLOCKED",
+  "S_cov": 3.1648604655690433,
+  "S_cov2": 10.0163417665219,
+  "best_cpl": {
+    "w0": -1.2498700663555409,
+    "wa": 0.8082964747357178
+  },
+  "blocks": {
+    "EE": {
+      "S_cov": 1.1688966691299718,
+      "S_cov2": 1.366319423103143,
+      "euclidean_norm": 1.6940135846518923e-05
+    },
+    "TE": {
+      "S_cov": 1.9513488781875665,
+      "S_cov2": 3.8077624444038745,
+      "euclidean_norm": 0.00018732990835046266
+    },
+    "TT": {
+      "S_cov": 2.300655519356381,
+      "S_cov2": 5.293015818744978,
+      "euclidean_norm": 0.006419181719175706
+    }
+  },
+  "classification": "M17_K7A_PLANCK_PLIKLITE_COVARIANCE_MEASURED",
+  "euclidean_norm": 0.006421936889020684,
+  "hde_c": 0.6,
+  "header_contract_recovery": "protocol/W03_M17_K7A_HEADER_CONTRACT_RECOVERY_v0.1.md",
+  "next": "K7b nuisance/cosmological profiling",
+  "observational_distinguishability_claim": false,
+  "operator": {
+    "fisher_max_eigenvalue": 13392394822.865467,
+    "fisher_min_eigenvalue": 2.0715877641781697,
+    "n_bins": 613,
+    "pin": "2c0d0f67e59ce781654cf62dd7fb10757b0e60be",
+    "repo": "heatherprince/planck-lite-py"
+  },
   "output_coverage_recovery": "protocol/W03_M17_K7A_OUTPUT_COVERAGE_RECOVERY_v0.1.md",
   "physical_falsification": false,
   "preregistration": "protocol/W03_M17_K7A_PLANCK_PLIKLITE_COVARIANCE_PREREGISTRATION_v0.1.md",
-  "reason": "theory header contract missing",
   "schema": "KMDSB.M17.K7a.PlanckPlikLiteCovariance.v1",
   "status": {
     "cpl": 0,
