@@ -1,0 +1,28 @@
+{
+  "schema": "KMDSB.W03.M14.IDECAMBProviderControl.v0.1",
+  "date": "2026-09-10",
+  "patch": "liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075",
+  "base": "cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4",
+  "author_overlay": "literal recursive copy over CosmoMC planck2018-compatible base",
+  "first_run": {
+    "run_id": 34452683017,
+    "job_id": 102791799552,
+    "artifact_id": 10142180500,
+    "compiler": "GNU Fortran 13.3.0",
+    "build_exit": 2,
+    "classification": "COMPILER_COMPATIBILITY_BLOCKER_ONLY",
+    "diagnostic": "modern gfortran rejects legacy dverk argument mismatch in equations_ppfi.f90"
+  },
+  "compiler_recovery": {
+    "run_id": 34452783661,
+    "job_id": 102792130632,
+    "artifact_id": 10142233561,
+    "only_change": "add -fallow-argument-mismatch compiler compatibility flag",
+    "build_exit": 0,
+    "executable_present": true,
+    "classification": "M14_IDECAMB_PROVIDER_BUILD_PASS_COMPAT_FLAG"
+  },
+  "scientific_promotion_authorized": false,
+  "interpretation": "exact pinned IDECAMB overlay is buildable on the current runner with a compiler-only legacy compatibility flag; this establishes provider infrastructure/provenance but not K1-K9",
+  "next_gate": "source-bind CQ background/perturbation closure and beta_cq->0 map, then separately preregister an executable K1 regression if an author-supported theory execution route can be run without unavailable likelihood data"
+}
