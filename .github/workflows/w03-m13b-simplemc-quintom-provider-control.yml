@@ -17,22 +17,45 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Use provider-era Python runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
       - name: Fetch pinned SimpleMC
         run: |
           git clone https://github.com/ja-vazquez/SimpleMC.git simplemc_provider
           cd simplemc_provider
           git checkout a268fe5e2545428ddcf76b37b166a55dbf692fb0
           test "$(git rev-parse HEAD)" = "a268fe5e2545428ddcf76b37b166a55dbf692fb0"
-      - name: Install runtime dependencies
-        run: python3 -m pip install --disable-pip-version-check numpy scipy scikit-learn matplotlib numdifftools pandas
+      - name: Install historically compatible runtime dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --upgrade 'pip<25'
+          python -m pip install --disable-pip-version-check \
+            'numpy==1.24.4' \
+            'scipy==1.10.1' \
+            'scikit-learn==1.1.3' \
+            'matplotlib==3.7.5' \
+            'pandas==1.5.3' \
+            'numdifftools==0.9.41'
+          python - <<'PY'
+          import sys, numpy, scipy, sklearn, pandas, matplotlib
+          from sklearn.neighbors import DistanceMetric
+          print('python', sys.version)
+          print('numpy', numpy.__version__)
+          print('scipy', scipy.__version__)
+          print('sklearn', sklearn.__version__)
+          print('pandas', pandas.__version__)
+          print('matplotlib', matplotlib.__version__)
+          print('DistanceMetric import OK:', DistanceMetric)
+          PY
       - name: Execute provider control
         shell: bash
         run: |
           set +e
           cd simplemc_provider
-          PYTHONPATH=. python3 - <<'PY' > ../m13b_provider.log 2>&1
+          PYTHONPATH=. python - <<'PY' > ../m13b_provider.log 2>&1
           import json, traceback, numpy as np
-          result={'schema':'KMDSB.W03.M13b.SimpleMCProviderControl.v0.1','provider':'ja-vazquez/SimpleMC@a268fe5e2545428ddcf76b37b166a55dbf692fb0','scientific_promotion_authorized':False,'routes':{}}
+          result={'schema':'KMDSB.W03.M13b.SimpleMCProviderControl.v0.1','provider':'ja-vazquez/SimpleMC@a268fe5e2545428ddcf76b37b166a55dbf692fb0','runtime':'python3.8+numpy1.24.4+scipy1.10.1+sklearn1.1.3+pandas1.5.3','scientific_promotion_authorized':False,'routes':{}}
           obj=None
           try:
               from simplemc.runbase import ParseModel
@@ -78,7 +101,7 @@ jobs:
       - name: Ensure machine result exists
         run: |
           if [ ! -f m13b_simplemc_provider_control.json ]; then
-            python3 - <<'PY'
+            python - <<'PY'
           import json,os
           open('m13b_simplemc_provider_control.json','w').write(json.dumps({'schema':'KMDSB.W03.M13b.SimpleMCProviderControl.v0.1','provider':'ja-vazquez/SimpleMC@a268fe5e2545428ddcf76b37b166a55dbf692fb0','scientific_promotion_authorized':False,'classification':'M13B_SIMPLEMC_PROVIDER_CONTROL_BLOCKED','python_exit':int(open('m13b_python.exit').read()) if os.path.exists('m13b_python.exit') else None},indent=2)+'\n')
           PY
