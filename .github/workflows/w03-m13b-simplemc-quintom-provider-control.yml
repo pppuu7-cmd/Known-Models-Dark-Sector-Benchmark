@@ -1,0 +1,128 @@
+name: W03 M13b SimpleMC quintom provider control
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-simplemc-quintom-provider-control.yml'
+      - 'protocol/W03_M13B_SIMPLEMC_QUINTOM_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  provider-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned SimpleMC
+        run: |
+          git clone https://github.com/ja-vazquez/SimpleMC.git simplemc_provider
+          cd simplemc_provider
+          git checkout a268fe5e2545428ddcf76b37b166a55dbf692fb0
+          test "$(git rev-parse HEAD)" = "a268fe5e2545428ddcf76b37b166a55dbf692fb0"
+      - name: Install runtime dependencies
+        run: python3 -m pip install --disable-pip-version-check numpy scipy scikit-learn matplotlib numdifftools
+      - name: Execute provider control
+        shell: bash
+        run: |
+          set +e
+          cd simplemc_provider
+          PYTHONPATH=. python3 - <<'PY' > ../m13b_provider.log 2>&1
+          import json, traceback, numpy as np
+          result={
+            'schema':'KMDSB.W03.M13b.SimpleMCProviderControl.v0.1',
+            'provider':'ja-vazquez/SimpleMC@a268fe5e2545428ddcf76b37b166a55dbf692fb0',
+            'scientific_promotion_authorized':False,
+            'routes':{}
+          }
+          obj=None
+          try:
+              from simplemc.runbase import ParseModel
+              try:
+                  obj=ParseModel('Quintom')
+                  result['routes']['ParseModel_Quintom']={'ok':True,'type':type(obj).__name__}
+              except Exception as e:
+                  result['routes']['ParseModel_Quintom']={'ok':False,'error':repr(e)}
+          except Exception as e:
+              result['routes']['package_import']={'ok':False,'error':repr(e)}
+          if obj is None:
+              try:
+                  from simplemc.models.QuintomCosmology import QuintomCosmology
+                  obj=QuintomCosmology(vary_mquin=True,vary_mphan=True)
+                  result['routes']['direct_class']={'ok':True,'type':type(obj).__name__}
+              except Exception as e:
+                  result['routes']['direct_class']={'ok':False,'error':repr(e),'traceback':traceback.format_exc()[-4000:]}
+          if obj is not None:
+              try:
+                  obj.call_functions()
+                  sol=np.asarray(obj.solution,dtype=float)
+                  hs=np.asarray([obj.Hubble_a(a) for a in np.exp(obj.lna)],dtype=float)
+                  ws=np.asarray([obj.w_de(a) for a in np.exp(obj.lna)],dtype=float)
+                  finite=bool(np.all(np.isfinite(sol)) and np.all(np.isfinite(hs)) and np.all(np.isfinite(ws)))
+                  crossing=bool(np.any(ws[:-1] < -1) and np.any(ws[1:] > -1) or np.any(ws[:-1] > -1) and np.any(ws[1:] < -1))
+                  result['diagnostics']={
+                    'phi_ini':float(obj.phi_ini),
+                    'mquin':float(obj.mquin),'mphan':float(obj.mphan),'coupling':float(obj.coupling),
+                    'solution_shape':list(sol.shape),'finite':finite,
+                    'H_min':float(np.nanmin(hs)),'H_max':float(np.nanmax(hs)),
+                    'w_min':float(np.nanmin(ws)),'w_max':float(np.nanmax(ws)),
+                    'sampled_w_minus1_crossing':crossing
+                  }
+              except Exception as e:
+                  result['diagnostics']={'finite':False,'error':repr(e),'traceback':traceback.format_exc()[-4000:]}
+          exposed=result['routes'].get('ParseModel_Quintom',{}).get('ok',False)
+          direct=result['routes'].get('direct_class',{}).get('ok',False)
+          finite=result.get('diagnostics',{}).get('finite',False)
+          if exposed and finite:
+              cls='M13B_SIMPLEMC_PROVIDER_CONTROL_PASS_WITH_SCOPE'
+          elif direct and finite:
+              cls='M13B_SIMPLEMC_DIRECT_CLASS_ONLY'
+          else:
+              cls='M13B_SIMPLEMC_PROVIDER_CONTROL_BLOCKED'
+          result['classification']=cls
+          result['limitations']=['two-field initial-condition source explicitly says still figuring out initial conditions','background-only SimpleMC implementation; perturbation closure not validated','sampled crossing is descriptive only']
+          open('../m13b_simplemc_provider_control.json','w').write(json.dumps(result,indent=2)+'\n')
+          print(json.dumps(result,indent=2))
+          PY
+          rc=$?
+          echo "$rc" > ../m13b_python.exit
+          cd ..
+          cat m13b_provider.log || true
+          exit 0
+      - name: Ensure machine result exists
+        run: |
+          if [ ! -f m13b_simplemc_provider_control.json ]; then
+            python3 - <<'PY'
+          import json
+          open('m13b_simplemc_provider_control.json','w').write(json.dumps({'schema':'KMDSB.W03.M13b.SimpleMCProviderControl.v0.1','provider':'ja-vazquez/SimpleMC@a268fe5e2545428ddcf76b37b166a55dbf692fb0','scientific_promotion_authorized':False,'classification':'M13B_SIMPLEMC_PROVIDER_CONTROL_BLOCKED','python_exit':int(open('m13b_python.exit').read()) if __import__('os').path.exists('m13b_python.exit') else None},indent=2)+'\n')
+          PY
+          fi
+      - name: Persist canonical provider result
+        shell: bash
+        run: |
+          cp m13b_simplemc_provider_control.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/quintom
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M13B_SIMPLEMC_PROVIDER_CONTROL_RESULT.json
+          cp /tmp/result.json models/quintom/simplemc_provider_control.json
+          git add waves/wave_03_expanded_dark_energy/M13B_SIMPLEMC_PROVIDER_CONTROL_RESULT.json models/quintom/simplemc_provider_control.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M13b SimpleMC provider control'
+            git push origin HEAD:main
+          fi
+      - name: Upload immutable bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m13b-simplemc-provider-control
+          path: |
+            m13b_simplemc_provider_control.json
+            m13b_provider.log
+            m13b_python.exit
+          retention-days: 90
