@@ -1,0 +1,39 @@
+{
+  "benchmark_id": "M17",
+  "family_id": "F17",
+  "model": "original future-event-horizon holographic dark energy",
+  "wave": "W03",
+  "date": "2026-09-10",
+  "scope": "Miao Li 2004 flat noninteracting OHDE; native constant-c family only",
+  "primary_authority": {
+    "paper": "M. Li, A Model of Holographic Dark Energy, Phys. Lett. B 603 (2004) 1-5",
+    "arxiv": "hep-th/0403127",
+    "doi": "10.1016/j.physletb.2004.10.014"
+  },
+  "gates": {
+    "K0": "PASS_WITH_SCOPE",
+    "K1": "NO_NATIVE_LCDM_REFERENCE_INTERSECTION_WITH_SCOPE",
+    "K2": "OPEN_GLOBAL_GEOMETRY",
+    "K3": "OPEN_PERTURBATION_PROVIDER",
+    "K4": "OPEN",
+    "K5": "OPEN",
+    "K6": "OPEN",
+    "K7": "OPEN",
+    "K8": "OPEN",
+    "K9": "OPEN"
+  },
+  "structural_equation": "w_de(a) = -1/3 - 2 sqrt(Omega_de(a))/(3 c)",
+  "reference_test": {
+    "single_epoch_lambda_like_condition": "c = sqrt(Omega_de(a))",
+    "reason_no_global_lcdm_limit": "Omega_de(a) evolves while c is constant",
+    "c_to_infinity_limit": "w_de -> -1/3, not -1"
+  },
+  "classification": "STRUCTURAL_NO_NATIVE_REFERENCE_INTERSECTION",
+  "anti_overclaim": [
+    "not a physical falsification of HDE",
+    "does not cover all holographic-DE variants",
+    "does not authorize a fictitious local tangent at LambdaCDM",
+    "background equivalence to an effective w(a) is not perturbation closure"
+  ],
+  "next_gate": "pin a source-complete perturbation-capable OHDE provider or preregister an independent verification implementation; then use finite/global response geometry"
+}
