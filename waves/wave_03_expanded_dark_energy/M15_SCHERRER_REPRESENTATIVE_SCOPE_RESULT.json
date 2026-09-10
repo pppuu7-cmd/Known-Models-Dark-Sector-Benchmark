@@ -1,0 +1,20 @@
+{
+  "schema": "KMDSB.W03.M15.ScherrerRepresentativeScope.v0.1",
+  "provider": "Eladio-Moreno/k-essence-dynamics@f3f010e1ed74c86ce6a431a435fa93988f749ee2",
+  "provider_control_run": 34430793576,
+  "provider_control": "PASS_AFTER_OUTPUT_PATH_RECOVERY",
+  "source_model": "G2=-F0+F2*(X-X0)^2-0.5*m_phi^2*phi^2",
+  "author_example": {
+    "Omega_Lambda": 0.69,
+    "Omega_cdm": 0.0,
+    "Omega_smg": "inferred_by_closure",
+    "DM_schm": 0.26,
+    "stored_f0_behavior": "input source explicitly sets pba->f0_schm=0 after computing a local nominal f0_sch"
+  },
+  "classification": "REPRESENTATIVE_MISMATCH_NO_M15_PROMOTION",
+  "m15_scientific_promotion_authorized": false,
+  "m11_scientific_promotion_authorized": false,
+  "physical_falsification": false,
+  "interpretation": "The executable committed example is Lambda plus a matter-like Scherrer scalar, not a single stress-energy sector providing both matter-like and accelerating behavior. It therefore cannot serve as the M15 unified-dark-sector representative and cannot repair M11 DE-only covariant validation.",
+  "next_gate": "Find and provenance-audit a genuine generalized-Chaplygin/unified-dark-fluid implementation with explicit perturbation closure, stability domain, author example and reference/decoupling map."
+}
