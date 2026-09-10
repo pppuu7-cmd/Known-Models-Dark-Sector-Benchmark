@@ -1,0 +1,222 @@
+name: W03 M14 CDE regularization split noninterference
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-cde-regularization-split-noninterference.yml'
+      - 'protocol/W03_M14_CDE_REGULARIZATION_SPLIT_NONINTERFERENCE_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  split-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch four pinned source copies
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in O R1 R2 R12; do
+            git clone -q https://github.com/LisaGoh/CDE.git "$d"
+            git -C "$d" checkout -q b85a675af7544a5183e402964550811aa805b698
+            test "$(git -C "$d" rev-parse HEAD)" = "b85a675af7544a5183e402964550811aa805b698"
+          done
+
+      - name: Apply frozen split source transformations
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,re
+          from pathlib import Path
+          def r1(tree):
+              p=Path(tree)/'class_CDE/source/perturbations.c'; s=p.read_text()
+              pat=re.compile(r'-\s*pvecback\[pba->index_bg_beta_prime\]\*a2\*pow\(6,0\.5\)\*ppw->pvecback\[pba->index_bg_rho_cdm\]\*y\[pv->index_pt_phi_scf\]\*pvecback\[pba->index_bg_H\]/pvecback\[pba->index_bg_phi_prime_scf\]')
+              expr='pvecback[pba->index_bg_beta_prime]*a2*pow(6,0.5)*ppw->pvecback[pba->index_bg_rho_cdm]*y[pv->index_pt_phi_scf]*pvecback[pba->index_bg_H]/pvecback[pba->index_bg_phi_prime_scf]'
+              s,n=pat.subn('- ((pvecback[pba->index_bg_beta_prime] == 0.0) ? 0.0 : '+expr+')',s)
+              if n!=1: raise RuntimeError(f'{tree} R1 count={n}')
+              p.write_text(s); return n
+          def r2(tree):
+              p=Path(tree)/'class_CDE/source/perturbations.c'; s=p.read_text()
+              den=r'pvecback\[pba->index_bg_rho_scf\]\s*\+\s*pvecback\[pba->index_bg_p_scf\]'
+              pat=re.compile(r'rho_plus_p_theta_scf\s*/\s*\(\s*'+den+r'\s*\)')
+              d='pvecback[pba->index_bg_rho_scf]+pvecback[pba->index_bg_p_scf]'
+              s,n=pat.subn('((('+d+') == 0.0) ? 0.0 : rho_plus_p_theta_scf/('+d+'))',s)
+              if n!=2: raise RuntimeError(f'{tree} R2 count={n}')
+              p.write_text(s); return n
+          counts={'R1':{'R1':r1('R1')},'R2':{'R2':r2('R2')},'R12':{'R1':r1('R12')}}
+          counts['R12']['R2']=r2('R12')
+          Path('split_patch_counts.json').write_text(json.dumps(counts,indent=2)+'\n')
+          for d in ['R1','R2','R12']:
+              import subprocess
+              with open(f'{d}.patch','w') as f:
+                  subprocess.run(['git','-C',d,'diff','--','class_CDE/source/perturbations.c'],stdout=f,check=True)
+          PY
+
+      - name: Build all source variants identically
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > executable_sha256.txt
+          for d in O R1 R2 R12; do
+            cd "$d/class_CDE"
+            make clean > "../../build_${d}.log" 2>&1
+            make class -j2 >> "../../build_${d}.log" 2>&1
+            mkdir -p output
+            sha256sum class >> ../../executable_sha256.txt
+            cd ../..
+          done
+          cat executable_sha256.txt
+
+      - name: Generate frozen AUTHOR B0TINY and split exact inputs
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          def setkey(txt,key,value):
+              pat=rf'(?m)^(\s*{re.escape(key)}\s*=\s*).*$'
+              out,n=re.subn(pat,lambda m:m.group(1)+value,txt,count=1)
+              if n!=1: raise RuntimeError(f'{key}: active count {n}')
+              return out
+          for tree in ['O','R1','R2','R12']:
+              src=Path(f'{tree}/class_CDE/CDE.ini').read_text()
+              # O gets two independent roots; variants get one.
+              roots=['authorA','authorB','b0tinyA','b0tinyB'] if tree=='O' else ['author','b0tiny']
+              for root in roots:
+                  t=src
+                  if root.startswith('b0tiny'):
+                      for k in ['beta_1','beta_2','beta_3']: t=setkey(t,k,'0')
+                  t += f'\nroot = output/{root}_\n'
+                  Path(f'{tree}/class_CDE/{root}.ini').write_text(t)
+              if tree in ['R1','R2']:
+                  t=src
+                  for k in ['beta_1','beta_2','beta_3','phi_ini_scf','phi_prime_ini_scf']: t=setkey(t,k,'0')
+                  t += '\nroot = output/exact_\n'
+                  Path(f'{tree}/class_CDE/exact.ini').write_text(t)
+          PY
+
+      - name: Execute frozen OMP1 audit matrix
+        shell: bash
+        run: |
+          set +e
+          run_case () {
+            tree="$1"; case="$2"
+            cd "$tree/class_CDE"
+            OMP_NUM_THREADS=1 ./class "$case.ini" > "../../${tree}_${case}.log" 2>&1
+            ec=$?
+            echo "$ec" > "../../${tree}_${case}.exit"
+            cd ../..
+          }
+          for c in authorA authorB b0tinyA b0tinyB; do run_case O "$c"; done
+          for d in R1 R2 R12; do run_case "$d" author; run_case "$d" b0tiny; done
+          run_case R1 exact
+          run_case R2 exact
+          for f in *.exit; do echo "$f $(cat "$f")"; done
+          exit 0
+
+      - name: Evaluate frozen comparisons
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,math
+          from pathlib import Path
+          def ec(tree,case): return int(Path(f'{tree}_{case}.exit').read_text().strip())
+          def rows(path):
+              out=[]
+              for line in Path(path).read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  try: out.append([float(x) for x in s.split()])
+                  except ValueError: pass
+              return out
+          def cmp(pa,pb):
+              if not pa.exists() or not pb.exists() or pa.stat().st_size==0 or pb.stat().st_size==0:
+                  return {'pass':False,'reason':'missing'}
+              a,b=rows(pa),rows(pb)
+              if len(a)!=len(b) or any(len(x)!=len(y) for x,y in zip(a,b)):
+                  return {'pass':False,'reason':'shape','shape_a':[len(a),len(a[0]) if a else 0],'shape_b':[len(b),len(b[0]) if b else 0]}
+              w=0.0; ma=0.0; finite=True
+              for ra,rb in zip(a,b):
+                  for x,y in zip(ra,rb):
+                      if not(math.isfinite(x) and math.isfinite(y)): finite=False; continue
+                      d=abs(x-y); ma=max(ma,d); w=max(w,d/max(abs(x),abs(y),1e-300))
+              return {'pass':bool(finite and w<=1e-12),'finite':finite,'rows':len(a),'cols':len(a[0]) if a else 0,'max_symmetric_relative':w,'max_abs':ma}
+          suffix={'background':'background.dat','pk':'pk.dat','pk_cb':'pk_cb.dat','cl':'cl.dat','cl_lensed':'cl_lensed.dat','tk':'tk.dat'}
+          def pair(base_tree,base_root,test_tree,test_root):
+              r={}
+              for k,s in suffix.items():
+                  r[k]=cmp(Path(f'{base_tree}/class_CDE/output/{base_root}_{s}'),Path(f'{test_tree}/class_CDE/output/{test_root}_{s}'))
+              return {'files':r,'pass':all(v['pass'] for v in r.values())}
+          result={'schema':'KMDSB.W03.M14.CDERegularizationSplitNoninterference.v0.1','upstream':'LisaGoh/CDE@b85a675af7544a5183e402964550811aa805b698','runtime':'OMP_NUM_THREADS=1','threshold':1e-12,'exits':{},'baseline':{},'variants':{},'exact_split':{}}
+          for d,cases in {'O':['authorA','authorB','b0tinyA','b0tinyB'],'R1':['author','b0tiny','exact'],'R2':['author','b0tiny','exact'],'R12':['author','b0tiny']}.items():
+              for c in cases: result['exits'][f'{d}_{c}']=ec(d,c)
+          result['baseline']['author']=pair('O','authorA','O','authorB')
+          result['baseline']['b0tiny']=pair('O','b0tinyA','O','b0tinyB')
+          for d in ['R1','R2','R12']:
+              result['variants'][d]={
+                'author':pair('O','authorA',d,'author'),
+                'b0tiny':pair('O','b0tinyA',d,'b0tiny')
+              }
+              result['variants'][d]['noninterfering_pass']=bool(ec(d,'author')==0 and ec(d,'b0tiny')==0 and result['variants'][d]['author']['pass'] and result['variants'][d]['b0tiny']['pass'])
+          for d in ['R1','R2']:
+              out=Path(f'{d}/class_CDE/output')
+              req={k:[str(p) for p in out.glob('exact_*'+glob) if p.stat().st_size] for k,glob in {'background':'background.dat','perturbation':'perturbations*_s.dat','pk':'pk.dat','cl':'cl.dat','tk':'tk.dat'}.items()}
+              result['exact_split'][d]={'exit':ec(d,'exact'),'required_outputs':req,'full_output_pass':bool(ec(d,'exact')==0 and all(req.values()))}
+          baseline=bool(result['baseline']['author']['pass'] and result['baseline']['b0tiny']['pass'] and all(result['exits'][x]==0 for x in ['O_authorA','O_authorB','O_b0tinyA','O_b0tinyB']))
+          result['baseline_repeatability_pass']=baseline
+          if not baseline:
+              result['classification']='M14_CDE_BASELINE_NUMERICAL_REPEATABILITY_FAIL'
+          else:
+              passes=[d for d in ['R1','R2','R12'] if result['variants'][d]['noninterfering_pass']]
+              result['classification']='M14_CDE_SPLIT_NONINTERFERENCE_AUDIT_COMPLETE'
+              result['noninterfering_variants']=passes
+          result['K4_K5_authorized']=False
+          result['physical_falsification_authorized']=False
+          Path('m14_cde_regularization_split_noninterference.json').write_text(json.dumps(result,indent=2)+'\n')
+          print(json.dumps(result,indent=2))
+          PY
+
+      - name: Persist split audit
+        shell: bash
+        run: |
+          cp m14_cde_regularization_split_noninterference.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/coupled_quintessence waves/wave_03_expanded_dark_energy
+          cp /tmp/result.json models/coupled_quintessence/cde_regularization_split_noninterference.json
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_CDE_REGULARIZATION_SPLIT_NONINTERFERENCE_RESULT.json
+          cp R1.patch R2.patch R12.patch models/coupled_quintessence/
+          git add models/coupled_quintessence/cde_regularization_split_noninterference.json waves/wave_03_expanded_dark_energy/M14_CDE_REGULARIZATION_SPLIT_NONINTERFERENCE_RESULT.json models/coupled_quintessence/R1.patch models/coupled_quintessence/R2.patch models/coupled_quintessence/R12.patch
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M14 CDE regularization split audit'
+            git push origin HEAD:main
+          fi
+
+      - name: Upload immutable split audit bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m14-cde-regularization-split-noninterference
+          path: |
+            m14_cde_regularization_split_noninterference.json
+            split_patch_counts.json
+            executable_sha256.txt
+            R1.patch
+            R2.patch
+            R12.patch
+            build_*.log
+            *.exit
+            *.log
+            R1/class_CDE/output/exact_*background.dat
+            R1/class_CDE/output/exact_*perturbations*_s.dat
+            R2/class_CDE/output/exact_*background.dat
+            R2/class_CDE/output/exact_*perturbations*_s.dat
+          retention-days: 90
