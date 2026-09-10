@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/w03-m14-lisagoh-cde-k1-background-recovery.yml'
       - 'protocol/W03_M14_LISAGOH_CDE_K1_BACKGROUND_RECOVERY_PREREGISTRATION_v0.2.md'
+      - 'protocol/W03_M14_LISAGOH_CDE_K1_BACKGROUND_RECOVERY_PREREGISTRATION_v0.3.md'
 
 permissions:
   contents: write
@@ -47,6 +48,7 @@ jobs:
               t=setkey(t,k,'0')
           t=setkey(t,'output','')
           t=setkey(t,'lensing','no')
+          t=setkey(t,'non linear','')
           t += '\nroot = output/k1_exact_bg_recovery_\n'
           Path('provider/class_CDE/k1_exact_bg_recovery.ini').write_text(t)
           PY
@@ -119,8 +121,8 @@ jobs:
           else:
               cls='M14_LISAGOH_CDE_K1_BLOCKED_INFRASTRUCTURE'; kval='NOT_PASS'
           result=dict(parent)
-          result['schema']='KMDSB.W03.M14.LisaGohCDEK1Reference.v0.2'
-          result['background_recovery']={'parent_run':34488423569,'change':'arm A only: lensing=no with output blank; no physics/threshold changes','exit':exitcode,'file':[str(p) for p in files],'metrics':metrics,'parse_error':parse_error,'pass':A}
+          result['schema']='KMDSB.W03.M14.LisaGohCDEK1Reference.v0.3'
+          result['background_recovery']={'parent_run':34488423569,'recovery_runs':[34488702506],'change':'arm A only: output blank, lensing=no, non linear blank; no physics/threshold changes','exit':exitcode,'file':[str(p) for p in files],'metrics':metrics,'parse_error':parse_error,'pass':A}
           result['arm_A_background_metrics']=metrics
           result['arm_A_parse_error']=parse_error
           result['arm_A_background_pass']=A
@@ -129,13 +131,13 @@ jobs:
           result['K3_promotion_authorized']=False
           result['K4_K5_authorized']=False
           result['physical_falsification_authorized']=False
-          Path('m14_lisagoh_cde_k1_reference_v02.json').write_text(json.dumps(result,indent=2)+'\n')
+          Path('m14_lisagoh_cde_k1_reference_v03.json').write_text(json.dumps(result,indent=2)+'\n')
           print(json.dumps(result,indent=2))
           PY
       - name: Persist recovered canonical record
         shell: bash
         run: |
-          cp m14_lisagoh_cde_k1_reference_v02.json /tmp/result.json
+          cp m14_lisagoh_cde_k1_reference_v03.json /tmp/result.json
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git fetch origin main
@@ -144,7 +146,7 @@ jobs:
           cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_LISAGOH_CDE_K1_REFERENCE_RESULT.json
           git add models/coupled_quintessence/lisagoh_cde_k1_reference.json waves/wave_03_expanded_dark_energy/M14_LISAGOH_CDE_K1_REFERENCE_RESULT.json
           if ! git diff --cached --quiet; then
-            git commit -m 'Recover LisaGoh CDE M14 K1 background reference'
+            git commit -m 'Finalize LisaGoh CDE M14 K1 background reference recovery'
             git push origin HEAD:main
           fi
       - name: Upload immutable recovery bundle
@@ -154,7 +156,7 @@ jobs:
           name: w03-m14-lisagoh-cde-k1-background-recovery
           path: |
             parent_k1.json
-            m14_lisagoh_cde_k1_reference_v02.json
+            m14_lisagoh_cde_k1_reference_v03.json
             build.log
             exact_bg_recovery.log
             exact_bg_recovery.exit
