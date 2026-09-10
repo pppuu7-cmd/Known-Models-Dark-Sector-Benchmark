@@ -34,10 +34,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p m18_cfg m18_logs
-          cp class_gsf/dgf.ini m18_cfg/dgf_author.ini
-          cp class_gsf/dgf.ini m18_cfg/dgf_lambda0.ini
-          cp class_gsf/dgf.ini m18_cfg/lcdm.ini
+          mkdir -p class_gsf/m18_cfg m18_logs
+          cp class_gsf/dgf.ini class_gsf/m18_cfg/dgf_author.ini
+          cp class_gsf/dgf.ini class_gsf/m18_cfg/dgf_lambda0.ini
+          cp class_gsf/dgf.ini class_gsf/m18_cfg/lcdm.ini
 
           python3 - <<'PY'
           from pathlib import Path
@@ -47,13 +47,13 @@ jobs:
                   raise SystemExit(f'{path}: expected one occurrence of {old!r}, got {s.count(old)}')
               p.write_text(s.replace(old,new,1))
 
-          replace_once('m18_cfg/dgf_author.ini','root = output/dgf_','root = output/m18_author_')
-          replace_once('m18_cfg/dgf_lambda0.ini','gsf_parameters = 1,  7, 1, 10 , -18, 0.2, 1','gsf_parameters = 1,  7, 1, 10 , -18, 0, 1')
-          replace_once('m18_cfg/dgf_lambda0.ini','root = output/dgf_','root = output/m18_lambda0_')
+          replace_once('class_gsf/m18_cfg/dgf_author.ini','root = output/dgf','root = output/m18_author_')
+          replace_once('class_gsf/m18_cfg/dgf_lambda0.ini','gsf_parameters = 1,  7, 1, 10 , -18, 0.2, 1','gsf_parameters = 1,  7, 1, 10 , -18, 0, 1')
+          replace_once('class_gsf/m18_cfg/dgf_lambda0.ini','root = output/dgf','root = output/m18_lambda0_')
 
-          replace_once('m18_cfg/lcdm.ini','Omega_gsf = -1','Omega_gsf = 0')
-          replace_once('m18_cfg/lcdm.ini','Omega_Lambda = 0','# Omega_Lambda inferred by closure for KMDSB LCDM control')
-          replace_once('m18_cfg/lcdm.ini','root = output/dgf_','root = output/m18_lcdm_')
+          replace_once('class_gsf/m18_cfg/lcdm.ini','Omega_gsf = -1','Omega_gsf = 0')
+          replace_once('class_gsf/m18_cfg/lcdm.ini','Omega_Lambda = 0','# Omega_Lambda inferred by closure for KMDSB LCDM control')
+          replace_once('class_gsf/m18_cfg/lcdm.ini','root = output/dgf','root = output/m18_lcdm_')
           PY
 
       - name: Run frozen diagnostic cases
@@ -62,7 +62,7 @@ jobs:
           set +e
           : > m18_logs/case_exits.tsv
           for tag in lcdm dgf_author dgf_lambda0; do
-            ./class_gsf/class "m18_cfg/${tag}.ini" > "m18_logs/${tag}.log" 2>&1
+            (cd class_gsf && ./class "m18_cfg/${tag}.ini") > "m18_logs/${tag}.log" 2>&1
             rc=$?
             printf '%s\t%s\n' "$tag" "$rc" >> m18_logs/case_exits.tsv
           done
@@ -145,7 +145,7 @@ jobs:
             m18_reference_probe.json
             m18_provenance.txt
             m18_build.log
-            m18_cfg/
+            class_gsf/m18_cfg/
             m18_logs/
             class_gsf/output/m18_*
           if-no-files-found: warn
