@@ -1,0 +1,269 @@
+{
+  "K1_reference_limit": "PASS_WITH_SCOPE_NONLINEAR_HALO_EXACT_CDM_LIMIT",
+  "K2_physical_geometry": "ONE_SIDED_SIGMA_GE_0_NO_SIGN_QUOTIENT",
+  "K4_promoted": false,
+  "blocks": {
+    "Vmax_z0": {
+      "core_source_asymptote_consistent": null,
+      "fit_smallest4": {
+        "p": 0.9999710517144432,
+        "valid": true
+      },
+      "monotonic_with_2pct_slack": true,
+      "p95_sequence": [
+        0.011606044856995349,
+        0.004282227966215071,
+        0.0014643304888463,
+        0.0004408532327774679,
+        0.00014701306015798765,
+        4.410758052009442e-05,
+        1.470278399740202e-05,
+        4.410859299938007e-06
+      ],
+      "pass": true,
+      "smallest_le_quarter_of_sigma1": true,
+      "smallest_lower_than_largest": true
+    },
+    "core_ratio": {
+      "core_source_asymptote_consistent": true,
+      "fit_smallest4": {
+        "p": 0.48778869854495255,
+        "valid": true
+      },
+      "monotonic_with_2pct_slack": true,
+      "p95_sequence": [
+        0.48301642022298963,
+        0.3640732833177241,
+        0.24266790823849105,
+        0.14424176780639827,
+        0.0866583609541885,
+        0.0486119910106242,
+        0.028405492662176526,
+        0.01567319432599341
+      ],
+      "pass": true,
+      "smallest_le_quarter_of_sigma1": true,
+      "smallest_lower_than_largest": true
+    },
+    "rhos_z0": {
+      "core_source_asymptote_consistent": null,
+      "fit_smallest4": {
+        "p": 0.8666173025163701,
+        "valid": true
+      },
+      "monotonic_with_2pct_slack": true,
+      "p95_sequence": [
+        0.5645742913196022,
+        0.443012423805946,
+        0.33282756746639564,
+        0.21248380324867844,
+        0.11658090579091648,
+        0.047567149418793295,
+        0.01788619455658287,
+        0.0056288161482067655
+      ],
+      "pass": true,
+      "smallest_le_quarter_of_sigma1": true,
+      "smallest_lower_than_largest": true
+    },
+    "rmax_z0": {
+      "core_source_asymptote_consistent": null,
+      "fit_smallest4": {
+        "p": 0.9734891622442694,
+        "valid": true
+      },
+      "monotonic_with_2pct_slack": true,
+      "p95_sequence": [
+        0.00623510253512182,
+        0.0004235977200048025,
+        2.179184338860776e-05,
+        1.6471640242817992e-05,
+        6.9395313402072495e-06,
+        2.233330707935619e-06,
+        7.58876759667481e-07,
+        2.2917874474249102e-07
+      ],
+      "pass": true,
+      "smallest_le_quarter_of_sigma1": true,
+      "smallest_lower_than_largest": true
+    },
+    "rs_z0": {
+      "core_source_asymptote_consistent": null,
+      "fit_smallest4": {
+        "p": 0.8870794443054018,
+        "valid": true
+      },
+      "monotonic_with_2pct_slack": true,
+      "p95_sequence": [
+        0.22871127401208893,
+        0.16602054210321715,
+        0.11458424545801149,
+        0.06689254671924869,
+        0.034321676176027736,
+        0.013376173311115272,
+        0.004934370393262305,
+        0.001540784374785488
+      ],
+      "pass": true,
+      "smallest_le_quarter_of_sigma1": true,
+      "smallest_lower_than_largest": true
+    }
+  },
+  "catalog_args": {
+    "M0": 1000000000000.0,
+    "M0_at_redshift": true,
+    "N_herm": 3,
+    "N_ma": 30,
+    "dz": 0.2,
+    "logmamin": 9,
+    "redshift": 0.0,
+    "zmax": 4.0
+  },
+  "classification": "M20_K1_V2_NONLINEAR_REFERENCE_LIMIT_PASS_WITH_SCOPE",
+  "exact_zero": {
+    "Vmax_z0": {
+      "max_abs": 0.0,
+      "median_abs": 0.0,
+      "n": 615,
+      "p95_abs": 0.0,
+      "rms": 0.0
+    },
+    "core_ratio": {
+      "max": 0.0,
+      "median": 0.0,
+      "n": 615,
+      "p95": 0.0,
+      "rms": 0.0
+    },
+    "rhos_z0": {
+      "max_abs": 0.0,
+      "median_abs": 0.0,
+      "n": 615,
+      "p95_abs": 0.0,
+      "rms": 0.0
+    },
+    "rmax_z0": {
+      "max_abs": 0.0,
+      "median_abs": 0.0,
+      "n": 615,
+      "p95_abs": 0.0,
+      "rms": 0.0
+    },
+    "rs_z0": {
+      "max_abs": 0.0,
+      "median_abs": 0.0,
+      "n": 615,
+      "p95_abs": 0.0,
+      "rms": 0.0
+    }
+  },
+  "exact_zero_identity_pass": true,
+  "failing_blocks": [],
+  "physical_falsification": false,
+  "pin": "e17d3664dac677b604fd4ff02fb2af105a6937fa",
+  "population_diagnostics": [
+    {
+      "sigma0_m": 10.0,
+      "survival_mismatch_fraction": 0.0,
+      "weight": {
+        "max_abs": 0.0,
+        "median_abs": 0.0,
+        "n": 615,
+        "p95_abs": 0.0,
+        "rms": 0.0
+      }
+    },
+    {
+      "sigma0_m": 3.0,
+      "survival_mismatch_fraction": 0.0,
+      "weight": {
+        "max_abs": 0.0,
+        "median_abs": 0.0,
+        "n": 615,
+        "p95_abs": 0.0,
+        "rms": 0.0
+      }
+    },
+    {
+      "sigma0_m": 1.0,
+      "survival_mismatch_fraction": 0.0,
+      "weight": {
+        "max_abs": 0.0,
+        "median_abs": 0.0,
+        "n": 615,
+        "p95_abs": 0.0,
+        "rms": 0.0
+      }
+    },
+    {
+      "sigma0_m": 0.3,
+      "survival_mismatch_fraction": 0.0,
+      "weight": {
+        "max_abs": 0.0,
+        "median_abs": 0.0,
+        "n": 615,
+        "p95_abs": 0.0,
+        "rms": 0.0
+      }
+    },
+    {
+      "sigma0_m": 0.1,
+      "survival_mismatch_fraction": 0.0,
+      "weight": {
+        "max_abs": 0.0,
+        "median_abs": 0.0,
+        "n": 615,
+        "p95_abs": 0.0,
+        "rms": 0.0
+      }
+    },
+    {
+      "sigma0_m": 0.03,
+      "survival_mismatch_fraction": 0.0,
+      "weight": {
+        "max_abs": 0.0,
+        "median_abs": 0.0,
+        "n": 615,
+        "p95_abs": 0.0,
+        "rms": 0.0
+      }
+    },
+    {
+      "sigma0_m": 0.01,
+      "survival_mismatch_fraction": 0.0,
+      "weight": {
+        "max_abs": 0.0,
+        "median_abs": 0.0,
+        "n": 615,
+        "p95_abs": 0.0,
+        "rms": 0.0
+      }
+    },
+    {
+      "sigma0_m": 0.003,
+      "survival_mismatch_fraction": 0.0,
+      "weight": {
+        "max_abs": 0.0,
+        "median_abs": 0.0,
+        "n": 615,
+        "p95_abs": 0.0,
+        "rms": 0.0
+      }
+    }
+  ],
+  "preregistration": "protocol/W04_M20_SIDM_K1_NONLINEAR_REFERENCE_V2_PREREGISTRATION_v0.1.md",
+  "provider": "shinichiroando/sashimi-si",
+  "reference_support_n": 615,
+  "schema": "KMDSB.M20.SIDM.K1NonlinearReference.v2",
+  "sigma0_m_cm2_g": [
+    10.0,
+    3.0,
+    1.0,
+    0.3,
+    0.1,
+    0.03,
+    0.01,
+    0.003
+  ],
+  "w_km_s": 24.33
+}
