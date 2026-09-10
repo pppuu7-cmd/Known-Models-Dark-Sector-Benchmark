@@ -1,0 +1,40 @@
+{
+  "checks": {
+    "bin_arrays_finite": true,
+    "bin_boundaries_integer": true,
+    "bin_counts_pass": true,
+    "bin_weight_count": 7437,
+    "cov_cholesky_pass": true,
+    "cov_finite": true,
+    "cov_shape": [
+      613,
+      613
+    ],
+    "cov_sym_max_abs": 0.0,
+    "nbin_hi": 613,
+    "nbinee": 199,
+    "nbinte": 199,
+    "nbintt_hi": 215,
+    "plmax": 2508,
+    "plmin": 30,
+    "selftest_abs_error": 5.684341886080802e-14,
+    "selftest_measured": -291.3348123541803,
+    "selftest_pass": true
+  },
+  "classification": "M17_PLIK_LITE_OPERATOR_CONTROL_PASS",
+  "expected_loglike": -291.33481235418026,
+  "operator_pin": "2c0d0f67e59ce781654cf62dd7fb10757b0e60be",
+  "physical_falsification": false,
+  "preregistration": "protocol/W03_M17_PLANCK2018_PLIK_LITE_OPERATOR_CONTROL_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M17.PlikLiteOperatorControl.v1",
+  "scientific_promotion": false,
+  "sha256": {
+    "data/planck2018_plik_lite/blmax.dat": "c28ade0fa5270c7e87ba07bdcb68aef8783b132b352bfaa36c04d17694ab4014",
+    "data/planck2018_plik_lite/blmin.dat": "325b351cbf8f694556bb13e98f285344e8d66811bb8eef18bcdcf1626518719d",
+    "data/planck2018_plik_lite/bweight.dat": "8afcbd8bad769e2de96bacd80177e6543f96b2b406e6c2da1fd0d26718c9e415",
+    "data/planck2018_plik_lite/c_matrix_plik_v22.dat": "ad90378c50bd67841764179c90ae6711fa4317c649966ab2b0712143b31e0a32",
+    "data/planck2018_plik_lite/cl_cmb_plik_v22.dat": "dac0d9d493213e77c940a10a968cf0da3c5730bae60e1356c4cd8bcff96377ff",
+    "planck_lite_py.py": "ad8ca7112c1bb741e8d8b30d22cd725b1cf75472547578d58c2f882d12bd5683"
+  },
+  "tolerance": 1e-09
+}
