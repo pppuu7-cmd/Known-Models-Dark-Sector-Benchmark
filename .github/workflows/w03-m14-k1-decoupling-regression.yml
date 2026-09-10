@@ -1,0 +1,166 @@
+name: W03 M14 K1 decoupling regression
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-k1-decoupling-regression.yml'
+      - 'protocol/W03_M14_K1_DECOUPLING_REGRESSION_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  m14-k1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned provider and build
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/kabeleh/iDM.git idm
+          git -C idm checkout dc55e59dec8f5c647df6e9d764f5c6960796e1df
+          test "$(git -C idm rev-parse HEAD)" = "dc55e59dec8f5c647df6e9d764f5c6960796e1df"
+          set +e
+          (cd idm && make clean >/dev/null 2>&1 || true; make class -j2) > build.log 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > build.exit
+          tail -n 80 build.log || true
+      - name: Construct frozen K1 cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cfg out logs
+          cp idm/benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini cfg/author_anchor.ini
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('cfg/author_anchor.ini').read_text()
+          def common(s, root):
+              lines=[]
+              for line in s.splitlines():
+                  if line.strip().startswith('root ='):
+                      continue
+                  if line.strip().startswith('write_background ='):
+                      continue
+                  lines.append(line)
+              lines += ['write_background = yes', f'root = {root}', 'overwrite_root = yes']
+              return '\n'.join(lines)+'\n'
+          a=common(src, str(Path.cwd()/'out'/'idm_zero'))
+          out=[]
+          for line in a.splitlines():
+              if line.strip().startswith('cdm_c ='):
+                  out.append('cdm_c = 0')
+              else:
+                  out.append(line)
+          Path('cfg/idm_zero.ini').write_text('\n'.join(out)+'\n')
+          b=common(src, str(Path.cwd()/'out'/'standard_cdm'))
+          out=[]
+          for line in b.splitlines():
+              st=line.strip()
+              if st.startswith('model_cdm =') or st.startswith('cdm_c ='):
+                  continue
+              out.append(line)
+          Path('cfg/standard_cdm.ini').write_text('\n'.join(out)+'\n')
+          PY
+      - name: Run cases
+        shell: bash
+        run: |
+          set +e
+          : > logs/case_exits.tsv
+          if [ "$(cat build.exit)" != "0" ]; then exit 0; fi
+          for tag in idm_zero standard_cdm; do
+            ./idm/class cfg/${tag}.ini > logs/${tag}.log 2>&1
+            rc=$?
+            echo -e "${tag}\t${rc}" >> logs/case_exits.tsv
+          done
+          exit 0
+      - name: Analyze frozen K1 comparison
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, glob, os
+          import numpy as np
+          build=int(open('build.exit').read())
+          exits={}
+          if os.path.exists('logs/case_exits.tsv'):
+              for ln in open('logs/case_exits.tsv'):
+                  p=ln.split();
+                  if len(p)==2: exits[p[0]]=int(p[1])
+          out={'schema':'KMDSB.W03.M14.K1DecouplingRegression.v0.1','provider':'kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df','anchor':'benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini','build_exit':build,'case_exits':exits,'frozen_thresholds':{'background_max_symmetric_relative':1e-8,'pk_max_symmetric_relative':1e-6}}
+          if build!=0 or exits.get('idm_zero')!=0 or exits.get('standard_cdm')!=0:
+              out.update(classification='M14_K1_BLOCKED_EXECUTION',k1_pass=False,scientific_fail=False)
+          else:
+              def load(pattern):
+                  fs=sorted(glob.glob(pattern))
+                  return fs
+              ba=load('out/idm_zero*background.dat'); bb=load('out/standard_cdm*background.dat')
+              pa=load('out/idm_zero*pk.dat'); pb=load('out/standard_cdm*pk.dat')
+              def maxsym(fa,fb):
+                  a=np.loadtxt(fa); b=np.loadtxt(fb)
+                  if a.shape!=b.shape: return float('inf')
+                  if a.ndim==1: a=a[:,None]; b=b[:,None]
+                  aa=a[:,1:] if a.shape[1]>1 else a
+                  bb=b[:,1:] if b.shape[1]>1 else b
+                  m=np.isfinite(aa)&np.isfinite(bb)
+                  if not m.any(): return float('inf')
+                  return float(np.max(2*np.abs(aa[m]-bb[m])/(np.abs(aa[m])+np.abs(bb[m])+1e-300)))
+              bg=float('inf')
+              if ba and bb: bg=maxsym(ba[0],bb[0])
+              pk=[]
+              # pair by basename suffix after root prefix
+              amap={os.path.basename(f).replace('idm_zero','',1):f for f in pa}
+              bmap={os.path.basename(f).replace('standard_cdm','',1):f for f in pb}
+              for k in sorted(set(amap)&set(bmap)):
+                  pk.append({'suffix':k,'max_symmetric_relative':maxsym(amap[k],bmap[k])})
+              pkmax=max([x['max_symmetric_relative'] for x in pk], default=float('inf'))
+              passed=bool(bg<=1e-8 and pkmax<=1e-6 and pk)
+              out.update(background_files={'idm_zero':ba,'standard_cdm':bb},matched_pk=pk,background_max_symmetric_relative=bg,pk_max_symmetric_relative=pkmax,k1_pass=passed,scientific_fail=not passed,classification='M14_K1_DECOUPLING_PASS' if passed else 'M14_K1_DECOUPLING_FAIL_EXECUTABLE')
+          open('m14_k1_result.json','w').write(json.dumps(out,indent=2,allow_nan=True)+'\n')
+          print(json.dumps(out,indent=2,allow_nan=True))
+          PY
+      - name: Persist result race-safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m14_k1_result.json /tmp/m14_k1_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/coupled_quintessence
+          cp /tmp/m14_k1_result.json waves/wave_03_expanded_dark_energy/M14_K1_DECOUPLING_REGRESSION_RESULT.json
+          cp /tmp/m14_k1_result.json models/coupled_quintessence/k1_decoupling_result.json
+          git add waves/wave_03_expanded_dark_energy/M14_K1_DECOUPLING_REGRESSION_RESULT.json models/coupled_quintessence/k1_decoupling_result.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M14 K1 decoupling regression result'
+            git push origin HEAD:main
+          fi
+      - name: Record provenance
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "KMDSB_TRIGGER_HEAD=${GITHUB_SHA}"
+            echo "IDM_HEAD=$(git -C idm rev-parse HEAD 2>/dev/null || true)"
+            echo "build_exit=$(cat build.exit 2>/dev/null || echo missing)"
+            echo 'decoupling=idm branch retained; q1-q4=0; cdm_c=0'
+            echo 'comparator=identical scalar workload with provider-default standard CDM'
+          } > m14_k1_provenance.txt
+      - name: Upload immutable K1 bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m14-k1-decoupling-regression
+          path: |
+            m14_k1_result.json
+            m14_k1_provenance.txt
+            build.log
+            build.exit
+            cfg/
+            logs/
+          if-no-files-found: warn
+          retention-days: 90
