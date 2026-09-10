@@ -1,0 +1,60 @@
+{
+  "cases": {
+    "p1": {
+      "exit": 0,
+      "matterpower.dat": {
+        "error": "[Errno 2] No such file or directory: 'external_axioncamb/p1_matterpower.dat'",
+        "finite": false
+      },
+      "scalCls.dat": {
+        "error": "[Errno 2] No such file or directory: 'external_axioncamb/p1_scalCls.dat'",
+        "finite": false
+      },
+      "transfer_out.dat": {
+        "error": "[Errno 2] No such file or directory: 'external_axioncamb/p1_transfer_out.dat'",
+        "finite": false
+      }
+    },
+    "r0d": {
+      "exit": 139,
+      "matterpower.dat": {
+        "error": "[Errno 2] No such file or directory: 'external_axioncamb/r0d_matterpower.dat'",
+        "finite": false
+      },
+      "scalCls.dat": {
+        "error": "[Errno 2] No such file or directory: 'external_axioncamb/r0d_scalCls.dat'",
+        "finite": false
+      },
+      "transfer_out.dat": {
+        "error": "[Errno 2] No such file or directory: 'external_axioncamb/r0d_transfer_out.dat'",
+        "finite": false
+      }
+    },
+    "r0f": {
+      "exit": 139,
+      "matterpower.dat": {
+        "error": "[Errno 2] No such file or directory: 'external_axioncamb/r0f_matterpower.dat'",
+        "finite": false
+      },
+      "scalCls.dat": {
+        "error": "[Errno 2] No such file or directory: 'external_axioncamb/r0f_scalCls.dat'",
+        "finite": false
+      },
+      "transfer_out.dat": {
+        "error": "[Errno 2] No such file or directory: 'external_axioncamb/r0f_transfer_out.dat'",
+        "finite": false
+      }
+    }
+  },
+  "classification": "M19_AXIONCAMB2_FINITE_CONTROL_BLOCKED",
+  "comparisons": {},
+  "physical_falsification": false,
+  "provider_pin": "891e779cc0bd422e49f97533e6c2fc761149737d",
+  "schema": "KMDSB.M19.axionCAMB2.zeroProbe.v1",
+  "status": {
+    "build_exit": 0,
+    "p1": 0,
+    "r0d": 139,
+    "r0f": 139
+  }
+}
