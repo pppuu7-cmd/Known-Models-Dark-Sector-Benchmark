@@ -44,9 +44,12 @@ jobs:
           def common(s, root):
               lines=[]
               for line in s.splitlines():
-                  if line.strip().startswith('root ='):
+                  st=line.strip()
+                  if st.startswith('root ='):
                       continue
-                  if line.strip().startswith('write_background ='):
+                  if st.startswith('overwrite_root ='):
+                      continue
+                  if st.startswith('write_background ='):
                       continue
                   lines.append(line)
               lines += ['write_background = yes', f'root = {root}', 'overwrite_root = yes']
@@ -97,8 +100,7 @@ jobs:
               out.update(classification='M14_K1_BLOCKED_EXECUTION',k1_pass=False,scientific_fail=False)
           else:
               def load(pattern):
-                  fs=sorted(glob.glob(pattern))
-                  return fs
+                  return sorted(glob.glob(pattern))
               ba=load('out/idm_zero*background.dat'); bb=load('out/standard_cdm*background.dat')
               pa=load('out/idm_zero*pk.dat'); pb=load('out/standard_cdm*pk.dat')
               def maxsym(fa,fb):
@@ -150,6 +152,7 @@ jobs:
             echo "build_exit=$(cat build.exit 2>/dev/null || echo missing)"
             echo 'decoupling=idm branch retained; q1-q4=0; cdm_c=0'
             echo 'comparator=identical scalar workload with provider-default standard CDM'
+            echo 'plumbing=replace pre-existing root/overwrite_root/write_background entries only'
           } > m14_k1_provenance.txt
       - name: Upload immutable K1 bundle
         if: always()
