@@ -1,0 +1,19 @@
+{
+  "schema": "KMDSB.W03.M14.LisaGohCDEProviderControl.v0.1",
+  "provider": "LisaGoh/CDE@b85a675af7544a5183e402964550811aa805b698",
+  "workload": "class_CDE/CDE.ini unmodified",
+  "build_exit": 2,
+  "run_exit": 999,
+  "fresh_counts": {
+    "background": 0,
+    "linear_pk": 0,
+    "cl": 0,
+    "transfer": 0
+  },
+  "fresh_products": [],
+  "classification": "M14_LISAGOH_CDE_PROVIDER_CONTROL_BLOCKED_IMPLEMENTATION_OR_RUNTIME",
+  "K0_execution": "BLOCKED",
+  "K1_authorized": false,
+  "K3_numerical_promotion_authorized": false,
+  "physical_falsification_authorized": false
+}
