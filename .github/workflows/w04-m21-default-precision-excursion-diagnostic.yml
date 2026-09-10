@@ -1,0 +1,88 @@
+name: W04 M21 precision excursion diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-default-precision-excursion-diagnostic.yml'
+      - 'verification/m21/default_precision_excursion_diagnostic.py'
+      - 'verification/m21/m21_ncdm_tight.pre'
+      - 'protocol/W04_M21_DEFAULT_PRECISION_EXCURSION_DIAGNOSTIC_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Install and pin provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+          test "$(git -C class hash-object cl_permille.pre)" = '270cd01435b7dda21b9360968d2de1ba5ac8a316'
+          test "$(git -C class hash-object cl_ref.pre)" = 'ccb86d11f72d9fa754b18dca40d23378b90c0699'
+          make -C class -j2 > m21_precision_build.log 2>&1
+      - name: Prepare unchanged M21 physical cases
+        run: python3 verification/m21/mixed_cold_warm_k1_reference.py prepare m21_cases
+      - name: Execute P1 cl_permille cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf class/output; mkdir class/output
+          for c in ref f2 f3 f4; do (cd class && ./class ../m21_cases/${c}.ini cl_permille.pre > ../m21_p1_${c}.log 2>&1); done
+          rm -rf p1_out; cp -a class/output p1_out
+      - name: Execute P2 cl_permille plus ncdm-tight cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf class/output; mkdir class/output
+          for c in ref f2 f3 f4; do (cd class && ./class ../m21_cases/${c}.ini cl_permille.pre ../verification/m21/m21_ncdm_tight.pre > ../m21_p2_${c}.log 2>&1); done
+          rm -rf p2_out; cp -a class/output p2_out
+      - name: Measure preregistered excursion diagnostics
+        run: |
+          python3 verification/m21/default_precision_excursion_diagnostic.py p1_out p2_out m21_precision_result.json
+          cat m21_precision_result.json
+      - name: Persist canonical diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m21_precision_result.json /tmp/result.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main; git reset --hard origin/main
+          mkdir -p models/mixed_cold_warm_dark_matter
+          cp /tmp/result.json models/mixed_cold_warm_dark_matter/M21_DEFAULT_PRECISION_EXCURSION_DIAGNOSTIC_RESULT.json
+          git add models/mixed_cold_warm_dark_matter/M21_DEFAULT_PRECISION_EXCURSION_DIAGNOSTIC_RESULT.json
+          git diff --cached --quiet || { git commit -m 'Record M21 precision excursion diagnostic'; git pull --rebase origin main; git push origin HEAD:main; }
+      - name: Enforce diagnostic-only classification
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/result.json'))
+          assert r['K1_promoted'] is False and r['physical_falsification'] is False
+          assert r['classification'] in {'M21_DEFAULT_PRECISION_EXCURSION_LOCALIZED_TO_NUMERICAL_PROFILE','M21_DEFAULT_PRECISION_EXCURSION_REDUCED_NOT_RESOLVED','M21_DEFAULT_PRECISION_EXCURSION_PERSISTS'}
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m21-precision-excursion-diagnostic
+          path: |
+            m21_precision_build.log
+            m21_p1_*.log
+            m21_p2_*.log
+            p1_out/
+            p2_out/
+            m21_precision_result.json
+          retention-days: 90
