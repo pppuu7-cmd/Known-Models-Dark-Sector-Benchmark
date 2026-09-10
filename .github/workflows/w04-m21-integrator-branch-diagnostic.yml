@@ -1,0 +1,125 @@
+name: W04 M21 integrator-branch diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-integrator-branch-diagnostic.yml'
+      - 'verification/m21/integrator_branch_diagnostic.py'
+      - 'protocol/W04_M21_INTEGRATOR_BRANCH_DIAGNOSTIC_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install and pin provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+          test "$(git -C class hash-object cl_permille.pre)" = '270cd01435b7dda21b9360968d2de1ba5ac8a316'
+          make -C class -j2 > m21_integrator_build.log 2>&1
+
+      - name: Prepare unchanged physical cases and frozen precision files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m21/mixed_cold_warm_k1_reference.py prepare m21_cases
+          cat class/cl_permille.pre verification/m21/m21_ncdm_tight.pre > m21_p2_ndf.pre
+          cp m21_p2_ndf.pre m21_p2_rk.pre
+          printf '\nevolver = 0\n' >> m21_p2_rk.pre
+          # Audit that the only textual difference between the two P2 profiles is the
+          # prospectively frozen evolver override.
+          diff -u m21_p2_ndf.pre m21_p2_rk.pre > m21_integrator_precision.diff || true
+          grep -q '^+evolver = 0$' m21_integrator_precision.diff
+
+      - name: Execute NDF15 P2 branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf class/output; mkdir class/output
+          for c in ref f2 f3 f4; do
+            (cd class && ./class ../m21_cases/${c}.ini ../m21_p2_ndf.pre > ../m21_ndf_${c}.log 2>&1)
+          done
+          rm -rf ndf_out; cp -a class/output ndf_out
+
+      - name: Execute RK P2 branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf class/output; mkdir class/output
+          for c in ref f2 f3 f4; do
+            (cd class && ./class ../m21_cases/${c}.ini ../m21_p2_rk.pre > ../m21_rk_${c}.log 2>&1)
+          done
+          rm -rf rk_out; cp -a class/output rk_out
+
+      - name: Measure frozen integrator diagnostic
+        run: |
+          python3 verification/m21/integrator_branch_diagnostic.py ndf_out rk_out m21_integrator_result.json
+          cat m21_integrator_result.json
+
+      - name: Persist canonical diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m21_integrator_result.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/mixed_cold_warm_dark_matter waves/wave_04_dark_matter
+          cp /tmp/result.json models/mixed_cold_warm_dark_matter/M21_INTEGRATOR_BRANCH_DIAGNOSTIC_RESULT.json
+          cp /tmp/result.json waves/wave_04_dark_matter/M21_INTEGRATOR_BRANCH_DIAGNOSTIC_RESULT.json
+          git add models/mixed_cold_warm_dark_matter/M21_INTEGRATOR_BRANCH_DIAGNOSTIC_RESULT.json waves/wave_04_dark_matter/M21_INTEGRATOR_BRANCH_DIAGNOSTIC_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M21 integrator-branch diagnostic'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Enforce diagnostic-only classification
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/result.json'))
+          allowed={
+            'M21_INTEGRATOR_BRANCH_LOCALIZED_TO_NDF15',
+            'M21_INTEGRATOR_BRANCH_REDUCES_EXCURSION',
+            'M21_INTEGRATOR_BRANCH_EXCURSION_PERSISTS'
+          }
+          assert r['classification'] in allowed
+          assert r['K1_promoted'] is False
+          assert r['physical_falsification'] is False
+          PY
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m21-integrator-branch-diagnostic
+          path: |
+            m21_integrator_build.log
+            m21_p2_ndf.pre
+            m21_p2_rk.pre
+            m21_integrator_precision.diff
+            m21_ndf_*.log
+            m21_rk_*.log
+            ndf_out/
+            rk_out/
+            m21_integrator_result.json
+          retention-days: 90
