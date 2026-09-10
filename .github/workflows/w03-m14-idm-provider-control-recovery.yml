@@ -1,0 +1,167 @@
+name: W03 M14 iDM provider-control recovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-idm-provider-control-recovery.yml'
+      - 'protocol/W03_M14_IDM_PROVIDER_CONTROL_RECOVERY_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  m14-provider-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch pinned iDM provider and build
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/kabeleh/iDM.git idm
+          git -C idm checkout dc55e59dec8f5c647df6e9d764f5c6960796e1df
+          test "$(git -C idm rev-parse HEAD)" = "dc55e59dec8f5c647df6e9d764f5c6960796e1df"
+          set +e
+          (cd idm && make clean && make class -j2) > idm_build.log 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > idm_build.exit
+          tail -n 120 idm_build.log || true
+
+      - name: Prepare exact tracked author workload with root-only plumbing edit
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cfg out logs
+          src=idm/benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini
+          test -f "$src"
+          cp "$src" cfg/pgo_hyperbolic_cmb.author.ini
+          cp "$src" cfg/pgo_hyperbolic_cmb.runtime.ini
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('cfg/pgo_hyperbolic_cmb.runtime.ini')
+          lines=p.read_text().splitlines()
+          out=[]
+          replaced=0
+          for line in lines:
+              if line.strip().startswith('root ='):
+                  out.append('root = out/m14_provider_control_')
+                  replaced += 1
+              else:
+                  out.append(line)
+          if replaced != 1:
+              raise SystemExit(f'expected exactly one root line, found {replaced}')
+          p.write_text('\n'.join(out)+'\n')
+          PY
+          python3 - <<'PY'
+          from pathlib import Path
+          a=Path('cfg/pgo_hyperbolic_cmb.author.ini').read_text().splitlines()
+          r=Path('cfg/pgo_hyperbolic_cmb.runtime.ini').read_text().splitlines()
+          aa=[x for x in a if not x.strip().startswith('root =')]
+          rr=[x for x in r if not x.strip().startswith('root =')]
+          if aa != rr:
+              raise SystemExit('runtime config differs from author input beyond root plumbing')
+          PY
+
+      - name: Execute provider workload and preserve result
+        shell: bash
+        run: |
+          set +e
+          if [ "$(cat idm_build.exit)" = "0" ]; then
+            ./idm/class cfg/pgo_hyperbolic_cmb.runtime.ini > logs/provider.log 2>&1
+            echo "$?" > provider.exit
+          else
+            echo 999 > provider.exit
+            echo 'build failed; workload not executed' > logs/provider.log
+          fi
+          set -e
+          tail -n 160 logs/provider.log || true
+          find out -maxdepth 1 -type f -printf '%f\n' | sort > logs/output_files.txt || true
+
+      - name: Classify provider control
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          b=int(Path('idm_build.exit').read_text().strip())
+          e=int(Path('provider.exit').read_text().strip())
+          files=[]
+          if Path('logs/output_files.txt').exists():
+              files=[x for x in Path('logs/output_files.txt').read_text().splitlines() if x]
+          fresh=bool(files)
+          if b != 0:
+              cls='M14_PROVIDER_CONTROL_BLOCKED_BUILD'
+          elif e != 0:
+              cls='M14_PROVIDER_CONTROL_BLOCKED_EXECUTION'
+          elif not fresh:
+              cls='M14_PROVIDER_CONTROL_BLOCKED_NO_FRESH_PRODUCT'
+          else:
+              cls='M14_PROVIDER_CONTROL_PASS_TRACKED_AUTHOR_WORKLOAD'
+          obj={
+            'schema':'KMDSB.W03.M14.iDMProviderControlRecovery.v0.1',
+            'provider':'kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df',
+            'tracked_author_input':'benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini',
+            'permitted_runtime_edit':'root path only',
+            'build_exit':b,
+            'class_exit':e,
+            'fresh_output_files':files,
+            'classification':cls,
+            'scientific_promotion_authorized':False,
+            'scope':'provider reproducibility / K0 only; K1-K9 remain separately gated'
+          }
+          Path('m14_idm_provider_control_recovery.json').write_text(json.dumps(obj,indent=2)+'\n')
+          print(json.dumps(obj,indent=2))
+          PY
+
+      - name: Persist canonical result race-safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m14_idm_provider_control_recovery.json /tmp/m14_idm_provider_control_recovery.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/coupled_quintessence
+          cp /tmp/m14_idm_provider_control_recovery.json waves/wave_03_expanded_dark_energy/M14_IDM_PROVIDER_CONTROL_RECOVERY_RESULT.json
+          cp /tmp/m14_idm_provider_control_recovery.json models/coupled_quintessence/provider_control_recovery_result.json
+          git add waves/wave_03_expanded_dark_energy/M14_IDM_PROVIDER_CONTROL_RECOVERY_RESULT.json models/coupled_quintessence/provider_control_recovery_result.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M14 tracked-author-input provider recovery'
+            git push origin HEAD:main
+          fi
+
+      - name: Record provenance
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "KMDSB_TRIGGER_HEAD=${GITHUB_SHA}"
+            echo "IDM_HEAD=$(git -C idm rev-parse HEAD 2>/dev/null || true)"
+            echo "IDM_BUILD_EXIT=$(cat idm_build.exit 2>/dev/null || echo missing)"
+            echo "CLASS_EXIT=$(cat provider.exit 2>/dev/null || echo missing)"
+            echo 'author_input=benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini'
+            echo 'allowed_config_edit=root only'
+          } > m14_provider_control_provenance.txt
+
+      - name: Upload immutable provider-control bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m14-idm-provider-control-recovery
+          path: |
+            m14_idm_provider_control_recovery.json
+            m14_provider_control_provenance.txt
+            idm_build.log
+            idm_build.exit
+            provider.exit
+            cfg/
+            logs/
+            out/
+          if-no-files-found: warn
+          retention-days: 90
