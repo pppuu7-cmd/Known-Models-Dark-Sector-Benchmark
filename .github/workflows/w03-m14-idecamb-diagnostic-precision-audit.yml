@@ -1,0 +1,175 @@
+name: W03 M14 IDECAMB diagnostic precision audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-idecamb-diagnostic-precision-audit.yml'
+      - 'protocol/W03_M14_IDECAMB_DIAGNOSTIC_PRECISION_AUDIT_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  precision-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync python3
+      - name: Fetch pinned overlay and apply diagnostic-only precision edit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/cmbant/CosmoMC.git cosmomc_base
+          git -C cosmomc_base checkout eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone https://github.com/liaocrane/IDECAMB.git idecamb_patch
+          git -C idecamb_patch checkout 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          rsync -a --exclude='.git' idecamb_patch/ cosmomc_base/
+          cp cosmomc_base/camb/equations_ppfi.f90 equations_ppfi.before
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('cosmomc_base/camb/equations_ppfi.f90')
+          s=p.read_text()
+          old="write (1,'(11E15.5)') a, z, grhov_t, grhoc_t, adotoa, wde, gQ ,gphi,gphidot,gU,dgU"
+          new="write (1,'(11ES25.15E3)') a, z, grhov_t, grhoc_t, adotoa, wde, gQ ,gphi,gphidot,gU,dgU"
+          if s.count(old)!=1: raise SystemExit(f'expected one diagnostic write line, got {s.count(old)}')
+          p.write_text(s.replace(old,new,1))
+          PY
+          diff -u equations_ppfi.before cosmomc_base/camb/equations_ppfi.f90 > diagnostic_precision.diff || true
+          python3 - <<'PY'
+          from pathlib import Path
+          d=Path('diagnostic_precision.diff').read_text().splitlines()
+          minus=[x for x in d if x.startswith('-') and not x.startswith('---')]
+          plus=[x for x in d if x.startswith('+') and not x.startswith('+++')]
+          if len(minus)!=1 or len(plus)!=1 or "11E15.5" not in minus[0] or "11ES25.15E3" not in plus[0]:
+              raise SystemExit('diagnostic-only diff validation failed')
+          PY
+      - name: Build provider
+        shell: bash
+        run: |
+          set +e
+          make -C cosmomc_base cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > build.log 2>&1
+          echo "$?" > build.exit
+          set -e
+      - name: Prepare unchanged source-scaled grid
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path('cosmomc_base/test_ide.ini').read_text()
+          likes=['DEFAULT(batch3/plik_rd12_HM_v22_TTTEEE.ini)','DEFAULT(batch3/lowl.ini)','DEFAULT(batch3/lowE.ini)','DEFAULT(batch3/lensing.ini)','DEFAULT(batch3/BAO.ini)','DEFAULT(batch3/Pantheon18.ini)']
+          for tag,beta in [('b0','0'),('b5e8','0.00000005'),('b1e7','0.00000010')]:
+              s=base
+              for old,new in [('Class_IDE = 1 ','Class_IDE = 2 '),('param[alpha_quint]= 0.02 0 1.4 0.1 0.1','param[alpha_quint]= 0.02'),('param[beta_cq]= 0.01 0 0.15 0.05 0.05',f'param[beta_cq]= {beta}'),('#test_output_root = output_ide',f'test_output_root = m14hp_{tag}'),('test_check_compare = 1820.775','#test_check_compare = 1820.775')]:
+                  if s.count(old)!=1: raise SystemExit(f'{tag}: {old!r} count={s.count(old)}')
+                  s=s.replace(old,new,1)
+              for x in likes:
+                  if s.count(x)!=1: raise SystemExit(f'{tag}: likelihood count {x}={s.count(x)}')
+                  s=s.replace(x,'#'+x,1)
+              Path(f'{tag}.ini').write_text(s)
+          PY
+      - name: Execute unchanged physical grid
+        shell: bash
+        run: |
+          set +e
+          : > case_exits.tsv
+          if [ "$(cat build.exit)" != "0" ]; then exit 0; fi
+          for tag in b0 b5e8 b1e7; do
+            cp ${tag}.ini cosmomc_base/${tag}.ini
+            (cd cosmomc_base && rm -f m14hp_${tag}* && ./cosmomc ${tag}.ini) > ${tag}.log 2>&1
+            echo -e "${tag}\t$?" >> case_exits.tsv
+          done
+          exit 0
+      - name: Recompute frozen tangent metrics
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,math,pathlib
+          build=int(pathlib.Path('build.exit').read_text()); exits={}
+          for line in pathlib.Path('case_exits.tsv').read_text().splitlines() if pathlib.Path('case_exits.tsv').exists() else []:
+              if line.strip(): k,v=line.split(); exits[k]=int(v)
+          tags=['b0','b5e8','b1e7']; data={}; ok=build==0 and all(exits.get(t)==0 for t in tags)
+          def load(p):
+              out=[]
+              for line in pathlib.Path(p).read_text(errors='replace').splitlines():
+                  y=line.strip()
+                  if not y or y.startswith('#'): continue
+                  try: out.append([float(x.replace('D','E').replace('d','e')) for x in y.split()])
+                  except Exception: pass
+              return out
+          for t in tags:
+              q=pathlib.Path('cosmomc_base')/f'm14hp_{t}.quantity'; c=pathlib.Path('cosmomc_base')/f'm14hp_{t}.theory_cl'
+              if not q.exists() or not c.exists(): ok=False; data[t]=([],[]); continue
+              qq,cc=load(q),load(c); data[t]=(qq,cc)
+              if len(qq)!=2000 or any(len(r)!=11 for r in qq) or len(cc)!=2499 or any(len(r)!=6 for r in cc): ok=False
+              if any(not math.isfinite(v) for r in qq for v in r) or any(not math.isfinite(v) for r in cc for v in r): ok=False
+          names=['dln_rho_de','dln_rho_c','dln_H','dw','qhat','dln_TT','dln_EE','dln_PP']
+          def response(tag):
+              q0,c0=data['b0']; q,c=data[tag]; ch={n:[] for n in names}; tiny=1e-300
+              if len(q)!=len(q0) or len(c)!=len(c0): raise ValueError('shape mismatch')
+              for r0,r in zip(q0,q):
+                  if abs(r0[0]-r[0])>1e-18: raise ValueError('a grid mismatch')
+                  for n,j in [('dln_rho_de',2),('dln_rho_c',3),('dln_H',4)]:
+                      if r0[j]>0 and r[j]>0: ch[n].append(math.log(r[j]/r0[j]))
+                  ch['dw'].append(r[5]-r0[5]); ch['qhat'].append(r[6]/(abs(r[4])*(abs(r[2])+abs(r[3]))+tiny))
+              for r0,r in zip(c0,c):
+                  if r0[0]!=r[0]: raise ValueError('ell grid mismatch')
+                  for n,j in [('dln_TT',1),('dln_EE',3),('dln_PP',5)]:
+                      if r0[j]>0 and r[j]>0: ch[n].append(math.log(r[j]/r0[j]))
+              if any(not ch[n] for n in names): raise ValueError('empty channel')
+              return ch
+          out={'schema':'KMDSB.W03.M14.IDECAMBDiagnosticPrecisionAudit.v0.1','grid':[0,5e-8,1e-7],'diagnostic_format_before':'11E15.5','diagnostic_format_after':'11ES25.15E3','prior_low_precision':{'relative_norm_mismatch':0.00855452675915267,'angle_deg':8.688271660612795},'case_exits':exits,'physics_source_changed':False,'physical_falsification_authorized':False,'observational_claim_authorized':False}
+          if not ok:
+              out['classification']='DIAGNOSTIC_PRECISION_AUDIT_BLOCKED'; out['K5_status']='NOT_SCORED'
+          else:
+              try:
+                  a=response('b5e8'); b=response('b1e7'); ta=[];tb=[]; fine_max=0.; channel={}
+                  for n in names:
+                      if len(a[n])!=len(b[n]): raise ValueError('channel mismatch')
+                      ta += [x/5e-8 for x in a[n]]; tb += [x/1e-7 for x in b[n]]
+                      mx=max(abs(x) for x in a[n]); fine_max=max(fine_max,mx); channel[n]={'fine_max_abs':mx,'fine_norm':math.sqrt(sum(x*x for x in a[n])),'points':len(a[n])}
+                  na=math.sqrt(sum(x*x for x in ta)); nb=math.sqrt(sum(x*x for x in tb)); cs=max(-1.,min(1.,sum(x*y for x,y in zip(ta,tb))/(na*nb)))
+                  mismatch=abs(na-nb)/max(na,nb); angle=math.degrees(math.acos(cs)); passed=mismatch<=0.10 and angle<=3.0
+                  out['metrics']={'relative_norm_mismatch':mismatch,'norm_threshold':0.10,'angle_deg':angle,'angle_threshold_deg':3.0,'fine_max_abs_response':fine_max,'nonnull_floor':5e-5,'channel_metrics':channel}
+                  out['classification']='DIAGNOSTIC_SERIALIZATION_LIMIT_CONFIRMED' if passed else 'DIAGNOSTIC_SERIALIZATION_NOT_SUFFICIENT'
+                  out['K4_interpretation']='PASS_WITH_SCOPE_HIGH_PRECISION_DIAGNOSTIC' if passed else 'LOW_PRECISION_NOT_SOLE_CAUSE_OF_K4_FAILURE'
+                  out['K5_status']=('PASS_WITH_SCOPE_RANK1' if fine_max>=5e-5 else 'NONIDENTIFIABLE_AT_OUTPUT_FLOOR') if passed else 'BLOCKED_BY_K4'
+              except Exception as e:
+                  out['classification']='DIAGNOSTIC_PRECISION_ANALYZER_INPUT_BLOCKED'; out['K5_status']='NOT_SCORED'; out['error']=repr(e)
+          pathlib.Path('m14_diagnostic_precision_audit.json').write_text(json.dumps(out,indent=2,allow_nan=False)+'\n'); print(json.dumps(out,indent=2))
+          PY
+      - name: Persist canonical diagnostic audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m14_diagnostic_precision_audit.json /tmp/result.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main; git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/coupled_quintessence
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_IDECAMB_DIAGNOSTIC_PRECISION_AUDIT_RESULT.json
+          cp /tmp/result.json models/coupled_quintessence/idecamb_diagnostic_precision_audit.json
+          git add waves/wave_03_expanded_dark_energy/M14_IDECAMB_DIAGNOSTIC_PRECISION_AUDIT_RESULT.json models/coupled_quintessence/idecamb_diagnostic_precision_audit.json
+          if ! git diff --cached --quiet; then git commit -m 'Record IDECAMB M14 diagnostic precision audit'; git push origin HEAD:main; fi
+      - name: Upload immutable audit bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m14-idecamb-diagnostic-precision-audit
+          path: |
+            m14_diagnostic_precision_audit.json
+            diagnostic_precision.diff
+            equations_ppfi.before
+            build.log
+            build.exit
+            case_exits.tsv
+            b0.ini
+            b5e8.ini
+            b1e7.ini
+            b0.log
+            b5e8.log
+            b1e7.log
+            cosmomc_base/m14hp_*.quantity
+            cosmomc_base/m14hp_*.theory_cl
+          retention-days: 90
