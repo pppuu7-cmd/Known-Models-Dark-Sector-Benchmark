@@ -1,0 +1,12 @@
+{
+  "K7": "PARTIAL_COVARIANCE_WEIGHTING_ONLY",
+  "classification": "M17_K7A_OPERATOR_OR_OUTPUT_BLOCKED",
+  "physical_falsification": false,
+  "preregistration": "protocol/W03_M17_K7A_PLANCK_PLIKLITE_COVARIANCE_PREREGISTRATION_v0.1.md",
+  "reason": "insufficient ell coverage last=2500.0",
+  "schema": "KMDSB.M17.K7a.PlanckPlikLiteCovariance.v1",
+  "status": {
+    "cpl": 0,
+    "h06": 0
+  }
+}
