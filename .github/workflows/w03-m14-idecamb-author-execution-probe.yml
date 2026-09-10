@@ -1,0 +1,66 @@
+name: W03 M14 IDECAMB author execution probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-idecamb-author-execution-probe.yml'
+      - 'protocol/W03_M14_IDECAMB_AUTHOR_EXECUTION_PROBE_PREREGISTRATION_v0.1.md'
+
+jobs:
+  author-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync
+      - name: Fetch, overlay, build
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/cmbant/CosmoMC.git cosmomc_base
+          git -C cosmomc_base checkout eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone https://github.com/liaocrane/IDECAMB.git idecamb_patch
+          git -C idecamb_patch checkout 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          test "$(git -C cosmomc_base rev-parse HEAD)" = "eb08c2fe91d9711929802fede310ae58c020fcb4"
+          test "$(git -C idecamb_patch rev-parse HEAD)" = "4f1093d9efe46f28cf7e2acb4d07ae116ad5e075"
+          rsync -a --exclude='.git' idecamb_patch/ cosmomc_base/
+          make -C cosmomc_base cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > build.log 2>&1
+      - name: Execute exact author command/input
+        shell: bash
+        run: |
+          set +e
+          cd cosmomc_base
+          ./cosmomc test_ide.ini > ../author_run.log 2>&1
+          echo "$?" > ../author_run.exit
+          cd ..
+          tail -n 180 author_run.log || true
+          exit 0
+      - name: Record neutral probe result
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          rc=int(open('author_run.exit').read())
+          log=open('author_run.log',errors='replace').read()
+          low=log.lower()
+          data_tokens=['plik','clik','data file','not found','no such file','likelihood','batch3']
+          external=(rc!=0 and any(x in low for x in data_tokens))
+          cls='M14_IDECAMB_AUTHOR_EXECUTION_PASS' if rc==0 else ('M14_IDECAMB_AUTHOR_EXECUTION_BLOCKED_EXTERNAL_DATA' if external else 'M14_IDECAMB_AUTHOR_EXECUTION_RUNTIME_BLOCKED')
+          out={'schema':'KMDSB.W03.M14.IDECAMBAuthorExecutionProbe.v0.1','command':'./cosmomc test_ide.ini','input_modified':False,'run_exit':rc,'classification':cls,'automatic_external_data_hint':external,'scientific_promotion_authorized':False,'note':'classification must be checked against the preserved log; automatic token hint is not scientific evidence'}
+          open('m14_idecamb_author_execution_probe.json','w').write(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: w03-m14-idecamb-author-execution-probe
+          path: |
+            m14_idecamb_author_execution_probe.json
+            author_run.log
+            author_run.exit
+            build.log
+          retention-days: 90
