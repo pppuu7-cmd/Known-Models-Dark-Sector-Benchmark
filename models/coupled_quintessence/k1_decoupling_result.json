@@ -1,0 +1,17 @@
+{
+  "schema": "KMDSB.W03.M14.K1DecouplingRegression.v0.1",
+  "provider": "kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df",
+  "anchor": "benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini",
+  "build_exit": 0,
+  "case_exits": {
+    "idm_zero": 1,
+    "standard_cdm": 1
+  },
+  "frozen_thresholds": {
+    "background_max_symmetric_relative": 1e-08,
+    "pk_max_symmetric_relative": 1e-06
+  },
+  "classification": "M14_K1_BLOCKED_EXECUTION",
+  "k1_pass": false,
+  "scientific_fail": false
+}
