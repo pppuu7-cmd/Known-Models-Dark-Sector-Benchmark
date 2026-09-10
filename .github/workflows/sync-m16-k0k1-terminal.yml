@@ -1,0 +1,97 @@
+name: Sync M16 K0 K1 terminal evidence
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-m16-k0k1-terminal.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synchronize M16 terminal K1 evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import csv, io, json
+
+          run='34474389038'; job='102861550642'; artifact='10150882133'; result_commit='9619a5c825f71906c4e872fee70fbd06876357f0'
+          digest='sha256:f549f3c02de47a4152b89be1a8cbfc4782ffaf8b4671494d45d4216b78520b50'
+          result_path=Path('waves/wave_03_expanded_dark_energy/M16_IDECAMB_INTERACTING_VACUUM_K0K1_RESULT.json')
+          r=json.loads(result_path.read_text())
+          if r['classification']!='M16_INTERACTING_VACUUM_K1_PASS_WITH_SCOPE':
+              raise SystemExit('Refusing terminal sync: machine classification is not frozen PASS')
+          if r['quantity_metric']['max_symmetric_relative_difference']>2e-8 or r['theory_cl_metric']['max_symmetric_relative_difference']>2e-8:
+              raise SystemExit('Refusing terminal sync: frozen metric threshold not satisfied')
+
+          audit=f'''# M16 — interacting vacuum / running-vacuum subfamily audit\n\nUpdated: 2026-09-10\nWave: W03 Tier-B\nStatus: `INTERACTING_VACUUM_K1_PASS_WITH_SCOPE_FAMILY_IDENTITY_AUDIT_NEXT`\n\n## Tested scope\n\nThis record covers only the pinned IDECAMB interacting-vacuum subfamily\n\n- `w=-1`;\n- `Q = beta H rho_de`;\n- `Q_mu = Q u_mu,c`;\n- base `cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4`;\n- overlay `liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075`.\n\nIt does **not** yet represent all running-vacuum `Lambda(H)` constructions, derivative-vacuum laws, or other covariant transfer directions.\n\n## K0 / source binding\n\nThe pinned source documents coupled-fluid `QForm_CF=1` as `Q=beta H rho_de`, and its CPL branch has an explicit cosmological-constant condition at `w0=-1,w1=0,beta=0`. K0: `PASS_WITH_SCOPE`.\n\n## K1 frozen reference gate\n\nPreregistration: `protocol/W03_M16_IDECAMB_INTERACTING_VACUUM_K0K1_PREREGISTRATION_v0.1.md`.\n\nFrozen comparison:\n- interacting branch: `Class_IDE=1`, `w0=-1`, `w1=0`, `beta_cf=0`, `QForm_CF=1`, `CovQForm_CF=1`;\n- comparator: same overlay, noninteracting branch `Class_IDE=0`, `w0=-1`, `w1=0`;\n- symmetric-relative threshold: `2e-8`;\n- undefined/nonfinite entries masked, never zero-imputed.\n\nMachine result:\n- both exits: 0;\n- `.quantity`: max symmetric relative difference `0.0`, 16000 common finite entries / 2000 rows;\n- `.theory_cl`: max symmetric relative difference `0.0`, 14994 common finite entries / 2499 rows.\n\nK1: `PASS_WITH_SCOPE`.\n\n## Provenance\n\n- run `{run}`\n- job `{job}`\n- immutable artifact `{artifact}`\n- artifact digest `{digest}`\n- machine-result commit `{result_commit}`\n\n## Gate ledger\n\n| K gate | State |\n|---|---|\n| K0 | PASS_WITH_SCOPE |\n| K1 | PASS_WITH_SCOPE |\n| K2 | NOT_TESTED |\n| K3 | PARTIAL_SOURCE_BOUND |\n| K4 | NOT_TESTED |\n| K5 | NOT_TESTED |\n| K6 | OPEN_FAMILY_IDENTITY_M02_OVERLAP_AUDIT |\n| K7 | NOT_TESTED |\n| K8 | NOT_TESTED |\n| K9 | NOT_TESTED |\n\nNo physical falsification follows from this record.\n\n## Exact next allowed gate\n\nBefore opening a beta response grid, compare the F16 equations/parameter manifold and covariant transfer prescription against the already-tested F02/M02 IDE family. Determine prospectively whether this interacting-vacuum branch is response-distinct, a constrained M02 submanifold (`REPRESENTED_BY:M02`), or only partially overlapping. Only if a response-distinct direction remains may a separate F16 K2-K6 production program be opened. Full running-vacuum `Lambda(H)` coverage remains separately required.\n'''
+          p=Path('models/interacting_vacuum'); p.mkdir(parents=True,exist_ok=True)
+          (p/'audit.md').write_text(audit)
+          (p/'result.json').write_text(json.dumps({
+              'schema_version':'KMDSB-result-v0.1','model_id':'M16','model_slug':'interacting_vacuum',
+              'tested_scope':r['scope'],'provider_base':r['provider_base'],'provider_overlay':r['provider_overlay'],
+              'gate_states':{'K0':'PASS_WITH_SCOPE','K1':'PASS_WITH_SCOPE','K2':'NOT_TESTED','K3':'PARTIAL_SOURCE_BOUND','K4':'NOT_TESTED','K5':'NOT_TESTED','K6':'OPEN_FAMILY_IDENTITY_M02_OVERLAP_AUDIT','K7':'NOT_TESTED','K8':'NOT_TESTED','K9':'NOT_TESTED'},
+              'machine_result':r,'provenance':{'run':run,'job':job,'artifact':artifact,'artifact_digest':digest,'result_commit':result_commit},
+              'overall_verdict':'K1_PASS_WITH_SCOPE_FAMILY_IDENTITY_AUDIT_NEXT','physical_falsification':False
+          },indent=2)+'\n')
+
+          # Census F16.
+          cp=Path('matrices/model_family_census.csv')
+          rows=list(csv.DictReader(io.StringIO(cp.read_text())))
+          fields=list(rows[0].keys())
+          for row in rows:
+              if row['family_id']=='F16':
+                  row['status']='INTERACTING_VACUUM_K1_PASS_WITH_SCOPE_FAMILY_IDENTITY_AUDIT_NEXT'
+                  row['notes']='IDECAMB Q=beta H rho_de, Q_mu parallel u_c subfamily has exact beta=0 LambdaCDM K1 regression PASS (run 34474389038); before K2/K5 test whether this branch is response-distinct from M02 IDE or REPRESENTED_BY:M02. Full running-vacuum Lambda(H) coverage remains open.'
+          out=io.StringIO(); w=csv.DictWriter(out,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows); cp.write_text(out.getvalue())
+
+          # Mandatory-properties F16.
+          mp=Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(io.StringIO(mp.read_text())))
+          fields=list(rows[0].keys())
+          for row in rows:
+              if row['family_id']=='F16':
+                  row['K0_provenance']='PASS_WITH_SCOPE'; row['K1_reference_limit']='PASS_WITH_SCOPE'
+                  row['K2_physical_geometry']='NOT_TESTED'; row['K3_conservation_gauge_closure']='PARTIAL_SOURCE_BOUND'
+                  row['K4_numerical_robustness']='NOT_TESTED'; row['K5_multichannel_rank']='NOT_TESTED'
+                  row['K6_nearest_family_manifold']='OPEN_FAMILY_IDENTITY_M02_OVERLAP_AUDIT'
+                  row['coverage_state']='K1_PASS_WITH_SCOPE_FAMILY_IDENTITY_AUDIT_NEXT'
+                  row['notes']='Pinned IDECAMB interacting-vacuum Q=beta H rho_de branch: beta=0 matches same-overlay noninteracting LambdaCDM outputs exactly to serialization precision under frozen 2e-8 K1 gate; identity/overlap with M02 IDE must be resolved before separate response-family promotion.'
+          out=io.StringIO(); w=csv.DictWriter(out,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows); mp.write_text(out.getvalue())
+
+          # Benchmark matrix M16 row, if absent.
+          bp=Path('matrices/benchmark_matrix.csv')
+          rows=list(csv.DictReader(io.StringIO(bp.read_text()))); fields=list(rows[0].keys())
+          if not any(x['model_id']=='M16' for x in rows):
+              rows.append({'model_id':'M16','model_name':'Interacting vacuum Q=beta H rho_vac representative','role':'W03_interacting_vacuum_subfamily','B0':'PASS_WITH_SCOPE','B1':'PASS_WITH_SCOPE','B2':'PARTIAL','B3':'OPEN','B4':'OPEN','B5':'OPEN','B6':'OPEN','B7':'OPEN','B8':'OPEN','B9':'PARTIAL','overall_verdict':'K1_PASS_WITH_SCOPE_FAMILY_IDENTITY_AUDIT_NEXT','dsir_authority':'bc28acc47cc5facba046741fd09f710ae8da9689','notes':'IDECAMB beta=0 K1 exact output regression PASS; limited to Q=beta H rho_de, Q_mu parallel u_c. M02 overlap/representation audit required before separate family response scoring; full Lambda(H) running-vacuum class remains open.'})
+          out=io.StringIO(); w=csv.DictWriter(out,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows); bp.write_text(out.getvalue())
+
+          stamp=f'''\n\n## 2026-09-10 — M16 interacting-vacuum K0/K1 terminal sync\n\nPinned IDECAMB/CosmoMC interacting-vacuum subfamily `w=-1`, `Q=beta H rho_de`, `Q_mu || u_c` passed the prospectively frozen beta=0 K1 regression against the same-overlay noninteracting LambdaCDM branch. Run {run}, job {job}, artifact {artifact}, digest `{digest}`; `.quantity` and `.theory_cl` max symmetric relative difference are both exactly 0.0 on common finite support. K0/K1 are PASS_WITH_SCOPE only. F16 is not yet declared response-distinct from M02 and this does not cover all running-vacuum Lambda(H) models. Next gate: exact M16-vs-M02 family-identity/representation audit before any beta-grid promotion.\n'''
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+              q=Path(fn); s=q.read_text()
+              key='M16 interacting-vacuum K0/K1 terminal sync'
+              if key not in s: q.write_text(s+stamp)
+          PY
+      - name: Commit race-safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add models/interacting_vacuum matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv matrices/benchmark_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          git diff --cached --check
+          git diff --cached --quiet && exit 0
+          git commit -m 'Sync M16 interacting-vacuum K0 K1 evidence'
+          for i in 1 2 3 4; do
+            if git push origin HEAD:main; then exit 0; fi
+            git fetch origin main
+            git rebase origin/main
+          done
+          exit 1
