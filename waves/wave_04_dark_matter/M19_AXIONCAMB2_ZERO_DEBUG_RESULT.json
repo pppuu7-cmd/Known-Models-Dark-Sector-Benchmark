@@ -1,0 +1,23 @@
+{
+  "benchmark": "M19",
+  "provider": "dgrin1/axionCAMB",
+  "provider_commit": "891e779cc0bd422e49f97533e6c2fc761149737d",
+  "gate": "exact-zero diagnostic only",
+  "workflow_run": 34511569527,
+  "job": 102986718552,
+  "artifact": 10165990393,
+  "artifact_sha256": "07bb507f3a2859666d3d7126be20ca0d08fd9fd6dafdc2d970f4ec9100eb9551",
+  "build_exit": 0,
+  "zero_exit": 2,
+  "diagnostic": {
+    "source_file": "modules.f90",
+    "line": 1663,
+    "routine": "MassiveNu::Nu_rho",
+    "error": "Index -2147483648 of r1 below lower bound 1",
+    "call_path": ["Nu_rho", "axion_background::lh", "axion_background::derivs", "axion_background::next_step", "axion_background::w_evolve", "driver"],
+    "interpretation": "runtime-checked exact axfrac=0 reaches the legacy massive-neutrino interpolation with an invalid integer index; this localizes the crash but does not establish whether the upstream cause is the massive-neutrino path itself or a non-finite argument generated earlier by the exact-zero axion branch"
+  },
+  "classification": "DIAGNOSTIC_LOCALIZED_NO_SCIENTIFIC_PROMOTION",
+  "scientific_fail": false,
+  "next_allowed_gate": "prospectively isolate the massive-neutrino path by rerunning the same exact-zero axion reference with omnuh2=0 and massive_neutrinos=0; no K0-K9 promotion from that control alone"
+}
