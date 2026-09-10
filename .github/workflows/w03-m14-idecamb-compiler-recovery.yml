@@ -1,0 +1,62 @@
+name: W03 M14 IDECAMB compiler recovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-idecamb-compiler-recovery.yml'
+      - 'protocol/W03_M14_IDECAMB_COMPILER_RECOVERY_PREREGISTRATION_v0.1.md'
+
+jobs:
+  compiler-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync
+          gfortran --version | head -n 2 > gfortran_version.txt
+      - name: Fetch exact providers and overlay literally
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/cmbant/CosmoMC.git cosmomc_base
+          git -C cosmomc_base checkout eb08c2fe91d9711929802fede310ae58c020fcb4
+          test "$(git -C cosmomc_base rev-parse HEAD)" = "eb08c2fe91d9711929802fede310ae58c020fcb4"
+          git clone https://github.com/liaocrane/IDECAMB.git idecamb_patch
+          git -C idecamb_patch checkout 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          test "$(git -C idecamb_patch rev-parse HEAD)" = "4f1093d9efe46f28cf7e2acb4d07ae116ad5e075"
+          rsync -a --exclude='.git' idecamb_patch/ cosmomc_base/
+      - name: Build with frozen compiler compatibility flag
+        shell: bash
+        run: |
+          set +e
+          make -C cosmomc_base cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > build.log 2>&1
+          rc=$?
+          echo "$rc" > build.exit
+          tail -n 180 build.log
+          exit 0
+      - name: Classify
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os
+          rc=int(open('build.exit').read())
+          exe=os.path.isfile('cosmomc_base/cosmomc')
+          cls='M14_IDECAMB_PROVIDER_BUILD_PASS_COMPAT_FLAG' if rc==0 and exe else 'M14_IDECAMB_BLOCKED_BUILD_AFTER_COMPAT_FLAG'
+          out={'schema':'KMDSB.W03.M14.IDECAMBCompilerRecovery.v0.1','base':'cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4','patch':'liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075','compiler_flag_added':'-fallow-argument-mismatch','build_exit':rc,'executable_present':exe,'classification':cls,'scientific_promotion_authorized':False}
+          open('m14_idecamb_compiler_recovery.json','w').write(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: w03-m14-idecamb-compiler-recovery
+          path: |
+            m14_idecamb_compiler_recovery.json
+            build.log
+            build.exit
+            gfortran_version.txt
+          retention-days: 90
