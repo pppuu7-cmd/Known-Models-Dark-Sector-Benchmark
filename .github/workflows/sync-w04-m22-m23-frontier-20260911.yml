@@ -1,0 +1,110 @@
+name: Sync W04 M22 M23 frontier 20260911
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-w04-m22-m23-frontier-20260911.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Synchronize M22 and M23 validated frontier
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f models/annihilating_dark_matter/M22_K1_V2_CONTINUITY_RESULT.json
+          test -f models/annihilating_dark_matter/m22_k3_effective_injection_scope_audit_2026-09-11.md
+          test -f models/dm_dark_radiation/M23_K1_REFERENCE_RESULT.json
+          test -f models/dm_dark_radiation/m23_k3_source_closure_audit_2026-09-11.md
+          python3 - <<'PY'
+          import csv, json
+          from pathlib import Path
+
+          m22=json.loads(Path('models/annihilating_dark_matter/M22_K1_V2_CONTINUITY_RESULT.json').read_text())
+          m23=json.loads(Path('models/dm_dark_radiation/M23_K1_REFERENCE_RESULT.json').read_text())
+          assert m22['classification']=='M22_K1_V2_REFERENCE_LIMIT_PASS_WITH_SCOPE_NATIVE_ENERGY_INJECTION'
+          assert m23['classification']=='M23_K1_DECOUPLING_PASS_WITH_SCOPE_FIXED_DM_DR_CONTENT'
+
+          def rewrite_csv(path, key, updates):
+              p=Path(path)
+              with p.open(newline='') as f:
+                  rows=list(csv.DictReader(f))
+                  fieldnames=list(rows[0].keys())
+              seen=set()
+              for row in rows:
+                  k=row[key]
+                  if k in updates:
+                      for col,val in updates[k].items():
+                          if col in fieldnames: row[col]=val
+                      seen.add(k)
+              missing=set(updates)-seen
+              if missing: raise SystemExit(f'{path}: missing rows {sorted(missing)}')
+              with p.open('w',newline='') as f:
+                  w=csv.DictWriter(f,fieldnames=fieldnames);w.writeheader();w.writerows(rows)
+
+          rewrite_csv('matrices/model_family_census.csv','family_id',{
+              'F22':{
+                  'status':'K1_V2_PASS_K3_EFFECTIVE_INJECTION_SCOPE_PARTIAL',
+                  'notes':'Native CLASS p_ann exact-zero identity and prospectively extended K1-v2 continuity tail PASS in TT/EE/TE/P(k). Frozen v1 remains failed because its qualitative P(k)-null assumption was too strong. Source audit: provider is an effective recombination energy-deposition implementation using rho_cdm^2 p_ann without an explicit matched DM-depletion sink, so full K3 conservation closure is not claimed; no physical falsification.'
+              },
+              'F23':{
+                  'status':'K1_DECOUPLING_PASS_K3_SOURCE_CLOSURE_SCOPED_K4_OPEN',
+                  'notes':'Pinned native CLASS IDM-DR/NADM branch. K1 keeps f_idm=1, N_idr=0.429, nindex=0 and fluid DR fixed while only Gamma_0_nadm -> 0; omitted-vs-zero identity is exact and TT/EE/TE/P(k) finite responses converge approximately linearly. Source audit finds paired IDM/DR Euler momentum-exchange terms. Cross-gauge numerical regression and K4+ remain open; M24 ETHOS is not represented.'
+              }
+          })
+
+          rewrite_csv('matrices/mandatory_properties_matrix.csv','family_id',{
+              'F22':{
+                  'K0_provenance':'PASS_WITH_SCOPE_PINNED_NATIVE_CLASS_ENERGY_INJECTION',
+                  'K1_reference_limit':'PASS_WITH_SCOPE_NATIVE_ENERGY_INJECTION_EXACT_ZERO',
+                  'K2_physical_geometry':'ONE_SIDED_PANN_GE_0_NO_SIGN_QUOTIENT',
+                  'K3_conservation_gauge_closure':'PARTIAL_EFFECTIVE_ENERGY_DEPOSITION_NO_EXPLICIT_DM_DEPLETION_CLOSURE',
+                  'K4_numerical_robustness':'NOT_TESTED',
+                  'K5_multichannel_rank':'NOT_TESTED',
+                  'K6_nearest_family_manifold':'NOT_TESTED',
+                  'K7_common_observation_space':'NOT_TESTED',
+                  'K8_quotient_novelty':'NOT_TESTED',
+                  'K9_prospective_holdout':'NOT_TESTED',
+                  'coverage_state':'K1_V2_PASS_K3_EFFECTIVE_SCOPE_PARTIAL_LATE_GATES_OPEN',
+                  'notes':'Annihilation energy-injection K1-v2 PASS after preserving frozen v1 negative-control failure. Exact zero equals omitted input. TT/EE/TE/P(k) all contract on a newly extended smaller p_ann tail. K3 remains partial because the native thermodynamic injection path does not explicitly evolve the corresponding DM depletion sink.'
+              },
+              'F23':{
+                  'K0_provenance':'PASS_WITH_SCOPE_PINNED_NATIVE_CLASS_IDM_DR',
+                  'K1_reference_limit':'PASS_WITH_SCOPE_FIXED_DM_DR_CONTENT_ONLY_COUPLING_TO_ZERO',
+                  'K2_physical_geometry':'ONE_SIDED_GAMMA_GE_0_NO_SIGN_QUOTIENT',
+                  'K3_conservation_gauge_closure':'PASS_WITH_SCOPE_NATIVE_IDM_DR_PERTURBATION_MOMENTUM_CLOSURE_SYNCHRONOUS_NUMERICAL_CROSS_GAUGE_OPEN',
+                  'K4_numerical_robustness':'NOT_TESTED',
+                  'K5_multichannel_rank':'NOT_TESTED',
+                  'K6_nearest_family_manifold':'NOT_TESTED',
+                  'K7_common_observation_space':'NOT_TESTED',
+                  'K8_quotient_novelty':'NOT_TESTED',
+                  'K9_prospective_holdout':'NOT_TESTED',
+                  'coverage_state':'K1_K3_SCOPED_PASS_K4_OPEN',
+                  'notes':'M23 NADM-like DM-DR scattering uses a decoupled reference with species content fixed. Explicitly freezing nindex=0 and idr_nature=fluid avoids Gamma-key parser side effects. K1 exact identity and finite tail PASS; source-level paired Euler momentum exchange supports scoped K3. Cross-gauge numerical regression/K4 remain open; M24 ETHOS remains independent.'
+              }
+          })
+
+          p=Path('recovery/STATE.md')
+          s=p.read_text()
+          marker='## 2026-09-11 — W04 M22/M23 K1 closure and new reference-semantics rules'
+          if marker not in s:
+              s += f'''\n\n{marker}\n- M22 annihilating-DM native CLASS v1 (`34540790113`) preserved as frozen NOT_ESTABLISHED solely because its preregistered P(k) negative-control threshold was violated. Exact zero/omitted identity was zero and TT/EE/TE passed; P(k) itself contracted smoothly.\n- M22 prospective v2 (`34541280629`) PASS: `{m22['classification']}`. New sub-v1 tail down to 3.33e-26 m^3 s^-1 J^-1 gives no failing blocks. New-tail exponents: TT={m22['blocks']['TT']['fit_new_smallest3']['p']:.6f}, EE={m22['blocks']['EE']['fit_new_smallest3']['p']:.6f}, TE={m22['blocks']['TE']['fit_new_smallest3']['p']:.6f}, Pk={m22['blocks']['Pk']['fit_new_smallest3']['p']:.6f}. K1 is promoted with effective-energy-injection scope only.\n- M22 K3 source audit is PARTIAL: CLASS deposits rho_cdm^2 p_ann energy into recombination/thermodynamics without an explicit matched background DM depletion sink. This is a provider/effective-approximation scope, not annihilating-DM falsification.\n- M23 DM-DR/DAO hosted run `34541145589` PASS: `{m23['classification']}`. Omitted-vs-zero coupling identity is exact in TT/EE/TE/P(k); finite Gamma_0 responses contract monotonically with tail exponents TT={m23['blocks']['TT']['fit_smallest3']['p']:.6f}, EE={m23['blocks']['EE']['fit_smallest3']['p']:.6f}, TE={m23['blocks']['TE']['fit_smallest3']['p']:.6f}, Pk={m23['blocks']['Pk']['fit_smallest3']['p']:.6f}.\n- M23 source K3 is scoped PASS: paired IDM/DR Euler momentum-exchange terms are present; numerical cross-gauge residual regression remains open.\n- New durable reference-semantics rules are recorded in `protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_W04_ADDENDUM_2026-09-11.md`: parameter-key presence can alter physical defaults; qualitative 'unaffected' statements are not strict null theorems; interaction decoupling normally preserves species content.\n- Strict terminal/represented census remains 4/46. Operational polygon readiness estimate advances conservatively to approximately 55%; this is not a strict census metric.\n- `NEW_MODEL: DESIGN_AUTHORIZED / NOT_YET_REQUIRED` remains unchanged.\n'''
+              p.write_text(s)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'Sync M22 M23 W04 frontier bookkeeping'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
