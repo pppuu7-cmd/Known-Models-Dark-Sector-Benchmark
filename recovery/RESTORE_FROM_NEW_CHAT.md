@@ -66,3 +66,6 @@ Strict F00-F45 coverage bookkeeping: 4/46 terminal/represented (F00, F09, F44, F
 
 ## Never infer
 Implementation failure = physics failure; parameter count = rank; pairwise angle = family uniqueness; theory separation = observational discovery; covariance existence = valid bridge; unavailable solver = family covered; executable provider = correct family representative; unified/matter scalar bookkeeping = DE-only k-essence validation; survival counts = truth fractions.
+
+### M18 ghost-condensate update (2026-09-10)
+Pinned CLASS_GSF model 1 author DGF is executable, but the prospectively defined lambda=0 condensate reference (`P_X=0 -> w=-1`) fails with exit 139 in run `34435998290` while LCDM and unchanged author controls pass. The provider shooting source explicitly flags a very-good-guess `f1~0` bracketing bug and uses `f1/fabs(f1)`. Treat as `BLOCKED_IMPLEMENTATION_REFERENCE_PROVIDER`, not physics failure. Do not tune ICs or patch provider post hoc; seek independent implementation or author-supported regular reference. See `models/ghost_condensate/audit.md`.

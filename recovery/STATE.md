@@ -55,12 +55,21 @@ Consequences:
 
 Authority files: `models/scherrer_unified_dark_sector/representative_scope_audit.md` and `waves/wave_03_expanded_dark_energy/M15_SCHERRER_REPRESENTATIVE_SCOPE_RESULT.json`.
 
+## 7b. M18 ghost-condensate / dilatonic-ghost reference route — provider-specific K1 blocker
+
+Pinned `KunhaoZhong/CLASS_GSF@07e015246c4b40f4e22bb50c9a0a63a621bb61f7`, model 1. Source implements `P=-X+c1 exp(lambda phi) X^2`; the committed author DGF point uses lambda=.2 and executes. A prospective diagnostic reference was derived before execution: lambda=0 gives shift-symmetric `P=-X+c1 X^2`, whose stationary condensate locus `P_X=0` implies `c1 X=1/2` and `w=-1`.
+
+Run `34435874904` was infrastructure-only: build PASS, then a literal output-root harness mismatch stopped before cases. Plumbing was fixed without changing lambda/IC/shooting physics. Run `34435998290`: LCDM exit 0, unchanged author DGF exit 0, lambda-zero reference exit 139 with no lambda-zero products. Canonical result: `waves/wave_03_expanded_dark_energy/M18_GHOST_CONDENSATE_REFERENCE_PROBE_RESULT.json`; audit: `models/ghost_condensate/audit.md`; immutable artifact: `w03-m18-ghost-condensate-reference-probe`.
+
+The pinned shooting source itself comments `BUG: problem if the guess is very good (f1~0)` and for `fabs(f1)<1e-5` evaluates a step containing `f1/fabs(f1)`. Therefore the symmetric reference route is classified `BLOCKED_IMPLEMENTATION_REFERENCE_PROVIDER`, not physical ghost-condensate failure. Do not post-hoc tune ICs or patch the external solver to force K1. Search an independent implementation or author-supported numerically regular reference prescription.
+
 ## 8. Current frontier
 - F11/M11: `THEORY_SURVIVOR_COVARIANT_VALIDATION_BLOCKED`; search for independent covariant DE implementation remains open.
 - F13/M13: partial; true multifield quintom provider/provenance open.
 - F14/M14 coupled quintessence: `BLOCKED_PROVENANCE_PROVIDER_SEARCH` for `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df`. README documents `./class iDM.ini`, regression/benchmark records reference successful runs, but the exact public pinned tree does not contain `iDM.ini`; no unchanged author point can be reproduced from this GitHub snapshot. Search the cited archival exact config or an independent provider.
 - F15/M15: `QUEUED_REPRESENTATIVE_SEARCH`; Scherrer candidate rejected on family-identity bookkeeping, so a genuine generalized-Chaplygin/unified-dark-fluid provider is still required.
-- F16-F18 remain W03 Tier-B queue.
+- F16-F17 remain W03 Tier-B queue.
+- F18/M18 is now `BLOCKED_IMPLEMENTATION_REFERENCE_PROVIDER_SEARCH`: author DGF executes, but the prospectively defined lambda=0 condensate K1 path hits a provider shooting singularity; independent implementation/reference required.
 
 Strict census bookkeeping among F00-F45: 4/46 are terminal/represented in the strict sense (F00, F09, F44, F45); 42 still require strict closure. This count is coverage bookkeeping only.
 
@@ -75,4 +84,5 @@ No `NEW_REQUIRED` before sufficient census closure + adversarial cross-family wa
 2. Only after an exact tracked author configuration exists, preregister and run provider-control unchanged. Green workflow alone is not science.
 3. If provider-control PASSes, separately source-bind and preregister K1 coupling-off/reference regression before production response grids.
 4. In parallel continue M13b and M15 genuine-provider searches; do not repurpose Scherrer or CPL as coverage shortcuts.
-5. Keep M11b CLASS_GSF terminal and search only independently justified covariant DE routes.
+5. M18: seek a different public implementation or author-supported numerically regular condensate reference; do not patch/tune CLASS_GSF post hoc.
+6. Keep M11b CLASS_GSF terminal and search only independently justified covariant DE routes.

@@ -239,3 +239,7 @@ Pinned `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df`. README documents 
 
 ### Methodology delta
 Provider execution and family-representative validity are distinct gates. A working solver/example must still pass stress-energy/sector bookkeeping before scientific promotion; a documented but untracked author input cannot be reconstructed and treated as immutable provenance.
+
+
+### M18 ghost-condensate reference gate
+Pinned `KunhaoZhong/CLASS_GSF@07e015246c4b40f4e22bb50c9a0a63a621bb61f7` model 1. Source-level K1 candidate was frozen prospectively: at lambda=0, `P=-X+c1 X^2`, and the stationary `P_X=0` locus gives `w=-1`. First Actions run `34435874904` stopped before physics on an output-root harness mismatch; build passed. Plumbing-only repair preserved the frozen physical cases. Run `34435998290` then gave LCDM exit 0, unchanged author DGF exit 0, lambda-zero reference exit 139. The provider shooting code explicitly documents an `f1~0` bracketing bug and uses `f1/fabs(f1)` in that regime. Classification: `BLOCKED_IMPLEMENTATION_REFERENCE_PROVIDER`; K0 `PASS_WITH_SCOPE`, K1 blocked, K2-K9 not tested. No physical M18 failure and no post-hoc IC/source patch authorized.

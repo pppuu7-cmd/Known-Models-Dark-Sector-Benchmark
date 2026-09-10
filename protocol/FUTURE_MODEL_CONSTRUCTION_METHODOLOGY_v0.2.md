@@ -405,3 +405,7 @@ A successful build and author example is only an infrastructure/provenance contr
 Conversely, a README command or benchmark timing is not a reproducible provider control when the referenced author input is absent from the immutable pinned source. Never reconstruct a missing author configuration post hoc from defaults, prose or nearby files and call it provider validation. Recover an immutable archival configuration or choose another provider.
 
 Durable rule: **executable provider != valid representative; documented-but-missing input != reproducible provider.**
+
+
+### Reference-path regularity rule (M18-derived)
+A mathematically exact symmetry/decoupling reference is not sufficient if the numerical implementation is singular precisely on that locus. Before using a reference for family promotion, require both a physically justified map and a numerically regular executable path. If a third-party shooting algorithm is singular at an exact symmetry point, classify the provider/reference as blocked and seek an independent implementation or author-supported prescription; do not perturb the reference, retune initial conditions, or patch the solver after seeing the failure merely to manufacture a passing control.
