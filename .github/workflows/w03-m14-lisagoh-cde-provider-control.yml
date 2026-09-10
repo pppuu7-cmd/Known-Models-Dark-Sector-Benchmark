@@ -8,6 +8,7 @@ on:
       - '.github/workflows/w03-m14-lisagoh-cde-provider-control.yml'
       - 'protocol/W03_M14_LISAGOH_CDE_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md'
       - 'protocol/W03_M14_LISAGOH_CDE_PROVIDER_CONTROL_RECOVERY_PREREGISTRATION_v0.2.md'
+      - 'protocol/W03_M14_LISAGOH_CDE_PROVIDER_CONTROL_RECOVERY_PREREGISTRATION_v0.3.md'
 
 permissions:
   contents: write
@@ -48,6 +49,7 @@ jobs:
           : > before_files.txt
           : > after_files.txt
           if [ "$(cat build.exit)" = "0" ]; then
+            mkdir -p provider/class_CDE/output
             cd provider/class_CDE
             find . -type f -printf '%p\t%T@\t%s\n' | sort > ../../before_files.txt
             ./class CDE.ini > ../../provider.log 2>&1
@@ -90,10 +92,11 @@ jobs:
           tk=hits(['tk.dat'])
           passed=build==0 and run==0 and bool(bg) and bool(pk) and bool(cl) and bool(tk)
           result={
-            'schema':'KMDSB.W03.M14.LisaGohCDEProviderControl.v0.2',
+            'schema':'KMDSB.W03.M14.LisaGohCDEProviderControl.v0.3',
             'provider':'LisaGoh/CDE@b85a675af7544a5183e402964550811aa805b698',
             'workload':'class_CDE/CDE.ini unmodified',
             'build_target':'make class -j2 (standalone author executable; no source edits)',
+            'filesystem_recovery':'mkdir -p class_CDE/output only',
             'build_exit':build,'run_exit':run,
             'fresh_counts':{'background':len(bg),'linear_pk':len(pk),'cl':len(cl),'transfer':len(tk)},
             'fresh_products':fresh,
@@ -121,7 +124,7 @@ jobs:
           cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_LISAGOH_CDE_PROVIDER_CONTROL_RESULT.json
           git add models/coupled_quintessence/lisagoh_cde_provider_control.json waves/wave_03_expanded_dark_energy/M14_LISAGOH_CDE_PROVIDER_CONTROL_RESULT.json
           if ! git diff --cached --quiet; then
-            git commit -m 'Record LisaGoh CDE M14 provider control recovery'
+            git commit -m 'Record LisaGoh CDE M14 provider control recovery v0.3'
             git push origin HEAD:main
           fi
 
