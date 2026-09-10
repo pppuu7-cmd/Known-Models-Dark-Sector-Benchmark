@@ -7,6 +7,7 @@ import numpy as np
 W0=-1.2498700663555409
 WA=0.8082964747357178
 K6='models/holographic_dark_energy/M17_C060_JOINT_CPL_K6_REFINEMENT_RESULT.json'
+RECOVERY='protocol/W03_M17_K7A_OUTPUT_COVERAGE_RECOVERY_v0.1.md'
 
 def ro(s,o,n):
     c=s.count(o)
@@ -24,7 +25,7 @@ def prepare(base:Path,out:Path):
     s=base.read_text()
     likes=['DEFAULT(batch3/plik_rd12_HM_v22_TTTEEE.ini)','DEFAULT(batch3/lowl.ini)','DEFAULT(batch3/lowE.ini)','DEFAULT(batch3/lensing.ini)','DEFAULT(batch3/BAO.ini)','DEFAULT(batch3/Pantheon18.ini)']
     for x in likes: s=ro(s,x,'#'+x)
-    s=ro(s,'DEFAULT(batch3/common.ini)','DEFAULT(batch3/common.ini)\nuse_nonlinear_lensing = F\nlmax_computed_cl = 2600')
+    s=ro(s,'DEFAULT(batch3/common.ini)','DEFAULT(batch3/common.ini)\nuse_nonlinear_lensing = F\nlmax_computed_cl = 2600\nlmin_store_all_cmb = 2600')
     s=ro(s,'#Use_PPF = F','Use_PPF = T')
     s=ro(s,'test_check_compare = 1820.775','#test_check_compare = 1820.775')
     s=ro(s,'#test_output_root = output_ide','test_output_root = PLACEHOLDER')
@@ -57,7 +58,6 @@ def theory(p:Path):
 def planck_vector(obj,a):
     ell=a[:,0].astype(int); dtt=a[:,1]; dte=a[:,2]; dee=a[:,3]
     if ell[0]>2 or ell[-1]<2508: raise RuntimeError('ell range')
-    # Build dense D_l arrays using exact integer theory rows.
     lm=int(ell[-1]); tt=np.zeros(lm+1); te=np.zeros(lm+1); ee=np.zeros(lm+1)
     tt[ell]=dtt; te[ell]=dte; ee[ell]=dee
     ls=np.arange(lm+1); fac=ls*(ls+1)/(2*np.pi); fac[:2]=1.0
@@ -74,7 +74,7 @@ def planck_vector(obj,a):
 
 def analyze(work:Path,planck:Path,status:Path,out:Path):
     st=json.loads(status.read_text())
-    res={'schema':'KMDSB.M17.K7a.PlanckPlikLiteCovariance.v1','status':st,'physical_falsification':False,'K7':'PARTIAL_COVARIANCE_WEIGHTING_ONLY','preregistration':'protocol/W03_M17_K7A_PLANCK_PLIKLITE_COVARIANCE_PREREGISTRATION_v0.1.md'}
+    res={'schema':'KMDSB.M17.K7a.PlanckPlikLiteCovariance.v1','status':st,'physical_falsification':False,'K7':'PARTIAL_COVARIANCE_WEIGHTING_ONLY','preregistration':'protocol/W03_M17_K7A_PLANCK_PLIKLITE_COVARIANCE_PREREGISTRATION_v0.1.md','output_coverage_recovery':RECOVERY}
     if any(st.get(k)!=0 for k in ['h06','cpl']):
         res['classification']='M17_K7A_OPERATOR_OR_OUTPUT_BLOCKED'; res['reason']='theory execution'; out.write_text(json.dumps(res,indent=2,sort_keys=True)+'\n'); return
     try:
