@@ -1,0 +1,128 @@
+name: W03 M14 IDECAMB CQ output schema probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-idecamb-cq-output-schema-probe.yml'
+      - 'protocol/W03_M14_IDECAMB_CQ_OUTPUT_SCHEMA_PROBE_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  schema-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync python3
+      - name: Fetch exact providers and build
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/cmbant/CosmoMC.git cosmomc_base
+          git -C cosmomc_base checkout eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone https://github.com/liaocrane/IDECAMB.git idecamb_patch
+          git -C idecamb_patch checkout 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          test "$(git -C cosmomc_base rev-parse HEAD)" = "eb08c2fe91d9711929802fede310ae58c020fcb4"
+          test "$(git -C idecamb_patch rev-parse HEAD)" = "4f1093d9efe46f28cf7e2acb4d07ae116ad5e075"
+          rsync -a --exclude='.git' idecamb_patch/ cosmomc_base/
+          make -C cosmomc_base cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > build.log 2>&1
+      - name: Prepare frozen diagnostic input
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp cosmomc_base/test_ide.ini schema_test.ini
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('schema_test.ini'); s=p.read_text()
+          old='Class_IDE = 1 '
+          if s.count(old)!=1: raise SystemExit('unexpected Class_IDE selector count')
+          s=s.replace(old,'Class_IDE = 2 ',1)
+          oldbeta='param[beta_cq]= 0.01 0 0.15 0.05 0.05'
+          if s.count(oldbeta)!=1: raise SystemExit('unexpected beta_cq author line count')
+          s=s.replace(oldbeta,'param[beta_cq]= 0',1)
+          hook='#test_output_root = output_ide'
+          if s.count(hook)!=1: raise SystemExit('unexpected test_output_root hook count')
+          s=s.replace(hook,'test_output_root = m14_cq_beta0',1)
+          p.write_text(s)
+          PY
+          diff -u cosmomc_base/test_ide.ini schema_test.ini > schema.diff || true
+      - name: Execute diagnostic output probe
+        shell: bash
+        run: |
+          set +e
+          cp schema_test.ini cosmomc_base/schema_test.ini
+          cd cosmomc_base
+          rm -f m14_cq_beta0*
+          ./cosmomc schema_test.ini > ../schema_run.log 2>&1
+          echo "$?" > ../schema_run.exit
+          find . -maxdepth 2 -type f -name 'm14_cq_beta0*' -print > ../fresh_files.txt
+          cd ..
+          tail -n 160 schema_run.log || true
+          cat fresh_files.txt || true
+          exit 0
+      - name: Record raw schema
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, shutil
+          root=pathlib.Path('cosmomc_base')
+          files=[]
+          for line in pathlib.Path('fresh_files.txt').read_text().splitlines():
+              p=root/pathlib.Path(line).as_posix().lstrip('./')
+              if not p.exists(): continue
+              dst=pathlib.Path('schema_outputs')/p.name
+              dst.parent.mkdir(exist_ok=True)
+              shutil.copy2(p,dst)
+              text=p.read_text(errors='replace').splitlines()
+              data=[]
+              for x in text:
+                  y=x.strip()
+                  if not y or y.startswith('#'): continue
+                  try:
+                      vals=[float(v.replace('D','E').replace('d','e')) for v in y.split()]
+                  except Exception:
+                      continue
+                  data.append(vals)
+              files.append({'name':p.name,'size':p.stat().st_size,'numeric_rows':len(data),'numeric_columns_first':len(data[0]) if data else None,'first_numeric_row':data[0] if data else None,'last_numeric_row':data[-1] if data else None})
+          out={'schema':'KMDSB.W03.M14.IDECAMBCQOutputSchemaProbe.v0.1','run_exit':int(pathlib.Path('schema_run.exit').read_text()),'files':files,'scientific_promotion_authorized':False,'classification':'OUTPUT_SCHEMA_CAPTURED' if files else 'OUTPUT_SCHEMA_NOT_EMITTED'}
+          pathlib.Path('m14_idecamb_cq_output_schema_probe.json').write_text(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+      - name: Persist neutral probe result race-safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m14_idecamb_cq_output_schema_probe.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/coupled_quintessence
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_IDECAMB_CQ_OUTPUT_SCHEMA_PROBE_RESULT.json
+          cp /tmp/result.json models/coupled_quintessence/idecamb_cq_output_schema_probe.json
+          git add waves/wave_03_expanded_dark_energy/M14_IDECAMB_CQ_OUTPUT_SCHEMA_PROBE_RESULT.json models/coupled_quintessence/idecamb_cq_output_schema_probe.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record IDECAMB CQ output schema probe result'
+            git push origin HEAD:main
+          fi
+      - name: Upload immutable bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m14-idecamb-cq-output-schema-probe
+          path: |
+            m14_idecamb_cq_output_schema_probe.json
+            schema_run.log
+            schema_run.exit
+            build.log
+            schema.diff
+            schema_test.ini
+            fresh_files.txt
+            schema_outputs/
+          retention-days: 90
