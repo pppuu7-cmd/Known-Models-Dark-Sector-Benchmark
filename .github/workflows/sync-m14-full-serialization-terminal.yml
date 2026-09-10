@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/sync-m14-full-serialization-terminal.yml'
+      - 'code/sync_m14_full_serialization_terminal.py'
 
 permissions:
   contents: write
@@ -17,75 +18,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Synchronize terminal result
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import csv
-          from pathlib import Path
-
-          def append_once(path, marker, text):
-              p=Path(path)
-              old=p.read_text()
-              if marker not in old:
-                  p.write_text(old.rstrip()+"\n\n"+text.strip()+"\n")
-
-          p=Path('matrices/model_family_census.csv')
-          rows=list(csv.DictReader(p.open()))
-          fields=list(rows[0].keys())
-          for r in rows:
-              if r['family_id']=='F14':
-                  r['status']='IDECAMB_K1_K2_PASS_K3_SCOPED_K4_FULL_SERIALIZATION_FAIL'
-                  r['notes']='Original iDM route: K1 pass, signed cdm_c K2, K3 partial, .01/.02 K4 FAIL. Independent IDECAMB: CQ execution/theory-output/K1 pass with scope; K2 one-sided beta>=0. Parent and smaller-step K4 gates fail. Broyden correction is insufficient. Full-serialization run 34467577947 (job 102839655588, artifact 10148183299) also fails the frozen angle gate: combined norm mismatch 0.00807 passes 0.10 but angle 7.610 deg exceeds 3 deg; dw/TT/EE remain directionally unstable. Serialization precision is excluded as a sufficient explanation. K5 remains blocked; no family falsification.'
-          with p.open('w',newline='') as f:
-              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
-
-          p=Path('matrices/mandatory_properties_matrix.csv')
-          rows=list(csv.DictReader(p.open()))
-          fields=list(rows[0].keys())
-          for r in rows:
-              if r['family_id']=='F14':
-                  r['K4_numerical_robustness']='FAIL_LOCAL_CONVERGENCE'
-                  r['K5_multichannel_rank']='BLOCKED_BY_K4'
-                  r['coverage_state']='IDECAMB_K1_K2_PASS_K3_SCOPED_K4_FULL_SERIALIZATION_FAIL'
-                  r['notes']='Two-provider record retained. IDECAMB K1 PASS_WITH_SCOPE and K2 one-sided beta>=0. Parent and smaller-step K4 gates fail. Broyden-only correction is insufficient. Full-serialization run 34467577947 with ES25.15E3 output leaves combined tangent angle 7.61003 deg >3 deg despite norm mismatch 0.00807 <0.10; channel angles include rho_de 4.032 deg, dw 6.845 deg, TT 11.184 deg, EE 53.376 deg. Therefore text serialization is not the cause; K5/K6 remain closed pending independently justified branch/initialization resolution.'
-          with p.open('w',newline='') as f:
-              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
-
-          audit='''## 2026-09-10 — IDECAMB full-serialization terminal control
-
-A prospectively isolated output-precision control tested whether the residual K4 rotation was an artifact of text serialization. No physical equations, beta grid, shooting logic, cosmological parameters, or frozen thresholds were changed. Only serialization precision was increased to `11ES25.15E3` for `.quantity` and `1I6+ES25.15E3` for `.theory_cl`.
-
-Actions run `34467577947`, job `102839655588`, immutable artifact `10148183299` (sha256 `8e306b488c4d1992f2c922854cb3fbd76fed44212b7705298933a3a5515e866c`) executed beta `{0,5e-8,1e-7}` with all cases exit 0. Machine result: `waves/wave_03_expanded_dark_energy/M14_IDECAMB_FULL_SERIALIZATION_RESULT.json`, commit `283bfac6650ea6683ceba288a1dd08341b16ecb9`.
-
-Frozen K4 remains FAIL: combined relative norm mismatch `0.00807248 <= 0.10`, but angle `7.61003 deg > 3 deg`. Channel angles: `dln_rho_de=4.03237 deg`, `dw=6.84459 deg`, TT `11.18374 deg`, EE `53.37577 deg`; `dln_rho_c`, `dln_H`, and `qhat` are stable. Limited text precision is therefore excluded as a sufficient explanation. K5 remains `BLOCKED_BY_K4`; no further beta shrinking or formatting changes are authorized. This is not a family-level physical falsification.'''
-          append_once('models/coupled_quintessence/audit.md','IDECAMB full-serialization terminal control',audit)
-
-          state='''## 2026-09-10 — M14 IDECAMB full-serialization control consumed
-
-Run `34467577947` (job `102839655588`, artifact `10148183299`, machine-result commit `283bfac6650ea6683ceba288a1dd08341b16ecb9`) changed only diagnostic text precision and retained beta `{0,5e-8,1e-7}` and frozen K4 thresholds. Combined norm mismatch `0.00807248` passes, but angle `7.61003 deg` fails the `3 deg` criterion. `dw`, TT and EE remain directionally unstable while CDM density, H and qhat are stable. Serialization precision is not a sufficient explanation; K5 remains blocked. Do not shrink beta again or modify output formatting. M14 remains nonterminal and is not physically falsified.
-
-Immediate M14 route: independent source-complete provider or author-supported coupled early-time/branch prescription. In parallel continue M13b and genuine M15 provider searches; F16 may open under its own pinned/preregistered provider.'''
-          append_once('recovery/STATE.md','M14 IDECAMB full-serialization control consumed',state)
-
-          restore='''### Latest M14 IDECAMB diagnostic exclusion (2026-09-10)
-Full diagnostic serialization was prospectively tested without changing physics. Run `34467577947`, job `102839655588`, artifact `10148183299`, result commit `283bfac6650ea6683ceba288a1dd08341b16ecb9`: combined norm mismatch `0.00807` passes but angle `7.610 deg` fails the frozen `3 deg` K4 limit; TT/EE/dw remain unstable. Treat serialization precision as excluded, keep K5 blocked, and do not continue beta-step shrinking or post-hoc provider modifications.'''
-          append_once('recovery/RESTORE_FROM_NEW_CHAT.md','Latest M14 IDECAMB diagnostic exclusion',restore)
-
-          log='''## 2026-09-10 — M14 full-serialization control closes output-precision hypothesis
-
-Consumed run `34467577947` / job `102839655588` / artifact `10148183299` / machine-result commit `283bfac6650ea6683ceba288a1dd08341b16ecb9`. Only serialization precision was increased; physical source, beta `{0,5e-8,1e-7}`, and frozen K4 thresholds were unchanged. All cases exit 0. Combined norm mismatch is `0.00807248`, but angle remains `7.61003 deg >3 deg`. Instability persists in rho_de, w, TT and especially EE, whereas rho_c, H and qhat are stable. Classification: `M14_IDECAMB_FULL_SERIALIZATION_NOT_SUFFICIENT`; K4 remains FAIL and K5 blocked. This excludes output-text precision as the explanation but is not a physical failure of M14.'''
-          append_once('logs/research_log.md','M14 full-serialization control closes output-precision hypothesis',log)
-
-          meth='''### Serialization-control lesson (M14 IDECAMB)
-When a local-response tangent fails direction convergence, isolate diagnostic serialization before changing physical step sizes or solver physics. A higher-precision serialization control that leaves the frozen angle failure intact rules out output quantization as a sufficient explanation; subsequent recovery must move upstream to branch selection, initialization, solver continuity, or an independent implementation. Never use improved norm convergence alone to waive a prospectively frozen direction criterion.'''
-          append_once('protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md','Serialization-control lesson (M14 IDECAMB)',meth)
-          PY
-      - name: Commit synchronized state
-        shell: bash
-        run: |
-          set -euo pipefail
+      - run: python3 code/sync_m14_full_serialization_terminal.py
+      - run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv models/coupled_quintessence/audit.md recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md
