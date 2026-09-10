@@ -1,7 +1,7 @@
 # M15 independent GCG CLASS source map
 
 Date: 2026-09-10
-Status: `UPSTREAM_PIN_AND_SOURCE_MAP_FROZEN`
+Status: `V0_UPSTREAM_CONTROL_PASS_V1_SCAFFOLD_AUTHORIZED`
 Scientific promotion: **NO**
 
 ## Purpose
@@ -93,19 +93,36 @@ V1 products frozen by the parent preregistration:
 
 Undefined entries remain masked; exact-zero denominators are excluded from relative metrics rather than zero-imputed.
 
+## V0 upstream control — terminal PASS
+
+Canonical machine record: `models/generalized_chaplygin/M15_INDEPENDENT_V0_RESULT.json`.
+
+Recovery run `34499646016` executed the exact untouched upstream pin in Newtonian gauge and passed every frozen V0 stage. The CLASS exit code was 0 and fresh output contained finite numerical data in all required products:
+
+- background: 40000 finite rows;
+- CMB Cl table: 1799 finite rows;
+- linear P(k): 470 finite rows;
+- matter transfer: 470 finite rows.
+
+Immutable artifact: `10161331129`.
+
+The preceding run `34499248965` is retained as an infrastructure-only failed attempt: the solver itself completed successfully, but the validator expected unindexed output names while CLASS emitted `lcdm_00_*`. The recovery changed only filename discovery; the cosmology, upstream pin, gauge and scientific thresholds were unchanged.
+
+V0 classification: `M15_INDEPENDENT_REPRO_V0_UPSTREAM_CONTROL_PASS`.
+
+This is infrastructure evidence only and does not alter M15 K0-K9 scoring.
+
 ## Staged implementation rule
 
 The code path is split prospectively:
 
-1. **V0 upstream control**: exact pin builds and produces a fresh LambdaCDM background/CMB/matter bundle on the intended Newtonian-gauge output route.
-2. **V1 alpha=0 scaffold/reference**: only after V0 passes, add the explicit M15 state/parser/equation scaffolding and prove `alpha=0` matches an independently built unmodified upstream reference within frozen thresholds.
-3. **V2 finite alpha**: forbidden until V1 passes. Implement/activate finite-alpha background and perturbation terms and compare structural trends with the publication.
-4. **V3 local geometry**: forbidden until V2 passes and a separate K4 numerical-floor preregistration is frozen.
-
-A V0 success is infrastructure evidence only and does not change M15 K0-K9 matrix entries.
+1. **V0 upstream control — PASS**: exact pin builds and produces a fresh LambdaCDM background/CMB/matter bundle on the intended Newtonian-gauge output route.
+2. **V1 alpha=0 scaffold/reference — AUTHORIZED**: add only the explicit M15 state/parser/scaffold needed to select the independent reproduction while keeping alpha fixed to zero, then prove it matches an independently built unmodified upstream reference within the frozen thresholds.
+3. **V2 finite alpha — FORBIDDEN until V1 PASS**: implement/activate finite-alpha background and perturbation terms and compare structural trends with the publication.
+4. **V3 local geometry — FORBIDDEN until V2 PASS**: requires a separate K4 numerical-floor preregistration.
 
 ## Current next gate
 
-Run the exact upstream V0 control on GitHub Actions. It must verify the checkout SHA, build without source edits, execute one fresh Newtonian-gauge LambdaCDM case with background + TT/TE/EE + mPk/mTk outputs, and upload immutable logs/config/products/provenance.
+Implement the minimal V1 scaffold. It may add an explicit activation flag and `m15_alpha`, but **must reject `m15_alpha != 0` at V1**. No finite-alpha background or perturbation equation is authorized yet. Build the untouched reference and scaffold branch independently from the same frozen pin, execute identical Newtonian-gauge LambdaCDM configurations, and apply the parent preregistration's background/CMB/P(k) identity thresholds.
 
-Only if that control passes may the alpha=0 M15 scaffold patch and V1 differential harness be written.
+Only a V1 PASS authorizes finite-alpha equation coding.
