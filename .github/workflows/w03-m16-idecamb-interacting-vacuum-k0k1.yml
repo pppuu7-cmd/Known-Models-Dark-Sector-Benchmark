@@ -1,0 +1,150 @@
+name: W03 M16 IDECAMB interacting vacuum K0 K1
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m16-idecamb-interacting-vacuum-k0k1.yml'
+      - 'protocol/W03_M16_IDECAMB_INTERACTING_VACUUM_K0K1_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  m16-k0k1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install and build exact pinned overlay
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync python3
+          git clone https://github.com/cmbant/CosmoMC.git cosmomc
+          git -C cosmomc checkout eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone https://github.com/liaocrane/IDECAMB.git patch
+          git -C patch checkout 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          test "$(git -C cosmomc rev-parse HEAD)" = eb08c2fe91d9711929802fede310ae58c020fcb4
+          test "$(git -C patch rev-parse HEAD)" = 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          rsync -a --exclude='.git' patch/ cosmomc/
+          set +e
+          make -C cosmomc cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > build.log 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > build.exit
+      - name: Prepare frozen cases
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path('cosmomc/test_ide.ini').read_text()
+          likes=['DEFAULT(batch3/plik_rd12_HM_v22_TTTEEE.ini)','DEFAULT(batch3/lowl.ini)','DEFAULT(batch3/lowE.ini)','DEFAULT(batch3/lensing.ini)','DEFAULT(batch3/BAO.ini)','DEFAULT(batch3/Pantheon18.ini)']
+          def prep(tag, classide):
+              s=base
+              def one(old,new):
+                  nonlocal s
+                  if s.count(old)!=1: raise SystemExit(f'{tag}: count {old!r}={s.count(old)}')
+                  s=s.replace(old,new,1)
+              for x in likes: one(x,'#'+x)
+              one('Class_IDE = 1 ',f'Class_IDE = {classide} ')
+              one('param[w0] = -1.05 -3 -0.33 0.05 0.05','param[w0] = -1')
+              one('param[beta_cf]= 0.02 -0.2 0.2 0.05 0.05','param[beta_cf]= 0')
+              one('#test_output_root = output_ide',f'test_output_root = {tag}')
+              one('test_check_compare = 1820.775','#test_check_compare = 1820.775')
+              Path(f'{tag}.ini').write_text(s)
+          prep('m16_vacuum_beta0',1)
+          prep('m16_lcdm_cmp',0)
+          PY
+      - name: Execute both cases
+        run: |
+          set +e
+          : > exits.tsv
+          mkdir -p outputs
+          if [ "$(cat build.exit)" != 0 ]; then exit 0; fi
+          for tag in m16_vacuum_beta0 m16_lcdm_cmp; do
+            cp ${tag}.ini cosmomc/${tag}.ini
+            (cd cosmomc && rm -f ${tag}*quantity ${tag}*theory_cl && ./cosmomc ${tag}.ini > ../${tag}.log 2>&1)
+            rc=$?
+            echo -e "${tag}\t${rc}" >> exits.tsv
+            find cosmomc -maxdepth 2 -type f \( -name "${tag}*.quantity" -o -name "${tag}*.theory_cl" \) -exec cp {} outputs/ \;
+          done
+          exit 0
+      - name: Analyze frozen K1 gate
+        run: |
+          python3 - <<'PY'
+          import json, math, pathlib
+          exits={}
+          if pathlib.Path('exits.tsv').exists():
+              for l in pathlib.Path('exits.tsv').read_text().splitlines():
+                  k,v=l.split(); exits[k]=int(v)
+          def find(tag,suffix):
+              xs=sorted(pathlib.Path('outputs').glob(f'{tag}*{suffix}'))
+              return xs[0] if xs else None
+          def numeric(p):
+              rows=[]
+              if p is None:return rows
+              for raw in p.read_text(errors='replace').splitlines():
+                  q=raw.strip()
+                  if not q or q.startswith('#'): continue
+                  try: vals=[float(x.replace('D','E').replace('d','e')) for x in q.split()]
+                  except: continue
+                  rows.append(vals)
+              return rows
+          def metric(a,b):
+              ra,rb=numeric(a),numeric(b)
+              if not ra or not rb or len(ra)!=len(rb): return None
+              mx=0.; n=0
+              for xa,xb in zip(ra,rb):
+                  if len(xa)!=len(xb): return None
+                  for x,y in zip(xa,xb):
+                      if not (math.isfinite(x) and math.isfinite(y)): continue
+                      den=max(abs(x)+abs(y),1e-300)
+                      mx=max(mx,2*abs(x-y)/den); n+=1
+              return {'max_symmetric_relative_difference':mx,'common_finite_entries':n,'rows':len(ra)}
+          q=metric(find('m16_vacuum_beta0','.quantity'),find('m16_lcdm_cmp','.quantity'))
+          cl=metric(find('m16_vacuum_beta0','.theory_cl'),find('m16_lcdm_cmp','.theory_cl'))
+          build=int(pathlib.Path('build.exit').read_text())
+          files=[p.name for p in sorted(pathlib.Path('outputs').glob('*'))]
+          if build!=0: cls='M16_BLOCKED_BUILD'
+          elif exits.get('m16_vacuum_beta0')!=0 or exits.get('m16_lcdm_cmp')!=0: cls='M16_BLOCKED_EXECUTION'
+          elif q is None or cl is None: cls='M16_K1_BLOCKED_OUTPUT_SCHEMA'
+          elif q['max_symmetric_relative_difference']<=2e-8 and cl['max_symmetric_relative_difference']<=2e-8: cls='M16_INTERACTING_VACUUM_K1_PASS_WITH_SCOPE'
+          else: cls='M16_INTERACTING_VACUUM_K1_FAIL'
+          out={'schema':'KMDSB.W03.M16.IDECAMB.InteractingVacuumK0K1.v0.1','provider_base':'cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4','provider_overlay':'liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075','scope':'interacting-vacuum Q=beta H rho_de, Q_mu parallel u_c only; not full running-vacuum Lambda(H) class','build_exit':build,'case_exits':exits,'files':files,'quantity_metric':q,'theory_cl_metric':cl,'thresholds':{'max_symmetric_relative_difference':2e-8},'classification':cls,'K2_K9_promotion_authorized':False,'physical_falsification':False}
+          pathlib.Path('m16_result.json').write_text(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+      - name: Persist result
+        run: |
+          set -euo pipefail
+          cp m16_result.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/interacting_vacuum
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M16_IDECAMB_INTERACTING_VACUUM_K0K1_RESULT.json
+          cp /tmp/result.json models/interacting_vacuum/k0k1_result.json
+          git add waves/wave_03_expanded_dark_energy/M16_IDECAMB_INTERACTING_VACUUM_K0K1_RESULT.json models/interacting_vacuum/k0k1_result.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M16 interacting-vacuum K0 K1 result'
+            git push origin HEAD:main
+          fi
+      - name: Upload immutable bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m16-idecamb-interacting-vacuum-k0k1
+          path: |
+            m16_result.json
+            build.log
+            build.exit
+            exits.tsv
+            m16_vacuum_beta0.ini
+            m16_lcdm_cmp.ini
+            m16_vacuum_beta0.log
+            m16_lcdm_cmp.log
+            outputs/
+          retention-days: 90
