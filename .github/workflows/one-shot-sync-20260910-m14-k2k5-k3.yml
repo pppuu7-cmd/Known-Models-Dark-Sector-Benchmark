@@ -1,0 +1,82 @@
+name: W03 M14 K2-K5 K3 authority sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-shot-sync-20260910-m14-k2k5-k3.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Synchronize M14 terminal gate state
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import csv, io, pathlib
+          root=pathlib.Path('.')
+
+          # Mandatory matrix: source-bound K2 PASS, K3 partial closure, K4 frozen local convergence FAIL, K5 blocked.
+          p=root/'matrices/mandatory_properties_matrix.csv'
+          rows=list(csv.DictReader(p.open()))
+          fields=list(rows[0].keys())
+          for r in rows:
+              if r['family_id']=='F14':
+                  r['K0_provenance']='PASS_WITH_SCOPE'
+                  r['K1_reference_limit']='PASS_WITH_SCOPE'
+                  r['K2_physical_geometry']='PASS_WITH_SCOPE'
+                  r['K3_conservation_gauge_closure']='PARTIAL'
+                  r['K4_numerical_robustness']='FAIL_LOCAL_CONVERGENCE'
+                  r['K5_multichannel_rank']='BLOCKED_BY_K4_K3'
+                  r['K6_nearest_family_manifold']='NOT_TESTED'
+                  r['K7_common_observation_space']='NOT_TESTED'
+                  r['K8_quotient_novelty']='NOT_TESTED'
+                  r['K9_prospective_holdout']='NOT_TESTED'
+                  r['coverage_state']='K2_PASS_K3_PARTIAL_K4_LOCAL_CONVERGENCE_FAIL'
+                  r['notes']='M14 signed cdm_c geometry source-bound at hyperbolic anchor; run 34448063620 artifact 10140443081: all c={0,+-.01,+-.02} execute, but frozen tangent convergence fails (relative norm mismatch 0.398207 >0.10; angle 16.0238 deg >3 deg), so K5 blocked. Source audit: background/KG contains cdm_c coupling, while the interacting delta_cdm correction in perturbations.c is commented out; K3 remains PARTIAL and P(k)/Cl cannot be promoted as complete coupled-quintessence perturbation response.'
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          # Census state.
+          p=root/'matrices/model_family_census.csv'
+          rows=list(csv.DictReader(p.open())); fields=list(rows[0].keys())
+          for r in rows:
+              if r['family_id']=='F14':
+                  r['status']='K2_PASS_K3_PARTIAL_K4_LOCAL_CONVERGENCE_FAIL'
+                  r['notes']='K0/K1 pass with scope. Signed cdm_c is a two-sided physical coordinate at the frozen hyperbolic anchor. Frozen local response run 34448063620 executes all five points but fails step convergence: norm mismatch 39.82%, angle 16.02 deg. K3 source audit finds cdm_c active in background/KG but the intended interacting delta_cdm perturbation correction commented out; thus spectra are not promoted as full coupled-quintessence perturbation closure. Next: independent/complete perturbation implementation or a prospectively smaller-step background-only diagnostic, without weakening the failed gate.'
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          audit=root/'models/coupled_quintessence/audit.md'
+          with audit.open('a') as f:
+              f.write('''\n### M14 K2 signed geometry + K4/K5 local response gate\n\nK2 source audit closes the local quotient question for the `cdm_c` axis at the tracked hyperbolic anchor. The provider defines `m_CDM(phi)=m0/2[1-tanh(cdm_c phi)]`; the same frozen anchor uses a directional hyperbolic scalar potential `V(phi)=c1[1-tanh(c2 phi)]` with positive `c2=0.98`. A field reflection therefore does not identify `+cdm_c` and `-cdm_c` while holding the physical scalar anchor fixed. The provider inference generator also admits signed `cdm_c`. K2 is `PASS_WITH_SCOPE` with `c=cdm_c in R`; q1-q4 remain a separate interaction-law axis.\n\nPreregistration: `protocol/W03_M14_K2K5_CDM_C_LOCAL_RESPONSE_PREREGISTRATION_v0.1.md`. Frozen cases were `c={0,+0.01,-0.01,+0.02,-0.02}`. First run `34447848716` executed all physical cases but analyzer-only failed because numpy was absent; immutable diagnostic artifact `10140372383`. A dependency-only repair left all physics and thresholds unchanged. Terminal run `34448063620`, job `102777173085`, artifact `10140443081`, result commit `c43727de9316b76a7b8be8a7f7fb127e4b14b326` executed all five cases.\n\nFrozen result: tangent relative norm mismatch `0.3982074689691215` exceeds `0.10`; tangent angle `16.023831966915793 deg` exceeds `3 deg`. Therefore K4 is `FAIL_LOCAL_CONVERGENCE` for the preregistered .01/.02 local grid. The response is not small (`max |Delta ln O|` at |c|=.01 is `1.0152679911983955`), but K5 is `BLOCKED_BY_K4`; no rank/novelty promotion is allowed from a nonconverged tangent. This is a local-linearization failure, not falsification of coupled quintessence.\n\n### M14 K3 perturbation-closure source audit\n\nThe pinned source actively places `cdm_c` in the background CDM density, `rho_cdm_prime`, the scalar effective derivative and Klein-Gordon equation. In `source/perturbations.c`, however, the explicit interacting-DM contribution that would add the field-dependent mass-density perturbation to `delta_cdm` is present only as commented-out code. No active `cdm_c`/`model_cdm==2` perturbation closure was found. Machine-readable audit: `models/coupled_quintessence/k3_perturbation_closure_audit.json`.\n\nK3 is therefore `PARTIAL`: background response can be used with scope, but P(k)/Cl from this branch cannot be promoted as a conservation-complete coupled-quintessence perturbation prediction. This is a provider implementation/closure limitation, not a physical failure of M14.\n''')
+
+          state=root/'recovery/STATE.md'
+          with state.open('a') as f:
+              f.write('''\n## M14 update — signed geometry, local-convergence FAIL, perturbation closure partial\n\nProvider remains `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df`. K2: signed `cdm_c` is a two-sided physical coordinate at the frozen hyperbolic anchor; `+c` and `-c` are not quotiented by field reflection because the fixed scalar potential is itself directional.\n\nPreregistered K2-K5 run `34448063620` (job `102777173085`, artifact `10140443081`, machine-result commit `c43727de9316b76a7b8be8a7f7fb127e4b14b326`) executed c=0,+-.01,+-.02. K4 fails the frozen local convergence gate: relative tangent mismatch 0.398207 >0.10 and angle 16.0238 deg >3 deg. K5 is blocked by K4; large finite response is not a substitute for a converged tangent.\n\nK3 source audit is PARTIAL: cdm_c coupling is active in background/KG, but the interacting delta_cdm mass-perturbation correction in `source/perturbations.c` is commented out and no active equivalent was found. Do not promote this provider's P(k)/Cl as complete coupled-quintessence perturbation response. No M14 physical falsification.\n\nImmediate M14 next gate: prioritize a source-complete perturbation implementation/provider. A new, independently preregistered smaller-step background-only test may map nonlinear geometry, but it must not erase or relabel the failed .01/.02 K4 gate and cannot close perturbation K3/K5.\n''')
+
+          restore=root/'recovery/RESTORE_FROM_NEW_CHAT.md'
+          with restore.open('a') as f:
+              f.write('''\n### 2026-09-10 M14 restore delta\n- K2 signed `cdm_c` coordinate PASS_WITH_SCOPE at frozen hyperbolic anchor.\n- Run `34448063620`, job `102777173085`, artifact `10140443081`: all five c=0,+-.01,+-.02 cases execute; K4 local convergence FAIL (norm mismatch 0.398207, angle 16.0238 deg), K5 blocked.\n- K3 PARTIAL: `cdm_c` background/KG coupling active, but interacting delta_cdm perturbation correction is commented out in provider perturbations source. Do not call its spectra full M14 perturbation closure.\n- Exact next priority: independent/source-complete M14 perturbation provider; optional smaller-step background-only mapping must be newly preregistered and cannot overwrite the failed K4 result.\n''')
+
+          log=root/'logs/research_log.md'
+          with log.open('a') as f:
+              f.write('''\n\n### M14 K2/K4/K5 signed-c gate and K3 source closure audit\nK2 was source-bound before execution: at the author hyperbolic anchor, signed `cdm_c` is a two-sided physical coordinate rather than a c^2 quotient. A preregistered c={0,+-.01,+-.02} gate was run. Initial run `34447848716` had analyzer-only missing-numpy failure after all physical cases executed. Dependency-only repair preserved frozen physics and thresholds. Terminal run `34448063620`, job `102777173085`, artifact `10140443081`, result commit `c43727de9316b76a7b8be8a7f7fb127e4b14b326` executed all five cases. Frozen K4 failed: tangent norm mismatch 0.398207 (>0.10), angle 16.0238 deg (>3 deg). K5 is blocked even though finite response amplitude is large (max |Delta ln O|~1.015 at |c|=.01). This means the .01/.02 grid is not a reliable local linear tangent; it is not a model falsification.\n\nIndependent K3 source audit found the cdm_c interaction active in background/CDM density and the scalar KG equation, while `source/perturbations.c` contains the intended interacting `delta_cdm` mass-density correction only as commented code. K3=`PARTIAL`; provider spectra cannot be promoted as a complete conservation-consistent coupled-quintessence perturbation prediction.\n''')
+
+          method=root/'protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md'
+          with method.open('a') as f:
+              f.write('''\n\n### Interaction-closure rule from M14\nAn executable interacting background plus generated CMB/P(k) products is not evidence that the interaction is closed at perturbation level. Before a response channel from an interacting model is promoted, source-bind the interaction in both background conservation/Klein-Gordon equations and the corresponding perturbation equations. Commented-out or absent interaction perturbation terms force K3 to remain partial and block K5 promotion for perturbation-derived channels. Also, a large finite response cannot substitute for step-converged tangent geometry: when prospectively frozen derivative steps fail norm/direction convergence, retain that K4 failure and map a smaller or nonlinear regime only in a new preregistration.\n''')
+          PY
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv models/coupled_quintessence/audit.md recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md
+          git commit -m 'Sync M14 K2 K4 K5 and K3 closure state'
+          git push origin HEAD:main
