@@ -1,0 +1,80 @@
+name: Sync M20 K1v2 and M21 diagnostic frontier 20260911
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-m20-k1v2-m21-diagnostic-frontier-20260911.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Synchronize validated W04 frontier
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv,json
+          from pathlib import Path
+          m20=json.loads(Path('models/self_interacting_dark_matter/M20_K1_V2_NONLINEAR_REFERENCE_RESULT.json').read_text())
+          assert m20['classification']=='M20_K1_V2_NONLINEAR_REFERENCE_LIMIT_PASS_WITH_SCOPE'
+          assert m20['failing_blocks']==[] and m20['exact_zero_identity_pass'] is True
+          m21=json.loads(Path('models/mixed_cold_warm_dark_matter/M21_K1_REFERENCE_RESULT.json').read_text())
+          assert m21['classification']=='M21_K1_REFERENCE_LIMIT_NOT_ESTABLISHED'
+          assert Path('models/mixed_cold_warm_dark_matter/M21_K1_V1_DIAGNOSTIC_AUDIT_2026-09-11.md').exists()
+
+          p=Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(p.open())); fields=list(rows[0].keys())
+          for r in rows:
+              if r['family_id']=='F20':
+                  r['K0_provenance']='PASS_WITH_SCOPE_PINNED_NONLINEAR_PROVIDER'
+                  r['K1_reference_limit']='PASS_WITH_SCOPE_NONLINEAR_HALO_EXACT_CDM_LIMIT'
+                  r['K2_physical_geometry']='ONE_SIDED_SIGMA_GE_0_NO_SIGN_QUOTIENT'
+                  r['coverage_state']='NONLINEAR_K1_REFERENCE_PASS_LINEAR_COSMOLOGY_AND_LATE_GATES_OPEN'
+                  extra=(' Pinned SASHIMI-SIDM provider control passes its upstream physics suite and exact sigma/m=0 CDM identity on 615 retained entries. Prospectively preregistered K1-v2 preserves the v1 fail and extends the sigma ladder to 0.003 cm^2/g; Vmax, rmax, rs, rhos and core_ratio all converge monotonically to exact CDM. Small-tail exponents are Vmax 0.99997, rmax 0.97349, rs 0.88708, rhos 0.86662 and core 0.48779, the latter consistent with the provider source rc~sqrt(tt) and tt~sigma. K1 is scoped to nonlinear halo response only; K3/K4/K6/K7 remain open.')
+                  if extra.strip() not in r['notes']: r['notes'] += extra
+              if r['family_id']=='F21':
+                  r['K0_provenance']='PASS_WITH_SCOPE_PINNED_CLASS_NCDM'
+                  r['K1_reference_limit']='OPEN_V1_GATE_NONDIAGNOSTIC_AXIS_AND_SUPPORT_METRIC'
+                  r['K2_physical_geometry']='ONE_SIDED_F_W_GE_0_NO_SIGN_QUOTIENT'
+                  r['coverage_state']='K1_V1_NONDIAGNOSTIC_METHOD_FAILURE_V2_REQUIRED'
+                  extra=(' Pinned CLASS exact CDM and all five mixed cold+warm cases execute. Frozen v1 K1 did not establish the limit, but audit shows the H failure was caused by descending-z interpolation misuse; direct H p95 residual scales with p=0.999999. P(k) RMS scales with p=0.99570 while whole-domain p95 saturates on near-null support, exposing a percentile-support failure mode. The f_w=0.003 high-ell CMB excursion is byte-identical across two hosted runs and therefore deterministic at default precision. No physical M21 failure; a preregistered precision/support-aware v2 is required.')
+                  if extra.strip() not in r['notes']: r['notes'] += extra
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          p=Path('matrices/model_family_census.csv')
+          rows=list(csv.DictReader(p.open())); fields=list(rows[0].keys())
+          for r in rows:
+              if r['family_id']=='F20':
+                  r['status']='NONLINEAR_K1_EXACT_CDM_LIMIT_PASS_LATE_GATES_OPEN'
+                  extra=(' SASHIMI-SIDM K1-v2 pass is source-bound and limited to nonlinear halo/subhalo response; exact zero reference is executable. Linear cosmological scope, robustness, attribution and observation-space gates remain open.')
+                  if extra.strip() not in r['notes']: r['notes'] += extra
+              if r['family_id']=='F21':
+                  r['status']='K1_V1_METHOD_DIAGNOSTIC_V2_REQUIRED_NO_PHYSICAL_FAIL'
+                  extra=(' Same-solver CLASS provider/reference execute, but frozen v1 statistic is non-diagnostic: descending-z interpolation bug in H plus global-p95 support saturation in P(k), with deterministic default-precision CMB excursion at f_w=0.003. K1 remains open pending preregistered v2.')
+                  if extra.strip() not in r['notes']: r['notes'] += extra
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          block='''\n\n## 2026-09-11 — W04 M20 K1-v2 PASS / M21 v1 methodology diagnostic\n- M20 provider control: hosted run `34538139137`, pinned `shinichiroando/sashimi-si@e17d3664dac677b604fd4ff02fb2af105a6937fa`, upstream physics suite PASS and exact sigma0_m=0 CDM identity on 615 retained entries.\n- M20 frozen v1 K1 is preserved as a fail because its universal p>0.5 exponent rule rejected physically nonanalytic channels. Source audit found `rc/rs0 = 2.555*sqrt(tt)+O(tt)` and `tt proportional sigma0_m` near zero, so K1 had incorrectly imposed differentiability.\n- M20 preregistered K1-v2 hosted run `34538850087` PASS: classification `M20_K1_V2_NONLINEAR_REFERENCE_LIMIT_PASS_WITH_SCOPE`, no failing blocks, exact-zero identity PASS. Tail exponents: Vmax=0.9999711, rmax=0.9734892, rs=0.8870794, rhos=0.8666173, core=0.4877887. Artifact `10176465023`, digest `sha256:0c47e7ae8887d6081573be1e4dacf4dd2b49e184ee2361db661e5f0374cad0d5`. K1 scope is nonlinear halo response only; no K4/K6/K7 promotion.\n- M21 same-solver CLASS exact reference plus finite ladder execute, but frozen v1 K1 result is not interpreted physically. Diagnostic audit identifies a descending-z interpolation error in H (direct H tail exponent p=0.99999903), whole-domain P(k) p95 support saturation despite RMS tail p=0.99569988, and a deterministic high-ell CMB excursion at f_w=0.003 reproduced byte-identically across two hosted runs. K1 remains open pending a prospectively preregistered precision/support-aware v2.\n- These two cases add two methodology constraints to the funnel: K1 continuity must not impose universal differentiability, and comparison metrics must canonicalize coordinate orientation plus respect localized response support.\n- Strict terminal/represented census remains 4/46. Operational polygon readiness estimate is approximately 53%; this is not a strict census metric.\n- `NEW_MODEL: DESIGN_AUTHORIZED / NOT_YET_REQUIRED` remains unchanged.\n'''
+          marker='## 2026-09-11 — W04 M20 K1-v2 PASS / M21 v1 methodology diagnostic'
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+              p=Path(fn); s=p.read_text()
+              if marker not in s: p.write_text(s+block)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/mandatory_properties_matrix.csv matrices/model_family_census.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'Sync M20 K1-v2 and M21 diagnostic frontier'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
