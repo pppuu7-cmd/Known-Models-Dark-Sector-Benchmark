@@ -1,7 +1,7 @@
 # M15 generalized/decomposed Chaplygin provider search
 
 Date: 2026-09-10
-Status: `EXACT_PUBLIC_PROVIDER_NOT_YET_FROZEN`
+Status: `AUTHOR_PUBLIC_CLASS_FORK_FOUND_PAPER_BRANCH_NOT_BOUND`
 Scientific promotion: **NO**
 
 ## Why a new provider is required
@@ -31,7 +31,26 @@ The paper states that it uses a modified CLASS implementation to calculate CMB a
 
 This is a second strong implementation target because the perturbation equations and Boltzmann solver family are independent of the IDECAMB candidate.
 
-Current provider status: the authors' group page advertises public GitHub code in general and displays the paper/results, but the exact modified CLASS repository/commit corresponding to arXiv:1702.00651 was **not located in the present search**. Therefore no execution is authorized yet.
+#### Direct author-GitHub audit
+
+A stronger provenance lead has now been found: paper author Rodrigo von Marttens has a public repository
+
+`rodrigovonmarttens/class_public`.
+
+Current repository facts checked on 2026-09-10:
+
+- repository is public;
+- default branch is `master`;
+- branch enumeration exposes only `master` at present;
+- current HEAD is `aa92943e4ab86b56970953589b4897adf2bd0f99`;
+- that HEAD commit is the CLASS v3.2 multi-interacting-DM implementation associated with arXiv:2010.04074, not a Chaplygin commit;
+- code search on the current branch for `Chaplygin` and `gcg` returns no model identifier;
+- the author's public `montepython_public` fork likewise yields no `gcg` hit in the current indexed branch;
+- historical repository commits around 2017 visible on the retained branch track ordinary CLASS development and do not by themselves bind a Chaplygin modification to arXiv:1702.00651.
+
+Therefore the existence of an author-owned CLASS fork is **not yet provenance for the 2017 GCG implementation**. It is an important negative control: KMDSB must not equate “same author + CLASS fork” with “paper source”. Deleted/private/unmerged historical branches are not reconstructed by assumption.
+
+Current provider status: `AUTHOR_REPO_FOUND_BUT_2017_GCG_SOURCE_NOT_BOUND`.
 
 ### C. `sum33it/scalpy`
 
@@ -41,18 +60,19 @@ A public `GCG` class exists and is useful as a lightweight analytic/background c
 
 - exact perturbation family: scientifically well-defined;
 - independent published CAMB implementation: identified, source commit not frozen;
-- independent published CLASS implementation: identified, source commit not frozen;
+- independent published CLASS implementation: identified;
+- author-owned public CLASS repository: now identified and audited, but no current/historical evidence inspected so far binds its accessible branch to the 2017 GCG modification;
 - IDECAMB: rejected as exact perturbation provider, retained as scoped background comparator;
 - lightweight GCG background code: available but insufficient for multichannel perturbation scoring;
-- M15 K1-K9: **not authorized** until source provenance is solved.
+- M15 K1-K9: **not authorized** until source provenance is solved or a separately preregistered independent reproduction is validated.
 
 Classification:
 
-`M15_PROVIDER_PROVENANCE_OPEN_AFTER_PERTURBATION_IDENTITY_GATE`
+`M15_PROVIDER_PROVENANCE_OPEN_AUTHOR_CLASS_FORK_NOT_PAPER_BOUND`
 
 ## Next search order
 
-1. locate an archived/forked source tree or author repository for the 2017 modified CLASS implementation;
+1. inspect author/project forks, tags, archived mirrors and supplementary/data links specifically for the 2017 modified CLASS tree rather than generic CLASS forks;
 2. search author/project repositories and supplementary material for the 2013 decomposed-CAMB implementation;
 3. if neither public implementation can be frozen, implement the published perturbation equations as a **new KMDSB verification implementation**, clearly labelled as independent reproduction rather than original-provider evidence;
 4. cross-check the reproduction at alpha=0 against LambdaCDM and against analytic background identities before any DSIR K4/K5 ranking claim.
