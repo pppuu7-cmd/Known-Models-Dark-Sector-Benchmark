@@ -1,0 +1,61 @@
+{
+  "schema": "KMDSB.W03.M15.Scherrer.OutputRecovery.v0.1",
+  "provider": "Eladio-Moreno/k-essence-dynamics@f3f010e1ed74c86ce6a431a435fa93988f749ee2",
+  "input": "Cuadratico/hi.ini unmodified",
+  "original_failed_run": 34430588917,
+  "diagnosis": "original harness searched output/hi* while author input explicitly sets root=output/test_",
+  "build_exit": 0,
+  "run_exit": 0,
+  "fresh_outputs": [
+    {
+      "path": "output/test_background.dat",
+      "size": 5901219,
+      "sha256": "07c3f37badead4d3e3f18949198579cd48de7930e85067d9db123cb8c2f7368d"
+    },
+    {
+      "path": "output/test_cl.dat",
+      "size": 580507,
+      "sha256": "cfc4de4e2ba0753b8e9fa660a23ba321843d81d798aaaa0f5b28c4eaa03bbce6"
+    },
+    {
+      "path": "output/test_parameters.ini",
+      "size": 1485,
+      "sha256": "b142e620422eff0673a51bfe71f17732551254ba21c6c5ad8b49ddcb508d8c0e"
+    },
+    {
+      "path": "output/test_perturbations_k0_s.dat",
+      "size": 261936,
+      "sha256": "217efd566094185345808cb480ed82935f012b1b682ccc45b1e13caed69e4bce"
+    },
+    {
+      "path": "output/test_perturbations_k1_s.dat",
+      "size": 583911,
+      "sha256": "6fc83c965f4d2defd258057e0636b31670098c0e2d4a02e94534a7626269e7e9"
+    },
+    {
+      "path": "output/test_perturbations_k2_s.dat",
+      "size": 594405,
+      "sha256": "38b46aa3fe73b9651ace70ed5d2b608a2f5f7b6c5c1989548a1ab44f7c00744a"
+    },
+    {
+      "path": "output/test_pk.dat",
+      "size": 29864,
+      "sha256": "43cf3d607efbb19b51556ae1a0a5cbc2c1514859c885a8f982973f045cf9d935"
+    },
+    {
+      "path": "output/test_tk.dat",
+      "size": 101762,
+      "sha256": "39dab774a3c83f7da1c4bc2695a43daefe3ea067191c739debd8cd021235e806"
+    },
+    {
+      "path": "output/test_unused_parameters",
+      "size": 146,
+      "sha256": "2c67332a2c884fe496bc60b5094c07e4cccd73bf42dbddc003f6c57c62788f01"
+    }
+  ],
+  "fresh_background_present": true,
+  "fresh_pk_present": true,
+  "classification": "SCHERRER_OUTPUT_RECOVERY_PASS",
+  "scientific_promotion_authorized": false,
+  "bookkeeping": "UNIFIED_DARK_SECTOR_CANDIDATE"
+}
