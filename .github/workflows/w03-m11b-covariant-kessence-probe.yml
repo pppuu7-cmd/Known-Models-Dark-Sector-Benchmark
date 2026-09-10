@@ -77,7 +77,6 @@ jobs:
           gsf_parameters = 6, 1, 0, 0, 0, 1, 1, ${m}, ${cs}
           attractor_ic_gsf = no
           gsf_tuning_index = 6
-          gsf_shooting_parameter = 1
           gsf_dxdy_guess = 1
           root = ${GITHUB_WORKSPACE}/out/${tag}
           EOF
@@ -95,7 +94,7 @@ jobs:
           set +e
           : > logs/case_exits.tsv
           if [ "$(cat class_gsf_build.exit)" != "0" ]; then exit 0; fi
-          for f in cfg/*.ini; do
+          for f in cfg/lcdm.ini cfg/gsf_ref.ini cfg/m*_c*.ini; do
             tag=$(basename "$f" .ini)
             ./class_gsf/class "$f" > "logs/${tag}.log" 2>&1
             rc=$?
@@ -177,7 +176,7 @@ jobs:
             echo 'model_gsf=6'
             echo 'physical_grid=m:{0.5,1,2,4};cs2:{1,.95,.90}'
             echo 'reference=m0,cs2=1'
-            echo 'shooting_nuisance=V0,index6'
+            echo 'shooting_nuisance=V0,index6; gsf_shooting_parameter is injected internally by CLASS shooting and is not duplicated in user config'
           } > m11b_provenance.txt
       - name: Upload immutable probe bundle
         if: always()
