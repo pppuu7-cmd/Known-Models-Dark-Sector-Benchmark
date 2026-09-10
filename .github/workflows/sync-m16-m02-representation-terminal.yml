@@ -1,0 +1,48 @@
+name: Sync M16 M02 representation terminal
+on:
+  push:
+    paths:
+      - '.github/workflows/sync-m16-m02-representation-terminal.yml'
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synchronize M16 representation evidence
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p=Path(path); s=p.read_text();
+              if old not in s: raise SystemExit(f'expected text missing in {path}')
+              p.write_text(s.replace(old,new,1))
+
+          replace('matrices/model_family_census.csv',
+          'F16,running/decaying vacuum Lambda(H) / interacting vacuum,dark_energy,B,M16,INTERACTING_VACUUM_K1_PASS_WITH_SCOPE_FAMILY_IDENTITY_AUDIT_NEXT,W03/W06,time-dependent vacuum with exchange/modified conservation,"IDECAMB Q=beta H rho_de, Q_mu parallel u_c subfamily has exact beta=0 LambdaCDM K1 regression PASS (run 34474389038); before K2/K5 test whether this branch is response-distinct from M02 IDE or REPRESENTED_BY:M02. Full running-vacuum Lambda(H) coverage remains open."',
+          'F16,running/decaying vacuum Lambda(H) / interacting vacuum,dark_energy,B,M16,INTERACTING_VACUUM_SUBCASE_REPRESENTED_BY_M02_FULL_RUNNING_VACUUM_OPEN,W03/W06,time-dependent vacuum with exchange/modified conservation,"Executed IDECAMB Q=beta H rho_de, Q_mu parallel u_c subcase is exactly the alpha=0 slice of M02 Q=alpha H rho_m+beta H rho_v with matching interacting-matter-comoving transfer scope, so it is REPRESENTED_BY:M02_WITH_SCOPE and receives no duplicate beta grid. Genuine running-vacuum Lambda(H), H^2/dotH/derivative laws remain open and keep F16 nonterminal."')
+
+          replace('matrices/mandatory_properties_matrix.csv',
+          'F16,M16,PASS_WITH_SCOPE,PASS_WITH_SCOPE,NOT_TESTED,PARTIAL_SOURCE_BOUND,NOT_TESTED,NOT_TESTED,OPEN_FAMILY_IDENTITY_M02_OVERLAP_AUDIT,NOT_TESTED,NOT_TESTED,NOT_TESTED,K1_PASS_WITH_SCOPE_FAMILY_IDENTITY_AUDIT_NEXT,Pinned IDECAMB interacting-vacuum Q=beta H rho_de branch: beta=0 matches same-overlay noninteracting LambdaCDM outputs exactly to serialization precision under frozen 2e-8 K1 gate; identity/overlap with M02 IDE must be resolved before separate response-family promotion.',
+          'F16,M16,PASS_WITH_SCOPE,PASS_WITH_SCOPE,REPRESENTED_BY:M02_WITH_SCOPE,REPRESENTED_BY:M02_WITH_SCOPE,REPRESENTED_BY:M02_WITH_SCOPE,REPRESENTED_BY:M02_WITH_SCOPE,PASS_REPRESENTED_BY:M02_WITH_SCOPE,INHERITS_M02_OPEN,NO_SEPARATE_NOVELTY_SUBCASE,INHERITS_M02_OPEN,PARTIAL_REPRESENTATION_FULL_RUNNING_VACUUM_OPEN,"Executed IDECAMB interacting-vacuum Q=beta H rho_de, Q_mu parallel u_c branch is the alpha=0 submanifold of M02 Q=alpha H rho_m+beta H rho_v with matching comoving transfer scope; no duplicate beta-grid. Full response-distinct running-vacuum Lambda(H)/H^2/dotH family remains open."')
+
+          replace('matrices/benchmark_matrix.csv',
+          'M16,Interacting vacuum Q=beta H rho_vac representative,W03_interacting_vacuum_subfamily,PASS_WITH_SCOPE,PASS_WITH_SCOPE,PARTIAL,OPEN,OPEN,OPEN,OPEN,OPEN,OPEN,PARTIAL,K1_PASS_WITH_SCOPE_FAMILY_IDENTITY_AUDIT_NEXT,bc28acc47cc5facba046741fd09f710ae8da9689,"IDECAMB beta=0 K1 exact output regression PASS; limited to Q=beta H rho_de, Q_mu parallel u_c. M02 overlap/representation audit required before separate family response scoring; full Lambda(H) running-vacuum class remains open."',
+          'M16,Interacting vacuum Q=beta H rho_vac representative,W03_interacting_vacuum_subfamily,PASS_WITH_SCOPE,PASS_WITH_SCOPE,PARTIAL,PASS_WITH_SCOPE,PASS_WITH_SCOPE,PARTIAL,PASS_WITH_SCOPE,PARTIAL,NO_SEPARATE_NOVELTY_SUBCASE,PARTIAL,REPRESENTED_SUBCASE_BY_M02_FULL_F16_OPEN,bc28acc47cc5facba046741fd09f710ae8da9689,"IDECAMB beta=0 K1 exact regression PASS. Source identity audit shows Q=beta H rho_vac with Q_mu parallel u_c is exactly the alpha=0 slice of M02 Q=alpha H rho_m+beta H rho_v with matching interacting-matter-comoving perturbation scope. No duplicate response-family/grid. Full running-vacuum Lambda(H), H^2/dotH/derivative class remains open."')
+
+          delta='''\n\n## 2026-09-10 — M16/M02 family-identity resolution\n\nThe executed IDECAMB interacting-vacuum branch `Q=beta H rho_v`, `Q_mu || u_c` is source-identical in mechanism space to the `alpha=0` submanifold of pinned M02 `kaeonikc/class_iv@ac627d54e9ce196a08878d1ba33999819925d19c`, whose source defines `Q=alpha H rho_m + beta H rho_v` and uses the interacting-pressureless-component-comoving synchronous perturbation branch. Classification: `REPRESENTED_BY:M02_WITH_SCOPE`. Do not launch a duplicate M16 beta response grid. This does not close F16: genuinely response-distinct running-vacuum `Lambda(H)`, `H^2`, `dot H` or derivative laws remain open. Strict census count therefore remains 4/46 terminal/represented families, 42/46 requiring strict closure. Next F16 gate: pin a public genuinely running-vacuum implementation and algebraically audit it against M02 before execution.\n'''
+          for path in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+              p=Path(path); s=p.read_text()
+              if '## 2026-09-10 — M16/M02 family-identity resolution' not in s:
+                  p.write_text(s+delta)
+          PY
+      - name: Commit sync
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv matrices/benchmark_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          git diff --cached --quiet && exit 0
+          git commit -m 'Sync M16 M02 representation evidence'
+          git push
