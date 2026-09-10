@@ -1,0 +1,22 @@
+{
+  "schema": "KMDSB.W03.M13b.SimpleMCProviderControl.v0.1",
+  "provider": "ja-vazquez/SimpleMC@a268fe5e2545428ddcf76b37b166a55dbf692fb0",
+  "scientific_promotion_authorized": false,
+  "routes": {
+    "package_import": {
+      "ok": false,
+      "error": "ModuleNotFoundError(\"No module named 'pandas'\")"
+    },
+    "direct_class": {
+      "ok": false,
+      "error": "ModuleNotFoundError(\"No module named 'pandas'\")",
+      "traceback": "Traceback (most recent call last):\n  File \"<stdin>\", line 20, in <module>\n  File \"/home/runner/work/Known-Models-Dark-Sector-Benchmark/Known-Models-Dark-Sector-Benchmark/simplemc_provider/simplemc/__init__.py\", line 6, in <module>\n    from .PostProcessing import PostProcessing\n  File \"/home/runner/work/Known-Models-Dark-Sector-Benchmark/Known-Models-Dark-Sector-Benchmark/simplemc_provider/simplemc/PostProcessing.py\", line 2, in <module>\n    from simplemc.analyzers.dynesty import utils as dyfunc\n  File \"/home/runner/work/Known-Models-Dark-Sector-Benchmark/Known-Models-Dark-Sector-Benchmark/simplemc_provider/simplemc/analyzers/__init__.py\", line 8, in <module>\n    from .MCEvidence import MCEvidence\n  File \"/home/runner/work/Known-Models-Dark-Sector-Benchmark/Known-Models-Dark-Sector-Benchmark/simplemc_provider/simplemc/analyzers/MCEvidence.py\", line 34, in <module>\n    import pandas as pd\nModuleNotFoundError: No module named 'pandas'\n"
+    }
+  },
+  "classification": "M13B_SIMPLEMC_PROVIDER_CONTROL_BLOCKED",
+  "limitations": [
+    "two-field initial-condition source explicitly says still figuring out initial conditions",
+    "background-only SimpleMC implementation; perturbation closure not validated",
+    "sampled crossing is descriptive only"
+  ]
+}
