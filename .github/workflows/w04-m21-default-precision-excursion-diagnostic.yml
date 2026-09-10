@@ -47,8 +47,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # CLASS accepts at most one .pre file. Preserve the prospectively frozen
+          # P2 union exactly by concatenating untouched provider cl_permille.pre
+          # with the already source-bound local ncdm-tight subset before execution.
+          cat class/cl_permille.pre verification/m21/m21_ncdm_tight.pre > m21_p2_combined.pre
           rm -rf class/output; mkdir class/output
-          for c in ref f2 f3 f4; do (cd class && ./class ../m21_cases/${c}.ini cl_permille.pre ../verification/m21/m21_ncdm_tight.pre > ../m21_p2_${c}.log 2>&1); done
+          for c in ref f2 f3 f4; do (cd class && ./class ../m21_cases/${c}.ini ../m21_p2_combined.pre > ../m21_p2_${c}.log 2>&1); done
           rm -rf p2_out; cp -a class/output p2_out
       - name: Measure preregistered excursion diagnostics
         run: |
@@ -82,6 +86,7 @@ jobs:
             m21_precision_build.log
             m21_p1_*.log
             m21_p2_*.log
+            m21_p2_combined.pre
             p1_out/
             p2_out/
             m21_precision_result.json
