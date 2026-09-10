@@ -1,0 +1,105 @@
+{
+  "schema": "KMDSB.W03.M14.IDECAMBFullSerialization.v0.1",
+  "grid": [
+    0,
+    5e-08,
+    1e-07
+  ],
+  "case_exits": {
+    "b0": 0,
+    "b5e8": 0,
+    "b1e7": 0
+  },
+  "serialization": {
+    "quantity": "11ES25.15E3",
+    "theory_cl": "1I6+ES25.15E3"
+  },
+  "physical_changes": false,
+  "upstream_high_precision_background_only": {
+    "relative_norm_mismatch": 0.009270610485819343,
+    "angle_deg": 8.04171613320909
+  },
+  "precontrol_cmb_angles_deg": {
+    "dln_TT": 49.620162,
+    "dln_EE": 53.559476,
+    "dln_PP": 41.169064
+  },
+  "physical_falsification_authorized": false,
+  "observational_claim_authorized": false,
+  "combined": {
+    "norm_h": 182810.93736120433,
+    "norm_2h": 181335.19939692257,
+    "relative_norm_mismatch": 0.008072481797770878,
+    "angle_deg": 7.610029801759527,
+    "norm_threshold": 0.1,
+    "angle_threshold_deg": 3.0
+  },
+  "channels": {
+    "dln_rho_de": {
+      "norm_h": 147003.47040011387,
+      "norm_2h": 155789.7024005669,
+      "relative_norm_mismatch": 0.05639802801511127,
+      "angle_deg": 4.032369360850739,
+      "fine_max_abs_response": 0.0006952538064874516,
+      "points": 2000
+    },
+    "dln_rho_c": {
+      "norm_h": 5.436337052183254,
+      "norm_2h": 5.436337151727582,
+      "relative_norm_mismatch": 1.8310918669935313e-08,
+      "angle_deg": 3.7215130446689415e-06,
+      "fine_max_abs_response": 6.506408501899267e-09,
+      "points": 2000
+    },
+    "dln_H": {
+      "norm_h": 1.886730874733345,
+      "norm_2h": 1.8867197927457304,
+      "relative_norm_mismatch": 5.8736451303617085e-06,
+      "angle_deg": 0.008435536952408675,
+      "fine_max_abs_response": 2.678329110460805e-09,
+      "points": 2000
+    },
+    "dw": {
+      "norm_h": 108599.73091879307,
+      "norm_2h": 92741.17018576263,
+      "relative_norm_mismatch": 0.14602762455174856,
+      "angle_deg": 6.844594370651715,
+      "fine_max_abs_response": 0.0005811728903638569,
+      "points": 2000
+    },
+    "qhat": {
+      "norm_h": 0.8946525527263138,
+      "norm_2h": 0.8946525328386108,
+      "relative_norm_mismatch": 2.2229526959210175e-08,
+      "angle_deg": 1.03514553342977e-05,
+      "fine_max_abs_response": 2.971291007141114e-09,
+      "points": 2000
+    },
+    "dln_TT": {
+      "norm_h": 604.7378339564079,
+      "norm_2h": 584.9764213125409,
+      "relative_norm_mismatch": 0.032677652255657524,
+      "angle_deg": 11.183738628472595,
+      "fine_max_abs_response": 1.7725834746170224e-06,
+      "points": 2499
+    },
+    "dln_EE": {
+      "norm_h": 124.20481075896039,
+      "norm_2h": 107.97800389344283,
+      "relative_norm_mismatch": 0.13064555846398182,
+      "angle_deg": 53.37576846901893,
+      "fine_max_abs_response": 2.5753066893586086e-07,
+      "points": 2499
+    },
+    "dln_PP": {
+      "norm_h": 3941.546013178861,
+      "norm_2h": 3277.8999776063874,
+      "relative_norm_mismatch": 0.16837201274665375,
+      "angle_deg": 2.257077140837794,
+      "fine_max_abs_response": 5.117669037003496e-06,
+      "points": 2499
+    }
+  },
+  "K4": "FAIL_FULL_SERIALIZATION_CONTROL",
+  "classification": "M14_IDECAMB_FULL_SERIALIZATION_NOT_SUFFICIENT"
+}
