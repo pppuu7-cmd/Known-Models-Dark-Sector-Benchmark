@@ -1,0 +1,25 @@
+{
+  "schema": "KMDSB.W03.M13.CoverageSplit.v0.1",
+  "family": "F13",
+  "model": "M13 quintom / phantom-divide crossing",
+  "phenomenological_crossing": {
+    "representation": "CPL/PPF w(a)=w0+wa(1-a)",
+    "classification": "REPRESENTED_BY:M08_WITH_SCOPE",
+    "reason": "a smooth CPL history that crosses w=-1 is a parameter subregion of the already benchmarked M08 CPL/PPF manifold and does not add a response-family degree of freedom by itself"
+  },
+  "covariant_multifield_quintom": {
+    "classification": "QUEUED_IMPLEMENTATION_PROVENANCE_SEARCH",
+    "reason": "additional dynamical fields can add entropy/isocurvature/relative-field perturbation directions absent from the single effective CPL fluid",
+    "required_before_scoring": [
+      "pin covariant implementation and exact version/commit",
+      "freeze action/field content and physical-stability domain",
+      "establish recoverable reference/decoupling path",
+      "separate closure/shooting nuisances from physical parameters",
+      "map common response channels including any extra-field perturbation channel",
+      "attack full M08 CPL manifold",
+      "use exact common observation operator before observational promotion"
+    ]
+  },
+  "overall_coverage": "PARTIAL_COVERAGE",
+  "interpretation": "phantom-divide crossing of a phenomenological w(a) curve is not itself a new DSIR mechanism; a covariant multi-DOF quintom can be and remains mandatory"
+}
