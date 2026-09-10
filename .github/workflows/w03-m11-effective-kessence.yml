@@ -1,0 +1,130 @@
+name: W03 M11 effective k-essence sound-speed audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m11-effective-kessence.yml'
+      - 'code/w03_m11_effective_kessence.py'
+      - 'protocol/W03_M11_EFFECTIVE_KESSENCE_PREREGISTRATION_V0_1.md'
+
+jobs:
+  m11-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check numpy
+      - name: Fetch and build pinned CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/lesgourg/class_public.git class_public
+          cd class_public
+          git checkout e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          make -j2
+      - name: Write pure Lambda and fluid configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cfg out logs
+          cat > cfg/base.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          reio_parametrization = reio_none
+          output = mPk
+          modes = s
+          ic = ad
+          gauge = synchronous
+          non linear = none
+          z_pk = 0.295,0.51,0.706,0.934,1.317,1.491,2.33
+          P_k_max_h/Mpc = 0.2
+          write background = yes
+          headers = yes
+          format = class
+          tol_perturbations_integration = 1e-8
+          perturbations_sampling_stepsize = 0.01
+          EOF
+          cp cfg/base.ini cfg/lcdm.ini
+          echo "root = ${GITHUB_WORKSPACE}/out/lcdm_" >> cfg/lcdm.ini
+
+          make_fld () {
+            local tag="$1"; local w0="$2"; local cs2="$3"
+            cp cfg/base.ini cfg/${tag}.ini
+            cat >> cfg/${tag}.ini <<EOF
+          Omega_Lambda = 0
+          fluid_equation_of_state = CLP
+          w0_fld = ${w0}
+          wa_fld = 0
+          cs2_fld = ${cs2}
+          use_ppf = yes
+          root = ${GITHUB_WORKSPACE}/out/${tag}_
+          EOF
+          }
+          make_fld fld0 -1.0 1.0
+          make_fld anchor -0.95 1.0
+          make_fld wp -0.949 1.0
+          make_fld wm -0.951 1.0
+          make_fld cs005 -0.95 0.95
+          make_fld cs010 -0.95 0.90
+      - name: Run all cases
+        shell: bash
+        run: |
+          set +e
+          for tag in lcdm fld0 anchor wp wm cs005 cs010; do
+            ./class_public/class cfg/${tag}.ini > logs/${tag}.log 2>&1
+            echo "$?" > logs/${tag}.exit
+          done
+          exit 0
+      - name: Analyze stratified local geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in lcdm fld0 anchor wp wm cs005 cs010; do
+            test "$(cat logs/${tag}.exit)" = "0" || { echo "case ${tag} failed"; cat logs/${tag}.log; exit 2; }
+          done
+          python3 code/w03_m11_effective_kessence.py --directory out --json m11_effective_kessence.json
+      - name: Enforce preregistered hard controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          d=json.load(open('m11_effective_kessence.json'))
+          g=d['hard_gates']
+          bad=[k for k,v in g.items() if not v]
+          print('M11_HARD_GATES=',g)
+          if bad:
+              raise SystemExit('M11 preregistered gate failure: '+','.join(bad))
+          print('M11_PREREGISTERED_CONTROLS=PASS')
+          PY
+      - name: Record provenance
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "KMDSB_HEAD=$(git rev-parse HEAD)"
+            echo "CLASS_HEAD=$(git -C class_public rev-parse HEAD 2>/dev/null || true)"
+            echo 'scope=effective k-essence sound-speed response representative'
+            echo 'anchor_w=-0.95'
+            echo 'q_s=1-cs2; steps=0.05,0.10'
+            echo 'smooth_w_step=0.001'
+            echo 'use_ppf=yes'
+          } > m11_provenance.txt
+      - name: Upload immutable M11 bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m11-effective-kessence
+          path: |
+            m11_effective_kessence.json
+            m11_provenance.txt
+            cfg/
+            logs/
+          if-no-files-found: error
+          retention-days: 90
