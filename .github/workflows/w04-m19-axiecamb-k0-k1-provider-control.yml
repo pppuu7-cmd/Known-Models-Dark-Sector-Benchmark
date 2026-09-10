@@ -40,12 +40,13 @@ jobs:
       - name: Build and execute all preregistered cases
         shell: bash
         run: |
+          set +e
           set -uo pipefail
           r0f_exit=999
           r0d_exit=999
           p1_exit=999
           cd external_axiecamb
-          make -j2 > ../m19_build.log 2>&1
+          make -j2 FFLAGS='-O3 -fopenmp -ffpe-summary=none -ffree-line-length-none' > ../m19_build.log 2>&1
           build_exit=$?
           if [ "$build_exit" -eq 0 ]; then
             ./camb ../m19_cases/r0f.ini > ../m19_r0f.log 2>&1
@@ -56,9 +57,10 @@ jobs:
             p1_exit=$?
           fi
           cd ..
-          printf '{"build_exit":%d,"r0f_exit":%d,"r0d_exit":%d,"p1_exit":%d}\n' \
+          printf '{"build_exit":%d,"r0f_exit":%d,"r0d_exit":%d,"p1_exit":%d,"compatibility_flag":"-ffree-line-length-none"}\n' \
             "$build_exit" "$r0f_exit" "$r0d_exit" "$p1_exit" > m19_status.json
           cat m19_status.json
+          exit 0
 
       - name: Analyze frozen gates
         shell: bash
