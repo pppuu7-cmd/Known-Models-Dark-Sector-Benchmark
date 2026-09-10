@@ -39,7 +39,7 @@ jobs:
                   extra=(' K7a Planck-2018 Plik_lite covariance is now measured after output-format recoveries: S_cov=3.1648604655690433 (TT-only block 2.30066, TE 1.95135, EE 1.16890). This is raw fixed-cosmology covariance weighting only; K7b nuisance/cosmological profiling remains required and no observational-distinguishability promotion is authorized.')
                   if extra.strip() not in r['notes']: r['notes'] += extra
               if r['family_id']=='F19':
-                  r['K1_reference']='BLOCKED_EXTERNAL_LIMIT_CONVERGENCE_NOT_ESTABLISHED'
+                  r['K1_reference_limit']='BLOCKED_EXTERNAL_LIMIT_CONVERGENCE_NOT_ESTABLISHED'
                   extra=(' External pure-CDM limit test now executes all five finite axionCAMB points and the historical CAMB reference. After preregistered semantic/blockwise output conformance, Pk, CMB_TE, T_cdm, T_b, T_r and T_tot converge, while CMB_TT, CMB_EE, T_g and T_nu fail the frozen convergence gates. K1 is not promoted; cross-provider baseline/low-fraction localization is required before any physical interpretation.')
                   if extra.strip() not in r['notes']: r['notes'] += extra
           with p.open('w',newline='') as f:
