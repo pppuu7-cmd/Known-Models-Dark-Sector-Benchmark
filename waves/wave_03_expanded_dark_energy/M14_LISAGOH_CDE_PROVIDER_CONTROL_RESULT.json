@@ -1,9 +1,10 @@
 {
-  "schema": "KMDSB.W03.M14.LisaGohCDEProviderControl.v0.1",
+  "schema": "KMDSB.W03.M14.LisaGohCDEProviderControl.v0.2",
   "provider": "LisaGoh/CDE@b85a675af7544a5183e402964550811aa805b698",
   "workload": "class_CDE/CDE.ini unmodified",
-  "build_exit": 2,
-  "run_exit": 999,
+  "build_target": "make class -j2 (standalone author executable; no source edits)",
+  "build_exit": 0,
+  "run_exit": 1,
   "fresh_counts": {
     "background": 0,
     "linear_pk": 0,
