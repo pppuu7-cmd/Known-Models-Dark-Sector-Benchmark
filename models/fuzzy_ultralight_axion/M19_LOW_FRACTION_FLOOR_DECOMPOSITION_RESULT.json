@@ -1,0 +1,245 @@
+{
+  "K1_promoted": false,
+  "baseline_floor_dominant_blocks": [
+    "CMB_TT",
+    "CMB_EE",
+    "CMB_TE",
+    "T_g",
+    "T_r",
+    "T_nu"
+  ],
+  "blocks": {
+    "CMB_EE": {
+      "classification": "BASELINE_FLOOR_DOMINANT_WITH_SCOPE",
+      "conditions": {
+        "exponent_gt_0_5": true,
+        "external_floor_ge_3x_smallest_effect": true,
+        "fit_error_le_smallest_effect": true,
+        "strict_decrease": true,
+        "two_point_shift_le_external_floor": true
+      },
+      "external_floor_p95": 0.030830960156317172,
+      "finite_effect_exponent": 0.995431596642081,
+      "finite_effect_p95": {
+        "0.001": 0.0005079110086217715,
+        "0.003": 0.001503582290305172,
+        "0.01": 0.005024709917464881
+      },
+      "fit_error_p95": 8.805886199508787e-06,
+      "n": 4999,
+      "two_point_asymptote_shift_p95": 1.7569687730175316e-05
+    },
+    "CMB_TE": {
+      "classification": "BASELINE_FLOOR_DOMINANT_WITH_SCOPE",
+      "conditions": {
+        "exponent_gt_0_5": true,
+        "external_floor_ge_3x_smallest_effect": true,
+        "fit_error_le_smallest_effect": true,
+        "strict_decrease": true,
+        "two_point_shift_le_external_floor": true
+      },
+      "external_floor_p95": 0.21933750908478925,
+      "finite_effect_exponent": 0.9954834036165982,
+      "finite_effect_p95": {
+        "0.001": 0.0026280091194005478,
+        "0.003": 0.0078002331580824934,
+        "0.01": 0.026003726417793124
+      },
+      "fit_error_p95": 1.6860947294799187e-05,
+      "n": 4999,
+      "two_point_asymptote_shift_p95": 3.877612209269148e-05
+    },
+    "CMB_TT": {
+      "classification": "BASELINE_FLOOR_DOMINANT_WITH_SCOPE",
+      "conditions": {
+        "exponent_gt_0_5": true,
+        "external_floor_ge_3x_smallest_effect": true,
+        "fit_error_le_smallest_effect": true,
+        "strict_decrease": true,
+        "two_point_shift_le_external_floor": true
+      },
+      "external_floor_p95": 0.02068485400750229,
+      "finite_effect_exponent": 0.9929936517400201,
+      "finite_effect_p95": {
+        "0.001": 0.00039586068323932465,
+        "0.003": 0.0011635302474689458,
+        "0.01": 0.003893762611755711
+      },
+      "fit_error_p95": 8.200129945907363e-06,
+      "n": 4999,
+      "two_point_asymptote_shift_p95": 1.4949170901533036e-05
+    },
+    "Pk": {
+      "classification": "INTERNAL_LIMIT_CONVERGENT_BUT_BASELINE_NOT_DOMINANT",
+      "conditions": {
+        "exponent_gt_0_5": true,
+        "external_floor_ge_3x_smallest_effect": false,
+        "fit_error_le_smallest_effect": true,
+        "strict_decrease": true,
+        "two_point_shift_le_external_floor": true
+      },
+      "external_floor_p95": 0.0007562868253645382,
+      "finite_effect_exponent": 1.0285882041701613,
+      "finite_effect_p95": {
+        "0.001": 0.008223121323916217,
+        "0.003": 0.025905355507732385,
+        "0.01": 0.08787250428267013
+      },
+      "fit_error_p95": 0.00029760418596259513,
+      "n": 553,
+      "two_point_asymptote_shift_p95": 0.000502749931780082
+    },
+    "T_b": {
+      "classification": "INTERNAL_LIMIT_CONVERGENT_BUT_BASELINE_NOT_DOMINANT",
+      "conditions": {
+        "exponent_gt_0_5": true,
+        "external_floor_ge_3x_smallest_effect": false,
+        "fit_error_le_smallest_effect": true,
+        "strict_decrease": true,
+        "two_point_shift_le_external_floor": true
+      },
+      "external_floor_p95": 0.0007462700062334634,
+      "finite_effect_exponent": 1.0136109225712353,
+      "finite_effect_p95": {
+        "0.001": 0.004149844651492023,
+        "0.003": 0.012733237014221285,
+        "0.01": 0.04282936797779428
+      },
+      "fit_error_p95": 6.574196056334473e-05,
+      "n": 191,
+      "two_point_asymptote_shift_p95": 0.00011369132444219756
+    },
+    "T_cdm": {
+      "classification": "INTERNAL_LIMIT_CONVERGENT_BUT_BASELINE_NOT_DOMINANT",
+      "conditions": {
+        "exponent_gt_0_5": true,
+        "external_floor_ge_3x_smallest_effect": false,
+        "fit_error_le_smallest_effect": true,
+        "strict_decrease": true,
+        "two_point_shift_le_external_floor": true
+      },
+      "external_floor_p95": 0.0007372931455137252,
+      "finite_effect_exponent": 1.013375708172384,
+      "finite_effect_p95": {
+        "0.001": 0.004137181647228887,
+        "0.003": 0.012685132541992376,
+        "0.01": 0.04267495400913708
+      },
+      "fit_error_p95": 6.542911432492526e-05,
+      "n": 191,
+      "two_point_asymptote_shift_p95": 0.00011224405807971089
+    },
+    "T_g": {
+      "classification": "BASELINE_FLOOR_DOMINANT_WITH_SCOPE",
+      "conditions": {
+        "exponent_gt_0_5": true,
+        "external_floor_ge_3x_smallest_effect": true,
+        "fit_error_le_smallest_effect": true,
+        "strict_decrease": true,
+        "two_point_shift_le_external_floor": true
+      },
+      "external_floor_p95": 0.0023122611291408615,
+      "finite_effect_exponent": 0.9902237330602386,
+      "finite_effect_p95": {
+        "0.001": 5.735099546760316e-05,
+        "0.003": 0.00016618980445417712,
+        "0.01": 0.0005603410079004091
+      },
+      "fit_error_p95": 2.145125025517973e-06,
+      "n": 191,
+      "two_point_asymptote_shift_p95": 4.76654155826641e-06
+    },
+    "T_nu": {
+      "classification": "BASELINE_FLOOR_DOMINANT_WITH_SCOPE",
+      "conditions": {
+        "exponent_gt_0_5": true,
+        "external_floor_ge_3x_smallest_effect": true,
+        "fit_error_le_smallest_effect": true,
+        "strict_decrease": true,
+        "two_point_shift_le_external_floor": true
+      },
+      "external_floor_p95": 0.2761881585852408,
+      "finite_effect_exponent": 1.0159732430994475,
+      "finite_effect_p95": {
+        "0.001": 0.004883611884215098,
+        "0.003": 0.015040366185886608,
+        "0.01": 0.050678973129547805
+      },
+      "fit_error_p95": 9.128448302512793e-05,
+      "n": 191,
+      "two_point_asymptote_shift_p95": 0.00015713312354415722
+    },
+    "T_r": {
+      "classification": "BASELINE_FLOOR_DOMINANT_WITH_SCOPE",
+      "conditions": {
+        "exponent_gt_0_5": true,
+        "external_floor_ge_3x_smallest_effect": true,
+        "fit_error_le_smallest_effect": true,
+        "strict_decrease": true,
+        "two_point_shift_le_external_floor": true
+      },
+      "external_floor_p95": 2.0320782209491124e-05,
+      "finite_effect_exponent": 0.5539381786073697,
+      "finite_effect_p95": {
+        "0.001": 1.3122791689650682e-06,
+        "0.003": 1.3484089093264106e-06,
+        "0.01": 4.617188562089427e-06
+      },
+      "fit_error_p95": 6.603436546750435e-07,
+      "n": 191,
+      "two_point_asymptote_shift_p95": 1.963158373213974e-06
+    },
+    "T_tot": {
+      "classification": "INTERNAL_LIMIT_CONVERGENT_BUT_BASELINE_NOT_DOMINANT",
+      "conditions": {
+        "exponent_gt_0_5": true,
+        "external_floor_ge_3x_smallest_effect": false,
+        "fit_error_le_smallest_effect": true,
+        "strict_decrease": true,
+        "two_point_shift_le_external_floor": true
+      },
+      "external_floor_p95": 0.0007539550195963115,
+      "finite_effect_exponent": 1.0133226173526673,
+      "finite_effect_p95": {
+        "0.001": 0.004144325761238051,
+        "0.003": 0.01270419380390826,
+        "0.01": 0.04274320736222026
+      },
+      "fit_error_p95": 6.545460858652506e-05,
+      "n": 191,
+      "two_point_asymptote_shift_p95": 0.00011312295358414621
+    }
+  },
+  "classification": "M19_LOW_FRACTION_BASELINE_FLOOR_LOCALIZED_WITH_SCOPE",
+  "internal_limit_convergent_blocks": [
+    "Pk",
+    "T_cdm",
+    "T_b",
+    "T_tot"
+  ],
+  "interpretation": "Low-fraction axionCAMB response converges internally in every common block; several cross-provider residual floors are dominated by the external solver/reference baseline. Frozen K1 non-promotion is unchanged.",
+  "next": "matched-baseline calibration or independent implementation with executable exact CDM limit",
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M19_LOW_FRACTION_FLOOR_DECOMPOSITION_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M19.lowFractionFloorDecomposition.v1",
+  "source": {
+    "artifact": 10175630339,
+    "artifact_digest": "sha256:2c9c6d5df28e7221bb4754cbff932a70feeb35aaa0f2991415d1b153489502a9",
+    "axion_pin": "891e779cc0bd422e49f97533e6c2fc761149737d",
+    "external_cdm_pin": "dc437acd8c90aa7e5595fcb25c615b03de8357a7",
+    "fit_fractions": [
+      0.01,
+      0.003,
+      0.001
+    ],
+    "fractions": [
+      0.1,
+      0.03,
+      0.01,
+      0.003,
+      0.001
+    ],
+    "run": 34536498517
+  },
+  "unresolved_blocks": []
+}
