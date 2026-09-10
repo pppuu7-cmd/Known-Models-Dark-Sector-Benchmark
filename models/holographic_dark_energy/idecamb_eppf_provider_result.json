@@ -1,0 +1,15 @@
+{
+  "schema": "KMDSB.W03.M17.IDECAMB.ePPFProvider.v0.1-recovery",
+  "date": "2026-09-10",
+  "provider": "cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4 + liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075",
+  "source_binding": "PASS_ALL_9_FROZEN_CHECKS",
+  "canonical_run": 34496665472,
+  "canonical_artifact": 10162067465,
+  "independent_c080_smoke_run": 34500194596,
+  "independent_c080_smoke_artifact": 10162045722,
+  "observed_failure": "STOP SIGINT1: Integration timed out; no theory_cl; three of eleven quantity columns are NaN for completed c=0.6/0.8 cases",
+  "classification": "M17_IDECAMB_EPPF_BLOCKED_EXECUTION",
+  "K3": "NOT_PROMOTED",
+  "physical_falsification": false,
+  "background_CPL_result_retained": true
+}
