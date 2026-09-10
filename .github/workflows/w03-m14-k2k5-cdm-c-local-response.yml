@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check numpy
 
       - name: Fetch pinned provider and build
         shell: bash
@@ -69,103 +71,58 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          import json, math, glob, os
+          import json, glob
           import numpy as np
-
           exits={}
           for line in open('logs/case_exits.tsv'):
               k,v=line.split(); exits[k]=int(v)
           tags=['c0','cp01','cm01','cp02','cm02']
-          out={
-            'schema':'KMDSB.W03.M14.SignedCLocalResponse.v0.1',
-            'provider':'kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df',
-            'anchor':'benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini',
-            'coordinate':'signed cdm_c in R; q1-q4 fixed zero',
-            'steps':[0.01,0.02],
-            'thresholds':{'tangent_relative_norm_mismatch_max':0.10,'tangent_angle_deg_max':3.0,'non_null_max_abs_log_response_min':1e-5},
-            'case_exits':exits,
-            'scientific_promotion_authorized':False
-          }
+          out={'schema':'KMDSB.W03.M14.SignedCLocalResponse.v0.1','provider':'kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df','anchor':'benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini','coordinate':'signed cdm_c in R; q1-q4 fixed zero','steps':[0.01,0.02],'thresholds':{'tangent_relative_norm_mismatch_max':0.10,'tangent_angle_deg_max':3.0,'non_null_max_abs_log_response_min':1e-5},'case_exits':exits,'scientific_promotion_authorized':False}
           if any(exits.get(t,999)!=0 for t in tags):
               out.update(classification='M14_K2K5_BLOCKED_CASE_EXECUTION',interpretation='one or more prospectively frozen solver cases failed; numerical/implementation blocker only')
-              open('m14_k2k5_local_response.json','w').write(json.dumps(out,indent=2)+'\n')
-              raise SystemExit
-
+              open('m14_k2k5_local_response.json','w').write(json.dumps(out,indent=2)+'\n'); raise SystemExit
           def load_table(pattern):
               fs=glob.glob(pattern)
               if not fs: return None
               arr=np.genfromtxt(fs[0],comments='#',invalid_raise=False)
               if arr.ndim==1: arr=arr[None,:]
               return arr
-
           def bg_vector(tag):
               a=load_table(f'out/{tag}*background.dat')
               if a is None or a.shape[1] < 4: return None
-              # CLASS background columns begin z, proper time, conformal time, H in common versions.
-              # We only require matched rows and positivity; column index 3 is solver-native H.
-              h=a[:,3]
-              good=np.isfinite(h)&(h>0)
-              idx=np.flatnonzero(good)
+              h=a[:,3]; good=np.isfinite(h)&(h>0); idx=np.flatnonzero(good)
               if len(idx)>400: idx=idx[np.linspace(0,len(idx)-1,400).astype(int)]
               return np.log(h[idx])
-
           def pk_vector(tag):
-              fs=sorted(glob.glob(f'out/{tag}*pk*.dat'))
-              vals=[]
+              fs=sorted(glob.glob(f'out/{tag}*pk*.dat')); vals=[]
               for f in fs:
                   a=np.genfromtxt(f,comments='#',invalid_raise=False)
                   if a.ndim==1: a=a[None,:]
                   if a.shape[1] < 2: continue
-                  p=a[:,1]
-                  good=np.isfinite(p)&(p>0)
-                  idx=np.flatnonzero(good)
+                  p=a[:,1]; good=np.isfinite(p)&(p>0); idx=np.flatnonzero(good)
                   if len(idx)>300: idx=idx[np.linspace(0,len(idx)-1,300).astype(int)]
                   vals.extend(np.log(p[idx]).tolist())
               return np.array(vals) if vals else None
-
           vecs={}; chans={}
           for t in tags:
-              b=bg_vector(t); p=pk_vector(t)
-              parts=[]; meta={}
+              b=bg_vector(t); p=pk_vector(t); parts=[]; meta={}
               if b is not None: parts.append(b); meta['H_n']=len(b)
               if p is not None: parts.append(p); meta['Pk_n']=len(p)
               if not parts:
                   out.update(classification='M14_K2K5_BLOCKED_OUTPUT_PARSE',interpretation=f'no usable H/P(k) output for {t}')
-                  open('m14_k2k5_local_response.json','w').write(json.dumps(out,indent=2)+'\n')
-                  raise SystemExit
+                  open('m14_k2k5_local_response.json','w').write(json.dumps(out,indent=2)+'\n'); raise SystemExit
               vecs[t]=np.concatenate(parts); chans[t]=meta
           lengths={len(v) for v in vecs.values()}
           if len(lengths)!=1:
               out.update(classification='M14_K2K5_BLOCKED_OPERATOR_MISMATCH',vector_lengths={k:len(v) for k,v in vecs.items()},interpretation='solver outputs could not be exactly matched into equal coordinate vectors; no zero imputation')
-              open('m14_k2k5_local_response.json','w').write(json.dumps(out,indent=2)+'\n')
-              raise SystemExit
-
-          v01=(vecs['cp01']-vecs['cm01'])/0.02
-          v02=(vecs['cp02']-vecs['cm02'])/0.04
-          n1=float(np.linalg.norm(v01)); n2=float(np.linalg.norm(v02))
-          mismatch=float(np.linalg.norm(v01-v02)/max(n1,n2,1e-300))
-          if n1>0 and n2>0:
-              cos=float(np.clip(np.dot(v01,v02)/(n1*n2),-1,1)); angle=float(np.degrees(np.arccos(cos)))
-          else: angle=float('nan')
-          rplus=vecs['cp01']-vecs['c0']; rminus=vecs['cm01']-vecs['c0']
-          maxresp=float(max(np.max(np.abs(rplus)),np.max(np.abs(rminus))))
-          k4=bool(mismatch<=0.10 and np.isfinite(angle) and angle<=3.0)
-          k5=bool(k4 and maxresp>1e-5)
-          out.update(
-              channel_layout=chans['c0'],
-              tangent_norm_h001=n1,tangent_norm_h002=n2,
-              tangent_relative_norm_mismatch=mismatch,tangent_angle_deg=angle,
-              max_abs_log_response_h001=maxresp,
-              K2='PASS_WITH_SCOPE_SIGNED_COORDINATE_SOURCE_BOUND',
-              K4='PASS_WITH_SCOPE' if k4 else 'FAIL_LOCAL_CONVERGENCE',
-              K5='PASS_WITH_SCOPE_NON_NULL_RANK1' if k5 else ('BLOCKED_BY_K4' if not k4 else 'NONIDENTIFIABLE_AT_FROZEN_SCALE'),
-              local_rank=1 if k5 else 0,
-              classification='M14_K2K5_LOCAL_RESPONSE_PASS_WITH_SCOPE' if k5 else ('M14_K4_LOCAL_CONVERGENCE_FAIL' if not k4 else 'M14_K5_LOCAL_RESPONSE_NONIDENTIFIABLE'),
-              scientific_promotion_authorized=True,
-              interpretation='theory-space local response only; K3 and K6-K9 remain open; no observational discrimination claim'
-          )
-          open('m14_k2k5_local_response.json','w').write(json.dumps(out,indent=2)+'\n')
-          print(json.dumps(out,indent=2))
+              open('m14_k2k5_local_response.json','w').write(json.dumps(out,indent=2)+'\n'); raise SystemExit
+          v01=(vecs['cp01']-vecs['cm01'])/0.02; v02=(vecs['cp02']-vecs['cm02'])/0.04
+          n1=float(np.linalg.norm(v01)); n2=float(np.linalg.norm(v02)); mismatch=float(np.linalg.norm(v01-v02)/max(n1,n2,1e-300))
+          angle=float(np.degrees(np.arccos(float(np.clip(np.dot(v01,v02)/(n1*n2),-1,1))))) if n1>0 and n2>0 else float('nan')
+          rplus=vecs['cp01']-vecs['c0']; rminus=vecs['cm01']-vecs['c0']; maxresp=float(max(np.max(np.abs(rplus)),np.max(np.abs(rminus))))
+          k4=bool(mismatch<=0.10 and np.isfinite(angle) and angle<=3.0); k5=bool(k4 and maxresp>1e-5)
+          out.update(channel_layout=chans['c0'],tangent_norm_h001=n1,tangent_norm_h002=n2,tangent_relative_norm_mismatch=mismatch,tangent_angle_deg=angle,max_abs_log_response_h001=maxresp,K2='PASS_WITH_SCOPE_SIGNED_COORDINATE_SOURCE_BOUND',K4='PASS_WITH_SCOPE' if k4 else 'FAIL_LOCAL_CONVERGENCE',K5='PASS_WITH_SCOPE_NON_NULL_RANK1' if k5 else ('BLOCKED_BY_K4' if not k4 else 'NONIDENTIFIABLE_AT_FROZEN_SCALE'),local_rank=1 if k5 else 0,classification='M14_K2K5_LOCAL_RESPONSE_PASS_WITH_SCOPE' if k5 else ('M14_K4_LOCAL_CONVERGENCE_FAIL' if not k4 else 'M14_K5_LOCAL_RESPONSE_NONIDENTIFIABLE'),scientific_promotion_authorized=True,interpretation='theory-space local response only; K3 and K6-K9 remain open; no observational discrimination claim')
+          open('m14_k2k5_local_response.json','w').write(json.dumps(out,indent=2)+'\n'); print(json.dumps(out,indent=2))
           PY
 
       - name: Persist machine result race-safely
@@ -181,22 +138,13 @@ jobs:
           cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_K2K5_CDM_C_LOCAL_RESPONSE_RESULT.json
           cp /tmp/result.json models/coupled_quintessence/k2k5_local_response_result.json
           git add waves/wave_03_expanded_dark_energy/M14_K2K5_CDM_C_LOCAL_RESPONSE_RESULT.json models/coupled_quintessence/k2k5_local_response_result.json
-          if ! git diff --cached --quiet; then
-            git commit -m 'Record M14 signed-c local response result'
-            git push origin HEAD:main
-          fi
+          if ! git diff --cached --quiet; then git commit -m 'Record M14 signed-c local response result'; git push origin HEAD:main; fi
 
       - name: Record provenance
         if: always()
         shell: bash
         run: |
-          {
-            echo "KMDSB_TRIGGER_HEAD=${GITHUB_SHA}"
-            echo "PROVIDER_HEAD=$(git -C provider rev-parse HEAD 2>/dev/null || true)"
-            echo 'coordinate=cdm_c signed real coordinate'
-            echo 'q1-q4=0 fixed by author anchor'
-            echo 'steps=+-0.01,+-0.02 around c=0'
-          } > m14_k2k5_provenance.txt
+          { echo "KMDSB_TRIGGER_HEAD=${GITHUB_SHA}"; echo "PROVIDER_HEAD=$(git -C provider rev-parse HEAD 2>/dev/null || true)"; echo 'coordinate=cdm_c signed real coordinate'; echo 'q1-q4=0 fixed by author anchor'; echo 'steps=+-0.01,+-0.02 around c=0'; } > m14_k2k5_provenance.txt
 
       - name: Upload immutable bundle
         if: always()
