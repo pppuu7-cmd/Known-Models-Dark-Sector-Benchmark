@@ -1,0 +1,75 @@
+name: Sync M21 precision diagnostic 20260911
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-m21-precision-diagnostic-20260911.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Synchronize M21 diagnostic frontier
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f models/mixed_cold_warm_dark_matter/M21_DEFAULT_PRECISION_EXCURSION_DIAGNOSTIC_RESULT.json
+          python3 - <<'PY'
+          import csv,json
+          from pathlib import Path
+          r=json.loads(Path('models/mixed_cold_warm_dark_matter/M21_DEFAULT_PRECISION_EXCURSION_DIAGNOSTIC_RESULT.json').read_text())
+          assert r['classification']=='M21_DEFAULT_PRECISION_EXCURSION_PERSISTS'
+          assert r['K1_promoted'] is False and r['physical_falsification'] is False
+
+          def update(path, updates):
+              p=Path(path)
+              with p.open(newline='') as f:
+                  rows=list(csv.DictReader(f)); fields=list(rows[0].keys())
+              found=False
+              for row in rows:
+                  if row['family_id']=='F21':
+                      for k,v in updates.items():
+                          if k in fields: row[k]=v
+                      found=True
+              if not found: raise SystemExit('F21 missing')
+              with p.open('w',newline='') as f:
+                  w=csv.DictWriter(f,fieldnames=fields);w.writeheader();w.writerows(rows)
+
+          update('matrices/model_family_census.csv',{
+              'status':'K1_PRECISION_EXCURSION_PERSISTS_DETERMINISTIC_SOLVER_BRANCH_DIAGNOSTIC_OPEN',
+              'notes':'Same-solver mixed cold+warm CLASS coordinate remains physically admissible: fixed m/T plus varying omega_ncdm rescales distribution normalization/deg_ncdm. Corrected H/P(k) diagnostics behave smoothly, but f_w=0.003 has a deterministic CMB discontinuity. It survives cl_permille and a source-bound tight ncdm profile with ncdm_fluid_approximation=3, l_max_ncdm=50 and tight ncdm tolerances. Support-aware normalized-L2 audit of the immutable artifact also retains the excursion, so K1 remains open. Next diagnostic should vary the ODE evolver/solver branch without changing physics.'
+          })
+          update('matrices/mandatory_properties_matrix.csv',{
+              'K0_provenance':'PASS_WITH_SCOPE_PINNED_CLASS_NCDM',
+              'K1_reference_limit':'OPEN_DETERMINISTIC_CMB_SOLVER_BRANCH_DISCONTINUITY',
+              'K2_physical_geometry':'ONE_SIDED_F_W_GE_0_NO_SIGN_QUOTIENT',
+              'K3_conservation_gauge_closure':'BLOCKED_BY_K1_REFERENCE_RECOVERY',
+              'K4_numerical_robustness':'NOT_TESTED',
+              'K5_multichannel_rank':'NOT_TESTED',
+              'K6_nearest_family_manifold':'NOT_TESTED',
+              'K7_common_observation_space':'NOT_TESTED',
+              'K8_quotient_novelty':'NOT_TESTED',
+              'K9_prospective_holdout':'NOT_TESTED',
+              'coverage_state':'K1_DETERMINISTIC_CMB_BRANCH_DIAGNOSTIC_OPEN_NO_PHYSICAL_FAIL',
+              'notes':'M21 v1 H interpolation and support metric defects were localized, but a distinct f_w=0.003 CMB excursion persists. Precision diagnostic run 34540437512 succeeds and shows persistence under cl_permille and a tighter ncdm profile; artifact-level normalized-L2 also retains the anomaly. Input-source audit confirms fixed m_ncdm/T_ncdm plus omega_ncdm is implemented by rescaling deg_ncdm, so the coordinate is not rejected as overdetermined. No K1 promotion and no physical family failure.'
+          })
+          p=Path('recovery/STATE.md');s=p.read_text();marker='## 2026-09-11 — M21 precision excursion survives support-aware and ncdm-tight audit'
+          if marker not in s:
+              p.write_text(s+f'''\n\n{marker}\n- Hosted precision diagnostic run `34540437512` completed successfully with classification `{r['classification']}`; it is diagnostic-only and does not promote K1.\n- Default-v1 CMB excursion factors at f_w=0.003 relative to neighboring f=0.01/0.001 were TT={r['default_v1_excursion_factors']['CMB_TT']:.3f}, EE={r['default_v1_excursion_factors']['CMB_EE']:.3f}, TE={r['default_v1_excursion_factors']['CMB_TE']:.3f}.\n- P1 cl_permille leaves the excursion essentially unchanged. P2 adds source-bound ncdm-tight settings including `tol_ncdm_bg=1e-10`, `l_max_ncdm=50`, `ncdm_fluid_approximation=3`, `tol_ncdm_synchronous/newtonian=1e-10`, tighter perturbation integration/sampling; excursion persists and neighboring-point numerical floors shrink, producing a maximum factor {r['profiles']['P2_cl_permille_plus_ncdm_tight']['max_CMB_excursion_factor']:.3f}.\n- Independent normalized-L2 audit of immutable artifact `10177473119` (digest `sha256:0d03e232511d5da8ba85e16967c7460d68ef0c6868ae07abd09a14efac942151`) also retains the f_w=0.003 anomaly, so this is not merely a pointwise-p95 support artifact.\n- CLASS source audit confirms that when fixed `m_ncdm`/`T_ncdm` and an explicit `omega_ncdm` are supplied, the code rescales `factor_ncdm` and `deg_ncdm` to the target abundance; the mixed-fraction coordinate is therefore not rejected as trivially overdetermined.\n- Current interpretation: deterministic numerical/solver-branch discontinuity remains localized in CMB. Next clean diagnostic should change the ODE evolver/solver branch at otherwise identical P2 physics and precision. No physical M21 failure.\n- Global operational readiness remains approximately 55%; strict terminal/represented coverage remains 4/46.\n''')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'Sync M21 persistent precision excursion diagnostic'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
