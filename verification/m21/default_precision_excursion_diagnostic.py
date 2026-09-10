@@ -37,14 +37,11 @@ def cmb(model,ref,col):
 
 def pk(model,ref):
  x=model[:,0]; xr=ref[:,0]; lo=max(x.min(),xr.min());hi=min(x.max(),xr.max());mask=(x>=lo)&(x<=hi);x=x[mask];ym=model[mask,1]
- good=(xr>0)&(ref[:,1]>0)&(x>0)&(ym>0)
- # all CLASS linear P(k) rows should be positive; guard before log interpolation
- if not np.all(good): raise RuntimeError('nonpositive Pk')
+ if np.any(xr<=0) or np.any(ref[:,1]<=0) or np.any(x<=0) or np.any(ym<=0): raise RuntimeError('nonpositive Pk')
  yr=np.exp(np.interp(np.log(x),np.log(xr),np.log(ref[:,1])))
  return sym(ym,yr)
 
 def hubble(model,ref):
- # CLASS background: col1 z, col4 H. Canonicalize orientation before interpolation.
  x=model[:,0]; y=model[:,3]; xr=ref[:,0];yr0=ref[:,3]
  ir=np.argsort(xr); xr=xr[ir];yr0=yr0[ir]; im=np.argsort(x);x=x[im];y=y[im]
  lo=max(x.min(),xr.min());hi=min(x.max(),xr.max());mask=(x>=lo)&(x<=hi);x=x[mask];y=y[mask]
@@ -63,13 +60,12 @@ def profile(root):
 
 def main(p1,p2,out):
  v1=json.loads(Path(V1).read_text()); default={}
- mapch={'CMB_TT':'CMB_TT','CMB_EE':'CMB_EE','CMB_TE':'CMB_TE'}
- for ch,b in mapch.items():
-  pts=v1['blocks'][b]['points']; r=[pts[i]['p95_abs'] for i in [2,3,4]]; default[ch]=float(r[1]/max(r[0],r[2],1e-300))
+ for ch in ['CMB_TT','CMB_EE','CMB_TE']:
+  pts=v1['blocks'][ch]['points']; r=[pts[i]['p95_abs'] for i in [2,3,4]]; default[ch]=float(r[1]/max(r[0],r[2],1e-300))
  default_max=max(default.values())
  profiles={'P1_cl_permille':profile(p1),'P2_cl_permille_plus_ncdm_tight':profile(p2)}
  suppressed=False; reduced=False
- for name,q in profiles.items():
+ for q in profiles.values():
   mx=max(q['excursion_factors'].values())
   if all(v<=3 for v in q['excursion_factors'].values()): cls='EXCURSION_SUPPRESSED';suppressed=True
   elif mx <= default_max/3: cls='EXCURSION_REDUCED';reduced=True
