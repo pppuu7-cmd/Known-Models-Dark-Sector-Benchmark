@@ -1,0 +1,162 @@
+name: W03 M14 LisaGoh CDE K1 background recovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-lisagoh-cde-k1-background-recovery.yml'
+      - 'protocol/W03_M14_LISAGOH_CDE_K1_BACKGROUND_RECOVERY_PREREGISTRATION_v0.2.md'
+
+permissions:
+  contents: write
+
+jobs:
+  recover-background-arm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preserve immutable parent K1 result
+        run: cp models/coupled_quintessence/lisagoh_cde_k1_reference.json parent_k1.json
+      - name: Fetch and build exact provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/LisaGoh/CDE.git provider
+          git -C provider checkout b85a675af7544a5183e402964550811aa805b698
+          test "$(git -C provider rev-parse HEAD)" = "b85a675af7544a5183e402964550811aa805b698"
+          cd provider/class_CDE
+          make clean > ../../build.log 2>&1
+          make class -j2 >> ../../build.log 2>&1
+          mkdir -p output
+          cd ../..
+      - name: Generate recovered arm A only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          t=Path('provider/class_CDE/CDE.ini').read_text()
+          def setkey(txt,key,value):
+              pat=rf'(?m)^(\s*{re.escape(key)}\s*=\s*).*$'
+              out,n=re.subn(pat,lambda m:m.group(1)+value,txt,count=1)
+              if n!=1: raise RuntimeError(f'{key}: expected one active key, got {n}')
+              return out
+          for k in ['beta_1','beta_2','beta_3','phi_ini_scf','phi_prime_ini_scf']:
+              t=setkey(t,k,'0')
+          t=setkey(t,'output','')
+          t=setkey(t,'lensing','no')
+          t += '\nroot = output/k1_exact_bg_recovery_\n'
+          Path('provider/class_CDE/k1_exact_bg_recovery.ini').write_text(t)
+          PY
+      - name: Execute recovered exact background arm
+        shell: bash
+        run: |
+          set +e
+          cd provider/class_CDE
+          ./class k1_exact_bg_recovery.ini > ../../exact_bg_recovery.log 2>&1
+          echo "$?" > ../../exact_bg_recovery.exit
+          cd ../..
+          cat exact_bg_recovery.log || true
+          exit 0
+      - name: Evaluate frozen parent metrics and combine immutable B/C
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, math, re
+          from pathlib import Path
+          parent=json.loads(Path('parent_k1.json').read_text())
+          exitcode=int(Path('exact_bg_recovery.exit').read_text().strip())
+          files=[p for p in Path('provider/class_CDE/output').glob('k1_exact_bg_recovery_*background.dat') if p.stat().st_size>0]
+          metrics=None; parse_error=None
+          def parse_background(path):
+              lines=Path(path).read_text(errors='replace').splitlines()
+              rows=[]
+              for line in lines:
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  rows.append([float(x) for x in s.split()])
+              if not rows: raise RuntimeError('no numeric background rows')
+              n=len(rows[0])
+              if any(len(r)!=n for r in rows): raise RuntimeError('ragged background')
+              candidates=[]
+              for line in lines:
+                  if line.lstrip().startswith('#'):
+                      parts=[x.strip() for x in line.lstrip()[1:].strip().split('\t')]
+                      if len(parts)==n: candidates.append(parts)
+              if not candidates: raise RuntimeError(f'no {n}-column title row')
+              titles=candidates[-1]
+              def norm(s):
+                  s=re.sub(r'^\s*\d+\s*:\s*','',s)
+                  return re.sub(r'[^a-z0-9]+','_',s.lower()).strip('_')
+              nt=[norm(x) for x in titles]
+              def idx(terms,exclude=()):
+                  hits=[i for i,s in enumerate(nt) if all(t in s for t in terms) and not any(e in s for e in exclude)]
+                  if len(hits)!=1: raise RuntimeError(f'{terms}/{exclude}: {[(i,titles[i]) for i in hits]}')
+                  return hits[0]
+              iz=idx(('z',)) if 'z' in nt else 0
+              irc=idx(('rho_cdm',)); irs=idx(('rho_scf',)); iw=idx(('w_scf',)); ip=idx(('phi_prime',)); ib=idx(('beta',),('dbeta',)); idb=idx(('dbeta',))
+              def col(i): return [r[i] for r in rows]
+              z,rc,rs,w,pp,b,db=[col(i) for i in [iz,irc,irs,iw,ip,ib,idb]]
+              finite=all(math.isfinite(v) for arr in [z,rc,rs,w,pp,b,db] for v in arr)
+              a=[1/(1+x) for x in z]; ca3=[r*q**3 for r,q in zip(rc,a)]
+              def rspan(x): return (max(x)-min(x))/max(max(abs(v) for v in x),1e-300)
+              m={'finite':finite,'rows':len(rows),'titles':titles,
+                 'resolved_columns':{'z':titles[iz],'rho_cdm':titles[irc],'rho_scf':titles[irs],'w_scf':titles[iw],'phi_prime_scf':titles[ip],'beta':titles[ib],'dbeta_dz':titles[idb]},
+                 'max_abs_beta':max(abs(x) for x in b),'max_abs_dbeta_dz':max(abs(x) for x in db),'max_abs_phi_prime_scf':max(abs(x) for x in pp),'max_abs_w_plus_1':max(abs(x+1) for x in w),'rspan_rho_scf':rspan(rs),'rspan_rho_cdm_a3':rspan(ca3)}
+              m['pass']=bool(finite and m['max_abs_beta']<=1e-15 and m['max_abs_dbeta_dz']<=1e-15 and m['max_abs_phi_prime_scf']<=1e-14 and m['max_abs_w_plus_1']<=1e-12 and m['rspan_rho_scf']<=1e-12 and m['rspan_rho_cdm_a3']<=1e-8)
+              return m
+          if exitcode==0 and files:
+              try: metrics=parse_background(files[0])
+              except Exception as e: parse_error=repr(e)
+          A=bool(exitcode==0 and metrics and metrics.get('pass'))
+          if A:
+              cls='M14_LISAGOH_CDE_K1_EXACT_REFERENCE_IMPLEMENTATION_BLOCKED'
+              kval='BACKGROUND_PASS_EXACT_REFERENCE_IMPLEMENTATION_BLOCKED'
+          elif exitcode==0 and metrics is not None:
+              cls='M14_LISAGOH_CDE_K1_BACKGROUND_REFERENCE_FAIL'; kval='NOT_PASS'
+          else:
+              cls='M14_LISAGOH_CDE_K1_BLOCKED_INFRASTRUCTURE'; kval='NOT_PASS'
+          result=dict(parent)
+          result['schema']='KMDSB.W03.M14.LisaGohCDEK1Reference.v0.2'
+          result['background_recovery']={'parent_run':34488423569,'change':'arm A only: lensing=no with output blank; no physics/threshold changes','exit':exitcode,'file':[str(p) for p in files],'metrics':metrics,'parse_error':parse_error,'pass':A}
+          result['arm_A_background_metrics']=metrics
+          result['arm_A_parse_error']=parse_error
+          result['arm_A_background_pass']=A
+          result['classification']=cls
+          result['K1']=kval
+          result['K3_promotion_authorized']=False
+          result['K4_K5_authorized']=False
+          result['physical_falsification_authorized']=False
+          Path('m14_lisagoh_cde_k1_reference_v02.json').write_text(json.dumps(result,indent=2)+'\n')
+          print(json.dumps(result,indent=2))
+          PY
+      - name: Persist recovered canonical record
+        shell: bash
+        run: |
+          cp m14_lisagoh_cde_k1_reference_v02.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          cp /tmp/result.json models/coupled_quintessence/lisagoh_cde_k1_reference.json
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_LISAGOH_CDE_K1_REFERENCE_RESULT.json
+          git add models/coupled_quintessence/lisagoh_cde_k1_reference.json waves/wave_03_expanded_dark_energy/M14_LISAGOH_CDE_K1_REFERENCE_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Recover LisaGoh CDE M14 K1 background reference'
+            git push origin HEAD:main
+          fi
+      - name: Upload immutable recovery bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m14-lisagoh-cde-k1-background-recovery
+          path: |
+            parent_k1.json
+            m14_lisagoh_cde_k1_reference_v02.json
+            build.log
+            exact_bg_recovery.log
+            exact_bg_recovery.exit
+            provider/class_CDE/output/k1_exact_bg_recovery_*background.dat
+          retention-days: 90
