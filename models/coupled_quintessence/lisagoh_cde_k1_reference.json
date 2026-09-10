@@ -1,5 +1,5 @@
 {
-  "schema": "KMDSB.W03.M14.LisaGohCDEK1Reference.v0.1",
+  "schema": "KMDSB.W03.M14.LisaGohCDEK1Reference.v0.2",
   "provider": "LisaGoh/CDE@b85a675af7544a5183e402964550811aa805b698",
   "parent_provider_control_run": 34487561326,
   "exits": {
@@ -52,5 +52,14 @@
     "max_abs_w_plus_1": 1e-12,
     "rspan_rho_scf": 1e-12,
     "rspan_rho_cdm_a3": 1e-08
+  },
+  "background_recovery": {
+    "parent_run": 34488423569,
+    "change": "arm A only: lensing=no with output blank; no physics/threshold changes",
+    "exit": 1,
+    "file": [],
+    "metrics": null,
+    "parse_error": null,
+    "pass": false
   }
 }
