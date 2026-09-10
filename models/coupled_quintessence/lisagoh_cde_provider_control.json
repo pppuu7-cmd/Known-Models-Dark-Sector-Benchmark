@@ -1,20 +1,58 @@
 {
-  "schema": "KMDSB.W03.M14.LisaGohCDEProviderControl.v0.2",
+  "schema": "KMDSB.W03.M14.LisaGohCDEProviderControl.v0.3",
   "provider": "LisaGoh/CDE@b85a675af7544a5183e402964550811aa805b698",
   "workload": "class_CDE/CDE.ini unmodified",
   "build_target": "make class -j2 (standalone author executable; no source edits)",
+  "filesystem_recovery": "mkdir -p class_CDE/output only",
   "build_exit": 0,
-  "run_exit": 1,
+  "run_exit": 0,
   "fresh_counts": {
-    "background": 0,
-    "linear_pk": 0,
-    "cl": 0,
-    "transfer": 0
+    "background": 1,
+    "linear_pk": 2,
+    "cl": 2,
+    "transfer": 1
   },
-  "fresh_products": [],
-  "classification": "M14_LISAGOH_CDE_PROVIDER_CONTROL_BLOCKED_IMPLEMENTATION_OR_RUNTIME",
-  "K0_execution": "BLOCKED",
-  "K1_authorized": false,
+  "fresh_products": [
+    {
+      "path": "./output/CDE00_background.dat",
+      "size": 4236652
+    },
+    {
+      "path": "./output/CDE00_cl.dat",
+      "size": 546405
+    },
+    {
+      "path": "./output/CDE00_cl_lensed.dat",
+      "size": 455412
+    },
+    {
+      "path": "./output/CDE00_perturbations_k0_s.dat",
+      "size": 882873
+    },
+    {
+      "path": "./output/CDE00_pk.dat",
+      "size": 31736
+    },
+    {
+      "path": "./output/CDE00_pk_cb.dat",
+      "size": 31736
+    },
+    {
+      "path": "./output/CDE00_pk_cb_nl.dat",
+      "size": 31736
+    },
+    {
+      "path": "./output/CDE00_pk_nl.dat",
+      "size": 31736
+    },
+    {
+      "path": "./output/CDE00_tk.dat",
+      "size": 123192
+    }
+  ],
+  "classification": "M14_LISAGOH_CDE_PROVIDER_CONTROL_PASS",
+  "K0_execution": "PASS_WITH_SCOPE",
+  "K1_authorized": true,
   "K3_numerical_promotion_authorized": false,
   "physical_falsification_authorized": false
 }
