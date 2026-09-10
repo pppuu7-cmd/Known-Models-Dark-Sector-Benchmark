@@ -1,9 +1,221 @@
 {
   "K1_promoted": false,
+  "K1_scope": "NOT_PROMOTED",
   "axion_pin": "891e779cc0bd422e49f97533e6c2fc761149737d",
-  "blocks": {},
+  "blocks": {
+    "matterpower.dat": {
+      "fit_smallest3": {
+        "logA": 2.196039483061608,
+        "p": 1.003581407282743,
+        "valid": true
+      },
+      "monotonic_with_2pct_slack": true,
+      "pass": true,
+      "points": [
+        {
+          "floor": 2.5458e-08,
+          "fraction": 0.1,
+          "median_abs": 0.02625383144422888,
+          "n": 553,
+          "p95_abs": 0.8476022945742757,
+          "rms": 0.48717596926049705
+        },
+        {
+          "floor": 2.5458e-08,
+          "fraction": 0.03,
+          "median_abs": 0.007690723868838562,
+          "n": 553,
+          "p95_abs": 0.26520880827445353,
+          "rms": 0.15107601747528723
+        },
+        {
+          "floor": 2.5458e-08,
+          "fraction": 0.01,
+          "median_abs": 0.0025406841015208296,
+          "n": 553,
+          "p95_abs": 0.08839320537188117,
+          "rms": 0.05028125994703032
+        },
+        {
+          "floor": 2.5458e-08,
+          "fraction": 0.003,
+          "median_abs": 0.0007416361887270496,
+          "n": 553,
+          "p95_abs": 0.026431384150430334,
+          "rms": 0.015009384258273561
+        },
+        {
+          "floor": 2.5458e-08,
+          "fraction": 0.001,
+          "median_abs": 0.00023150358772434143,
+          "n": 553,
+          "p95_abs": 0.00876644396249233,
+          "rms": 0.004952637964252266
+        }
+      ],
+      "r95": [
+        0.8476022945742757,
+        0.26520880827445353,
+        0.08839320537188117,
+        0.026431384150430334,
+        0.00876644396249233
+      ],
+      "smallest_lower_than_largest": true
+    },
+    "scalCls.dat": {
+      "fit_smallest3": {
+        "logA": -2.732977137661067,
+        "p": 0.014994373563010742,
+        "valid": true
+      },
+      "monotonic_with_2pct_slack": true,
+      "pass": true,
+      "points": [
+        {
+          "floor": 5.72849901019467e-09,
+          "fraction": 0.1,
+          "median_abs": 0.01963644294030867,
+          "n": 14997,
+          "p95_abs": 0.1478969771124844,
+          "rms": 0.13480666386273568
+        },
+        {
+          "floor": 5.713429070700884e-09,
+          "fraction": 0.03,
+          "median_abs": 0.0073059333765254,
+          "n": 14997,
+          "p95_abs": 0.08195629843209595,
+          "rms": 0.08355435501837623
+        },
+        {
+          "floor": 5.7134e-09,
+          "fraction": 0.01,
+          "median_abs": 0.003227150400441891,
+          "n": 14997,
+          "p95_abs": 0.06106112762827703,
+          "rms": 0.070415919242402
+        },
+        {
+          "floor": 5.7134e-09,
+          "fraction": 0.003,
+          "median_abs": 0.0023381464936139467,
+          "n": 14997,
+          "p95_abs": 0.05883789177994817,
+          "rms": 0.05973810824339581
+        },
+        {
+          "floor": 5.7134e-09,
+          "fraction": 0.001,
+          "median_abs": 0.0024023281807053543,
+          "n": 14997,
+          "p95_abs": 0.059023716552243866,
+          "rms": 0.060140252359104564
+        }
+      ],
+      "r95": [
+        0.1478969771124844,
+        0.08195629843209595,
+        0.06106112762827703,
+        0.05883789177994817,
+        0.059023716552243866
+      ],
+      "smallest_lower_than_largest": true
+    },
+    "transfer_out.dat": {
+      "fit_smallest3": {
+        "logA": -1.9835261961337942,
+        "p": -0.0726375914107128,
+        "valid": true
+      },
+      "monotonic_with_2pct_slack": false,
+      "pass": false,
+      "points": [
+        {
+          "floor": 2.64138e-05,
+          "fraction": 0.1,
+          "median_abs": 0.00038967880727285546,
+          "n": 1146,
+          "p95_abs": 0.426384811782449,
+          "rms": 0.231751679495276
+        },
+        {
+          "floor": 2.64136e-05,
+          "fraction": 0.03,
+          "median_abs": 0.00011265740467406146,
+          "n": 1146,
+          "p95_abs": 0.12793402606742543,
+          "rms": 0.11032669947412128
+        },
+        {
+          "floor": 2.64135e-05,
+          "fraction": 0.01,
+          "median_abs": 2.1130153416299893e-05,
+          "n": 1146,
+          "p95_abs": 0.18964379105231427,
+          "rms": 0.06133608465255693
+        },
+        {
+          "floor": 2.64135e-05,
+          "fraction": 0.003,
+          "median_abs": 2.0356655310009988e-05,
+          "n": 1146,
+          "p95_abs": 0.2158696201093415,
+          "rms": 0.06585582020002914
+        },
+        {
+          "floor": 2.64135e-05,
+          "fraction": 0.001,
+          "median_abs": 2.0218666013418042e-05,
+          "n": 1146,
+          "p95_abs": 0.223877367615152,
+          "rms": 0.06782959943214613
+        }
+      ],
+      "r95": [
+        0.426384811782449,
+        0.12793402606742543,
+        0.18964379105231427,
+        0.2158696201093415,
+        0.223877367615152
+      ],
+      "semantic_projection": {
+        "axion_raw_columns_1based": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          9
+        ],
+        "common": [
+          "kh",
+          "cdm",
+          "b",
+          "g",
+          "r",
+          "nu",
+          "tot"
+        ],
+        "excluded_axion_only": [
+          "Transfer_axion",
+          "Transfer_f"
+        ],
+        "historical_raw_columns_1based": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "smallest_lower_than_largest": true
+    }
+  },
   "cdm_pin": "dc437acd8c90aa7e5595fcb25c615b03de8357a7",
-  "classification": "M19_EXTERNAL_CDM_REFERENCE_EXECUTION_BLOCKED",
+  "classification": "M19_EXTERNAL_CDM_REFERENCE_CONVERGENCE_NOT_ESTABLISHED",
   "fractions": [
     0.1,
     0.03,
@@ -20,7 +232,8 @@
     "a3": 0,
     "a4": 0,
     "build_ax": 0,
-    "build_cdm": 2,
-    "c0": 999
-  }
+    "build_cdm": 0,
+    "c0": 0
+  },
+  "transfer_schema_amendment": "protocol/W04_M19_EXTERNAL_CDM_REFERENCE_TRANSFER_SCHEMA_AMENDMENT_v0.1.md"
 }
