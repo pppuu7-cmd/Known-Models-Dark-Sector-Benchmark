@@ -1,7 +1,7 @@
 # M15 independent GCG CLASS source map
 
 Date: 2026-09-10
-Status: `V0_UPSTREAM_CONTROL_PASS_V1_SCAFFOLD_AUTHORIZED`
+Status: `V1_EXACT_REFERENCE_PASS_V2_EQUATION_MAPPING_ACTIVE`
 Scientific promotion: **NO**
 
 ## Purpose
@@ -20,13 +20,13 @@ Rationale:
 - using the same immutable upstream minimizes unrelated solver drift when comparing the future verification branch with its alpha=0 reference;
 - no claim is made that this commit is the CLASS revision used by vom Marttens et al. (2017).
 
-Changing this upstream pin requires a new preregistration delta before V1.
+Changing this upstream pin requires a new preregistration delta.
 
 ## Frozen implementation boundary
 
 Only the dark-sector background and linear scalar perturbation closure defined in the M15 preregistration may be modified. Standard photon, baryon, neutrino, recombination, primordial, transfer, harmonic, lensing and output machinery stays upstream.
 
-The first implementation must expose an explicit `m15_alpha` coordinate and must reject unsupported/non-frozen closure choices rather than silently falling back to fluid/PPF behavior.
+The implementation exposes an explicit `m15_alpha` coordinate and must reject unsupported/non-frozen closure choices rather than silently falling back to fluid/PPF behavior.
 
 ### 1. Input/state ownership
 
@@ -85,7 +85,7 @@ If an exact convention/sign mapping from the paper to CLASS variables cannot be 
 
 No new observation operator is introduced at V0/V1. Standard CLASS output is used identically for reference and verification branches.
 
-V1 products frozen by the parent preregistration:
+Products:
 - background H(z) and component densities;
 - TT/TE/EE;
 - matter transfer and linear P(k,z=0);
@@ -106,23 +106,42 @@ Recovery run `34499646016` executed the exact untouched upstream pin in Newtonia
 
 Immutable artifact: `10161331129`.
 
-The preceding run `34499248965` is retained as an infrastructure-only failed attempt: the solver itself completed successfully, but the validator expected unindexed output names while CLASS emitted `lcdm_00_*`. The recovery changed only filename discovery; the cosmology, upstream pin, gauge and scientific thresholds were unchanged.
-
 V0 classification: `M15_INDEPENDENT_REPRO_V0_UPSTREAM_CONTROL_PASS`.
 
-This is infrastructure evidence only and does not alter M15 K0-K9 scoring.
+## V1 alpha=0 scaffold/reference — terminal PASS
+
+Canonical machine record: `models/generalized_chaplygin/M15_INDEPENDENT_V1_RESULT.json`.
+Workflow run: `34500064989`.
+
+The V1 patch introduced only the explicit selector/state scaffold (`has_m15_gcg`, `m15_alpha`) in `include/background.h` and `source/input.c`. It added **no finite-alpha background or perturbation physics**.
+
+Two independent clones of the exact upstream pin were built. One remained untouched; the other received only the V1 scaffold. Both were executed in Newtonian gauge at the same LambdaCDM point, with `m15_alpha=0` only in the scaffold branch.
+
+Identity result:
+
+- background: 40000 rows, maximum and RMS symmetric relative difference exactly `0`;
+- TT: 1799 matched entries, RMS/max difference exactly `0`;
+- EE: 1799 matched entries, RMS/max difference exactly `0`;
+- TE: 1799 matched entries, RMS/max difference exactly `0`;
+- linear P(k): 470 matched entries, RMS/max difference exactly `0`;
+- matter transfer: 470 rows / 3760 compared entries, RMS/max difference exactly `0`;
+- reference exit = `0`;
+- scaffold alpha=0 exit = `0`;
+- deliberate `m15_alpha=0.01` V1 negative control exit = `1`, with the expected rejection that finite-alpha physics is not yet authorized.
+
+Classification: `M15_INDEPENDENT_REPRO_REFERENCE_PASS`.
+
+This result establishes exact reference preservation by the M15 code path. It is still **not** a scientific M15 K0-K9 promotion because no nonzero-alpha equation has yet been implemented.
 
 ## Staged implementation rule
 
-The code path is split prospectively:
-
-1. **V0 upstream control — PASS**: exact pin builds and produces a fresh LambdaCDM background/CMB/matter bundle on the intended Newtonian-gauge output route.
-2. **V1 alpha=0 scaffold/reference — AUTHORIZED**: add only the explicit M15 state/parser/scaffold needed to select the independent reproduction while keeping alpha fixed to zero, then prove it matches an independently built unmodified upstream reference within the frozen thresholds.
-3. **V2 finite alpha — FORBIDDEN until V1 PASS**: implement/activate finite-alpha background and perturbation terms and compare structural trends with the publication.
+1. **V0 upstream control — PASS**.
+2. **V1 alpha=0 scaffold/reference — PASS**.
+3. **V2 finite alpha — EQUATION MAPPING ACTIVE**: finite-alpha coding is allowed only after every required published background/perturbation quantity is mapped to the frozen CLASS conventions and any under-specified closure parameter is either independently sourced or explicitly represented as a scoped extra closure coordinate.
 4. **V3 local geometry — FORBIDDEN until V2 PASS**: requires a separate K4 numerical-floor preregistration.
 
 ## Current next gate
 
-Implement the minimal V1 scaffold. It may add an explicit activation flag and `m15_alpha`, but **must reject `m15_alpha != 0` at V1**. No finite-alpha background or perturbation equation is authorized yet. Build the untouched reference and scaffold branch independently from the same frozen pin, execute identical Newtonian-gauge LambdaCDM configurations, and apply the parent preregistration's background/CMB/P(k) identity thresholds.
+Complete `models/generalized_chaplygin/m15_v2_equation_to_class_map.md`. In particular, resolve the published perturbation closure around Eqs. (45)-(50), the paper-to-CLASS velocity-sign convention, conformal/cosmic-time factors, and the value/status of the DE comoving sound-speed parameter appearing explicitly in Eqs. (45)-(48).
 
-Only a V1 PASS authorizes finite-alpha equation coding.
+Do **not** assume a solver default for an under-specified physical closure parameter merely because the original study used a modified Boltzmann code. If the published numerical value cannot be established, V2 must branch prospectively into explicitly labelled closure subcases or remain blocked; it cannot be called an exact reproduction of the unpublished author implementation.
