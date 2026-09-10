@@ -107,3 +107,8 @@ Full diagnostic serialization was prospectively tested without changing physics.
 ## 2026-09-10 — M16 interacting-vacuum K0/K1 terminal sync
 
 Pinned IDECAMB/CosmoMC interacting-vacuum subfamily `w=-1`, `Q=beta H rho_de`, `Q_mu || u_c` passed the prospectively frozen beta=0 K1 regression against the same-overlay noninteracting LambdaCDM branch. Run 34474389038, job 102861550642, artifact 10150882133, digest `sha256:f549f3c02de47a4152b89be1a8cbfc4782ffaf8b4671494d45d4216b78520b50`; `.quantity` and `.theory_cl` max symmetric relative difference are both exactly 0.0 on common finite support. K0/K1 are PASS_WITH_SCOPE only. F16 is not yet declared response-distinct from M02 and this does not cover all running-vacuum Lambda(H) models. Next gate: exact M16-vs-M02 family-identity/representation audit before any beta-grid promotion.
+
+
+## 2026-09-10 — M16/M02 family-identity resolution
+
+The executed IDECAMB interacting-vacuum branch `Q=beta H rho_v`, `Q_mu || u_c` is source-identical in mechanism space to the `alpha=0` submanifold of pinned M02 `kaeonikc/class_iv@ac627d54e9ce196a08878d1ba33999819925d19c`, whose source defines `Q=alpha H rho_m + beta H rho_v` and uses the interacting-pressureless-component-comoving synchronous perturbation branch. Classification: `REPRESENTED_BY:M02_WITH_SCOPE`. Do not launch a duplicate M16 beta response grid. This does not close F16: genuinely response-distinct running-vacuum `Lambda(H)`, `H^2`, `dot H` or derivative laws remain open. Strict census count therefore remains 4/46 terminal/represented families, 42/46 requiring strict closure. Next F16 gate: pin a public genuinely running-vacuum implementation and algebraically audit it against M02 before execution.
