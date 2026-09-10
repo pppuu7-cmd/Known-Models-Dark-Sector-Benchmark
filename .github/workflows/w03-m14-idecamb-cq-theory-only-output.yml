@@ -1,0 +1,177 @@
+name: W03 M14 IDECAMB CQ theory-only output
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-idecamb-cq-theory-only-output.yml'
+      - 'protocol/W03_M14_IDECAMB_CQ_THEORY_ONLY_OUTPUT_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  theory-output:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync python3
+      - name: Fetch exact providers and build
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/cmbant/CosmoMC.git cosmomc_base
+          git -C cosmomc_base checkout eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone https://github.com/liaocrane/IDECAMB.git idecamb_patch
+          git -C idecamb_patch checkout 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          test "$(git -C cosmomc_base rev-parse HEAD)" = "eb08c2fe91d9711929802fede310ae58c020fcb4"
+          test "$(git -C idecamb_patch rev-parse HEAD)" = "4f1093d9efe46f28cf7e2acb4d07ae116ad5e075"
+          rsync -a --exclude='.git' idecamb_patch/ cosmomc_base/
+          set +e
+          make -C cosmomc_base cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > build.log 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > build.exit
+      - name: Prepare prospectively frozen theory-only input
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp cosmomc_base/test_ide.ini theory_only.ini
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('theory_only.ini'); s=p.read_text()
+          def one(old,new):
+              global s
+              if s.count(old)!=1:
+                  raise SystemExit(f'unexpected count for {old!r}: {s.count(old)}')
+              s=s.replace(old,new,1)
+          one('Class_IDE = 1 ','Class_IDE = 2 ')
+          one('param[beta_cq]= 0.01 0 0.15 0.05 0.05','param[beta_cq]= 0')
+          one('#test_output_root = output_ide','test_output_root = m14_cq_theory0')
+          one('test_check_compare = 1820.775','#test_check_compare = 1820.775')
+          likelihood_defaults=[
+              'DEFAULT(batch3/plik_rd12_HM_v22_TTTEEE.ini)',
+              'DEFAULT(batch3/lowl.ini)',
+              'DEFAULT(batch3/lowE.ini)',
+              'DEFAULT(batch3/lensing.ini)',
+              'DEFAULT(batch3/BAO.ini)',
+              'DEFAULT(batch3/Pantheon18.ini)',
+          ]
+          for x in likelihood_defaults:
+              one(x,'#'+x)
+          if 'DEFAULT(batch3/common.ini)' not in s:
+              raise SystemExit('common.ini authority line missing')
+          p.write_text(s)
+          PY
+          diff -u cosmomc_base/test_ide.ini theory_only.ini > theory_only.diff || true
+      - name: Execute theory-only CQ route
+        shell: bash
+        run: |
+          set +e
+          if [ "$(cat build.exit)" != "0" ]; then
+            echo 99 > theory_run.exit
+            echo 'build failed; run skipped' > theory_run.log
+            : > fresh_files.txt
+            exit 0
+          fi
+          cp theory_only.ini cosmomc_base/theory_only.ini
+          cd cosmomc_base
+          rm -f m14_cq_theory0*
+          ./cosmomc theory_only.ini > ../theory_run.log 2>&1
+          echo "$?" > ../theory_run.exit
+          find . -maxdepth 3 -type f -name 'm14_cq_theory0*' -print | sort > ../fresh_files.txt
+          cd ..
+          tail -n 200 theory_run.log || true
+          cat fresh_files.txt || true
+          exit 0
+      - name: Analyze route without scientific promotion
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, shutil
+          build=int(pathlib.Path('build.exit').read_text())
+          run=int(pathlib.Path('theory_run.exit').read_text())
+          log=pathlib.Path('theory_run.log').read_text(errors='replace')
+          root=pathlib.Path('cosmomc_base')
+          files=[]
+          numeric_any=False
+          for line in pathlib.Path('fresh_files.txt').read_text().splitlines():
+              rel=pathlib.Path(line).as_posix().lstrip('./')
+              p=root/rel
+              if not p.exists(): continue
+              dst=pathlib.Path('theory_outputs')/p.name
+              dst.parent.mkdir(exist_ok=True)
+              shutil.copy2(p,dst)
+              rows=0; cols=None
+              for raw in p.read_text(errors='replace').splitlines():
+                  y=raw.strip()
+                  if not y or y.startswith('#'): continue
+                  try:
+                      vals=[float(v.replace('D','E').replace('d','e')) for v in y.split()]
+                  except Exception:
+                      continue
+                  rows += 1
+                  if cols is None: cols=len(vals)
+              if rows: numeric_any=True
+              files.append({'name':p.name,'size':p.stat().st_size,'numeric_rows':rows,'numeric_columns_first':cols})
+          cq_selected='The cosmological model is coupled quintessence model' in log
+          if build != 0:
+              cls='BUILD_BLOCKED'
+          elif run != 0:
+              cls='THEORY_ROUTE_RUN_BLOCKED'
+          elif not files or not numeric_any:
+              cls='THEORY_OUTPUT_NOT_EMITTED'
+          elif not cq_selected:
+              cls='THEORY_OUTPUT_ROUTE_WRONG_CLASS'
+          else:
+              cls='THEORY_OUTPUT_ROUTE_PASS'
+          out={
+              'schema':'KMDSB.W03.M14.IDECAMBCQTheoryOnlyOutput.v0.1',
+              'provider_base':'cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4',
+              'provider_overlay':'liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075',
+              'build_exit':build,'run_exit':run,'cq_selected':cq_selected,
+              'files':files,'numeric_output_present':numeric_any,
+              'classification':cls,'scientific_promotion_authorized':False,
+              'interpretation':'Infrastructure/theory-output-route control only; no K1-K9 score and no physical falsification.'
+          }
+          pathlib.Path('m14_idecamb_cq_theory_only_output.json').write_text(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+      - name: Persist canonical route result race-safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m14_idecamb_cq_theory_only_output.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/coupled_quintessence
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_IDECAMB_CQ_THEORY_ONLY_OUTPUT_RESULT.json
+          cp /tmp/result.json models/coupled_quintessence/idecamb_cq_theory_only_output.json
+          git add waves/wave_03_expanded_dark_energy/M14_IDECAMB_CQ_THEORY_ONLY_OUTPUT_RESULT.json models/coupled_quintessence/idecamb_cq_theory_only_output.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record IDECAMB CQ theory-only output result'
+            git push origin HEAD:main
+          fi
+      - name: Upload immutable bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m14-idecamb-cq-theory-only-output
+          path: |
+            m14_idecamb_cq_theory_only_output.json
+            theory_run.log
+            theory_run.exit
+            build.log
+            build.exit
+            theory_only.ini
+            theory_only.diff
+            fresh_files.txt
+            theory_outputs/
+          retention-days: 90
