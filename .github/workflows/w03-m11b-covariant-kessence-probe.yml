@@ -1,0 +1,162 @@
+name: W03 M11b covariant k-essence probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m11b-covariant-kessence-probe.yml'
+      - 'code/w03_m11b_covariant_kessence_probe.py'
+      - 'protocol/W03_M11B_COVARIANT_KESSENCE_PROBE_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  m11b-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install --disable-pip-version-check numpy
+      - name: Fetch and build pinned CLASS_GSF
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/KunhaoZhong/CLASS_GSF.git class_gsf
+          cd class_gsf
+          git checkout 07e015246c4b40f4e22bb50c9a0a63a621bb61f7
+          test "$(git rev-parse HEAD)" = "07e015246c4b40f4e22bb50c9a0a63a621bb61f7"
+          make -j2
+      - name: Write preregistered cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cfg out logs
+          cat > cfg/base.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          reio_parametrization = reio_none
+          output = mPk
+          modes = s
+          ic = ad
+          gauge = synchronous
+          non linear = none
+          z_pk = 0.295,0.51,0.706,0.934,1.317,1.491,2.33
+          P_k_max_h/Mpc = 0.2
+          write_background = yes
+          headers = yes
+          format = class
+          overwrite_root = yes
+          EOF
+          cp cfg/base.ini cfg/lcdm.ini
+          cat >> cfg/lcdm.ini <<EOF
+          Omega_fld = 0
+          Omega_gsf = 0
+          root = ${GITHUB_WORKSPACE}/out/lcdm
+          EOF
+          make_gsf(){
+            local tag="$1" m="$2" cs="$3"
+            cp cfg/base.ini cfg/${tag}.ini
+            cat >> cfg/${tag}.ini <<EOF
+          Omega_fld = 0
+          Omega_Lambda = 0
+          Omega_gsf = -1
+          gsf_parameters = 6, 1, 0, 0, 0, 1, 1, ${m}, ${cs}
+          attractor_ic_gsf = no
+          gsf_tuning_index = 6
+          gsf_shooting_parameter = 1
+          gsf_dxdy_guess = 1
+          root = ${GITHUB_WORKSPACE}/out/${tag}
+          EOF
+          }
+          make_gsf gsf_ref 0 1.0
+          for spec in 'm0p5 0.5' 'm1p0 1.0' 'm2p0 2.0' 'm4p0 4.0'; do
+            set -- $spec; pre="$1"; m="$2"
+            make_gsf ${pre}_c100 "$m" 1.0
+            make_gsf ${pre}_c095 "$m" 0.95
+            make_gsf ${pre}_c090 "$m" 0.90
+          done
+      - name: Run all preregistered cases
+        shell: bash
+        run: |
+          set +e
+          : > logs/case_exits.tsv
+          for f in cfg/*.ini; do
+            tag=$(basename "$f" .ini)
+            ./class_gsf/class "$f" > "logs/${tag}.log" 2>&1
+            rc=$?
+            echo -e "${tag}\t${rc}" >> logs/case_exits.tsv
+          done
+          exit 0
+      - name: Analyze probe or preserve implementation blocker
+        shell: bash
+        run: |
+          set -euo pipefail
+          if awk '$2 != 0 {bad=1} END{exit bad?0:1}' logs/case_exits.tsv; then
+            python3 - <<'PY'
+          import json
+          exits={}
+          for line in open('logs/case_exits.tsv'):
+              k,v=line.split(); exits[k]=int(v)
+          out={
+            'schema':'KMDSB.W03.M11b.CovariantKessenceProbe.v0.1',
+            'solver':'KunhaoZhong/CLASS_GSF@07e015246c4b40f4e22bb50c9a0a63a621bb61f7',
+            'model_gsf':6,
+            'case_exits':exits,
+            'probe_pass':False,
+            'classification':'M11B_BLOCKED_IMPLEMENTATION_PROBE_CASE_FAILURE',
+            'interpretation':'one or more preregistered solver cases failed; configuration/implementation blocker only, not physical falsification'
+          }
+          open('m11b_covariant_probe.json','w').write(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+          else
+            python3 code/w03_m11b_covariant_kessence_probe.py \
+              --directory out \
+              --effective-result waves/wave_03_expanded_dark_energy/M11_EFFECTIVE_KESSENCE_RESULT.json \
+              --json m11b_covariant_probe.json
+          fi
+      - name: Persist canonical probe result race-safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m11b_covariant_probe.json /tmp/m11b_covariant_probe.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/covariant_kessence
+          cp /tmp/m11b_covariant_probe.json waves/wave_03_expanded_dark_energy/M11B_COVARIANT_KESSENCE_PROBE_RESULT.json
+          cp /tmp/m11b_covariant_probe.json models/covariant_kessence/probe_result.json
+          git add waves/wave_03_expanded_dark_energy/M11B_COVARIANT_KESSENCE_PROBE_RESULT.json models/covariant_kessence/probe_result.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M11b covariant k-essence probe result'
+            git push origin HEAD:main
+          fi
+      - name: Record provenance
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "KMDSB_TRIGGER_HEAD=${GITHUB_SHA}"
+            echo "CLASS_GSF_HEAD=$(git -C class_gsf rev-parse HEAD 2>/dev/null || true)"
+            echo 'model_gsf=6'
+            echo 'physical_grid=m:{0.5,1,2,4};cs2:{1,.95,.90}'
+            echo 'reference=m0,cs2=1'
+            echo 'shooting_nuisance=V0,index6'
+          } > m11b_provenance.txt
+      - name: Upload immutable probe bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m11b-covariant-kessence-probe
+          path: |
+            m11b_covariant_probe.json
+            m11b_provenance.txt
+            cfg/
+            logs/
+          if-no-files-found: warn
+          retention-days: 90
