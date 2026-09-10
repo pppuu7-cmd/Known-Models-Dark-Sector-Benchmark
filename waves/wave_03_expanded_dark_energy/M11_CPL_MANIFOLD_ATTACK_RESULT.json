@@ -1,0 +1,49 @@
+{
+  "schema": "KMDSB.W03.M11.CPLManifoldAttack.v0.1",
+  "anchor": {
+    "w0": -0.95,
+    "wa": 0,
+    "cs2": 1
+  },
+  "target": "J_s from q_s=.05",
+  "cpl_step_stability": {
+    "w0": {
+      "relative_difference": 1.4934739781278106e-05,
+      "geometry": {
+        "cosine": 0.999999999906187,
+        "acute_deg": 0.0007848181601859312
+      }
+    },
+    "wa": {
+      "relative_difference": 5.083673328076375e-05,
+      "geometry": {
+        "cosine": 0.9999999987589233,
+        "acute_deg": 0.0028545452969087797
+      }
+    },
+    "passes": true
+  },
+  "cpl_small_step_singular_values": [
+    2.1485258290534888,
+    0.1058764369355039
+  ],
+  "sigma2_over_sigma1": 0.049278642827462166,
+  "shared_PH_fit": {
+    "coefficients_delta_w0_delta_wa_per_qs": [
+      0.0009889253304481641,
+      -0.0020372333634020123
+    ],
+    "combined_residual_fraction": 0.9256176621871862,
+    "P_residual_fraction": 0.9052969031018907,
+    "H_residual_fraction": null
+  },
+  "P_only_diagnostic": {
+    "coefficients": [
+      0.002370763659879958,
+      -0.005667442896730652
+    ],
+    "residual_fraction": 0.8829032237188831
+  },
+  "classification": "M11_SEPARATED_FROM_LOCAL_CPL_WITH_SCOPE",
+  "interpretation": "unwhitened theory-response manifold attack only; no K7 observational claim"
+}
