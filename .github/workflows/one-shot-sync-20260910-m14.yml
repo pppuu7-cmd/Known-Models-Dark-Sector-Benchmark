@@ -1,0 +1,50 @@
+name: One-shot KMDSB M14 documentation sync
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/one-shot-sync-20260910-m14.yml']
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch recovery and append durable records
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path('recovery/STATE.md')
+          s=p.read_text()
+          s=s.replace('- F14/M14 coupled quintessence: current priority. Candidate public implementation `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df` identified; exact author build/run/input contract and coupling-off reference parameter must be source-audited before any provider-control/grid is frozen.', '- F14/M14 coupled quintessence: `BLOCKED_PROVENANCE_PROVIDER_SEARCH` for `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df`. README documents `./class iDM.ini`, regression/benchmark records reference successful runs, but the exact public pinned tree does not contain `iDM.ini`; no unchanged author point can be reproduced from this GitHub snapshot. Search the cited archival exact config or an independent provider.')
+          s=s.replace('1. M14: finish provenance/source audit of `kabeleh/iDM@dc55e59...`; identify the exact author executable example and exact physical decoupling/coupling-off coordinate from source.\n2. Only if a reproducible author example exists, preregister and run provider-control unchanged. Green workflow alone is not science.\n3. If provider-control PASSes, separately preregister K1 coupling-off/reference regression before production response grids.', '1. M14: recover an immutable author-published exact configuration for `kabeleh/iDM` (prefer the archival products cited in its README) or select a different public provider; do not reconstruct missing `iDM.ini` from prose/defaults.\n2. Only after an exact tracked author configuration exists, preregister and run provider-control unchanged. Green workflow alone is not science.\n3. If provider-control PASSes, separately source-bind and preregister K1 coupling-off/reference regression before production response grids.')
+          p.write_text(s)
+
+          p=Path('recovery/RESTORE_FROM_NEW_CHAT.md')
+          s=p.read_text()
+          s=s.replace('- F14/M14: next priority. Candidate `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df`; source-audit exact author build/run/input contract and coupling-off coordinate before preregistering anything.', '- F14/M14: `BLOCKED_PROVENANCE_PROVIDER_SEARCH` for `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df`. README and committed benchmark/regression records refer to `iDM.ini`, but that file is absent from the exact public pinned tree. No unchanged author provider-control is possible from this snapshot; search the cited archival exact config or another provider.')
+          s=s.replace('1. Source-audit pinned M14 candidate; identify exact author executable example and true decoupling/coupling-off parameter.\n2. If and only if an unchanged author example is reproducible, preregister provider-control; provider PASS does not equal K1-K9 PASS.\n3. If provider-control passes, separately freeze K1 reference/decoupling regression before production grids.', '1. For M14, locate an immutable author-published exact configuration (prefer archival products cited by the provider) or an independent provider; never synthesize the missing `iDM.ini`.\n2. If and only if an unchanged author example becomes reproducible, preregister provider-control; provider PASS does not equal K1-K9 PASS.\n3. If provider-control passes, separately source-bind and freeze K1 reference/decoupling regression before production grids.')
+          p.write_text(s)
+
+          m=Path('protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md')
+          ms=m.read_text()
+          marker='## Provider execution versus representative validity (2026-09-10)'
+          if marker not in ms:
+              ms += '''\n\n---\n\n## Provider execution versus representative validity (2026-09-10)\n\nA successful build and author example is only an infrastructure/provenance control. Before K1/K5 or family-level promotion, independently audit that the executed source branch and stress-energy bookkeeping actually instantiate the intended census family. In particular, verify which sector supplies matter-like density, acceleration/vacuum energy, interaction terms and closure. A similar Lagrangian label or scalar-field implementation is insufficient if a separate Lambda/CDM component supplies the target behaviour.\n\nConversely, a README command or benchmark timing is not a reproducible provider control when the referenced author input is absent from the immutable pinned source. Never reconstruct a missing author configuration post hoc from defaults, prose or nearby files and call it provider validation. Recover an immutable archival configuration or choose another provider.\n\nDurable rule: **executable provider != valid representative; documented-but-missing input != reproducible provider.**\n'''
+              m.write_text(ms)
+
+          l=Path('logs/research_log.md')
+          ls=l.read_text()
+          marker='## 2026-09-10 — Iteration: M11b/M14/M15 provider and representative hardening'
+          if marker not in ls:
+              ls += '''\n\n---\n\n## 2026-09-10 — Iteration: M11b/M14/M15 provider and representative hardening\n\n### M11b CLASS_GSF\nPinned `KunhaoZhong/CLASS_GSF@07e015246c4b40f4e22bb50c9a0a63a621bb61f7`. Model-6 target cases remained non-executable after the prospectively frozen nonzero kinetic-seed recovery (run `34429876130`: LCDM PASS, 16/16 GSF diagnostics exit 1), while the provider's unmodified model-1 `dgf.ini` executed successfully (provider-control run `34429997792`). The route is terminal provider-specific `BLOCKED_IMPLEMENTATION_PROVENANCE`, not k-essence falsification.\n\n### M15 Scherrer candidate\nPinned `Eladio-Moreno/k-essence-dynamics@f3f010e1ed74c86ce6a431a435fa93988f749ee2`. Provider execution was recovered in run `34430793576`; the earlier apparent failure was an output-prefix harness mistake (`root=output/test_`). Source audit then showed the author example has `Omega_Lambda=0.69`, a matter-like scalar target `DM_schm=0.26`, and stored `f0_schm=0`: separate Lambda supplies acceleration. Classification `REPRESENTATIVE_MISMATCH_NO_M15_PROMOTION`; this example is neither a genuine single-sector M15 unified DM+DE representative nor an M11 DE-only covariant validator. No physical falsification.\n\n### M14 coupled quintessence candidate\nPinned `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df`. README documents `make clean; make class -j` then `./class iDM.ini`; committed regression/benchmark files reference `iDM.ini` and timing tables record historical exit-code-0 runs. However `iDM.ini` itself is absent from the exact public pinned tree (direct contents fetch 404). KMDSB therefore refuses to reconstruct an author point post hoc. Classification `BLOCKED_PROVENANCE_MISSING_AUTHOR_INPUT`; next recovery is an immutable archival exact config (prefer the provider-cited archive) or another provider. No physics conclusion.\n\n### Methodology delta\nProvider execution and family-representative validity are distinct gates. A working solver/example must still pass stress-energy/sector bookkeeping before scientific promotion; a documented but untracked author input cannot be reconstructed and treated as immutable provenance.\n'''
+              l.write_text(ls)
+          PY
+          rm .github/workflows/one-shot-sync-20260910-m14.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md logs/research_log.md .github/workflows/one-shot-sync-20260910-m14.yml
+          git commit -m 'Sync provider-hardening methodology and recovery'
+          git push origin HEAD:main
