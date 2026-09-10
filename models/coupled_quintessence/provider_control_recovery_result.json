@@ -1,0 +1,21 @@
+{
+  "schema": "KMDSB.W03.M14.iDMProviderControlRecovery.v0.1",
+  "provider": "kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df",
+  "tracked_author_input": "benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini",
+  "permitted_runtime_edit": "root path only",
+  "build_exit": 0,
+  "class_exit": 0,
+  "fresh_output_files": [
+    "m14_provider_control__cl.dat",
+    "m14_provider_control__cl_lensed.dat",
+    "m14_provider_control__parameters.ini",
+    "m14_provider_control__pk.dat",
+    "m14_provider_control__pk_cb.dat",
+    "m14_provider_control__pk_cb_nl.dat",
+    "m14_provider_control__pk_nl.dat",
+    "m14_provider_control__unused_parameters"
+  ],
+  "classification": "M14_PROVIDER_CONTROL_PASS_TRACKED_AUTHOR_WORKLOAD",
+  "scientific_promotion_authorized": false,
+  "scope": "provider reproducibility / K0 only; K1-K9 remain separately gated"
+}
