@@ -1,8 +1,8 @@
 # M14 IDECAMB coupled-quintessence Broyden shooting audit
 
 Updated: 2026-09-10
-Status: `UPSTREAM_SHOOTING_UPDATE_DEFECT_CANDIDATE`
-Scientific effect: **M14 K4 cannot be interpreted as physical local non-convergence until this numerical implementation issue is controlled.**
+Status: `BROYDEN_DEFECT_REAL_BUT_NOT_CAUSAL_FOR_CURRENT_K4_ROTATION`
+Scientific effect: **M14 K4 remains blocked by provider/branch-continuity diagnostics; the upstream Broyden defect does not explain the observed source-scaled tangent rotation.**
 Physical falsification: **NO**
 
 ## Trigger
@@ -66,40 +66,62 @@ which can equal `s` only in the special case where `s` is collinear with `H y` w
 
 Therefore the source implementation labelled as Broyden is not algebraically equivalent to the standard inverse-Jacobian Broyden update.
 
-## Why this matters for M14
+## Frozen diagnostic control and result
 
-The two shooting variables are `gU0` and `gphi0`. They are adjusted so that the integrated solution reaches both the required present dark-energy density and the target present field value. A defective inverse-Jacobian update can:
+Preregistration: `protocol/W03_M14_IDECAMB_BROYDEN_CONTROL_PREREGISTRATION_v0.1.md`.
 
-1. converge inefficiently or to a step-history-dependent point;
-2. amplify small changes in beta into changes of the selected shooting solution;
-3. create an artificial rotation of the finite-difference response vector even when the underlying differential equations have a smooth local tangent.
+Actions run: `34466179406`.
+Job: `102835190766`.
+Immutable artifact: `10147638232` (`w03-m14-idecamb-broyden-control`).
+Machine result: `waves/wave_03_expanded_dark_energy/M14_IDECAMB_BROYDEN_CONTROL_RESULT.json`.
 
-This is a plausible numerical explanation for the remaining source-scaled K4 angular failure, but it is **not yet proven causal**. A controlled patched-vs-upstream run is required.
+The diagnostic changed only the coupled-quintessence inverse-Jacobian update to the standard good-Broyden rank-one form and retained the previously audited high-precision diagnostic serialization. The physical equations, alpha anchor, beta grid, response vector and frozen K4 thresholds were unchanged.
 
-## Classification change authorized by this audit
+All three frozen cases beta={0,5e-8,1e-7} executed with exit 0.
 
-Until the diagnostic control is complete, interpret the current IDECAMB M14 state as
+Patched-control metrics:
 
-`K4 = BLOCKED_IMPLEMENTATION_SHOOTING_AUDIT`
+- relative tangent-norm mismatch = `0.009279120139592109` (PASS against <=0.10);
+- tangent angle = `8.041541873388278 deg` (FAIL against <=3 deg);
+- fine-step max absolute response = `6.952538051818101e-4`.
 
-rather than as evidence for a physical failure of local differentiability.
+For comparison, the unmodified high-precision control had:
 
-Retain all prior K4 numerical results; do not delete or relabel their raw classifications. The change is in scientific interpretation, not in recorded measurements.
+- relative tangent-norm mismatch = `0.009270610485819343`;
+- tangent angle = `8.04171613320909 deg`.
 
-## Preregistered next diagnostic
+The change in angle is only about `1.74e-4 deg`; therefore correcting the Broyden update does not materially restore the frozen K4 directional convergence.
 
-A single diagnostic-only control is authorized:
+The instrumented shooting solution is smooth across the same grid:
 
-1. use the exact same pinned provider, potential/coupling branch, alpha anchor, beta grid `{0,5e-8,1e-7}`, response vector, and frozen K4 thresholds;
-2. replace **only** the coupled-quintessence inverse-Jacobian update by the standard good-Broyden rank-one formula;
-3. retain the high-precision diagnostic serialization already audited;
-4. record final shooting variables and residual norm for every beta point;
-5. compare patched K4 with the unmodified source-scaled result;
-6. do not promote a patched provider to a physical benchmark implementation solely because the diagnostic passes.
+- beta=0: `(gU0,gphi0)=(0.9567029816909431,0.1299982393732581)`, residual norm `1.789909612091193e-7`;
+- beta=5e-8: `(0.9567029856339913,0.1299982636654189)`, residual `1.789911197048994e-7`;
+- beta=1e-7: `(0.9567029895685109,0.1299982879913752)`, residual `1.789910885597791e-7`.
 
-Decision rule:
+Thus there is no evidence in this control for a discontinuous jump between distinct shooting roots over the frozen grid.
 
-- if the corrected numerical update materially restores tangent-direction convergence, classify the upstream M14 provider as `BLOCKED_IMPLEMENTATION_BROYDEN_UPDATE` and search for/construct an independently validated implementation before physical M14 scoring;
-- if the corrected update leaves the angular failure materially unchanged while shooting residuals and branch variables are smooth, continue to initial-condition/asymptotic-anchor sensitivity rather than step-size chasing.
+## Scientific interpretation
+
+The upstream Broyden update is an implementation defect in the numerical method, but this controlled experiment shows that it is **not sufficient to explain** the current M14 K4 angular failure.
+
+The prior raw K4 failures remain recorded and are not relabelled. However they still do not constitute a physical falsification of coupled quintessence, because the response is being measured in a provider whose asymptotic/initial-condition construction and beta->0 branch regularity have not yet been independently validated.
+
+Current interpretation:
+
+`K4 = BLOCKED_IMPLEMENTATION_INITIAL_ASYMPTOTIC_ANCHOR_AUDIT`
+
+K5/K6 remain blocked.
+
+## Next allowed diagnostic
+
+Do not shrink beta again. The next gate must inspect the initial/asymptotic construction used by the CQ branch and identify whether the beta=0 solution and beta>0 solutions are initialized with the same physical asymptotic prescription. Before execution it must freeze:
+
+1. the exact initial-scale-factor / integration-start prescription;
+2. the analytic early-time scalar/CDM asymptotic conditions used by the provider;
+3. any beta-dependent branch or denominator entering those conditions;
+4. one or more source-justified alternative start points or asymptotic controls, if such alternatives are already supported by the provider;
+5. the unchanged beta grid `{0,5e-8,1e-7}` and the same K4 metrics.
+
+If no author-supported regular asymptotic control exists, classify this provider as blocked for M14 K4 and move to an independent implementation rather than inventing initial conditions.
 
 No observational claim and no model-family falsification are authorized by this audit.
