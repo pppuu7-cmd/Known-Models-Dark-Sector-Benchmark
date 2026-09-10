@@ -66,7 +66,7 @@ The pinned shooting source itself comments `BUG: problem if the guess is very go
 ## 8. Current frontier
 - F11/M11: `THEORY_SURVIVOR_COVARIANT_VALIDATION_BLOCKED`; search for independent covariant DE implementation remains open.
 - F13/M13: partial; true multifield quintom provider/provenance open.
-- F14/M14 coupled quintessence: `BLOCKED_PROVENANCE_PROVIDER_SEARCH` for `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df`. README documents `./class iDM.ini`, regression/benchmark records reference successful runs, but the exact public pinned tree does not contain `iDM.ini`; no unchanged author point can be reproduced from this GitHub snapshot. Search the cited archival exact config or an independent provider.
+- F14/M14 coupled quintessence: `K0_PASS_WITH_SCOPE_K1_SOURCE_AUDIT_REQUIRED`. Although root `iDM.ini` is absent, the exact pinned tree contains tracked author-generated workload `benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini`. Prospectively preregistered run `34439614496` builds the provider and executes that workload with exit 0 and fresh Cl/P(k) products after a root-only plumbing edit. K1 is not promoted: q1-q4=0 but `cdm_c=0.1`, and source contains a separate cdm_c-dependent coupling path; audit the complete decoupling map before any reference regression.
 - F15/M15: `QUEUED_REPRESENTATIVE_SEARCH`; Scherrer candidate rejected on family-identity bookkeeping, so a genuine generalized-Chaplygin/unified-dark-fluid provider is still required.
 - F16-F17 remain W03 Tier-B queue.
 - F18/M18 is now `BLOCKED_IMPLEMENTATION_REFERENCE_PROVIDER_SEARCH`: author DGF executes, but the prospectively defined lambda=0 condensate K1 path hits a provider shooting singularity; independent implementation/reference required.
@@ -80,9 +80,9 @@ A provider executable control is necessary infrastructure evidence but is not re
 No `NEW_REQUIRED` before sufficient census closure + adversarial cross-family waves + exact common observation/covariance profiling + numerical/gauge/systematic/stability floors + prospective holdout. Current permitted global conclusion: new model may be motivated, but necessity is not established.
 
 ## 11. Immediate next allowed gates
-1. M14: recover an immutable author-published exact configuration for `kabeleh/iDM` (prefer the archival products cited in its README) or select a different public provider; do not reconstruct missing `iDM.ini` from prose/defaults.
-2. Only after an exact tracked author configuration exists, preregister and run provider-control unchanged. Green workflow alone is not science.
-3. If provider-control PASSes, separately source-bind and preregister K1 coupling-off/reference regression before production response grids.
+1. M14: K0 provider recovery is complete with scope via tracked author workload and run `34439614496`. Source-audit the complete coupling/decoupling map including q1-q4, exp1-exp2, `model_cdm` and `cdm_c`.
+2. Only after the total coupling-off transformation is source-bound, prospectively preregister a K1 regression against the correct uncoupled scalar+CDM comparator.
+3. If K1 PASSes, define physical coupling coordinates/tangent geometry and only then launch K2-K5 production response grids.
 4. In parallel continue M13b and M15 genuine-provider searches; do not repurpose Scherrer or CPL as coverage shortcuts.
 5. M18: seek a different public implementation or author-supported numerically regular condensate reference; do not patch/tune CLASS_GSF post hoc.
 6. Keep M11b CLASS_GSF terminal and search only independently justified covariant DE routes.
