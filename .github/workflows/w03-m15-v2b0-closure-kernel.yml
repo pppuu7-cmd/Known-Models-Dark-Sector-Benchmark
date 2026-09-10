@@ -20,6 +20,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Install numerical dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --user numpy
       - name: Execute preregistered V2b0 algebra gate
         shell: bash
         run: |
