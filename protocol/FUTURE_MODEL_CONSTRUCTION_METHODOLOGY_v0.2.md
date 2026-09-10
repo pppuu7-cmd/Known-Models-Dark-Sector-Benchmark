@@ -409,3 +409,7 @@ Durable rule: **executable provider != valid representative; documented-but-miss
 
 ### Reference-path regularity rule (M18-derived)
 A mathematically exact symmetry/decoupling reference is not sufficient if the numerical implementation is singular precisely on that locus. Before using a reference for family promotion, require both a physically justified map and a numerically regular executable path. If a third-party shooting algorithm is singular at an exact symmetry point, classify the provider/reference as blocked and seek an independent implementation or author-supported prescription; do not perturb the reference, retune initial conditions, or patch the solver after seeing the failure merely to manufacture a passing control.
+
+### Multi-mechanism decoupling rule (M14-derived)
+When a provider contains more than one independent interaction law, a reference/decoupling gate must zero every interaction branch source-by-source. An author/config label such as "uncoupled" is not sufficient if it refers only to one subcoupling. Each interaction law should subsequently receive its own physical coordinate/quotient audit rather than being combined into an undifferentiated coupling parameter.
+

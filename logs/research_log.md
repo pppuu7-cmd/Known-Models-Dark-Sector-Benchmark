@@ -247,3 +247,12 @@ Pinned `KunhaoZhong/CLASS_GSF@07e015246c4b40f4e22bb50c9a0a63a621bb61f7` model 1.
 
 ### M14 tracked-author-input provider recovery
 The earlier broad statement that the pinned `kabeleh/iDM@dc55e59...` tree contained no exact author input was corrected after exhaustive tree search: tracked author-generated PGO inputs exist under `benchmark/*/tmp_ini/`. A prospective provider-control was frozen around `benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini`, permitting only the absolute output-root path to change. Actions run `34439614496` returned build exit 0, CLASS exit 0 and fresh Cl/lensed-Cl/P(k) products. K0 is therefore `PASS_WITH_SCOPE`. K1 remains untested because the workload has q1-q4=0 but `cdm_c=0.1`, and source inspection shows a separate cdm_c-dependent dark-matter/scalar coupling path. The next gate is a source-exact total-decoupling audit followed by a separately preregistered K1 regression. No physics FAIL.
+
+### M14 K1 total-decoupling regression — PASS
+
+Provider: `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df`. The source audit separates two interaction mechanisms: the q1-q4 `coupling_scf` sector and the hyperbolic field-dependent CDM-mass branch selected by `model_cdm=i` and controlled by `cdm_c`. The prospectively frozen total-decoupling point retained `model_cdm=i`, kept q1-q4=0 and set `cdm_c=0`; the comparator used the identical scalar/cosmological workload with provider-default standard CDM.
+
+After two plumbing-only harness repairs (missing numpy, then duplicate overwrite_root), unchanged physics/thresholds were rerun in Actions run `34443825112`. Both cases exited 0. Frozen metrics: background max symmetric relative difference `7.450488193403606e-12` <= `1e-8`; matched P(k) max symmetric relative difference `0.0` <= `1e-6`. Classification: `M14_K1_DECOUPLING_PASS`. Result commit `52a20ffe3fa4d80a8361540847d8192b04217734`; immutable artifact `10138908138`.
+
+K1 is `PASS_WITH_SCOPE` for this provider/anchor. K2-K9 remain open. Next authorized step is K2 geometry/quotient audit of `cdm_c` around zero with q-sector held at zero; q-sector must be treated as a separate interaction-law axis rather than mixed into one coupling coordinate.
+
