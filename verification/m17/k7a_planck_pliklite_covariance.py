@@ -8,6 +8,7 @@ W0=-1.2498700663555409
 WA=0.8082964747357178
 K6='models/holographic_dark_energy/M17_C060_JOINT_CPL_K6_REFINEMENT_RESULT.json'
 RECOVERY='protocol/W03_M17_K7A_OUTPUT_COVERAGE_RECOVERY_v0.1.md'
+HEADER_RECOVERY='protocol/W03_M17_K7A_HEADER_CONTRACT_RECOVERY_v0.1.md'
 
 def ro(s,o,n):
     c=s.count(o)
@@ -40,11 +41,11 @@ def prepare(base:Path,out:Path):
         (out/f'{n}.ini').write_text(t)
 
 def theory(p:Path):
-    rows=[]; header=''
+    rows=[]; header_lines=[]
     for line in p.read_text(errors='replace').splitlines():
         s=line.strip()
         if s.startswith('#'):
-            header += s+'\n'; continue
+            header_lines.append(s); continue
         if not s: continue
         try:r=[float(x.replace('D','E').replace('d','e')) for x in s.split()]
         except ValueError: continue
@@ -52,7 +53,8 @@ def theory(p:Path):
         rows.append(r)
     a=np.asarray(rows,float)
     if a.shape[0]<2507 or a[-1,0]<2508: raise RuntimeError(f'insufficient ell coverage last={a[-1,0] if len(a) else None}')
-    if 'L TT TE EE' not in header: raise RuntimeError('theory header contract missing')
+    hdr_ok=any(re.sub(r'\s+',' ',h.lstrip('#').strip())=='L TT TE EE' for h in header_lines)
+    if not hdr_ok: raise RuntimeError('theory header contract missing')
     return a
 
 def planck_vector(obj,a):
@@ -74,7 +76,7 @@ def planck_vector(obj,a):
 
 def analyze(work:Path,planck:Path,status:Path,out:Path):
     st=json.loads(status.read_text())
-    res={'schema':'KMDSB.M17.K7a.PlanckPlikLiteCovariance.v1','status':st,'physical_falsification':False,'K7':'PARTIAL_COVARIANCE_WEIGHTING_ONLY','preregistration':'protocol/W03_M17_K7A_PLANCK_PLIKLITE_COVARIANCE_PREREGISTRATION_v0.1.md','output_coverage_recovery':RECOVERY}
+    res={'schema':'KMDSB.M17.K7a.PlanckPlikLiteCovariance.v1','status':st,'physical_falsification':False,'K7':'PARTIAL_COVARIANCE_WEIGHTING_ONLY','preregistration':'protocol/W03_M17_K7A_PLANCK_PLIKLITE_COVARIANCE_PREREGISTRATION_v0.1.md','output_coverage_recovery':RECOVERY,'header_contract_recovery':HEADER_RECOVERY}
     if any(st.get(k)!=0 for k in ['h06','cpl']):
         res['classification']='M17_K7A_OPERATOR_OR_OUTPUT_BLOCKED'; res['reason']='theory execution'; out.write_text(json.dumps(res,indent=2,sort_keys=True)+'\n'); return
     try:
