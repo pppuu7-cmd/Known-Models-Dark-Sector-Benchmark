@@ -1,178 +1,184 @@
 # KMDSB current state / recovery handoff
 
-Updated: 2026-09-09
+Updated: 2026-09-10
+Status: ACTIVE
+Repository evidence overrides chat memory.
 
-## Authority
+## 1. Authority chain
 
 - W00-W02 numerical evidence: `Dark-Sector-Influence-Reconstruction@e3276e2193f6a5200b541a194e3175356ae5a1c1`.
-- W03 starting authority / M07 physical audits: `Dark-Sector-Influence-Reconstruction@328f2ca80b724870b851c7fe6366cce1ca5086cd`.
-- current W03 observation-space methodology overlay from M08 onward: `Dark-Sector-Influence-Reconstruction@864952e1520d82473a9e976edfeb69f9899d174d`.
-- transitions: `recovery/AUTHORITY_DELTAS.md` AD-001 and AD-002.
-- repository evidence overrides chat memory.
+- W03 starting authority / M07 physical audits: `328f2ca80b724870b851c7fe6366cce1ca5086cd`.
+- W03 observation-method overlay used from M08 onward: `864952e1520d82473a9e976edfeb69f9899d174d`.
+- later W03 overlay inspected for M09/M10: `bc28acc47cc5facba046741fd09f710ae8da9689`.
+- exact transitions belong in `recovery/AUTHORITY_DELTAS.md`; never silently rebase old model evidence.
 
-Do not silently rebase M07 or older waves onto `864952e...`.
+## 2. Active governing documents
 
-## Recovery read order
-
+Read in this order in a fresh chat:
 1. `recovery/RESTORE_FROM_NEW_CHAT.md`
 2. this file
-3. `recovery/AUTHORITY_DELTAS.md`
-4. `protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md`
-5. `protocol/W03_M08_MODEL_CONSTRUCTION_LESSONS_v0.1.md`
-6. `models/canonical_quintessence/result.json`
-7. `models/cpl_dark_energy/result.json`
-8. `waves/wave_03_expanded_dark_energy/M08_M07_ABSORPTION_AUDIT.md`
-9. `matrices/benchmark_matrix.csv`
-10. `matrices/design_prior_ledger.csv`
-11. `logs/research_log.md`
+3. `protocol/REQUIRED_PROPERTIES_COVERAGE_PROTOCOL_v0.1.md`
+4. `matrices/model_family_census.csv`
+5. `matrices/mandatory_properties_matrix.csv`
+6. `protocol/WAVE_TESTING_PROTOCOL_v0.2.md`
+7. `protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md`
+8. `matrices/benchmark_matrix.csv`
+9. `matrices/design_prior_ledger.csv`
+10. `logs/research_log.md`
+11. active model/wave files.
 
-## Completed waves
+## 3. Project mission changed from convenience catalogue to coverage program
 
-- W00 COMPLETE: M00 LambdaCDM; M01 smooth-w scoped `NONIDENTIFIABLE` in corrected ShapeFit.
-- W01 COMPLETE: M02 IDE, M03 GDM, M04 WDM, M05 designer f(R), M06 DCDM.
-- W02 COMPLETE: E1 IDE/GDM and E2 IDE/f(R) theory-response separation; E3 WDM alternative `BLOCKED_IMPLEMENTATION`; E4 temporal centroid `INCONCLUSIVE`.
+User directive on 2026-09-10: pass **all known model classes** through the mandatory properties before deciding whether a new original model is needed.
 
-## W03 ACTIVE
+KMDSB now defines "all known" operationally as all maintained **response-distinct cosmological mechanism families**, not every paper title or parameter relabeling.
 
-### M07 canonical quintessence — current scoped terminal state
+A new top-level family is required when it adds a new cosmological DOF, interaction/conservation law, characteristic scale/time law, perturbation closure, metric/tensor response, nonlinear response or other response direction that is not represented by an existing family manifold.
 
-Overall: `DSIR_PREDICTIVE_SUPPORT`.
+Cold collisionless particle realizations that are cosmologically response-equivalent to CDM can be marked `REPRESENTED_BY:M00`; if an escape channel is found, they are promoted to their own benchmark family.
 
-Gates:
-- B0 `PASS_WITH_SCOPE`
-- B1 `PASS_WITH_SCOPE`
-- B2 `PARTIAL`
-- B3 `PASS_WITH_SCOPE`
-- B4 `PASS_WITH_SCOPE`
-- B5 `NONIDENTIFIABLE`
-- B6 `PASS_WITH_SCOPE`
-- B7 `PARTIAL`
-- B8 `SUPPORTED` level-1 within-family only
-- B9 `PARTIAL`
+Current census: `matrices/model_family_census.csv`.
+Current uniform property matrix: `matrices/mandatory_properties_matrix.csv`.
 
-Controlled local coordinate after exact field-reflection quotient:
-`q=lambda^2`.
+## 4. Mandatory K0-K9 properties for every family
 
-M07 low-k local q direction is strongly near-aligned with constant-w C1 and far from frozen designer f(R).
+- K0 authority/provenance
+- K1 recoverable reference/decoupling limit
+- K2 physical parameter geometry / exact quotient
+- K3 conservation, gauge, frame and cosmological closure
+- K4 numerical robustness / residual robustness
+- K5 multi-channel response and measured rank
+- K6 strongest nearest-family manifold attack
+- K7 exact common observation operator + covariance whitening/profile
+- K8 quotient-surviving novelty + absolute profiled significance
+- K9 prospective holdout
 
-ShapeFit B5:
-- `sigma_q ~= 2.2687` optimistic unmarginalized;
-- largest production q=.09 only `~0.0401 sigma`.
-After C1 profiling:
-- `sigma_q ~= 4.0866`;
-- q=.09 only `~0.0220 sigma`.
+Existing B0-B9 model audits remain authoritative model records; K0-K9 are the cross-model mandatory-properties view.
 
-B2 remains PARTIAL because small derived residuals retain cross-gauge representation floors even when raw P/d_m/phi/psi pass regression. Do not resume simple tolerance tightening.
+## 5. Wave state
 
-B8: prospective lambda=.225 interpolation holdout passes in-family; this is predictive regularity, not mechanism uniqueness.
+- W00 COMPLETE — calibration/reference + M01 nonidentifiability.
+- W01 COMPLETE — IDE/GDM/WDM/f(R)/DCDM atlas.
+- W02 COMPLETE — same-observable degeneracy attack; theory/observation graph split.
+- W03 ACTIVE — dark-energy mechanism census.
+- W04 PLANNED — dark-matter mechanism census.
+- W05 PLANNED — modified-gravity census.
+- W06 PLANNED — unified/geometry + adversarial mixtures.
+- W07 PLANNED — cross-family rigidity.
+- W08 PLANNED — true holdout.
+- W09+ PLANNED/ITERATIVE — escape search and literature-tail additions.
 
-### M08 CPL time-varying smooth DE — ACTIVE / primary adversarial result obtained
+Active wave planning authority: `protocol/WAVE_TESTING_PROTOCOL_v0.2.md`.
 
-Scientific role: stronger phenomenological nearest-family comparator to test whether the M07 P/H separator survives flexible smooth `w(a)`.
+## 6. W03 tested results through M10
 
-Branch:
-- `w(a)=w0+wa(1-a)`;
-- `epsilon0=1+w0`, `epsilon_a=wa`;
-- CLASS CLP fluid, `cs2_fld=1`, `use_ppf=yes`;
-- pure fluid closure: `Omega_Lambda=0`, `Omega_fld` inferred by CLASS.
+### M07 canonical quintessence
+Overall `DSIR_PREDICTIVE_SUPPORT`.
+- controlled local quotient coordinate `q=lambda^2`;
+- B5 `NONIDENTIFIABLE` in corrected ShapeFit control;
+- within-family prospective holdout supported;
+- full 2D CPL M08 absorbs its P+H theory direction to about 1.11% residual;
+- in one common 15-coordinate ShapeFit bridge CPL profiling leaves only about 1.067% whitened residual and q=.09 about `4.23e-4 sigma`;
+- small derived metric/growth residuals retain gauge/representation limitations; B2/B7 remain PARTIAL.
 
-#### M08 run #1 — preserved implementation failure
+Interpretation: clean microphysics + predictive interpolation do not imply mechanism-level observational novelty.
 
-Actions `34391852165`, artifact digest `sha256:0c8cf5c2de8f3d4cc9f62d9a8574a60656db38caee297b01b6fdf1674517045e`.
+### M08 CPL smooth time-varying DE
+Overall `DSIR_COMPATIBLE`.
+- local P+H basis angle about `9.179 deg`;
+- raw `sigma2/sigma1=0.0502`, demonstrating parameter count != response rank;
+- step-stable at 1e-3 -> 5e-4;
+- common ShapeFit whitening changes geometry and strongly absorbs M07.
 
-All cases failed before cosmological evolution because both `Omega_Lambda` and `Omega_fld` were specified. Classification: configuration/closure failure only, not physical CPL failure.
+### M09 solver-native CLASS EDE implementation control
+Overall `BLOCKED`.
+Pinned upstream CLASS EDE branch explicitly stops with `EDE implementation not finished`; zero-point included. This is `BLOCKED_IMPLEMENTATION`, not physical falsification of EDE.
 
-Correction commit: `a3bb13aab2f181fed31882d31f819c9d0b0a7a36`.
+### M10 CLASS_EDE axion-like scalar EDE
+Overall current scoped verdict `DSIR_DISCRIMINATED` in theory-response space.
+- published CLASS_EDE implementation used as separate model, not a hidden patch to M09;
+- shooting reaches requested fEDE/log10zc at ~1e-7--1e-6 accuracy;
+- local low-k P tangent convergence ~0.31%, broad-k shape tangent ~0.99%;
+- at fEDE=.05, broad-k shape reaches ~4.72% while late-time H response is only ~9.3e-7;
+- same-solver full 2D CPL attack leaves ~61.7% P+H residual;
+- transferred broad-k S residual ~83.3%; even S-only CPL refit leaves ~43.7%.
 
-#### M08 run #2 — local basis PASS_WITH_SCOPE
+M10 K7/B5 observational promotion remains OPEN because the exact theory->ShapeFit early-shape operator binding has not yet been established. Do not map the internal broad-k S diagnostic to observed `m+n` heuristically.
 
-Actions `34394929596`, artifact digest `sha256:561bf0abc6b9247fe9bd517c142eeac5f96c677eab430993bd6cb1473e3a6a97`.
+## 7. New census-driven coverage queue
 
-All five cases pass.
-Reference self-floor: zero by construction relative to the matched CPL Lambda point.
+Tier-A W03 remaining:
+- M11 effective/covariant k-essence response class
+- M12 phantom scalar DE
+- M13 quintom / phantom-divide crossing
+- M14 coupled quintessence
+- M15 generalized Chaplygin / unified dark fluid
 
-Local combined P+H geometry:
-- epsilon0 vs wa angle `9.1790225 deg`;
-- singular values `{1.88297176, 0.09452819}`;
-- `sigma2/sigma1 = 0.0502016`.
+Tier-B W03:
+- M16 running/interacting vacuum
+- M17 holographic DE
+- M18 ghost-condensate kinetic branch
 
-Central nonlinearity ratios at step 1e-3 are `3.44e-4` to `1.33e-3`.
+W04 and W05 full queues are frozen in `WAVE_TESTING_PROTOCOL_v0.2.md` and `model_family_census.csv`.
 
-Interpretation: nominally 2D CPL response is strongly anisotropic / near-one-dimensional. Parameter count != response rank.
+## 8. M11 ACTIVE NOW
 
-### M08 absorbs the M07 constant-w P/H separator
+M11 first-stage scope is an **effective k-essence/sound-speed response representative**, not a claim to cover the entire covariant `P(phi,X)` theory space.
 
-Reproducible inputs:
-- `M07_LOCAL_Q_DIRECTION.json`
-- `M08_CPL_LOCAL_BASIS.json`
-- calculator `code/w03_m08_absorb_m07.py`
-- result `M08_M07_ABSORPTION_RESULT.json`.
+Preregistration:
+`protocol/W03_M11_EFFECTIVE_KESSENCE_PREREGISTRATION_V0_1.md`.
 
-One shared CPL parameter vector is fitted to the concatenated 35-node lnP + 7-node lnH M07 local q direction.
+Reason for stratified geometry:
+At exact `w=-1`, DE perturbations vanish, so `cs2` is unidentifiable. M11 therefore separates:
+1. K1 reference branch `w->-1`, comparing pure LambdaCDM with fluid `w=-1, cs2=1`;
+2. K5 sound-speed branch on frozen anchor `w=-0.95`.
 
-Best coefficients per unit q:
-- `epsilon0/q = 0.1406534871`
-- `wa/q = -0.2006790927`.
+One-sided subluminal coordinate:
+`q_s = 1-cs2 >= 0`.
 
-CPL residual fractions:
-- combined P+H `1.107%`
-- P `0.864%`
-- H `1.993%`.
+Frozen steps:
+- q_s=.05 (`cs2=.95`)
+- q_s=.10 (`cs2=.90`)
+with convergence requirement <=10% relative norm and <=3 deg direction change.
 
-Same-solver constant-w-like epsilon0-only baseline:
-- combined `15.820%`
-- P `12.064%`
-- H `29.149%`.
+Smooth-w comparator at the same anchor uses w=-.949 / -.951, step .001.
 
-CPL improves the residual by about `14.3x` overall.
+Pinned solver:
+`lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540`.
 
-Classification:
-`CPL_ABSORBS_M07_CROSSCHANNEL_SEPARATOR_WITH_SCOPE`.
+Workflow:
+`.github/workflows/w03-m11-effective-kessence.yml`.
+Analyzer:
+`code/w03_m11_effective_kessence.py`.
 
-This is a strong negative result for M07 **mechanism-level novelty**, not a physical failure of M07. M07 remains a controlled and within-family predictive benchmark, but the previously identified constant-w P/H separator is not robust against the stronger smooth-DE family manifold.
+Current Actions run at this handoff:
+`34426134138` — in progress, building pinned CLASS.
 
-## DSIR main advancement / AD-002
+Do not change anchor/steps/hard thresholds after successful solver output.
 
-Compared with W03 starting authority `328f2ca...`, inspected DSIR main `864952e...` is 23 commits ahead.
+## 9. New-model necessity criterion
 
-Relevant new Article-2 G5 state:
-- prospective data-whitened cross-family stress contract frozen;
-- synthetic fail-closed QA PASS;
-- real covariance/operator machinery exists for ACT x unWISE 26-coordinate chain;
-- cross-family theory -> exact same 26-coordinate provider matrix is **not yet bound**;
-- real classifying G5 execution therefore remains blocked by interface/mapping, not covariance acquisition.
+Do not start the original model merely because individual known families are weak or degenerate.
 
-Hard rule adopted for M08 and later observation-space work:
-A covariance alone is insufficient. Every compared family must pass through one exact frozen observation operator into the same coordinate vector/order/units/masks on which the covariance acts.
+A benchmark-driven necessity claim requires Tier-A closure plus adversarial waves and at least one empirically relevant residual structure that:
+- survives all tested known-family manifolds and physically admissible combinations;
+- survives exact common observation projection/covariance/nuisance profiling;
+- lies above numerical/gauge/systematic floors;
+- has acceptable physical/stability domain;
+- supports a prospective withheld prediction.
 
-Do not call existing model-specific ShapeFit controls cross-family G5 closure.
+Until then: `new model motivated but not proven necessary`.
 
-## Future-model methodology state
+## 10. Non-negotiable rules
 
-Active construction methodology is now:
-`protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md`.
+No zero-imputation; no numerical/implementation failure = physical failure; no pairwise ray separation = family uniqueness; no parameter count = rank; no separate comparator fit per claimed response block; no theory-space angle = observational claim; no covariance without exact coordinate/operator binding; no retrospective B8; no silent authority rebase; no model removed from census because implementation is inconvenient.
 
-Design ledger now contains **51 ACTIVE requirements, DP-0001..DP-0817**.
+## 11. Immediate next actions
 
-New M08/AD-002 requirements:
-- DP-0815: profile the full implemented local comparator-family span/manifold, not one representative ray;
-- DP-0816: exact common observation operator + covariance coordinate bridge required for cross-family observation-space promotion;
-- DP-0817: closure/normalization conventions are explicit benchmark provenance and configuration failures remain distinct from physical failures.
-
-M08 independently reinforces DP-0303 (parameter count != response rank) and DP-0504 (new microphysics != new observable direction).
-
-## Immediate scientific continuation
-
-The old question "does M07 differ from constant-w?" is closed as insufficiently adversarial.
-
-Highest-value next frontier:
-
-1. validate M08 local-basis step stability with a second preregistered step before treating the 2D span as a durable tangent plane;
-2. then build an exact common M07/M08 observation-operator manifest satisfying AD-002 before any cross-family observational claim;
-3. if the ACT x unWISE multi-family provider bridge becomes available in DSIR main, prefer reusing that exact 26-coordinate chain rather than inventing a new covariance map;
-4. search for a gauge-robust response channel that lies outside the CPL span (scale dependence, temporal cross-relation, metric/slip only after representation robustness, nonlinear/high-k, tensor/coupling where defined);
-5. use subsequent W03 mechanisms to begin promoting repeated design priors from ACTIVE to REINFORCED rather than only accumulating new priors.
-
-## Non-negotiable
-
-No zero imputation; no numerical failure=physical failure; no pairwise ray separation=family uniqueness; no independent comparator refits by block; no theory-angle=observational claim; no covariance without exact operator-coordinate compatibility; no retrospective B8; no silent authority rebase.
+1. finish M11 run `34426134138` and preserve artifact/logs;
+2. classify pure-Lambda vs fluid-zero reference gate;
+3. classify sound-speed convergence/non-null and rank against smooth-w at the same anchor;
+4. if M11 effective response is distinct, attack it with full CPL manifold before any novelty statement;
+5. decide whether a covariant `P(phi,X)`/kinetic implementation is required as a separate M11b subcase;
+6. update benchmark/census/K-matrix/model audit/result/recovery/log;
+7. continue sequentially M12 -> M15 before W03 Tier-A closure.
