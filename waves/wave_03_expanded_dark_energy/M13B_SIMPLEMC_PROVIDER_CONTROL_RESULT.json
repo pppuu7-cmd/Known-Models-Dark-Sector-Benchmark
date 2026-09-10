@@ -1,19 +1,31 @@
 {
   "schema": "KMDSB.W03.M13b.SimpleMCProviderControl.v0.1",
   "provider": "ja-vazquez/SimpleMC@a268fe5e2545428ddcf76b37b166a55dbf692fb0",
+  "runtime": "python3.8+numpy1.24.4+scipy1.10.1+sklearn1.1.3+pandas1.5.3",
   "scientific_promotion_authorized": false,
   "routes": {
-    "package_import": {
-      "ok": false,
-      "error": "ImportError(\"cannot import name 'DistanceMetric' from 'sklearn.neighbors' (/home/runner/.local/lib/python3.12/site-packages/sklearn/neighbors/__init__.py)\")"
-    },
-    "direct_class": {
-      "ok": false,
-      "error": "ImportError(\"cannot import name 'DistanceMetric' from 'sklearn.neighbors' (/home/runner/.local/lib/python3.12/site-packages/sklearn/neighbors/__init__.py)\")",
-      "traceback": "Traceback (most recent call last):\n  File \"<stdin>\", line 15, in <module>\n  File \"/home/runner/work/Known-Models-Dark-Sector-Benchmark/Known-Models-Dark-Sector-Benchmark/simplemc_provider/simplemc/__init__.py\", line 6, in <module>\n    from .PostProcessing import PostProcessing\n  File \"/home/runner/work/Known-Models-Dark-Sector-Benchmark/Known-Models-Dark-Sector-Benchmark/simplemc_provider/simplemc/PostProcessing.py\", line 2, in <module>\n    from simplemc.analyzers.dynesty import utils as dyfunc\n  File \"/home/runner/work/Known-Models-Dark-Sector-Benchmark/Known-Models-Dark-Sector-Benchmark/simplemc_provider/simplemc/analyzers/__init__.py\", line 8, in <module>\n    from .MCEvidence import MCEvidence\n  File \"/home/runner/work/Known-Models-Dark-Sector-Benchmark/Known-Models-Dark-Sector-Benchmark/simplemc_provider/simplemc/analyzers/MCEvidence.py\", line 37, in <module>\n    from sklearn.neighbors import NearestNeighbors, DistanceMetric\nImportError: cannot import name 'DistanceMetric' from 'sklearn.neighbors' (/home/runner/.local/lib/python3.12/site-packages/sklearn/neighbors/__init__.py)\n"
+    "ParseModel_Quintom": {
+      "ok": true,
+      "type": "QuintomCosmology"
     }
   },
-  "classification": "M13B_SIMPLEMC_PROVIDER_CONTROL_BLOCKED",
+  "diagnostics": {
+    "phi_ini": 0.033203125,
+    "mquin": 1.7,
+    "mphan": 0.8,
+    "coupling": 0.0,
+    "solution_shape": [
+      4,
+      500
+    ],
+    "finite": true,
+    "H_min": 68.30721807175998,
+    "H_max": 270751936.63351977,
+    "w_min": -1.0,
+    "w_max": -0.6110885501896742,
+    "sampled_w_minus1_crossing": false
+  },
+  "classification": "M13B_SIMPLEMC_PROVIDER_CONTROL_PASS_WITH_SCOPE",
   "limitations": [
     "two-field initial-condition source explicitly says still figuring out initial conditions",
     "background-only SimpleMC implementation; perturbation closure not validated",
