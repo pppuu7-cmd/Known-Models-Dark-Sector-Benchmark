@@ -8,6 +8,7 @@ FRACS=[0.10,0.03,0.01,0.003,0.001]
 FILES=['scalCls.dat','matterpower.dat','transfer_out.dat']
 AXPIN='891e779cc0bd422e49f97533e6c2fc761149737d'
 CDMPIN='dc437acd8c90aa7e5595fcb25c615b03de8357a7'
+TRANSFER_SCHEMA_AMENDMENT='protocol/W04_M19_EXTERNAL_CDM_REFERENCE_TRANSFER_SCHEMA_AMENDMENT_v0.1.md'
 
 def repl(s,k,v,required=True):
     p=re.compile(rf'(?m)^(\s*{re.escape(k)}\s*=).*?$')
@@ -45,7 +46,7 @@ def prepare(axbase:Path, cdmbase:Path, out:Path):
     t=repl(t,'output_root','c0')
     t=repl(t,'omch2','0.1200')
     (out/'c0.ini').write_text(t)
-    (out/'manifest.json').write_text(json.dumps({'fractions':FRACS,'axion_pin':AXPIN,'cdm_pin':CDMPIN,'shared':shared},indent=2,sort_keys=True)+'\n')
+    (out/'manifest.json').write_text(json.dumps({'fractions':FRACS,'axion_pin':AXPIN,'cdm_pin':CDMPIN,'shared':shared,'transfer_schema_amendment':TRANSFER_SCHEMA_AMENDMENT},indent=2,sort_keys=True)+'\n')
 
 def load(path:Path):
     rows=[]
@@ -59,6 +60,14 @@ def load(path:Path):
     if a.ndim!=2 or a.shape[0]<3 or a.shape[1]<2: raise RuntimeError(f'invalid {path}')
     return a
 
+def project_transfer(model,ref):
+    # Prospectively frozen semantic projection from the transfer-schema amendment:
+    # axionCAMB [kh,cdm,b,g,r,nu,axion,f,tot] -> [kh,cdm,b,g,r,nu,tot]
+    # historical CAMB [kh,cdm,b,g,r,nu,tot] stays unchanged.
+    if model.shape[1] != 9: raise RuntimeError(f'OUTPUT_SCHEMA_BLOCKED axion transfer columns={model.shape[1]} expected=9')
+    if ref.shape[1] != 7: raise RuntimeError(f'OUTPUT_SCHEMA_BLOCKED historical transfer columns={ref.shape[1]} expected=7')
+    return model[:,[0,1,2,3,4,5,8]], ref[:,[0,1,2,3,4,5,6]]
+
 def interp_reference(model,ref):
     x=model[:,0]; xr=ref[:,0]
     lo=max(x.min(),xr.min()); hi=min(x.max(),xr.max())
@@ -67,6 +76,7 @@ def interp_reference(model,ref):
     if len(x)<3: raise RuntimeError('insufficient overlap')
     if model.shape[1]!=ref.shape[1]: raise RuntimeError('column mismatch')
     # CMB ell grids are integer: linear interpolation is exact on shared nodes.
+    # Other products are compared only inside their strict common coordinate domain.
     yr=np.column_stack([np.interp(x,xr,ref[:,j]) for j in range(1,ref.shape[1])])
     return x,ym,yr
 
@@ -87,16 +97,18 @@ def fit_exp(fs,rs):
 
 def analyze(axroot:Path,cdmroot:Path,statusp:Path,out:Path):
     st=json.loads(statusp.read_text())
-    res={'schema':'KMDSB.M19.externalCDMConvergence.v1','axion_pin':AXPIN,'cdm_pin':CDMPIN,'fractions':FRACS,'status':st,'physical_falsification':False,'K1_promoted':False,'blocks':{}}
+    res={'schema':'KMDSB.M19.externalCDMConvergence.v1','axion_pin':AXPIN,'cdm_pin':CDMPIN,'fractions':FRACS,'status':st,'physical_falsification':False,'K1_promoted':False,'blocks':{},'transfer_schema_amendment':TRANSFER_SCHEMA_AMENDMENT}
     if st.get('build_ax')!=0 or st.get('build_cdm')!=0 or st.get('c0')!=0 or any(st.get(f'a{i}')!=0 for i in range(len(FRACS))):
         res['classification']='M19_EXTERNAL_CDM_REFERENCE_EXECUTION_BLOCKED'; out.write_text(json.dumps(res,indent=2,sort_keys=True)+'\n'); return
-    cfiles={f:load(cdmroot/('c0'+('_' if f!='scalCls.dat' else '_')+f)) for f in FILES}
+    cfiles={f:load(cdmroot/('c0_'+f)) for f in FILES}
     # Both classic providers prefix output_root directly; generated files are c0_scalCls.dat etc.
     allpass=True
     for f in FILES:
         vals=[]
         for i,frac in enumerate(FRACS):
-            q=metrics(load(axroot/(f'a{i}_'+f)),cfiles[f]); q['fraction']=frac; vals.append(q)
+            model=load(axroot/(f'a{i}_'+f)); ref=cfiles[f]
+            if f=='transfer_out.dat': model,ref=project_transfer(model,ref)
+            q=metrics(model,ref); q['fraction']=frac; vals.append(q)
         r95=[q['p95_abs'] for q in vals]
         monotonic=all(r95[i+1] <= r95[i]*1.02 for i in range(len(r95)-1))
         decreased=r95[-1] < r95[0]
@@ -104,6 +116,8 @@ def analyze(axroot:Path,cdmroot:Path,statusp:Path,out:Path):
         exponent=bool(fit.get('valid') and fit.get('p') is not None and fit['p']>0)
         bp=monotonic and decreased and exponent
         res['blocks'][f]={'points':vals,'r95':r95,'monotonic_with_2pct_slack':monotonic,'smallest_lower_than_largest':decreased,'fit_smallest3':fit,'pass':bp}
+        if f=='transfer_out.dat':
+            res['blocks'][f]['semantic_projection']={'common':['kh','cdm','b','g','r','nu','tot'],'axion_raw_columns_1based':[1,2,3,4,5,6,9],'historical_raw_columns_1based':[1,2,3,4,5,6,7],'excluded_axion_only':['Transfer_axion','Transfer_f']}
         allpass=allpass and bp
     res['classification']='M19_EXTERNAL_CDM_REFERENCE_CONVERGENCE_PASS_WITH_SCOPE' if allpass else 'M19_EXTERNAL_CDM_REFERENCE_CONVERGENCE_NOT_ESTABLISHED'
     res['K1_promoted']=allpass
