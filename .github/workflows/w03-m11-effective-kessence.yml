@@ -9,6 +9,9 @@ on:
       - 'code/w03_m11_effective_kessence.py'
       - 'protocol/W03_M11_EFFECTIVE_KESSENCE_PREREGISTRATION_V0_1.md'
 
+permissions:
+  contents: write
+
 jobs:
   m11-audit:
     runs-on: ubuntu-latest
@@ -103,6 +106,20 @@ jobs:
               raise SystemExit('M11 preregistered gate failure: '+','.join(bad))
           print('M11_PREREGISTERED_CONTROLS=PASS')
           PY
+      - name: Persist canonical machine result
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p waves/wave_03_expanded_dark_energy models/effective_kessence
+          cp m11_effective_kessence.json waves/wave_03_expanded_dark_energy/M11_EFFECTIVE_KESSENCE_RESULT.json
+          cp m11_effective_kessence.json models/effective_kessence/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add waves/wave_03_expanded_dark_energy/M11_EFFECTIVE_KESSENCE_RESULT.json models/effective_kessence/result.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M11 effective k-essence hard-gate result'
+            git push
+          fi
       - name: Record provenance
         if: always()
         shell: bash
