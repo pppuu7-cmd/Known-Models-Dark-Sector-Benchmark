@@ -1,0 +1,243 @@
+name: W03 M14 LisaGoh CDE K1 reference
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-lisagoh-cde-k1-reference.yml'
+      - 'protocol/W03_M14_LISAGOH_CDE_K1_REFERENCE_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  k1-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch pinned provider and build standalone CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/LisaGoh/CDE.git provider
+          git -C provider checkout b85a675af7544a5183e402964550811aa805b698
+          test "$(git -C provider rev-parse HEAD)" = "b85a675af7544a5183e402964550811aa805b698"
+          cd provider/class_CDE
+          make clean > ../../build.log 2>&1
+          make class -j2 >> ../../build.log 2>&1
+          mkdir -p output
+          cd ../..
+
+      - name: Generate prospectively frozen K1 arms
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          src=Path('provider/class_CDE/CDE.ini').read_text()
+          def setkey(txt,key,value):
+              pat=rf'(?m)^(\s*{re.escape(key)}\s*=\s*).*$'
+              out,n=re.subn(pat,lambda m:m.group(1)+value,txt,count=1)
+              if n!=1: raise RuntimeError(f'expected one active key {key}, got {n}')
+              return out
+          def arm(name, exact_ic, background_only=False):
+              t=src
+              for k in ['beta_1','beta_2','beta_3']:
+                  t=setkey(t,k,'0')
+              if exact_ic:
+                  t=setkey(t,'phi_ini_scf','0')
+                  t=setkey(t,'phi_prime_ini_scf','0')
+              if background_only:
+                  t=setkey(t,'output','')
+              t += f'\nroot = output/{name}_\n'
+              Path(f'provider/class_CDE/{name}.ini').write_text(t)
+          arm('k1_exact_bg',True,True)
+          arm('k1_exact_full',True,False)
+          arm('k1_tiny_full',False,False)
+          PY
+
+      - name: Execute all frozen arms independently
+        shell: bash
+        run: |
+          set +e
+          cd provider/class_CDE
+          ./class k1_exact_bg.ini > ../../exact_bg.log 2>&1
+          echo "$?" > ../../exact_bg.exit
+          ./class k1_exact_full.ini > ../../exact_full.log 2>&1
+          echo "$?" > ../../exact_full.exit
+          ./class k1_tiny_full.ini > ../../tiny_full.log 2>&1
+          echo "$?" > ../../tiny_full.exit
+          cd ../..
+          echo '=== exact background ==='; tail -80 exact_bg.log || true
+          echo '=== exact full ==='; tail -120 exact_full.log || true
+          echo '=== tiny full ==='; tail -80 tiny_full.log || true
+          exit 0
+
+      - name: Evaluate frozen K1 rules
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, math, re
+          from pathlib import Path
+
+          def ex(name):
+              p=Path(name+'.exit')
+              return int(p.read_text().strip()) if p.exists() else 999
+
+          def nonempty(pattern):
+              return [str(p) for p in Path('provider/class_CDE/output').glob(pattern) if p.is_file() and p.stat().st_size>0]
+
+          def parse_background(path):
+              lines=Path(path).read_text(errors='replace').splitlines()
+              rows=[]
+              for line in lines:
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  try: rows.append([float(x) for x in s.split()])
+                  except ValueError: pass
+              if not rows: raise RuntimeError('no numeric background rows')
+              n=len(rows[0])
+              if any(len(r)!=n for r in rows): raise RuntimeError('ragged background table')
+              title_candidates=[]
+              for line in lines:
+                  if not line.lstrip().startswith('#'): continue
+                  raw=line.lstrip()[1:].strip()
+                  parts=[x.strip() for x in raw.split('\t')]
+                  if len(parts)==n: title_candidates.append(parts)
+              if not title_candidates:
+                  raise RuntimeError(f'no {n}-column tab title row')
+              titles=title_candidates[-1]
+              def norm(s):
+                  s=re.sub(r'^\s*\d+\s*:\s*','',s)
+                  return re.sub(r'[^a-z0-9]+','_',s.lower()).strip('_')
+              nt=[norm(x) for x in titles]
+              def idx_contains(*terms, exclude=()):
+                  hits=[]
+                  for i,s in enumerate(nt):
+                      if all(t in s for t in terms) and not any(e in s for e in exclude): hits.append(i)
+                  if len(hits)!=1: raise RuntimeError(f'column terms {terms} exclude {exclude}: {[(i,titles[i]) for i in hits]}')
+                  return hits[0]
+              iz=idx_contains('z') if 'z' in nt else 0
+              irc=idx_contains('rho_cdm')
+              irs=idx_contains('rho_scf')
+              iw=idx_contains('w_scf')
+              ip=idx_contains('phi_prime')
+              ib=idx_contains('beta',exclude=('dbeta',))
+              idb=idx_contains('dbeta')
+              def col(i): return [r[i] for r in rows]
+              z=col(iz); rc=col(irc); rs=col(irs); w=col(iw); pp=col(ip); b=col(ib); db=col(idb)
+              arrays=[z,rc,rs,w,pp,b,db]
+              finite=all(math.isfinite(x) for a in arrays for x in a)
+              a=[1.0/(1.0+x) for x in z]
+              cdm_a3=[r*q**3 for r,q in zip(rc,a)]
+              def rspan(x):
+                  den=max(max(abs(v) for v in x),1e-300)
+                  return (max(x)-min(x))/den
+              metrics={
+                'finite':finite,
+                'rows':len(rows),
+                'titles':titles,
+                'resolved_columns':{'z':titles[iz],'rho_cdm':titles[irc],'rho_scf':titles[irs],'w_scf':titles[iw],'phi_prime_scf':titles[ip],'beta':titles[ib],'dbeta_dz':titles[idb]},
+                'max_abs_beta':max(abs(x) for x in b),
+                'max_abs_dbeta_dz':max(abs(x) for x in db),
+                'max_abs_phi_prime_scf':max(abs(x) for x in pp),
+                'max_abs_w_plus_1':max(abs(x+1.0) for x in w),
+                'rspan_rho_scf':rspan(rs),
+                'rspan_rho_cdm_a3':rspan(cdm_a3)
+              }
+              metrics['pass']=bool(finite and metrics['max_abs_beta']<=1e-15 and metrics['max_abs_dbeta_dz']<=1e-15 and metrics['max_abs_phi_prime_scf']<=1e-14 and metrics['max_abs_w_plus_1']<=1e-12 and metrics['rspan_rho_scf']<=1e-12 and metrics['rspan_rho_cdm_a3']<=1e-8)
+              return metrics
+
+          exits={'exact_bg':ex('exact_bg'),'exact_full':ex('exact_full'),'tiny_full':ex('tiny_full')}
+          exact_bg_files=nonempty('k1_exact_bg_*background.dat')
+          parse_error=None; bg=None
+          if exits['exact_bg']==0 and exact_bg_files:
+              try: bg=parse_background(exact_bg_files[0])
+              except Exception as e: parse_error=repr(e)
+
+          required={}
+          for arm in ['k1_exact_full','k1_tiny_full']:
+              required[arm]={
+                'background':nonempty(arm+'_*background.dat'),
+                'perturbation':nonempty(arm+'_*perturbations*_s.dat'),
+                'linear_pk':[p for p in nonempty(arm+'_*pk*.dat') if '_nl.dat' not in p],
+                'cl':[p for p in nonempty(arm+'_*cl*.dat') if 'parameters' not in p],
+                'transfer':nonempty(arm+'_*tk.dat')
+              }
+          def full_ok(arm,exitcode):
+              r=required[arm]
+              return exitcode==0 and all(bool(r[k]) for k in ['background','perturbation','linear_pk','cl','transfer'])
+          A=bool(exits['exact_bg']==0 and bg and bg.get('pass'))
+          B=full_ok('k1_exact_full',exits['exact_full'])
+          C=full_ok('k1_tiny_full',exits['tiny_full'])
+          if not A:
+              cls='M14_LISAGOH_CDE_K1_BLOCKED_INFRASTRUCTURE' if (parse_error is not None or exits['exact_bg']!=0 or not exact_bg_files) else 'M14_LISAGOH_CDE_K1_BACKGROUND_REFERENCE_FAIL'
+          elif B:
+              cls='M14_LISAGOH_CDE_K1_PASS_WITH_SCOPE'
+          elif C:
+              cls='M14_LISAGOH_CDE_K1_EXACT_REFERENCE_IMPLEMENTATION_BLOCKED'
+          else:
+              cls='M14_LISAGOH_CDE_K1_UNCOUPLED_ROUTE_BLOCKED'
+          result={
+            'schema':'KMDSB.W03.M14.LisaGohCDEK1Reference.v0.1',
+            'provider':'LisaGoh/CDE@b85a675af7544a5183e402964550811aa805b698',
+            'parent_provider_control_run':34487561326,
+            'exits':exits,
+            'arm_A_background_metrics':bg,
+            'arm_A_parse_error':parse_error,
+            'required_outputs':required,
+            'arm_A_background_pass':A,
+            'arm_B_exact_full_pass':B,
+            'arm_C_tiny_seed_diagnostic_pass':C,
+            'classification':cls,
+            'K1':'PASS_WITH_SCOPE' if cls=='M14_LISAGOH_CDE_K1_PASS_WITH_SCOPE' else ('BACKGROUND_PASS_EXACT_REFERENCE_IMPLEMENTATION_BLOCKED' if cls=='M14_LISAGOH_CDE_K1_EXACT_REFERENCE_IMPLEMENTATION_BLOCKED' else 'NOT_PASS'),
+            'K3_promotion_authorized':False,
+            'K4_K5_authorized':bool(cls=='M14_LISAGOH_CDE_K1_PASS_WITH_SCOPE'),
+            'physical_falsification_authorized':False,
+            'frozen_thresholds':{'max_abs_beta':1e-15,'max_abs_dbeta_dz':1e-15,'max_abs_phi_prime_scf':1e-14,'max_abs_w_plus_1':1e-12,'rspan_rho_scf':1e-12,'rspan_rho_cdm_a3':1e-8}
+          }
+          Path('m14_lisagoh_cde_k1_reference.json').write_text(json.dumps(result,indent=2)+'\n')
+          print(json.dumps(result,indent=2))
+          PY
+
+      - name: Persist canonical K1 result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m14_lisagoh_cde_k1_reference.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/coupled_quintessence waves/wave_03_expanded_dark_energy
+          cp /tmp/result.json models/coupled_quintessence/lisagoh_cde_k1_reference.json
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_LISAGOH_CDE_K1_REFERENCE_RESULT.json
+          git add models/coupled_quintessence/lisagoh_cde_k1_reference.json waves/wave_03_expanded_dark_energy/M14_LISAGOH_CDE_K1_REFERENCE_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record LisaGoh CDE M14 K1 reference test'
+            git push origin HEAD:main
+          fi
+
+      - name: Upload immutable K1 bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m14-lisagoh-cde-k1-reference
+          path: |
+            m14_lisagoh_cde_k1_reference.json
+            build.log
+            exact_bg.log
+            exact_bg.exit
+            exact_full.log
+            exact_full.exit
+            tiny_full.log
+            tiny_full.exit
+            provider/class_CDE/output/k1_exact_bg_*background.dat
+            provider/class_CDE/output/k1_exact_full_*background.dat
+            provider/class_CDE/output/k1_exact_full_*perturbations*_s.dat
+            provider/class_CDE/output/k1_tiny_full_*background.dat
+            provider/class_CDE/output/k1_tiny_full_*perturbations*_s.dat
+          retention-days: 90
