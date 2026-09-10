@@ -1,0 +1,88 @@
+name: W03 M15 Scherrer output-location recovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m15-scherrer-output-recovery.yml'
+      - 'protocol/W03_M15_SCHERRER_OUTPUT_LOCATION_RECOVERY_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch exact provider and build
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/Eladio-Moreno/k-essence-dynamics.git ked
+          git -C ked checkout -q f3f010e1ed74c86ce6a431a435fa93988f749ee2
+          set +e
+          make -C ked/Cuadratico -j2 class > build.log 2>&1
+          echo "$?" > build.exit
+          set -e
+      - name: Run exact author example with correct output prefix
+        shell: bash
+        run: |
+          set +e
+          echo 999 > run.exit
+          mkdir -p ked/Cuadratico/output
+          rm -f ked/Cuadratico/output/test_*
+          if [ "$(cat build.exit)" = 0 ]; then
+            (cd ked/Cuadratico && ./class hi.ini) > run.log 2>&1
+            echo "$?" > run.exit
+          fi
+          exit 0
+      - name: Classify
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib,json,hashlib
+          b=int(pathlib.Path('build.exit').read_text()); r=int(pathlib.Path('run.exit').read_text())
+          base=pathlib.Path('ked/Cuadratico/output')
+          fs=[]
+          for p in sorted(base.glob('test_*')):
+            if p.is_file(): fs.append({'path':str(p.relative_to(pathlib.Path('ked/Cuadratico'))),'size':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})
+          bg=any(x['path'].endswith('test_background.dat') for x in fs)
+          pk=any('_pk' in x['path'] and x['path'].endswith('.dat') for x in fs)
+          if b!=0: cls='SCHERRER_OUTPUT_RECOVERY_FAIL_BUILD'
+          elif r!=0: cls='SCHERRER_OUTPUT_RECOVERY_FAIL_RUN'
+          elif not fs or not bg or not pk: cls='SCHERRER_OUTPUT_RECOVERY_FAIL_FRESH_OUTPUT'
+          else: cls='SCHERRER_OUTPUT_RECOVERY_PASS'
+          out={'schema':'KMDSB.W03.M15.Scherrer.OutputRecovery.v0.1','provider':'Eladio-Moreno/k-essence-dynamics@f3f010e1ed74c86ce6a431a435fa93988f749ee2','input':'Cuadratico/hi.ini unmodified','original_failed_run':34430588917,'diagnosis':'original harness searched output/hi* while author input explicitly sets root=output/test_','build_exit':b,'run_exit':r,'fresh_outputs':fs,'fresh_background_present':bg,'fresh_pk_present':pk,'classification':cls,'scientific_promotion_authorized':False,'bookkeeping':'UNIFIED_DARK_SECTOR_CANDIDATE'}
+          pathlib.Path('result.json').write_text(json.dumps(out,indent=2)+'\n'); print(json.dumps(out,indent=2))
+          PY
+      - name: Persist result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp result.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/scherrer_unified_dark_sector
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M15_SCHERRER_OUTPUT_RECOVERY_RESULT.json
+          cp /tmp/result.json models/scherrer_unified_dark_sector/output_recovery_result.json
+          git add waves/wave_03_expanded_dark_energy/M15_SCHERRER_OUTPUT_RECOVERY_RESULT.json models/scherrer_unified_dark_sector/output_recovery_result.json
+          if ! git diff --cached --quiet; then git commit -m 'Record M15 Scherrer output-location recovery'; git push origin HEAD:main; fi
+      - name: Upload bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m15-scherrer-output-recovery
+          path: |
+            result.json
+            build.log
+            build.exit
+            run.log
+            run.exit
+            ked/Cuadratico/output/test_*
+          if-no-files-found: warn
+          retention-days: 90
