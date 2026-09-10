@@ -1,0 +1,73 @@
+{
+  "schema": "KMDSB.W03.M14.IDECAMBK4K5LocalResponse.v0.1",
+  "provider_base": "cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4",
+  "provider_overlay": "liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075",
+  "beta_grid": [
+    0.0,
+    0.005,
+    0.01
+  ],
+  "case_exits": {
+    "b000": 0,
+    "b005": 0,
+    "b010": 0
+  },
+  "classification": "M14_IDECAMB_K4_FAIL_LOCAL_CONVERGENCE",
+  "K5_status": "BLOCKED_BY_K4",
+  "metrics": {
+    "fine_h": 0.005,
+    "coarse_h": 0.01,
+    "tangent_norm_fine": 55099.012422571104,
+    "tangent_norm_coarse": 31647.58717625708,
+    "relative_norm_mismatch": 0.42562333180235434,
+    "norm_threshold": 0.1,
+    "angle_deg": 4.3851064230011,
+    "angle_threshold_deg": 3.0,
+    "fine_max_abs_response": 13.338985605470699,
+    "nonnull_floor": 5e-05,
+    "channel_metrics": {
+      "dln_rho_de": {
+        "fine_response_norm": 267.9210443073169,
+        "fine_max_abs": 13.338985605470699,
+        "points": 2000
+      },
+      "dln_rho_c": {
+        "fine_response_norm": 0.023710314459372366,
+        "fine_max_abs": 0.0007168459088331968,
+        "points": 2000
+      },
+      "dln_H": {
+        "fine_response_norm": 0.011402890355268045,
+        "fine_max_abs": 0.0007012271762419527,
+        "points": 2000
+      },
+      "dw": {
+        "fine_response_norm": 64.15445172196532,
+        "fine_max_abs": 1.98853,
+        "points": 2000
+      },
+      "qhat": {
+        "fine_response_norm": 0.003341008727183948,
+        "fine_max_abs": 0.00021829047360136068,
+        "points": 2000
+      },
+      "dln_TT": {
+        "fine_response_norm": 0.05784839878242943,
+        "fine_max_abs": 0.0026642089741797373,
+        "points": 2499
+      },
+      "dln_EE": {
+        "fine_response_norm": 0.10859763994175188,
+        "fine_max_abs": 0.004283442411711547,
+        "points": 2499
+      },
+      "dln_PP": {
+        "fine_response_norm": 0.18370314363885698,
+        "fine_max_abs": 0.0043880339959178494,
+        "points": 2499
+      }
+    }
+  },
+  "observational_claim_authorized": false,
+  "physical_falsification_authorized": false
+}
