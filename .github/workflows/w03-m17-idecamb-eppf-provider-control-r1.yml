@@ -1,0 +1,187 @@
+name: W03 M17 IDECAMB ePPF provider control r1
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m17-idecamb-eppf-provider-control-r1.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  m17-provider-r1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build exact pinned overlay
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync python3
+          git clone https://github.com/cmbant/CosmoMC.git cosmomc
+          git -C cosmomc checkout eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone https://github.com/liaocrane/IDECAMB.git patch
+          git -C patch checkout 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          test "$(git -C cosmomc rev-parse HEAD)" = eb08c2fe91d9711929802fede310ae58c020fcb4
+          test "$(git -C patch rev-parse HEAD)" = 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          rsync -a --exclude='.git' patch/ cosmomc/
+          set +e
+          make -C cosmomc cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > build.log 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > build.exit
+
+      - name: Audit source binding and prepare cases
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          eq=Path('cosmomc/camb/equations_ppfi.f90').read_text(errors='replace')
+          ct=Path('cosmomc/source/CosmologyTypes.f90').read_text(errors='replace')
+          calc=Path('cosmomc/source/Calculator_CAMB.f90').read_text(errors='replace')
+          ini=Path('cosmomc/test_ide.ini').read_text(errors='replace')
+          checks={
+            'hde_enum':'CPL=1, HDE=2, NADE=3' in eq,
+            'hde_parameter_c':'CFP%c' in eq and 'c_hde' in calc,
+            'hde_eos_branch':'case (HDE)' in eq and '-1/3._dl-2*sqrt(abs(grhov_t)/3._dl)/(3*CFP%c*adotoa)' in eq,
+            'hde_perturbations_enabled':'case (HDE,NADE)' in eq and 'perturDE = .true.' in eq,
+            'ppf_state_evolved':'Gamma=ay(EV%w_ix)' in eq and 'ayprime(EV%w_ix)=Gammadot' in eq,
+            'ppf_sources_returned':'EV%dgrho_e_ppf=dgrhoe' in eq and 'EV%dgq_e_ppf=dgqe' in eq,
+            'ppf_sources_enter_totals':'dgrho=dgrho+EV%dgrho_e_ppf' in eq and 'dgq=dgq+EV%dgq_e_ppf' in eq,
+            'coupled_fluid_default_ppf':'this%Use_PPF=.true.' in ct and 'if(this%Class_IDE==2) this%Use_PPF=.false.' in ct,
+            'ini_exposes_hde_selector':'HDE model: WForm_CF = 2' in ini and 'param[c_hde]= 0.8' in ini,
+          }
+          Path('source_binding.json').write_text(json.dumps({'checks':checks,'all_source_binding_checks_pass':all(checks.values())},indent=2)+'\n')
+          if not all(checks.values()): raise SystemExit('source binding failed')
+
+          likes=['DEFAULT(batch3/plik_rd12_HM_v22_TTTEEE.ini)','DEFAULT(batch3/lowl.ini)','DEFAULT(batch3/lowE.ini)','DEFAULT(batch3/lensing.ini)','DEFAULT(batch3/BAO.ini)','DEFAULT(batch3/Pantheon18.ini)']
+          cases=[('m17_c060',0.6),('m17_c080a',0.8),('m17_c080b',0.8),('m17_c100',1.0),('m17_c120',1.2)]
+          def replace_once(s,old,new,tag):
+              if s.count(old)!=1: raise SystemExit(f'{tag}: expected one {old!r}, found {s.count(old)}')
+              return s.replace(old,new,1)
+          for tag,c in cases:
+              s=ini
+              for x in likes: s=replace_once(s,x,'#'+x,tag)
+              s=replace_once(s,'\nWForm_CF = 1\n','\nWForm_CF = 2\n',tag)
+              s=replace_once(s,'#Use_PPF = F','Use_PPF = T',tag)
+              s=replace_once(s,'param[c_hde]= 0.8',f'param[c_hde]= {c:.8g}',tag)
+              s=replace_once(s,'param[beta_cf]= 0.02 -0.2 0.2 0.05 0.05','param[beta_cf]= 0',tag)
+              s=replace_once(s,'#test_output_root = output_ide',f'test_output_root = {tag}',tag)
+              s=replace_once(s,'test_check_compare = 1820.775','#test_check_compare = 1820.775',tag)
+              Path(f'{tag}.ini').write_text(s)
+          PY
+
+      - name: Execute frozen HDE grid
+        run: |
+          set +e
+          : > exits.tsv
+          mkdir -p outputs
+          if [ "$(cat build.exit)" != 0 ]; then exit 0; fi
+          for tag in m17_c060 m17_c080a m17_c080b m17_c100 m17_c120; do
+            cp ${tag}.ini cosmomc/${tag}.ini
+            (cd cosmomc && rm -f ${tag}*quantity ${tag}*theory_cl && ./cosmomc ${tag}.ini > ../${tag}.log 2>&1)
+            rc=$?
+            echo -e "${tag}\t${rc}" >> exits.tsv
+            find cosmomc -maxdepth 2 -type f \( -name "${tag}*.quantity" -o -name "${tag}*.theory_cl" \) -exec cp {} outputs/ \;
+          done
+          exit 0
+
+      - name: Classify preregistered provider gate
+        run: |
+          python3 - <<'PY'
+          import json,math
+          from pathlib import Path
+          tags=['m17_c060','m17_c080a','m17_c080b','m17_c100','m17_c120']
+          source=json.loads(Path('source_binding.json').read_text())
+          build=int(Path('build.exit').read_text())
+          exits={}
+          if Path('exits.tsv').exists():
+              for line in Path('exits.tsv').read_text().splitlines():
+                  k,v=line.split(); exits[k]=int(v)
+          def locate(tag,suffix):
+              xs=sorted(Path('outputs').glob(f'{tag}*{suffix}')); return xs[0] if xs else None
+          def numeric(p):
+              rows=[]
+              if p is None:return rows
+              for raw in p.read_text(errors='replace').splitlines():
+                  q=raw.strip()
+                  if not q or q.startswith('#'):continue
+                  try: vals=[float(x.replace('D','E').replace('d','e')) for x in q.split()]
+                  except:continue
+                  rows.append(vals)
+              return rows
+          def inspect(p):
+              a=numeric(p); rect=bool(a) and len({len(r) for r in a})==1
+              fin=bool(a) and all(math.isfinite(x) for r in a for x in r)
+              return {'present':p is not None,'rows':len(a),'rectangular':rect,'all_finite':fin}
+          def metric(pa,pb):
+              a,b=numeric(pa),numeric(pb)
+              if not a or len(a)!=len(b) or any(len(x)!=len(y) for x,y in zip(a,b)):return None
+              mx=0.;n=0
+              for xrow,yrow in zip(a,b):
+                  for x,y in zip(xrow,yrow):
+                      if not(math.isfinite(x) and math.isfinite(y)):return None
+                      mx=max(mx,2*abs(x-y)/max(abs(x)+abs(y),1e-300));n+=1
+              return {'max_symmetric_relative_difference':mx,'common_finite_entries':n,'rows':len(a)}
+          files={}; schema_ok=True
+          for tag in tags:
+              q,cl=locate(tag,'.quantity'),locate(tag,'.theory_cl')
+              iq,ic=inspect(q),inspect(cl)
+              files[tag]={'quantity':q.name if q else None,'theory_cl':cl.name if cl else None,'quantity_schema':iq,'theory_cl_schema':ic}
+              schema_ok &= all([iq['present'],iq['rows']>0,iq['rectangular'],iq['all_finite'],ic['present'],ic['rows']>0,ic['rectangular'],ic['all_finite']])
+          rq=metric(locate('m17_c080a','.quantity'),locate('m17_c080b','.quantity'))
+          rcl=metric(locate('m17_c080a','.theory_cl'),locate('m17_c080b','.theory_cl'))
+          repeat_ok=rq is not None and rcl is not None and rq['max_symmetric_relative_difference']<=2e-10 and rcl['max_symmetric_relative_difference']<=2e-10
+          exec_ok=all(exits.get(t)==0 for t in tags)
+          if build!=0: cls='M17_IDECAMB_EPPF_BLOCKED_BUILD'
+          elif not source['all_source_binding_checks_pass']:cls='M17_IDECAMB_EPPF_BLOCKED_SOURCE_BINDING'
+          elif not exec_ok:cls='M17_IDECAMB_EPPF_BLOCKED_EXECUTION'
+          elif not schema_ok:cls='M17_IDECAMB_EPPF_BLOCKED_OUTPUT_SCHEMA'
+          elif not repeat_ok:cls='M17_IDECAMB_EPPF_REPEAT_NONDETERMINISM'
+          else:cls='M17_IDECAMB_EPPF_PROVIDER_EXECUTABLE_WITH_SCOPE'
+          passed=cls.endswith('EXECUTABLE_WITH_SCOPE')
+          out={'schema':'KMDSB.W03.M17.IDECAMB.ePPFProvider.v0.1','recovery':'r1 active-line selector only; physics grid and thresholds unchanged','provider_base':'cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4','provider_overlay':'liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075','model_scope':'original event-horizon HDE background + explicit IDECAMB ePPF perturbation prescription; beta_cf=0','finite_c_points':[0.6,0.8,1.0,1.2],'native_LCDM_reference':False,'source_binding':source,'build_exit':build,'case_exits':exits,'output_files':files,'repeat_c080_quantity':rq,'repeat_c080_theory_cl':rcl,'repeat_threshold':2e-10,'classification':cls,'K3_if_pass':'PASS_WITH_SCOPE_EPPF_PRESCRIPTION' if passed else 'NOT_PROMOTED','K4_if_pass':'PARTIAL_REPEATABILITY_ONLY' if passed else 'NOT_PROMOTED','K5_local_tangent':'NOT_AUTHORIZED_NO_NATIVE_LCDM_REFERENCE','physical_falsification':False,'fundamental_event_horizon_perturbation_derivation_claimed':False}
+          Path('m17_provider_result.json').write_text(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+
+      - name: Persist canonical result
+        run: |
+          set -euo pipefail
+          cp m17_provider_result.json /tmp/m17_provider_result.json
+          cp source_binding.json /tmp/source_binding.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/holographic_dark_energy
+          cp /tmp/m17_provider_result.json waves/wave_03_expanded_dark_energy/M17_IDECAMB_EPPF_PROVIDER_RESULT.json
+          cp /tmp/m17_provider_result.json models/holographic_dark_energy/idecamb_eppf_provider_result.json
+          cp /tmp/source_binding.json models/holographic_dark_energy/idecamb_eppf_source_binding.json
+          git add waves/wave_03_expanded_dark_energy/M17_IDECAMB_EPPF_PROVIDER_RESULT.json models/holographic_dark_energy/idecamb_eppf_provider_result.json models/holographic_dark_energy/idecamb_eppf_source_binding.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M17 IDECAMB ePPF provider result'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Upload immutable bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m17-idecamb-eppf-provider-control-r1
+          path: |
+            m17_provider_result.json
+            source_binding.json
+            build.log
+            build.exit
+            exits.tsv
+            m17_c*.ini
+            m17_c*.log
+            outputs/
+          retention-days: 90
