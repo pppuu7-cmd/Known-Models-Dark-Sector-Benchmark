@@ -57,6 +57,12 @@ Parse the generated background table and require finite values plus:
 - relative span of `rho_scf <= 1e-12`;
 - relative span of `rho_cdm*a^3 <= 1e-8`.
 
+For any positive reference series `x`, the frozen relative-span functional is
+
+`Rspan(x) = (max(x)-min(x)) / max(max(abs(x)), 1e-300)`.
+
+For the CDM conservation diagnostic use `a=1/(1+z)` from the background table and apply the same functional to `x=rho_cdm*a^3`.
+
 The relatively looser CDM conservation tolerance is a numerical ODE/output tolerance, not a physics tolerance.
 
 ## Frozen classifications
