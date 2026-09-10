@@ -3,16 +3,19 @@
     "p1": {
       "exit": 0,
       "matterpower.dat": {
-        "error": "[Errno 2] No such file or directory: 'external_axioncamb/p1_matterpower.dat'",
-        "finite": false
+        "cols": 2,
+        "finite": true,
+        "rows": 554
       },
       "scalCls.dat": {
-        "error": "[Errno 2] No such file or directory: 'external_axioncamb/p1_scalCls.dat'",
-        "finite": false
+        "cols": 4,
+        "finite": true,
+        "rows": 4999
       },
       "transfer_out.dat": {
-        "error": "[Errno 2] No such file or directory: 'external_axioncamb/p1_transfer_out.dat'",
-        "finite": false
+        "cols": 9,
+        "finite": true,
+        "rows": 192
       }
     },
     "r0d": {
@@ -46,7 +49,7 @@
       }
     }
   },
-  "classification": "M19_AXIONCAMB2_FINITE_CONTROL_BLOCKED",
+  "classification": "M19_AXIONCAMB2_ZERO_REFERENCE_BLOCKED",
   "comparisons": {},
   "physical_falsification": false,
   "provider_pin": "891e779cc0bd422e49f97533e6c2fc761149737d",
