@@ -4,14 +4,30 @@
   "anchor": "benchmark/gcc/tmp_ini/pgo_hyperbolic_cmb.ini",
   "build_exit": 0,
   "case_exits": {
-    "idm_zero": 1,
-    "standard_cdm": 1
+    "idm_zero": 0,
+    "standard_cdm": 0
   },
   "frozen_thresholds": {
     "background_max_symmetric_relative": 1e-08,
     "pk_max_symmetric_relative": 1e-06
   },
-  "classification": "M14_K1_BLOCKED_EXECUTION",
-  "k1_pass": false,
-  "scientific_fail": false
+  "background_files": {
+    "idm_zero": [
+      "out/idm_zero_background.dat"
+    ],
+    "standard_cdm": [
+      "out/standard_cdm_background.dat"
+    ]
+  },
+  "matched_pk": [
+    {
+      "suffix": "_pk.dat",
+      "max_symmetric_relative": 0.0
+    }
+  ],
+  "background_max_symmetric_relative": 7.450488193403606e-12,
+  "pk_max_symmetric_relative": 0.0,
+  "k1_pass": true,
+  "scientific_fail": false,
+  "classification": "M14_K1_DECOUPLING_PASS"
 }
