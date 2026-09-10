@@ -1,0 +1,127 @@
+name: W03 M11 full CPL manifold attack
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m11-cpl-manifold-attack.yml'
+      - 'code/w03_m11_cpl_manifold_attack.py'
+      - 'protocol/W03_M11_CPL_MANIFOLD_ATTACK_V0_1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  attack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install --disable-pip-version-check numpy
+      - name: Build pinned CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/lesgourg/class_public.git class_public
+          cd class_public
+          git checkout e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          make -j2
+      - name: Write matched configs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cfg out logs
+          cat > cfg/base.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.1200
+          Omega_k = 0
+          Omega_Lambda = 0
+          fluid_equation_of_state = CLP
+          use_ppf = yes
+          reio_parametrization = reio_none
+          output = mPk
+          modes = s
+          ic = ad
+          gauge = synchronous
+          non linear = none
+          z_pk = 0.295,0.51,0.706,0.934,1.317,1.491,2.33
+          P_k_max_h/Mpc = 0.2
+          write background = yes
+          headers = yes
+          format = class
+          tol_perturbations_integration = 1e-8
+          perturbations_sampling_stepsize = 0.01
+          EOF
+          make_case(){
+            local tag="$1" w0="$2" wa="$3" cs2="$4"
+            cp cfg/base.ini cfg/${tag}.ini
+            cat >> cfg/${tag}.ini <<EOF
+          w0_fld = ${w0}
+          wa_fld = ${wa}
+          cs2_fld = ${cs2}
+          root = ${GITHUB_WORKSPACE}/out/${tag}_
+          EOF
+          }
+          make_case anchor -0.95 0 1
+          make_case cs005 -0.95 0 0.95
+          make_case w0p1 -0.949 0 1
+          make_case w0m1 -0.951 0 1
+          make_case wap1 -0.95 0.001 1
+          make_case wam1 -0.95 -0.001 1
+          make_case w0p05 -0.9495 0 1
+          make_case w0m05 -0.9505 0 1
+          make_case wap05 -0.95 0.0005 1
+          make_case wam05 -0.95 -0.0005 1
+      - name: Run cases
+        shell: bash
+        run: |
+          set +e
+          for tag in anchor cs005 w0p1 w0m1 wap1 wam1 w0p05 w0m05 wap05 wam05; do
+            ./class_public/class cfg/${tag}.ini > logs/${tag}.log 2>&1
+            echo "$?" > logs/${tag}.exit
+          done
+          exit 0
+      - name: Analyze and enforce comparator stability
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in anchor cs005 w0p1 w0m1 wap1 wam1 w0p05 w0m05 wap05 wam05; do
+            test "$(cat logs/${tag}.exit)" = 0 || { cat logs/${tag}.log; exit 2; }
+          done
+          python3 code/w03_m11_cpl_manifold_attack.py --directory out --json m11_cpl_attack.json
+          python3 - <<'PY'
+          import json
+          d=json.load(open('m11_cpl_attack.json'))
+          if not d['cpl_step_stability']['passes']:
+              raise SystemExit('preregistered CPL tangent stability failed')
+          print('M11_CPL_CLASSIFICATION='+d['classification'])
+          PY
+      - name: Persist result race-safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy
+          cp m11_cpl_attack.json waves/wave_03_expanded_dark_energy/M11_CPL_MANIFOLD_ATTACK_RESULT.json
+          git add waves/wave_03_expanded_dark_energy/M11_CPL_MANIFOLD_ATTACK_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M11 CPL manifold attack result'
+            git push origin HEAD:main
+          fi
+      - name: Upload bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m11-cpl-manifold-attack
+          path: |
+            m11_cpl_attack.json
+            cfg/
+            logs/
+          if-no-files-found: error
+          retention-days: 90
