@@ -1,0 +1,59 @@
+name: W03 M15 V2b0 closure-kernel audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m15-v2b0-closure-kernel.yml'
+      - 'verification/m15/v2b0_closure_kernel.py'
+      - 'protocol/W03_M15_V2B0_CLOSURE_KERNEL_PREREGISTRATION_v0.2.md'
+
+permissions:
+  contents: write
+
+jobs:
+  closure-kernel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Execute preregistered V2b0 algebra gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m15/v2b0_closure_kernel.py | tee m15_v2b0_console.txt
+          test -s models/generalized_chaplygin/M15_V2B0_CLOSURE_KERNEL_RESULT.json
+          test -s waves/wave_03_expanded_dark_energy/M15_V2B0_CLOSURE_KERNEL_RESULT.json
+      - name: Persist canonical and wave-mirror result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp models/generalized_chaplygin/M15_V2B0_CLOSURE_KERNEL_RESULT.json /tmp/m15_v2b0_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/generalized_chaplygin waves/wave_03_expanded_dark_energy
+          cp /tmp/m15_v2b0_result.json models/generalized_chaplygin/M15_V2B0_CLOSURE_KERNEL_RESULT.json
+          cp /tmp/m15_v2b0_result.json waves/wave_03_expanded_dark_energy/M15_V2B0_CLOSURE_KERNEL_RESULT.json
+          git add models/generalized_chaplygin/M15_V2B0_CLOSURE_KERNEL_RESULT.json waves/wave_03_expanded_dark_energy/M15_V2B0_CLOSURE_KERNEL_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M15 V2b0 closure-kernel result'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Upload immutable V2b0 bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m15-v2b0-closure-kernel
+          path: |
+            models/generalized_chaplygin/M15_V2B0_CLOSURE_KERNEL_RESULT.json
+            waves/wave_03_expanded_dark_energy/M15_V2B0_CLOSURE_KERNEL_RESULT.json
+            m15_v2b0_console.txt
+            verification/m15/v2b0_closure_kernel.py
+            protocol/W03_M15_V2B0_CLOSURE_KERNEL_PREREGISTRATION_v0.2.md
+          retention-days: 90
