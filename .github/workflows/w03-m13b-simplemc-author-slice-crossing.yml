@@ -1,0 +1,154 @@
+name: W03 M13b SimpleMC author-slice crossing
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-simplemc-author-slice-crossing.yml'
+      - 'protocol/W03_M13B_SIMPLEMC_AUTHOR_SLICE_CROSSING_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  author-slice-crossing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+      - name: Fetch pinned SimpleMC
+        run: |
+          git clone https://github.com/ja-vazquez/SimpleMC.git simplemc_provider
+          git -C simplemc_provider checkout a268fe5e2545428ddcf76b37b166a55dbf692fb0
+          test "$(git -C simplemc_provider rev-parse HEAD)" = "a268fe5e2545428ddcf76b37b166a55dbf692fb0"
+      - name: Install compatible runtime
+        run: |
+          python -m pip install --disable-pip-version-check --upgrade 'pip<25'
+          python -m pip install --disable-pip-version-check 'numpy==1.24.4' 'scipy==1.10.1' 'scikit-learn==1.1.3' 'matplotlib==3.7.5' 'pandas==1.5.3' 'numdifftools==0.9.41'
+      - name: Execute frozen author slices
+        shell: bash
+        run: |
+          set +e
+          cd simplemc_provider
+          PYTHONPATH=. python - <<'PY' > ../m13b_author_slice.log 2>&1
+          import json, math, traceback, numpy as np
+          from simplemc.models.QuintomCosmology import QuintomCosmology
+          from simplemc.cosmo.paramDefs import mquin_par, mphan_par
+
+          eps=1e-6
+          grid=np.arange(0.1,2.5,(2.5-0.1)/9.0)
+          zplot=np.arange(0,3,0.05)
+          out={
+            'schema':'KMDSB.W03.M13b.SimpleMCAuthorSliceCrossing.v0.1',
+            'provider':'ja-vazquez/SimpleMC@a268fe5e2545428ddcf76b37b166a55dbf692fb0',
+            'grid':[float(x) for x in grid],
+            'dead_zone':eps,
+            'slices':{},
+            'scientific_promotion_authorized':False,
+            'physical_falsification_authorized':False
+          }
+
+          def crossing_stats(w):
+              w=np.asarray(w,dtype=float); d=w+1.0
+              raw=int(np.sum(d[:-1]*d[1:]<0)) if len(d)>1 else 0
+              return {'w_min':float(np.min(w)),'w_max':float(np.max(w)),
+                      'min_w_plus_1':float(np.min(d)),'max_w_plus_1':float(np.max(d)),
+                      'raw_sign_change_count':raw,
+                      'robust_strict_crossing':bool(np.min(d)<-eps and np.max(d)>eps)}
+
+          def run_slice(kind):
+              rows=[]
+              if kind=='mquin':
+                  T=QuintomCosmology(vary_mquin=True,vary_mphan=True)
+                  fixed=1.2
+              else:
+                  T=QuintomCosmology(vary_mquin=True,vary_mphan=True)
+                  fixed=1.2
+              for x in grid:
+                  try:
+                      if kind=='mquin':
+                          mquin_par.setValue(float(x)); mphan_par.setValue(fixed)
+                      else:
+                          mquin_par.setValue(fixed); mphan_par.setValue(float(x))
+                      ok=bool(T.updateParams([mquin_par,mphan_par]))
+                      T.call_functions()
+                      sol=np.asarray(T.solution,dtype=float)
+                      wfull=np.asarray([T.w_de(float(a)) for a in np.exp(T.lna)],dtype=float)
+                      hfull=np.asarray([T.Hubble_a(float(a)) for a in np.exp(T.lna)],dtype=float)
+                      wplot=np.asarray([T.w_de(1.0/(1.0+float(z))) for z in zplot],dtype=float)
+                      finite=bool(ok and np.all(np.isfinite(sol)) and np.all(np.isfinite(wfull)) and np.all(np.isfinite(hfull)) and np.all(np.isfinite(wplot)))
+                      fallback=bool(T.phi_ini in (0,-1))
+                      row={'scan_value':float(x),'mquin':float(T.mquin),'mphan':float(T.mphan),'beta':float(T.coupling),'phi_ini':float(T.phi_ini),'finite':finite,'fallback':fallback}
+                      if finite:
+                          row['full_native']=crossing_stats(wfull)
+                          row['author_z_lt_3']=crossing_stats(wplot)
+                      rows.append(row)
+                  except Exception as e:
+                      rows.append({'scan_value':float(x),'finite':False,'error':repr(e),'traceback':traceback.format_exc()[-2000:]})
+              return rows
+
+          out['slices']['mphan_1p2_scan_mquin']=run_slice('mquin')
+          out['slices']['mquin_1p2_scan_mphan']=run_slice('mphan')
+          rows=sum(out['slices'].values(),[])
+          valid=[r for r in rows if r.get('finite') and not r.get('fallback')]
+          plot_cross=[r for r in valid if r.get('author_z_lt_3',{}).get('robust_strict_crossing')]
+          full_cross=[r for r in valid if r.get('full_native',{}).get('robust_strict_crossing')]
+          out['counts']={'total_points':len(rows),'valid_nonfallback':len(valid),'plot_domain_crossing':len(plot_cross),'full_native_crossing':len(full_cross)}
+          out['crossing_points_plot_domain']=[{'mquin':r['mquin'],'mphan':r['mphan'],'phi_ini':r['phi_ini'],'w_min':r['author_z_lt_3']['w_min'],'w_max':r['author_z_lt_3']['w_max']} for r in plot_cross]
+          if not valid:
+              cls='M13B_SIMPLEMC_AUTHOR_SLICE_SCAN_BLOCKED'
+          elif plot_cross:
+              cls='M13B_SIMPLEMC_AUTHOR_SLICE_CROSSING_FOUND_WITH_SCOPE'
+          elif full_cross:
+              cls='M13B_SIMPLEMC_CROSSING_ONLY_OUTSIDE_AUTHOR_PLOT_DOMAIN'
+          else:
+              cls='M13B_SIMPLEMC_AUTHOR_SLICES_NO_ROBUST_CROSSING'
+          out['classification']=cls
+          out['limitations']=['background-only provider','two-field initial-condition source explicitly marked unfinished by provider','author-slice scan is not exhaustive family falsification','no perturbation/stability/K4/K5 promotion']
+          open('../m13b_author_slice_crossing.json','w').write(json.dumps(out,indent=2,allow_nan=False)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+          rc=$?
+          echo "$rc" > ../m13b_author_slice.exit
+          cd ..
+          cat m13b_author_slice.log || true
+          exit 0
+      - name: Ensure result exists
+        run: |
+          if [ ! -f m13b_author_slice_crossing.json ]; then
+            python - <<'PY'
+          import json,os
+          r={'schema':'KMDSB.W03.M13b.SimpleMCAuthorSliceCrossing.v0.1','provider':'ja-vazquez/SimpleMC@a268fe5e2545428ddcf76b37b166a55dbf692fb0','classification':'M13B_SIMPLEMC_AUTHOR_SLICE_SCAN_BLOCKED','python_exit':int(open('m13b_author_slice.exit').read()) if os.path.exists('m13b_author_slice.exit') else None,'scientific_promotion_authorized':False,'physical_falsification_authorized':False}
+          open('m13b_author_slice_crossing.json','w').write(json.dumps(r,indent=2)+'\n')
+          PY
+          fi
+      - name: Persist canonical result
+        shell: bash
+        run: |
+          cp m13b_author_slice_crossing.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/quintom
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M13B_SIMPLEMC_AUTHOR_SLICE_CROSSING_RESULT.json
+          cp /tmp/result.json models/quintom/simplemc_author_slice_crossing.json
+          git add waves/wave_03_expanded_dark_energy/M13B_SIMPLEMC_AUTHOR_SLICE_CROSSING_RESULT.json models/quintom/simplemc_author_slice_crossing.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M13b SimpleMC author-slice crossing scan'
+            git push origin HEAD:main
+          fi
+      - name: Upload immutable bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m13b-simplemc-author-slice-crossing
+          path: |
+            m13b_author_slice_crossing.json
+            m13b_author_slice.log
+            m13b_author_slice.exit
+          retention-days: 90
