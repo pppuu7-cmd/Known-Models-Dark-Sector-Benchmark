@@ -1,0 +1,79 @@
+name: Synchronize M14 IDECAMB frontier records
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-m14-idecamb-frontier.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synchronize census matrices recovery and methodology
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import csv, io
+
+          def replace_csv_row(path, key, newrow):
+              p=Path(path); text=p.read_text(); rows=list(csv.reader(io.StringIO(text)))
+              found=False
+              for i,r in enumerate(rows):
+                  if r and r[0]==key:
+                      rows[i]=newrow; found=True; break
+              if not found: raise SystemExit(f'{key} missing in {path}')
+              out=io.StringIO(newline=''); w=csv.writer(out,lineterminator='\n'); w.writerows(rows); p.write_text(out.getvalue())
+
+          replace_csv_row('matrices/model_family_census.csv','F14',[
+            'F14','coupled quintessence / conformal scalar-DM coupling','dark_sector_interaction','A','M14',
+            'IDECAMB_K1_K2_PASS_K3_SCOPED_K4_SMALL_STEP_FAIL','W03','field-mediated exchange plus scalar perturbations',
+            'Original iDM route: K1 pass, signed cdm_c K2, K3 partial, .01/.02 K4 FAIL. Independent IDECAMB@4f1093d on CosmoMC@eb08c2f: author CQ execution and theory-output route pass; prospectively withheld beta=0 K1 invariants pass at alpha=0.2,0.8; K2 is one-sided beta>=0. Frozen beta .005/.01 K4 fails (42.56% norm, 4.385 deg); preregistered smaller-step recovery down to 5e-5/1e-4 also fails (29.83%, 11.32 deg), K5 blocked. Do not shrink again before branch/shooting-continuity audit.'
+          ])
+          replace_csv_row('matrices/model_family_census.csv','F15',[
+            'F15','generalized Chaplygin / unified dark fluid','unified_dark_sector','A','M15','QUEUED_REPRESENTATIVE_SEARCH_NGCG_CANDIDATE_AUDIT','W03/W06','unified background plus nontrivial sound-speed/structure response',
+            'Scherrer executable is Lambda plus matter-like scalar and remains representative mismatch. IDECAMB source contains an explicitly labelled NGCG interaction branch matching the known decomposed-NGCG background form; interacting decomposition is not automatically a mismatch, but exact input selector/provenance and perturbation-closure equivalence to the unified/decomposed NGCG prescription remain open before K0/K1 promotion.'
+          ])
+
+          replace_csv_row('matrices/mandatory_properties_matrix.csv','F14',[
+            'F14','M14','PASS_WITH_SCOPE','PASS_WITH_SCOPE','PASS_WITH_SCOPE','PARTIAL','FAIL_LOCAL_CONVERGENCE','BLOCKED_BY_K4','NOT_TESTED','NOT_TESTED','NOT_TESTED','NOT_TESTED','IDECAMB_K1_K2_PASS_K3_SCOPED_K4_SMALL_STEP_FAIL',
+            'Two-provider record retained. IDECAMB run 34464322763 K1 PASS_WITH_SCOPE on withheld alpha=.2,.8: gQ exactly zero and a*rho_c drift 1.11478e-4 <2e-4. K2 one-sided beta>=0. Run 34464786896 beta={0,.005,.01}: K4 FAIL, 42.56% norm mismatch and 4.385 deg. Preregistered run 34465008067 fixed smaller-step ladder: finest 5e-5/1e-4 still FAIL, 29.83% and 11.32 deg; K5 blocked. Analytic beta dependence is continuous, so branch/shooting-continuity audit is required before further step reduction.'
+          ])
+          replace_csv_row('matrices/mandatory_properties_matrix.csv','F15',[
+            'F15','M15','PARTIAL','NOT_TESTED','NOT_TESTED','NOT_TESTED','NOT_TESTED','NOT_TESTED','NOT_TESTED','NOT_TESTED','NOT_TESTED','NOT_TESTED','QUEUED_REPRESENTATIVE_SEARCH_NGCG_CANDIDATE_AUDIT',
+            'Scherrer candidate remains representative mismatch. IDECAMB decomposed-NGCG source branch is background-family plausible with explicit NGCG comment and matching Q form, but selector provenance, beta-alpha convention, WForm/CovQForm perturbation binding and reference comparator must be frozen before execution.'
+          ])
+
+          frontier='''\n\n## 2026-09-10 — M14 independent IDECAMB frontier after K1/K2/K4 scale audit\n\nPinned independent provider: `liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075` over `cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4`. Compatibility-only `-fallow-argument-mismatch` build recovery does not edit physics.\n\n- theory-only output route: PASS, run `34463892501`, job `102827831899`, artifact `10146717720`, result commit `de0debf99827200ab9cc503d7351b811e73cf8ec`; emits 2000x11 `.quantity` and 2499-row `.theory_cl`.\n- K1 interaction-off invariants: PASS_WITH_SCOPE, run `34464322763`, job `102829203132`, artifact `10146904871`, result commit `3af4e94ae84186dd0644af48a2da48199dbabbfe`. Previously unseen `alpha_quint={0.2,0.8}`, exact `beta=0`: all finite, `gQ=0` exactly, relative drift of `a*grhoc_t=1.1147809168407837e-4 <=2e-4`.\n- K2: PASS_WITH_SCOPE one-sided `q_beta=beta_cq>=0`; author prior is `[0,0.15]`; no beta^2 quotient.\n- K4 parent local grid: FAIL_LOCAL_CONVERGENCE, run `34464786896`, job `102830709421`, artifact `10147076509`, result commit `a88ff59137e0bf4e7b97f27cc8122a79063f1f6f`; beta `.005/.01` gives norm mismatch `0.425623`, angle `4.3851 deg`. K5 blocked.\n- prospectively frozen smaller-step recovery: FAIL, run `34465008067`, job `102831413732`, artifact `10147169505`; even finest `.00005/.00010` gives norm mismatch `0.298317`, angle `11.3215 deg`, with large `max|dln rho_de|=4.1418` and `max|dw|=1.9590`. This result does not erase the parent K4 fail.\n\nDo **not** keep shrinking beta steps. The source equations are algebraically continuous at beta=0, while the numerical solution does not approach the beta=0 branch smoothly. Next M14 gate is a provider branch/shooting-continuity audit focused on `GetCorrect_initial` / Broyden root selection and solved `(gU0,gphi0)` continuity. No K5/K6 promotion until this is resolved.\n\nM15 side finding: IDECAMB contains an explicitly commented NGCG coupled-fluid branch with the decomposed-NGCG background interaction form. This makes it a serious candidate rather than an automatic representative mismatch, but perturbation prescription/input-selector provenance remains open. See `models/generalized_chaplygin/idecamb_ngcg_candidate_audit.md`.\n'''
+          for path in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md']:
+              p=Path(path); s=p.read_text(); marker='## 2026-09-10 — M14 independent IDECAMB frontier after K1/K2/K4 scale audit'
+              if marker not in s: p.write_text(s+frontier)
+
+          log=Path('logs/research_log.md'); ls=log.read_text(); lmark='### 2026-09-10 M14 IDECAMB K1/K2/K4 scale-localization'
+          if lmark not in ls:
+              log.write_text(ls+'''\n\n### 2026-09-10 M14 IDECAMB K1/K2/K4 scale-localization\n- Recovered author-supported theory output without external likelihoods: run 34463892501 PASS infrastructure only.\n- Prospective K1 at unseen alpha=.2,.8: run 34464322763 PASS_WITH_SCOPE; exact gQ=0 and standard CDM dilution invariant.\n- K2 source geometry: provider-supported one-sided beta>=0 tangent cone; no sign quotient asserted.\n- Frozen K4 beta=.005/.01: run 34464786896 FAIL_LOCAL_CONVERGENCE; K5 blocked.\n- Separate preregistered smaller-step ladder down to 5e-5/1e-4: run 34465008067 also FAIL. Norm mismatch improves to 29.83% but angle worsens to 11.32 deg and response remains O(1) in early DE/w. Stop step chasing; audit Broyden/shooting branch continuity.\n- No family-level physical falsification and no observational discrimination claim.\n- M15: recorded IDECAMB NGCG decomposed-background candidate; perturbation/source-selector binding remains open.\n''')
+
+          meth=Path('protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md')
+          ms=meth.read_text(); mmark='### Branch-continuity rule from M14 IDECAMB'
+          if mmark not in ms:
+              meth.write_text(ms+'''\n\n### Branch-continuity rule from M14 IDECAMB\nWhen a model has an analytically continuous decoupling parameter but finite-difference responses remain order-unity and fail tangent convergence after a prospectively fixed smaller-step ladder, do not continue shrinking the step indefinitely. First audit numerical branch/root/shooting continuity and record the solved latent initial-condition/shooting variables versus the physical parameter. A solver that jumps between solution branches cannot provide a valid local tangent even if every run exits successfully. Preserve all earlier failed scales; a later local recovery never rewrites them as PASS.\n''')
+          PY
+          git diff --check
+      - name: Commit synchronized frontier
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'Synchronize M14 IDECAMB K1 K2 K4 frontier'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
