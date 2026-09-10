@@ -1,0 +1,166 @@
+name: W04 M19 RECFAST input localization
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m19-recfast-input-localization.yml'
+      - 'protocol/W04_M19_RECFAST_INPUT_LOCALIZATION_PREREGISTRATION_v0.1.md'
+      - 'verification/m19/axioncamb2_recfast_input_diag.py'
+
+permissions:
+  contents: write
+
+jobs:
+  localize-recfast-input:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PIN: 891e779cc0bd422e49f97533e6c2fc761149737d
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pin provider and prepare frozen cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          for d in axc_orig axc_patch axc_debug; do
+            git clone -q https://github.com/dgrin1/axionCAMB.git "$d"
+            git -C "$d" checkout -q --detach "$PIN"
+            test "$(git -C "$d" rev-parse HEAD)" = "$PIN"
+          done
+          python3 verification/m19/axioncamb2_zero_probe.py prepare axc_orig/params.ini m19_recfast_cases
+          python3 verification/m19/axioncamb2_zero_bypass_recovery.py patch axc_patch
+          python3 verification/m19/axioncamb2_zero_bypass_recovery.py patch axc_debug
+          python3 verification/m19/axioncamb2_recfast_input_diag.py axc_debug
+          python3 - <<'PY'
+          from pathlib import Path
+          for fn in ['r0f.ini','r0d.ini']:
+              p=Path('m19_recfast_cases')/fn
+              s=p.read_text()
+              repl={
+                'omnuh2 = 0.0006':'omnuh2 = 0',
+                'massive_neutrinos  = 1':'massive_neutrinos  = 0',
+                'nu_mass_eigenstates = 1':'nu_mass_eigenstates = 0',
+              }
+              for a,b in repl.items():
+                  if a not in s: raise SystemExit(f'{fn}: missing frozen anchor {a!r}')
+                  s=s.replace(a,b,1)
+              p.write_text(s)
+          PY
+          printf 'provider=%s\n' "$PIN" > m19_recfast_pin.txt
+
+      - name: Build provider copies
+        shell: bash
+        run: |
+          set +e
+          (cd axc_orig && make -j1 FFLAGS='-O3 -ffree-line-length-none -fallow-argument-mismatch' > ../m19_recfast_build_orig.log 2>&1); bo=$?
+          (cd axc_patch && make -j1 FFLAGS='-O3 -ffree-line-length-none -fallow-argument-mismatch' > ../m19_recfast_build_patch.log 2>&1); bp=$?
+          (cd axc_debug && make -j1 FFLAGS='-O0 -g -fbacktrace -fcheck=all -ffree-line-length-none -fallow-argument-mismatch' > ../m19_recfast_build_debug.log 2>&1); bd=$?
+          printf '{"build_orig":%d,"build_patch":%d,"build_debug":%d}\n' "$bo" "$bp" "$bd" > m19_recfast_status.json
+          exit 0
+
+      - name: Execute diagnostic and controls
+        shell: bash
+        run: |
+          set +e
+          bo=$(python3 -c "import json;print(json.load(open('m19_recfast_status.json'))['build_orig'])")
+          bp=$(python3 -c "import json;print(json.load(open('m19_recfast_status.json'))['build_patch'])")
+          bd=$(python3 -c "import json;print(json.load(open('m19_recfast_status.json'))['build_debug'])")
+          dz=999; pz=999; pp=999; po=999
+          if [ "$bd" -eq 0 ]; then (cd axc_debug && ./camb ../m19_recfast_cases/r0f.ini > ../m19_recfast_debug_zf.log 2>&1); dz=$?; fi
+          if [ "$bp" -eq 0 ]; then
+            (cd axc_patch && ./camb ../m19_recfast_cases/r0f.ini > ../m19_recfast_patch_zf.log 2>&1); pz=$?
+            (cd axc_patch && ./camb ../m19_recfast_cases/p1.ini > ../m19_recfast_patch_p1.log 2>&1); pp=$?
+          fi
+          if [ "$bo" -eq 0 ]; then (cd axc_orig && ./camb ../m19_recfast_cases/p1.ini > ../m19_recfast_orig_p1.log 2>&1); po=$?; fi
+          python3 - <<PY
+          import json
+          p='m19_recfast_status.json'; d=json.load(open(p)); d.update({'debug_zf':$dz,'patch_zf':$pz,'patch_p1':$pp,'orig_p1':$po}); open(p,'w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          cat m19_recfast_status.json
+          exit 0
+
+      - name: Classify frozen diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re
+          from pathlib import Path
+          st=json.load(open('m19_recfast_status.json'))
+          log=Path('m19_recfast_debug_zf.log').read_text(errors='replace') if Path('m19_recfast_debug_zf.log').exists() else ''
+          bad_a='KMDSB_RECFAST_BAD_A' in log
+          bad_z='KMDSB_RECFAST_BAD_Z' in log
+          bad_zst='KMDSB_RECFAST_BAD_ZST' in log
+          if st['build_debug']!=0 or not log:
+              cls='M19_RECFAST_DIAGNOSTIC_BLOCKED'
+          elif bad_a or bad_z or bad_zst:
+              cls='M19_RECFAST_INPUT_NONFINITE_LOCALIZED_WITH_SCOPE'
+          elif 'recfast_axion.f90:451' in log or 'Recombination_xe' in log:
+              cls='M19_RECFAST_INDEX_FAILURE_NOT_PRECURSOR_LOCALIZED'
+          else:
+              cls='M19_RECFAST_DIAGNOSTIC_BLOCKED'
+          def last(key):
+              vals=re.findall(r'^'+re.escape(key)+r'\s*([+\-0-9.Ee]+)',log,re.M)
+              return vals[-1] if vals else None
+          res={
+            'schema':'KMDSB.M19.axionCAMB2.recfastInputLocalization.v1',
+            'provider_pin':'891e779cc0bd422e49f97533e6c2fc761149737d',
+            'preregistration':'protocol/W04_M19_RECFAST_INPUT_LOCALIZATION_PREREGISTRATION_v0.1.md',
+            'classification':cls,
+            'physical_falsification':False,
+            'scientific_promotion':{'K1':False,'K2_K9':False},
+            'status':st,
+            'markers':{'bad_a':bad_a,'bad_z':bad_z,'bad_zst':bad_zst},
+            'last_values':{
+              'a':last('KMDSB_RECFAST_A='),
+              'z':last('KMDSB_RECFAST_Z='),
+              'zst':last('KMDSB_RECFAST_ZST='),
+              'zinitial':last('KMDSB_RECFAST_ZINITIAL='),
+              'delta_z':last('KMDSB_RECFAST_DELTA_Z='),
+            },
+          }
+          open('m19_recfast_result.json','w').write(json.dumps(res,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(res,indent=2,sort_keys=True))
+          PY
+
+      - name: Persist diagnostic result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m19_recfast_result.json /tmp/m19_recfast_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/fuzzy_ultralight_axion waves/wave_04_dark_matter
+          cp /tmp/m19_recfast_result.json models/fuzzy_ultralight_axion/M19_RECFAST_INPUT_LOCALIZATION_RESULT.json
+          cp /tmp/m19_recfast_result.json waves/wave_04_dark_matter/M19_RECFAST_INPUT_LOCALIZATION_RESULT.json
+          git add models/fuzzy_ultralight_axion/M19_RECFAST_INPUT_LOCALIZATION_RESULT.json waves/wave_04_dark_matter/M19_RECFAST_INPUT_LOCALIZATION_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M19 RECFAST input localization result'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Upload immutable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m19-recfast-input-localization
+          path: |
+            m19_recfast_pin.txt
+            m19_recfast_cases/
+            m19_recfast_build_*.log
+            m19_recfast_*.log
+            m19_recfast_status.json
+            m19_recfast_result.json
+            verification/m19/axioncamb2_recfast_input_diag.py
+            verification/m19/axioncamb2_zero_bypass_recovery.py
+            protocol/W04_M19_RECFAST_INPUT_LOCALIZATION_PREREGISTRATION_v0.1.md
+          retention-days: 90
