@@ -1,0 +1,152 @@
+name: W03 M18 ghost-condensate reference probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m18-ghost-condensate-reference-probe.yml'
+      - 'protocol/W03_M18_GHOST_CONDENSATE_REFERENCE_PROBE_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  m18-reference-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch and build pinned CLASS_GSF
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/KunhaoZhong/CLASS_GSF.git class_gsf
+          cd class_gsf
+          git checkout 07e015246c4b40f4e22bb50c9a0a63a621bb61f7
+          test "$(git rev-parse HEAD)" = "07e015246c4b40f4e22bb50c9a0a63a621bb61f7"
+          make -j2 class > ../m18_build.log 2>&1
+          rm -rf output
+          mkdir -p output
+
+      - name: Freeze diagnostic configs from author dgf.ini
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p m18_cfg m18_logs
+          cp class_gsf/dgf.ini m18_cfg/dgf_author.ini
+          cp class_gsf/dgf.ini m18_cfg/dgf_lambda0.ini
+          cp class_gsf/dgf.ini m18_cfg/lcdm.ini
+
+          python3 - <<'PY'
+          from pathlib import Path
+          def replace_once(path, old, new):
+              p=Path(path); s=p.read_text()
+              if s.count(old) != 1:
+                  raise SystemExit(f'{path}: expected one occurrence of {old!r}, got {s.count(old)}')
+              p.write_text(s.replace(old,new,1))
+
+          replace_once('m18_cfg/dgf_author.ini','root = output/dgf_','root = output/m18_author_')
+          replace_once('m18_cfg/dgf_lambda0.ini','gsf_parameters = 1,  7, 1, 10 , -18, 0.2, 1','gsf_parameters = 1,  7, 1, 10 , -18, 0, 1')
+          replace_once('m18_cfg/dgf_lambda0.ini','root = output/dgf_','root = output/m18_lambda0_')
+
+          replace_once('m18_cfg/lcdm.ini','Omega_gsf = -1','Omega_gsf = 0')
+          replace_once('m18_cfg/lcdm.ini','Omega_Lambda = 0','# Omega_Lambda inferred by closure for KMDSB LCDM control')
+          replace_once('m18_cfg/lcdm.ini','root = output/dgf_','root = output/m18_lcdm_')
+          PY
+
+      - name: Run frozen diagnostic cases
+        shell: bash
+        run: |
+          set +e
+          : > m18_logs/case_exits.tsv
+          for tag in lcdm dgf_author dgf_lambda0; do
+            ./class_gsf/class "m18_cfg/${tag}.ini" > "m18_logs/${tag}.log" 2>&1
+            rc=$?
+            printf '%s\t%s\n' "$tag" "$rc" >> m18_logs/case_exits.tsv
+          done
+          exit 0
+
+      - name: Classify execution gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib
+          exits={}
+          for line in open('m18_logs/case_exits.tsv'):
+              k,v=line.split(); exits[k]=int(v)
+          if exits.get('dgf_author') != 0:
+              cls='BLOCKED_PROVIDER'
+          elif exits.get('dgf_lambda0') != 0 or exits.get('lcdm') != 0:
+              cls='BLOCKED_IMPLEMENTATION_REFERENCE_PROBE'
+          else:
+              cls='REFERENCE_PROBE_EXECUTABLE_PENDING_CONDENSATE_METRICS'
+          files=sorted(str(p) for p in pathlib.Path('class_gsf/output').glob('m18_*'))
+          out={
+            'schema':'KMDSB.W03.M18.GhostCondensateReferenceProbe.v0.1',
+            'solver':'KunhaoZhong/CLASS_GSF@07e015246c4b40f4e22bb50c9a0a63a621bb61f7',
+            'model_gsf':1,
+            'lagrangian':'P=-X+c1*exp(lambda*phi)*X^2',
+            'cases':{
+              'lcdm':'Omega_gsf=0; Omega_Lambda inferred by closure',
+              'dgf_author':'author dgf.ini except output root',
+              'dgf_lambda0':'author dgf.ini except lambda 0.2 -> 0 and output root'
+            },
+            'case_exits':exits,
+            'fresh_outputs':files,
+            'classification':cls,
+            'scientific_promotion_authorized':False,
+            'interpretation':'diagnostic reference-floor execution gate only; no K5-K9/B4-B8 promotion'
+          }
+          pathlib.Path('m18_reference_probe.json').write_text(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+
+      - name: Persist canonical probe result race-safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m18_reference_probe.json /tmp/m18_reference_probe.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/ghost_condensate
+          cp /tmp/m18_reference_probe.json waves/wave_03_expanded_dark_energy/M18_GHOST_CONDENSATE_REFERENCE_PROBE_RESULT.json
+          cp /tmp/m18_reference_probe.json models/ghost_condensate/reference_probe_result.json
+          git add waves/wave_03_expanded_dark_energy/M18_GHOST_CONDENSATE_REFERENCE_PROBE_RESULT.json models/ghost_condensate/reference_probe_result.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M18 ghost-condensate reference probe result'
+            git push origin HEAD:main
+          fi
+
+      - name: Record provenance
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "KMDSB_TRIGGER_HEAD=${GITHUB_SHA}"
+            echo "CLASS_GSF_HEAD=$(git -C class_gsf rev-parse HEAD 2>/dev/null || true)"
+            echo 'model_gsf=1'
+            echo 'author_lambda=0.2'
+            echo 'reference_lambda=0'
+            echo 'c1=index6 shooting nuisance retained'
+            echo 'scope=diagnostic reference floor only'
+          } > m18_provenance.txt
+
+      - name: Upload immutable M18 probe bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m18-ghost-condensate-reference-probe
+          path: |
+            m18_reference_probe.json
+            m18_provenance.txt
+            m18_build.log
+            m18_cfg/
+            m18_logs/
+            class_gsf/output/m18_*
+          if-no-files-found: warn
+          retention-days: 90
