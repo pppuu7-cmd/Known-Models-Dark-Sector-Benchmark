@@ -1,0 +1,33 @@
+{
+  "schema": "KMDSB.W03.M16.IDECAMB.InteractingVacuumK0K1.v0.1",
+  "provider_base": "cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4",
+  "provider_overlay": "liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075",
+  "scope": "interacting-vacuum Q=beta H rho_de, Q_mu parallel u_c only; not full running-vacuum Lambda(H) class",
+  "build_exit": 0,
+  "case_exits": {
+    "m16_vacuum_beta0": 0,
+    "m16_lcdm_cmp": 0
+  },
+  "files": [
+    "m16_lcdm_cmp.quantity",
+    "m16_lcdm_cmp.theory_cl",
+    "m16_vacuum_beta0.quantity",
+    "m16_vacuum_beta0.theory_cl"
+  ],
+  "quantity_metric": {
+    "max_symmetric_relative_difference": 0.0,
+    "common_finite_entries": 16000,
+    "rows": 2000
+  },
+  "theory_cl_metric": {
+    "max_symmetric_relative_difference": 0.0,
+    "common_finite_entries": 14994,
+    "rows": 2499
+  },
+  "thresholds": {
+    "max_symmetric_relative_difference": 2e-08
+  },
+  "classification": "M16_INTERACTING_VACUUM_K1_PASS_WITH_SCOPE",
+  "K2_K9_promotion_authorized": false,
+  "physical_falsification": false
+}
