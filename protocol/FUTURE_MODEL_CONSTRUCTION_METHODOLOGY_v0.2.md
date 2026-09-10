@@ -413,3 +413,7 @@ A mathematically exact symmetry/decoupling reference is not sufficient if the nu
 ### Multi-mechanism decoupling rule (M14-derived)
 When a provider contains more than one independent interaction law, a reference/decoupling gate must zero every interaction branch source-by-source. An author/config label such as "uncoupled" is not sufficient if it refers only to one subcoupling. Each interaction law should subsequently receive its own physical coordinate/quotient audit rather than being combined into an undifferentiated coupling parameter.
 
+
+
+### Interaction-closure rule from M14
+An executable interacting background plus generated CMB/P(k) products is not evidence that the interaction is closed at perturbation level. Before a response channel from an interacting model is promoted, source-bind the interaction in both background conservation/Klein-Gordon equations and the corresponding perturbation equations. Commented-out or absent interaction perturbation terms force K3 to remain partial and block K5 promotion for perturbation-derived channels. Also, a large finite response cannot substitute for step-converged tangent geometry: when prospectively frozen derivative steps fail norm/direction convergence, retain that K4 failure and map a smaller or nonlinear regime only in a new preregistration.

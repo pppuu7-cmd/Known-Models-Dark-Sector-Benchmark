@@ -95,3 +95,13 @@ After two plumbing-only harness repairs (missing numpy, then duplicate overwrite
 
 K1 is `PASS_WITH_SCOPE` for this provider/anchor. K2-K9 remain open. Next authorized step is K2 geometry/quotient audit of `cdm_c` around zero with q-sector held at zero; q-sector must be treated as a separate interaction-law axis rather than mixed into one coupling coordinate.
 
+
+## M14 update — signed geometry, local-convergence FAIL, perturbation closure partial
+
+Provider remains `kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df`. K2: signed `cdm_c` is a two-sided physical coordinate at the frozen hyperbolic anchor; `+c` and `-c` are not quotiented by field reflection because the fixed scalar potential is itself directional.
+
+Preregistered K2-K5 run `34448063620` (job `102777173085`, artifact `10140443081`, machine-result commit `c43727de9316b76a7b8be8a7f7fb127e4b14b326`) executed c=0,+-.01,+-.02. K4 fails the frozen local convergence gate: relative tangent mismatch 0.398207 >0.10 and angle 16.0238 deg >3 deg. K5 is blocked by K4; large finite response is not a substitute for a converged tangent.
+
+K3 source audit is PARTIAL: cdm_c coupling is active in background/KG, but the interacting delta_cdm mass-perturbation correction in `source/perturbations.c` is commented out and no active equivalent was found. Do not promote this provider's P(k)/Cl as complete coupled-quintessence perturbation response. No M14 physical falsification.
+
+Immediate M14 next gate: prioritize a source-complete perturbation implementation/provider. A new, independently preregistered smaller-step background-only test may map nonlinear geometry, but it must not erase or relabel the failed .01/.02 K4 gate and cannot close perturbation K3/K5.

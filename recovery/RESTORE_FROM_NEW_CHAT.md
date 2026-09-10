@@ -78,3 +78,9 @@ After two plumbing-only harness repairs (missing numpy, then duplicate overwrite
 
 K1 is `PASS_WITH_SCOPE` for this provider/anchor. K2-K9 remain open. Next authorized step is K2 geometry/quotient audit of `cdm_c` around zero with q-sector held at zero; q-sector must be treated as a separate interaction-law axis rather than mixed into one coupling coordinate.
 
+
+### 2026-09-10 M14 restore delta
+- K2 signed `cdm_c` coordinate PASS_WITH_SCOPE at frozen hyperbolic anchor.
+- Run `34448063620`, job `102777173085`, artifact `10140443081`: all five c=0,+-.01,+-.02 cases execute; K4 local convergence FAIL (norm mismatch 0.398207, angle 16.0238 deg), K5 blocked.
+- K3 PARTIAL: `cdm_c` background/KG coupling active, but interacting delta_cdm perturbation correction is commented out in provider perturbations source. Do not call its spectra full M14 perturbation closure.
+- Exact next priority: independent/source-complete M14 perturbation provider; optional smaller-step background-only mapping must be newly preregistered and cannot overwrite the failed K4 result.
