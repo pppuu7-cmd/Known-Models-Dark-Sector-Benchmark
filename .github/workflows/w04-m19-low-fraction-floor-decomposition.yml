@@ -1,0 +1,84 @@
+name: W04 M19 low-fraction floor decomposition
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m19-low-fraction-floor-decomposition.yml'
+      - 'verification/m19/low_fraction_floor_decomposition.py'
+      - 'protocol/W04_M19_LOW_FRACTION_FLOOR_DECOMPOSITION_PREREGISTRATION_v0.1.md'
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN: '34536498517'
+      SOURCE_ARTIFACT: '10175630339'
+      SOURCE_DIGEST: 'sha256:2c9c6d5df28e7221bb4754cbff932a70feeb35aaa0f2991415d1b153489502a9'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install numerical dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+      - name: Verify and download immutable source artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_ARTIFACT}" --jq '.digest')"
+          test "$actual" = "$SOURCE_DIGEST"
+          mkdir -p raw
+          gh run download "$SOURCE_RUN" -n w04-m19-external-cdm-reference-convergence -D raw
+          test -s raw/axc/a4_scalCls.dat
+          test -s raw/camb0/c0_scalCls.dat
+          test -s raw/axc/a4_transfer_out.dat
+          test -s raw/camb0/c0_transfer_out.dat
+          printf 'run=%s\nartifact=%s\ndigest=%s\n' "$SOURCE_RUN" "$SOURCE_ARTIFACT" "$actual" > m19_floor_source.txt
+      - name: Run preregistered floor decomposition
+        run: |
+          python3 verification/m19/low_fraction_floor_decomposition.py raw m19_floor_result.json
+          cat m19_floor_result.json
+      - name: Enforce diagnostic classification without K1 promotion
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('m19_floor_result.json'))
+          assert r['classification']=='M19_LOW_FRACTION_BASELINE_FLOOR_LOCALIZED_WITH_SCOPE'
+          assert r['K1_promoted'] is False
+          assert r['physical_falsification'] is False
+          assert not r['unresolved_blocks']
+          assert set(['CMB_TT','CMB_EE','T_g','T_nu']).issubset(set(r['baseline_floor_dominant_blocks']))
+          PY
+      - name: Persist canonical result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m19_floor_result.json /tmp/m19_floor_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/fuzzy_ultralight_axion
+          cp /tmp/m19_floor_result.json models/fuzzy_ultralight_axion/M19_LOW_FRACTION_FLOOR_DECOMPOSITION_RESULT.json
+          git add models/fuzzy_ultralight_axion/M19_LOW_FRACTION_FLOOR_DECOMPOSITION_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M19 low-fraction floor decomposition'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m19-low-fraction-floor-decomposition
+          path: |
+            m19_floor_source.txt
+            m19_floor_result.json
+          retention-days: 90
