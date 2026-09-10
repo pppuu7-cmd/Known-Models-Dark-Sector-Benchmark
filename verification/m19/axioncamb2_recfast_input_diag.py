@@ -13,6 +13,18 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
 def patch(src: Path) -> None:
     p = src / "recfast_axion.f90"
     s = p.read_text()
+
+    # Scope instrumentation strictly to Recombination_xe. The same interpolation
+    # statements also occur in Recombination_ts, so whole-file text matching is
+    # an infrastructure ambiguity and must not broaden the frozen diagnostic.
+    start_marker = "        function Recombination_xe(a)"
+    end_marker = "        end function Recombination_xe"
+    if s.count(start_marker) != 1 or s.count(end_marker) != 1:
+        raise RuntimeError("Recombination_xe scope markers are not unique")
+    i0 = s.index(start_marker)
+    i1 = s.index(end_marker, i0) + len(end_marker)
+    block = s[i0:i1]
+
     old1 = """        z=1/a-1
         if (z.ge.zrec(1)) then"""
     new1 = """        write(*,'(A,1PE24.16)') 'KMDSB_RECFAST_A=',a
@@ -27,7 +39,8 @@ def patch(src: Path) -> None:
           stop 92
         endif
         if (z.ge.zrec(1)) then"""
-    s = replace_once(s, old1, new1, "pre-z instrumentation")
+    block = replace_once(block, old1, new1, "Recombination_xe pre-z instrumentation")
+
     old2 = """          zst=(zinitial-z)/delta_z
           ihi= int(zst)
           ilo = ihi+1"""
@@ -41,8 +54,9 @@ def patch(src: Path) -> None:
           endif
           ihi= int(zst)
           ilo = ihi+1"""
-    s = replace_once(s, old2, new2, "pre-index instrumentation")
-    p.write_text(s)
+    block = replace_once(block, old2, new2, "Recombination_xe pre-index instrumentation")
+
+    p.write_text(s[:i0] + block + s[i1:])
 
 
 if __name__ == "__main__":
