@@ -8,6 +8,7 @@ on:
       - '.github/workflows/w04-m21-mixed-cold-warm-k1-reference.yml'
       - 'verification/m21/mixed_cold_warm_k1_reference.py'
       - 'protocol/W04_M21_MIXED_COLD_WARM_K1_REFERENCE_PREREGISTRATION_v0.1.md'
+      - 'protocol/W04_M21_CLASS_OUTPUT_ROOT_NAMING_RECOVERY_v0.1.md'
 
 permissions:
   contents: write
@@ -110,9 +111,9 @@ jobs:
             m21_result.json
             m21_build.log
             m21_*.log
-            class/output/ref_background.dat
-            class/output/ref_pk.dat
-            class/output/ref_cl.dat
+            class/output/ref_*_background.dat
+            class/output/ref_*_pk.dat
+            class/output/ref_*_cl.dat
             class/output/f*_background.dat
             class/output/f*_pk.dat
             class/output/f*_cl.dat
