@@ -1,0 +1,140 @@
+name: W03 M14 LisaGoh CDE provider control
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-lisagoh-cde-provider-control.yml'
+      - 'protocol/W03_M14_LISAGOH_CDE_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  provider-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch exact author provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/LisaGoh/CDE.git provider
+          git -C provider checkout b85a675af7544a5183e402964550811aa805b698
+          test "$(git -C provider rev-parse HEAD)" = "b85a675af7544a5183e402964550811aa805b698"
+          gcc --version | head -1 > runtime.txt
+          python3 --version >> runtime.txt
+
+      - name: Compile exact committed source
+        shell: bash
+        run: |
+          set +e
+          cd provider/class_CDE
+          make clean > ../../build.log 2>&1
+          make -j2 >> ../../build.log 2>&1
+          echo "$?" > ../../build.exit
+          cd ../..
+          cat build.log
+          exit 0
+
+      - name: Execute exact committed CDE.ini
+        shell: bash
+        run: |
+          set +e
+          : > before_files.txt
+          : > after_files.txt
+          if [ "$(cat build.exit)" = "0" ]; then
+            cd provider/class_CDE
+            find . -type f -printf '%p\t%T@\t%s\n' | sort > ../../before_files.txt
+            ./class CDE.ini > ../../provider.log 2>&1
+            ec=$?
+            find . -type f -printf '%p\t%T@\t%s\n' | sort > ../../after_files.txt
+            echo "$ec" > ../../run.exit
+            cd ../..
+          else
+            echo 999 > run.exit
+          fi
+          cat provider.log 2>/dev/null || true
+          exit 0
+
+      - name: Classify fresh products
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          build=int(Path('build.exit').read_text().strip())
+          run=int(Path('run.exit').read_text().strip())
+          before={}
+          for ln in Path('before_files.txt').read_text(errors='replace').splitlines():
+              if not ln.strip(): continue
+              p,t,s=ln.split('\t'); before[p]=(float(t),int(s))
+          after={}
+          for ln in Path('after_files.txt').read_text(errors='replace').splitlines():
+              if not ln.strip(): continue
+              p,t,s=ln.split('\t'); after[p]=(float(t),int(s))
+          fresh=[]
+          for p,(t,s) in after.items():
+              if s<=0: continue
+              old=before.get(p)
+              if old is None or t>old[0]+1e-9 or s!=old[1]: fresh.append({'path':p,'size':s})
+          def hits(parts):
+              return [x for x in fresh if any(k in x['path'].lower() for k in parts)]
+          bg=hits(['background.dat'])
+          pk=[x for x in fresh if ('pk.dat' in x['path'].lower() or 'pk_cb.dat' in x['path'].lower()) and 'nl.dat' not in x['path'].lower()]
+          cl=hits(['cl.dat','cl_lensed.dat'])
+          tk=hits(['tk.dat'])
+          passed=build==0 and run==0 and bool(bg) and bool(pk) and bool(cl) and bool(tk)
+          result={
+            'schema':'KMDSB.W03.M14.LisaGohCDEProviderControl.v0.1',
+            'provider':'LisaGoh/CDE@b85a675af7544a5183e402964550811aa805b698',
+            'workload':'class_CDE/CDE.ini unmodified',
+            'build_exit':build,'run_exit':run,
+            'fresh_counts':{'background':len(bg),'linear_pk':len(pk),'cl':len(cl),'transfer':len(tk)},
+            'fresh_products':fresh,
+            'classification':'M14_LISAGOH_CDE_PROVIDER_CONTROL_PASS' if passed else 'M14_LISAGOH_CDE_PROVIDER_CONTROL_BLOCKED_IMPLEMENTATION_OR_RUNTIME',
+            'K0_execution':'PASS_WITH_SCOPE' if passed else 'BLOCKED',
+            'K1_authorized':bool(passed),
+            'K3_numerical_promotion_authorized':False,
+            'physical_falsification_authorized':False
+          }
+          Path('m14_lisagoh_cde_provider_control.json').write_text(json.dumps(result,indent=2)+'\n')
+          print(json.dumps(result,indent=2))
+          PY
+
+      - name: Persist canonical provider result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m14_lisagoh_cde_provider_control.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/coupled_quintessence waves/wave_03_expanded_dark_energy
+          cp /tmp/result.json models/coupled_quintessence/lisagoh_cde_provider_control.json
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_LISAGOH_CDE_PROVIDER_CONTROL_RESULT.json
+          git add models/coupled_quintessence/lisagoh_cde_provider_control.json waves/wave_03_expanded_dark_energy/M14_LISAGOH_CDE_PROVIDER_CONTROL_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record LisaGoh CDE M14 provider control'
+            git push origin HEAD:main
+          fi
+
+      - name: Upload immutable provider bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m14-lisagoh-cde-provider-control
+          path: |
+            m14_lisagoh_cde_provider_control.json
+            runtime.txt
+            build.log
+            build.exit
+            provider.log
+            run.exit
+            before_files.txt
+            after_files.txt
+          retention-days: 90
