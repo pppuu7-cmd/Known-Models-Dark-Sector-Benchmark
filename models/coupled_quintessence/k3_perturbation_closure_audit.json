@@ -1,0 +1,26 @@
+{
+  "schema": "KMDSB.M14.K3PerturbationClosureAudit.v0.1",
+  "provider": "kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df",
+  "interaction_axis": "field-dependent CDM mass cdm_c with q1-q4=0",
+  "background_source_binding": {
+    "mass_law": "m_CDM(phi)=m0/2*(1-tanh(cdm_c*phi))",
+    "rho_cdm_prime": "-cdm_c*(1+tanh(cdm_c*phi))*rho_cdm",
+    "kg_equation_contains_rho_cdm_prime": true,
+    "effective_scalar_derivative_contains_coupling_path": true
+  },
+  "perturbation_source_audit": {
+    "source_file": "source/perturbations.c",
+    "active_cdm_c_occurrences_found": 0,
+    "active_model_cdm_interacting_occurrences_found": 0,
+    "commented_interacting_delta_cdm_correction_found": true,
+    "commented_fragment_meaning": "source contains an interacting-DM mass-density perturbation correction proportional to cdm_c and delta phi, but it is commented out; active perturbation evolution therefore is not source-bound here as the full perturbation closure of the background interaction"
+  },
+  "classification": "K3_PARTIAL_PERTURBATION_CLOSURE_NOT_IMPLEMENTED_FOR_CDM_C_AXIS",
+  "K3": "PARTIAL",
+  "promotion_limits": {
+    "background_response": "allowed with scope",
+    "Pk_or_Cl_as_full_coupled_quintessence_perturbation_response": "not authorized",
+    "K5_full_multichannel_promotion": "blocked until a conservation-consistent perturbation implementation is source-bound or an independent provider is used"
+  },
+  "interpretation": "This is an implementation/closure limitation of the pinned provider branch, not a physical falsification of coupled quintessence. Executable spectra alone do not establish perturbation-level conservation closure."
+}
