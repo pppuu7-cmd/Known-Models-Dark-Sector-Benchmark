@@ -1,0 +1,198 @@
+name: W03 M14 IDECAMB full serialization
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-idecamb-full-serialization.yml'
+      - 'protocol/W03_M14_IDECAMB_FULL_SERIALIZATION_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  full-serialization:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync python3
+
+      - name: Fetch pinned provider and increase text serialization only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/cmbant/CosmoMC.git cosmomc_base
+          git -C cosmomc_base checkout eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone https://github.com/liaocrane/IDECAMB.git idecamb_patch
+          git -C idecamb_patch checkout 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          rsync -a --exclude='.git' idecamb_patch/ cosmomc_base/
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('cosmomc_base/camb/equations_ppfi.f90')
+          s=p.read_text()
+          old="write (1,'(11E15.5)')"
+          if s.count(old)!=1: raise SystemExit(f'quantity format count={s.count(old)}')
+          p.write_text(s.replace(old,"write (1,'(11ES25.15E3)')",1))
+          p=Path('cosmomc_base/source/CosmoTheory.f90')
+          s=p.read_text()
+          old="character(LEN=*), parameter :: fmt = '(1I6,*(E15.5))'"
+          new="character(LEN=*), parameter :: fmt = '(1I6,*(ES25.15E3))'"
+          if s.count(old)!=1: raise SystemExit(f'theory_cl format count={s.count(old)}')
+          p.write_text(s.replace(old,new,1))
+          Path('serialization_patch_manifest.txt').write_text(
+              'quantity=11E15.5 -> 11ES25.15E3\n'
+              'theory_cl=(1I6,*(E15.5)) -> (1I6,*(ES25.15E3))\n'
+              'physics_changes=false\n'
+              'initial_condition=upstream\n'
+              'broyden=upstream\n')
+          PY
+          set +e
+          make -C cosmomc_base cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > build.log 2>&1
+          echo "$?" > build.exit
+          set -e
+
+      - name: Prepare frozen beta grid
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path('cosmomc_base/test_ide.ini').read_text()
+          likes=['DEFAULT(batch3/plik_rd12_HM_v22_TTTEEE.ini)','DEFAULT(batch3/lowl.ini)','DEFAULT(batch3/lowE.ini)','DEFAULT(batch3/lensing.ini)','DEFAULT(batch3/BAO.ini)','DEFAULT(batch3/Pantheon18.ini)']
+          for tag,beta in [('b0','0'),('b5e8','0.00000005'),('b1e7','0.00000010')]:
+              s=base
+              for old,new in [
+                  ('Class_IDE = 1 ','Class_IDE = 2 '),
+                  ('param[alpha_quint]= 0.02 0 1.4 0.1 0.1','param[alpha_quint]= 0.02'),
+                  ('param[beta_cq]= 0.01 0 0.15 0.05 0.05',f'param[beta_cq]= {beta}'),
+                  ('#test_output_root = output_ide',f'test_output_root = m14fs_{tag}'),
+                  ('test_check_compare = 1820.775','#test_check_compare = 1820.775')]:
+                  if s.count(old)!=1: raise SystemExit(f'{tag}: {old!r} count={s.count(old)}')
+                  s=s.replace(old,new,1)
+              for x in likes:
+                  if s.count(x)!=1: raise SystemExit(f'{tag}: likelihood count {x}={s.count(x)}')
+                  s=s.replace(x,'#'+x,1)
+              Path(f'{tag}.ini').write_text(s)
+          PY
+
+      - name: Execute frozen grid
+        shell: bash
+        run: |
+          set +e
+          : > case_exits.tsv
+          if [ "$(cat build.exit)" != "0" ]; then exit 0; fi
+          for tag in b0 b5e8 b1e7; do
+            cp "${tag}.ini" "cosmomc_base/${tag}.ini"
+            (cd cosmomc_base && rm -f "m14fs_${tag}"* && ./cosmomc "${tag}.ini") > "${tag}.log" 2>&1
+            echo -e "${tag}\t$?" >> case_exits.tsv
+          done
+          exit 0
+
+      - name: Analyze combined and channel-local K4
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,math,pathlib
+          build=int(pathlib.Path('build.exit').read_text()); exits={}
+          for line in pathlib.Path('case_exits.tsv').read_text().splitlines() if pathlib.Path('case_exits.tsv').exists() else []:
+              if line.strip(): k,v=line.split(); exits[k]=int(v)
+          tags=['b0','b5e8','b1e7']; data={}; ok=build==0 and all(exits.get(t)==0 for t in tags)
+          def load(p):
+              out=[]
+              for line in pathlib.Path(p).read_text(errors='replace').splitlines():
+                  y=line.strip()
+                  if not y or y.startswith('#'): continue
+                  try: out.append([float(x.replace('D','E').replace('d','e')) for x in y.split()])
+                  except Exception: pass
+              return out
+          for t in tags:
+              q=pathlib.Path('cosmomc_base')/f'm14fs_{t}.quantity'; c=pathlib.Path('cosmomc_base')/f'm14fs_{t}.theory_cl'
+              if not q.exists() or not c.exists(): ok=False; data[t]=([],[]); continue
+              qq,cc=load(q),load(c); data[t]=(qq,cc)
+              if len(qq)!=2000 or any(len(r)!=11 for r in qq) or len(cc)!=2499 or any(len(r)!=6 for r in cc): ok=False
+              if any(not math.isfinite(v) for r in qq for v in r) or any(not math.isfinite(v) for r in cc for v in r): ok=False
+          names=['dln_rho_de','dln_rho_c','dln_H','dw','qhat','dln_TT','dln_EE','dln_PP']
+          def response(tag):
+              q0,c0=data['b0']; q,c=data[tag]; ch={n:[] for n in names}; tiny=1e-300
+              if len(q)!=len(q0) or len(c)!=len(c0): raise ValueError('shape mismatch')
+              for r0,r in zip(q0,q):
+                  if r0[0]!=r[0]: raise ValueError('a grid')
+                  for n,j in [('dln_rho_de',2),('dln_rho_c',3),('dln_H',4)]:
+                      if r0[j]>0 and r[j]>0: ch[n].append(math.log(r[j]/r0[j]))
+                  ch['dw'].append(r[5]-r0[5]); ch['qhat'].append(r[6]/(abs(r[4])*(abs(r[2])+abs(r[3]))+tiny))
+              for r0,r in zip(c0,c):
+                  if r0[0]!=r[0]: raise ValueError('ell grid')
+                  for n,j in [('dln_TT',1),('dln_EE',3),('dln_PP',5)]:
+                      if r0[j]>0 and r[j]>0: ch[n].append(math.log(r[j]/r0[j]))
+              if any(not ch[n] for n in names): raise ValueError('empty channel')
+              return ch
+          def geometry(x,y,h=5e-8,h2=1e-7):
+              a=[v/h for v in x]; b=[v/h2 for v in y]
+              na=math.sqrt(sum(v*v for v in a)); nb=math.sqrt(sum(v*v for v in b))
+              if na==0 or nb==0: return {'norm_h':na,'norm_2h':nb,'relative_norm_mismatch':None,'angle_deg':None}
+              cs=max(-1.,min(1.,sum(u*v for u,v in zip(a,b))/(na*nb)))
+              return {'norm_h':na,'norm_2h':nb,'relative_norm_mismatch':abs(na-nb)/max(na,nb),'angle_deg':math.degrees(math.acos(cs))}
+          result={'schema':'KMDSB.W03.M14.IDECAMBFullSerialization.v0.1','grid':[0,5e-8,1e-7],'case_exits':exits,'serialization':{'quantity':'11ES25.15E3','theory_cl':'1I6+ES25.15E3'},'physical_changes':False,'upstream_high_precision_background_only':{'relative_norm_mismatch':0.009270610485819343,'angle_deg':8.04171613320909},'precontrol_cmb_angles_deg':{'dln_TT':49.620162,'dln_EE':53.559476,'dln_PP':41.169064},'physical_falsification_authorized':False,'observational_claim_authorized':False}
+          if not ok:
+              result['classification']='M14_IDECAMB_FULL_SERIALIZATION_BLOCKED_IMPLEMENTATION'; result['K4']='NOT_SCORED'
+          else:
+              try:
+                  r1=response('b5e8'); r2=response('b1e7'); all1=[];all2=[]; chans={}
+                  for n in names:
+                      g=geometry(r1[n],r2[n]); g['fine_max_abs_response']=max(abs(v) for v in r1[n]); g['points']=len(r1[n]); chans[n]=g
+                      all1.extend(r1[n]); all2.extend(r2[n])
+                  comb=geometry(all1,all2); comb['norm_threshold']=0.10; comb['angle_threshold_deg']=3.0
+                  result['combined']=comb; result['channels']=chans
+                  passed=comb['relative_norm_mismatch']<=0.10 and comb['angle_deg']<=3.0
+                  result['K4']='PASS_FULL_SERIALIZATION_CONTROL' if passed else 'FAIL_FULL_SERIALIZATION_CONTROL'
+                  if passed:
+                      result['classification']='M14_IDECAMB_K4_SERIALIZATION_ARTIFACT_CAUSAL_SUPPORT'
+                  else:
+                      old={'dln_TT':49.620162,'dln_EE':53.559476,'dln_PP':41.169064}
+                      half_all=all(chans[n]['angle_deg'] < 0.5*old[n] for n in old)
+                      result['classification']='M14_IDECAMB_CMB_SERIALIZATION_PARTIAL_CAUSAL_SUPPORT' if half_all else 'M14_IDECAMB_FULL_SERIALIZATION_NOT_SUFFICIENT'
+              except Exception as e:
+                  result['classification']='M14_IDECAMB_FULL_SERIALIZATION_ANALYZER_BLOCKED'; result['K4']='NOT_SCORED'; result['error']=repr(e)
+          pathlib.Path('m14_full_serialization.json').write_text(json.dumps(result,indent=2,allow_nan=False)+'\n')
+          print(json.dumps(result,indent=2))
+          PY
+
+      - name: Persist canonical result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m14_full_serialization.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/coupled_quintessence
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_IDECAMB_FULL_SERIALIZATION_RESULT.json
+          cp /tmp/result.json models/coupled_quintessence/idecamb_full_serialization.json
+          git add waves/wave_03_expanded_dark_energy/M14_IDECAMB_FULL_SERIALIZATION_RESULT.json models/coupled_quintessence/idecamb_full_serialization.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record IDECAMB M14 full-serialization control'
+            git push origin HEAD:main
+          fi
+
+      - name: Upload immutable diagnostic bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m14-idecamb-full-serialization
+          path: |
+            m14_full_serialization.json
+            serialization_patch_manifest.txt
+            build.log
+            build.exit
+            case_exits.tsv
+            b0.ini
+            b5e8.ini
+            b1e7.ini
+            b0.log
+            b5e8.log
+            b1e7.log
+            cosmomc_base/m14fs_*.quantity
+            cosmomc_base/m14fs_*.theory_cl
+          retention-days: 90
