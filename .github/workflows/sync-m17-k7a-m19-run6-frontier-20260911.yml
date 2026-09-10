@@ -1,0 +1,75 @@
+name: Sync M17 K7a measured and M19 blockwise frontier 20260911
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-m17-k7a-m19-run6-frontier-20260911.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Synchronize validated frontier
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv, json
+          from pathlib import Path
+
+          m17=json.loads(Path('models/holographic_dark_energy/M17_K7A_PLANCK_PLIKLITE_COVARIANCE_RESULT.json').read_text())
+          assert m17['classification']=='M17_K7A_PLANCK_PLIKLITE_COVARIANCE_MEASURED'
+          assert abs(m17['S_cov']-3.1648604655690433)<1e-12
+          m19=json.loads(Path('models/fuzzy_ultralight_axion/M19_EXTERNAL_CDM_REFERENCE_CONVERGENCE_RESULT.json').read_text())
+          assert m19['classification']=='M19_EXTERNAL_CDM_REFERENCE_CONVERGENCE_NOT_ESTABLISHED'
+          assert m19['failing_blocks']==['CMB_TT','CMB_EE','T_g','T_nu']
+
+          p=Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(p.open())); fields=list(rows[0].keys())
+          for r in rows:
+              if r['family_id']=='F17':
+                  r['K7_common_observation_space']='PARTIAL_COVARIANCE_WEIGHTING_ONLY'
+                  extra=(' K7a Planck-2018 Plik_lite covariance is now measured after output-format recoveries: S_cov=3.1648604655690433 (TT-only block 2.30066, TE 1.95135, EE 1.16890). This is raw fixed-cosmology covariance weighting only; K7b nuisance/cosmological profiling remains required and no observational-distinguishability promotion is authorized.')
+                  if extra.strip() not in r['notes']: r['notes'] += extra
+              if r['family_id']=='F19':
+                  r['K1_reference']='BLOCKED_EXTERNAL_LIMIT_CONVERGENCE_NOT_ESTABLISHED'
+                  extra=(' External pure-CDM limit test now executes all five finite axionCAMB points and the historical CAMB reference. After preregistered semantic/blockwise output conformance, Pk, CMB_TE, T_cdm, T_b, T_r and T_tot converge, while CMB_TT, CMB_EE, T_g and T_nu fail the frozen convergence gates. K1 is not promoted; cross-provider baseline/low-fraction localization is required before any physical interpretation.')
+                  if extra.strip() not in r['notes']: r['notes'] += extra
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          p=Path('matrices/model_family_census.csv')
+          rows=list(csv.DictReader(p.open())); fields=list(rows[0].keys())
+          for r in rows:
+              if r['family_id']=='F17':
+                  r['status']='LINEAR_EPPF_K3_PASS_C060_CPL_K6_SURVIVOR_K7A_COVARIANCE_MEASURED_K7B_OPEN'
+                  extra=(' K7a fixed-cosmology Planck-lite covariance residual measured S_cov=3.1648604655690433; this is not a final significance claim because K7b nuisance/cosmological profiling is open.')
+                  if extra.strip() not in r['notes']: r['notes'] += extra
+              if r['family_id']=='F19':
+                  r['status']='EXTERNAL_LIMIT_BLOCKWISE_NONCONVERGENCE_DIAGNOSIS_K1_OPEN'
+                  extra=(' Run with semantic transfer mapping and preregistered blockwise analyzer leaves failures in CMB_TT, CMB_EE, T_g and T_nu; other common blocks converge. No physical fail and no K1 promotion.')
+                  if extra.strip() not in r['notes']: r['notes'] += extra
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          block='''\n\n## 2026-09-11 — M17 K7a measured / M19 blockwise external-limit frontier\n- M17 K7a is no longer output-blocked. After prospectively frozen output-coverage and header-format recoveries, the pinned HDE c=0.6 and best-CPL cases both execute through ell=2600 and the validated Planck-2018 Plik_lite 613-bin operator gives S_cov=3.1648604655690433 (S_cov^2=10.0163417665219). This remains fixed-cosmology covariance weighting only; K7b nuisance/cosmological profiling is mandatory before any observational-distinguishability claim.\n- M19 external-limit run with the preregistered semantic transfer projection and blockwise analyzer executes every provider point successfully. Passing common blocks: CMB_TE, Pk, T_cdm, T_b, T_r, T_tot. Failing frozen convergence gates: CMB_TT, CMB_EE, T_g, T_nu. Classification is M19_EXTERNAL_CDM_REFERENCE_CONVERGENCE_NOT_ESTABLISHED; K1 remains open. The pattern is diagnostic of a likely cross-provider/low-fraction floor in several channels and must not be called FDM falsification.\n- Strict terminal/represented coverage remains 4/46. Operational polygon readiness is approximately 50%; this estimate is not a strict census metric.\n'''
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+              p=Path(fn); s=p.read_text()
+              marker='## 2026-09-11 — M17 K7a measured / M19 blockwise external-limit frontier'
+              if marker not in s: p.write_text(s+block)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/mandatory_properties_matrix.csv matrices/model_family_census.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'Sync M17 K7a measured and M19 blockwise frontier'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
