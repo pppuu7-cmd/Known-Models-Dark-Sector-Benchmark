@@ -1,0 +1,79 @@
+{
+  "schema": "KMDSB.W03.M14.IDECAMBCoupledInnerIC.v0.1",
+  "grid": [
+    0,
+    5e-08,
+    1e-07
+  ],
+  "global_amin": 1e-12,
+  "case_exits": {
+    "b0": 0,
+    "b5e8": 0,
+    "b1e7": 0
+  },
+  "shooting": {
+    "b0": null,
+    "b5e8": null,
+    "b1e7": null
+  },
+  "initial_state": "beta0_upstream_tracker_beta_positive_leading_coupling_radiation_inner",
+  "broyden_update": "upstream_unchanged",
+  "upstream_high_precision_metrics": {
+    "relative_norm_mismatch": 0.009270610485819343,
+    "angle_deg": 8.04171613320909
+  },
+  "physical_falsification_authorized": false,
+  "observational_claim_authorized": false,
+  "scientific_provider_promotion_authorized": false,
+  "metrics": {
+    "relative_norm_mismatch": 0.009270617806507004,
+    "norm_threshold": 0.1,
+    "angle_deg": 8.041717531178694,
+    "angle_threshold_deg": 3.0,
+    "fine_max_abs_response": 0.000695253776585683,
+    "channel_metrics": {
+      "dln_rho_de": {
+        "fine_max_abs": 0.000695253776585683,
+        "fine_norm": 0.007350173290738945,
+        "points": 2000
+      },
+      "dln_rho_c": {
+        "fine_max_abs": 6.506408501899267e-09,
+        "fine_norm": 2.718168515033519e-07,
+        "points": 2000
+      },
+      "dln_H": {
+        "fine_max_abs": 2.6783288884162006e-09,
+        "fine_norm": 9.433753680910946e-08,
+        "points": 2000
+      },
+      "dw": {
+        "fine_max_abs": 0.0005811729122903175,
+        "fine_norm": 0.005429986691024308,
+        "points": 2000
+      },
+      "qhat": {
+        "fine_max_abs": 2.9712910071410836e-09,
+        "fine_norm": 4.473262763633079e-08,
+        "points": 2000
+      },
+      "dln_TT": {
+        "fine_max_abs": 9.536979645790045e-05,
+        "fine_norm": 0.00019507988581069183,
+        "points": 2499
+      },
+      "dln_EE": {
+        "fine_max_abs": 6.322911070361179e-05,
+        "fine_norm": 0.0001023463409932745,
+        "points": 2499
+      },
+      "dln_PP": {
+        "fine_max_abs": 8.523332628202676e-05,
+        "fine_norm": 0.0005808552039411753,
+        "points": 2499
+      }
+    }
+  },
+  "K4_diagnostic": "FAIL_COUPLING_AWARE_INNER_IC",
+  "classification": "M14_IDECAMB_INNER_IC_NOT_SUFFICIENT"
+}
