@@ -1,0 +1,100 @@
+name: W04 M22 annihilating-DM K1 v2 continuity
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m22-annihilating-dm-k1-v2-continuity.yml'
+      - 'verification/m22/annihilating_dm_k1_v2_continuity.py'
+      - 'protocol/W04_M22_ANNIHILATING_DM_K1_V2_CONTINUITY_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  k1v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+      - name: Pin and build CLASS
+        shell: bash
+        run: |
+          set +e
+          git clone -q https://github.com/lesgourg/class_public.git class
+          clone=$?; checkout=999; build=999
+          if [ "$clone" -eq 0 ]; then git -C class checkout -q --detach "$CLASS_PIN"; checkout=$?; fi
+          if [ "$checkout" -eq 0 ]; then make -C class -j2 > m22v2_build.log 2>&1; build=$?; fi
+          printf '{"clone":%d,"checkout":%d,"build":%d}\n' "$clone" "$checkout" "$build" > m22v2_status.json
+          exit 0
+      - name: Prepare frozen v2 cases
+        run: python3 verification/m22/annihilating_dm_k1_v2_continuity.py prepare m22v2_cases
+      - name: Execute exact zero and v2 tail
+        shell: bash
+        run: |
+          set +e
+          build=$(python3 -c "import json;print(json.load(open('m22v2_status.json'))['build'])")
+          ref=999; zero=999; p0=999; p1=999; p2=999; p3=999; p4=999; p5=999
+          mkdir -p class/output
+          if [ "$build" -eq 0 ]; then
+            (cd class && ./class ../m22v2_cases/ref.ini > ../m22v2_ref.log 2>&1); ref=$?
+            (cd class && ./class ../m22v2_cases/zero.ini > ../m22v2_zero.log 2>&1); zero=$?
+            for i in 0 1 2 3 4 5; do (cd class && ./class ../m22v2_cases/p${i}.ini > ../m22v2_p${i}.log 2>&1); eval p${i}=$?; done
+          fi
+          python3 - <<PY
+          import json
+          p='m22v2_status.json';d=json.load(open(p));d.update({'ref':$ref,'zero':$zero,'p0':$p0,'p1':$p1,'p2':$p2,'p3':$p3,'p4':$p4,'p5':$p5});open(p,'w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          cat m22v2_status.json
+          exit 0
+      - name: Analyze preregistered v2 gate
+        run: |
+          python3 verification/m22/annihilating_dm_k1_v2_continuity.py analyze class m22v2_status.json m22v2_result.json
+          cat m22v2_result.json
+      - name: Persist canonical v2 result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m22v2_result.json /tmp/m22v2_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main; git reset --hard origin/main
+          mkdir -p models/annihilating_dark_matter waves/wave_04_dark_matter
+          cp /tmp/m22v2_result.json models/annihilating_dark_matter/M22_K1_V2_CONTINUITY_RESULT.json
+          cp /tmp/m22v2_result.json waves/wave_04_dark_matter/M22_K1_V2_CONTINUITY_RESULT.json
+          git add models/annihilating_dark_matter/M22_K1_V2_CONTINUITY_RESULT.json waves/wave_04_dark_matter/M22_K1_V2_CONTINUITY_RESULT.json
+          if ! git diff --cached --quiet; then git commit -m 'Record M22 K1 v2 continuity result'; git pull --rebase origin main; git push origin HEAD:main; fi
+      - name: Enforce scientific classification
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/m22v2_result.json'))
+          assert r['physical_falsification'] is False and r['K4_promoted'] is False
+          if r['classification']!='M22_K1_V2_REFERENCE_LIMIT_PASS_WITH_SCOPE_NATIVE_ENERGY_INJECTION': raise SystemExit(1)
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m22-annihilating-dm-k1-v2-continuity
+          path: |
+            m22v2_cases/
+            m22v2_status.json
+            m22v2_result.json
+            m22v2_build.log
+            m22v2_*.log
+            class/output/ref_cl.dat
+            class/output/ref_pk.dat
+            class/output/zero_cl.dat
+            class/output/zero_pk.dat
+            class/output/p*_cl.dat
+            class/output/p*_pk.dat
+          retention-days: 90
