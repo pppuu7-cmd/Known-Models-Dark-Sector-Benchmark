@@ -1,0 +1,66 @@
+name: W03 M17 Planck2018 Plik-lite operator control
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m17-plik-lite-operator-control.yml'
+      - 'verification/m17/plik_lite_operator_control.py'
+      - 'protocol/W03_M17_PLANCK2018_PLIK_LITE_OPERATOR_CONTROL_PREREGISTRATION_v0.1.md'
+permissions:
+  contents: write
+jobs:
+  operator-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Pin Plik-lite implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/heatherprince/planck-lite-py.git plik_lite
+          git -C plik_lite checkout -q --detach 2c0d0f67e59ce781654cf62dd7fb10757b0e60be
+          test "$(git -C plik_lite rev-parse HEAD)" = 2c0d0f67e59ce781654cf62dd7fb10757b0e60be
+      - name: Install numerical dependencies
+        run: python3 -m pip install --quiet numpy scipy
+      - name: Execute preregistered operator control
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m17/plik_lite_operator_control.py plik_lite m17_plik_operator_result.json | tee m17_plik_operator.log
+      - name: Persist result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m17_plik_operator_result.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/holographic_dark_energy waves/wave_03_expanded_dark_energy
+          cp /tmp/result.json models/holographic_dark_energy/M17_PLIK_LITE_OPERATOR_CONTROL_RESULT.json
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M17_PLIK_LITE_OPERATOR_CONTROL_RESULT.json
+          git add models/holographic_dark_energy/M17_PLIK_LITE_OPERATOR_CONTROL_RESULT.json waves/wave_03_expanded_dark_energy/M17_PLIK_LITE_OPERATOR_CONTROL_RESULT.json
+          git diff --cached --quiet || { git commit -m 'Record M17 Plik-lite operator control'; git pull --rebase origin main; git push origin HEAD:main; }
+      - name: Enforce control gate
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/result.json'))
+          print(r['classification'])
+          raise SystemExit(0 if r['classification']=='M17_PLIK_LITE_OPERATOR_CONTROL_PASS' else 1)
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m17-plik-lite-operator-control
+          path: |
+            m17_plik_operator_result.json
+            m17_plik_operator.log
+            verification/m17/plik_lite_operator_control.py
+            protocol/W03_M17_PLANCK2018_PLIK_LITE_OPERATOR_CONTROL_PREREGISTRATION_v0.1.md
+          retention-days: 90
