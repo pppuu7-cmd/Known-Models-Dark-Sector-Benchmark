@@ -1,0 +1,56 @@
+{
+  "schema": "KMDSB.W03.M11b.KineticSeedRecovery.v0.1",
+  "solver": "KunhaoZhong/CLASS_GSF@07e015246c4b40f4e22bb50c9a0a63a621bb61f7",
+  "model_gsf": 6,
+  "scope": "IMPLEMENTATION_RECOVERY_ONLY_NO_B4_B8_PROMOTION",
+  "source_diagnosis": {
+    "lagrangian": "P=X^(n+1)/A^n-V0*phi^m; n=(1-cs2)/(2*cs2)",
+    "previous_phi_prime_ini": 0.0,
+    "candidate_failure_mechanism": "PXX contains X^(n-1); zero-kinetic start can make the model-6 Jacobian singular/non-finite"
+  },
+  "frozen_seed_magnitudes": [
+    1e-20,
+    1e-18,
+    1e-17,
+    1e-16
+  ],
+  "signs": [
+    "positive",
+    "negative"
+  ],
+  "diagnostic_cases": {
+    "reference_like": {
+      "m": 0,
+      "cs2": 1.0
+    },
+    "noncanonical": {
+      "m": 1.0,
+      "cs2": 0.9
+    }
+  },
+  "build_exit": 0,
+  "case_exits": {
+    "lcdm": 0,
+    "ref_me16": 1,
+    "ref_me17": 1,
+    "ref_me18": 1,
+    "ref_me20": 1,
+    "ref_pe16": 1,
+    "ref_pe17": 1,
+    "ref_pe18": 1,
+    "ref_pe20": 1,
+    "nc_me16": 1,
+    "nc_me17": 1,
+    "nc_me18": 1,
+    "nc_me20": 1,
+    "nc_pe16": 1,
+    "nc_pe17": 1,
+    "nc_pe18": 1,
+    "nc_pe20": 1
+  },
+  "successful_seed_pairs": [],
+  "partially_successful_seed_pairs": [],
+  "classification": "RECOVERY_NO_EXECUTABLE_REGION_IN_FROZEN_LADDER",
+  "scientific_promotion_authorized": false,
+  "next_gate_if_executable": "Prospectively define and validate a physical initial-state prescription before any covariant response comparison to effective M11."
+}
