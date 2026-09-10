@@ -1,0 +1,72 @@
+name: W04 M19 axionCAMB2 zero neutrino isolation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m19-axioncamb2-zero-neutrino-isolation.yml'
+      - 'protocol/W04_M19_AXIONCAMB2_ZERO_NEUTRINO_ISOLATION_v0.1.md'
+      - 'verification/m19/axioncamb2_zero_probe.py'
+
+jobs:
+  zero-neutrino-isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PIN: 891e779cc0bd422e49f97533e6c2fc761149737d
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin provider and prepare frozen isolation case
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/dgrin1/axionCAMB.git external_axioncamb
+          git -C external_axioncamb checkout -q --detach "$PIN"
+          test "$(git -C external_axioncamb rev-parse HEAD)" = "$PIN"
+          python3 verification/m19/axioncamb2_zero_probe.py prepare external_axioncamb/params.ini m19_axc_nu0_cases
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('m19_axc_nu0_cases/r0f.ini')
+          s=p.read_text()
+          repl={
+            'omnuh2 = 0.0006':'omnuh2 = 0',
+            'massive_neutrinos  = 1':'massive_neutrinos  = 0',
+            'nu_mass_eigenstates = 1':'nu_mass_eigenstates = 0',
+          }
+          for a,b in repl.items():
+              if a not in s:
+                  raise SystemExit(f'missing frozen anchor: {a}')
+              s=s.replace(a,b,1)
+          p.write_text(s)
+          PY
+          grep -E '^(omnuh2|massive_neutrinos|nu_mass_eigenstates|use_axfrac|axfrac|omdah2|m_ax)' m19_axc_nu0_cases/r0f.ini
+      - name: Runtime-checked build and execution
+        shell: bash
+        run: |
+          set +e
+          cd external_axioncamb
+          make -j1 FFLAGS='-O0 -g -fbacktrace -fcheck=all -ffree-line-length-none -fallow-argument-mismatch' > ../m19_axc_nu0_build.log 2>&1
+          be=$?
+          rc=999
+          if [ "$be" -eq 0 ]; then
+            ./camb ../m19_axc_nu0_cases/r0f.ini > ../m19_axc_nu0_run.log 2>&1
+            rc=$?
+          fi
+          cd ..
+          printf '{"build_exit":%d,"zero_nu0_exit":%d}\n' "$be" "$rc" > m19_axc_nu0_status.json
+          cat m19_axc_nu0_status.json
+          exit 0
+      - name: Upload immutable isolation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m19-axioncamb2-zero-neutrino-isolation
+          path: |
+            m19_axc_nu0_cases/r0f.ini
+            m19_axc_nu0_build.log
+            m19_axc_nu0_run.log
+            m19_axc_nu0_status.json
+            protocol/W04_M19_AXIONCAMB2_ZERO_NEUTRINO_ISOLATION_v0.1.md
+          retention-days: 90
