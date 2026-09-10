@@ -1,0 +1,88 @@
+{
+  "schema": "KMDSB.W03.M13b.SimpleMCK1Reference.v0.1",
+  "provider": "ja-vazquez/SimpleMC@a268fe5e2545428ddcf76b37b166a55dbf692fb0",
+  "anchor": {
+    "mquin": 1.7,
+    "beta": 0.0
+  },
+  "reference": {
+    "branch": "canonical_one_field",
+    "phi_ini": 0.150390625,
+    "finite": true
+  },
+  "ladder": [
+    {
+      "mphan": 0.0,
+      "phi_ini": 0.150390625,
+      "fallback": false,
+      "finite": true,
+      "max_rel_H": 0.0,
+      "max_rel_rho": 0.0,
+      "max_abs_w": 0.0
+    },
+    {
+      "mphan": 0.001,
+      "phi_ini": 0.150390625,
+      "fallback": false,
+      "finite": true,
+      "max_rel_H": 4.66066605221609e-07,
+      "max_rel_rho": 1.3436660934384627e-06,
+      "max_abs_w": 1.3333015858596475e-06
+    },
+    {
+      "mphan": 0.0005,
+      "phi_ini": 0.150390625,
+      "fallback": false,
+      "finite": true,
+      "max_rel_H": 1.1651664989330438e-07,
+      "max_rel_rho": 3.3591646071082124e-07,
+      "max_abs_w": 3.333256297644027e-07
+    },
+    {
+      "mphan": 0.00025,
+      "phi_ini": 0.150390625,
+      "fallback": false,
+      "finite": true,
+      "max_rel_H": 2.9129162525626015e-08,
+      "max_rel_rho": 8.397911142603894e-08,
+      "max_abs_w": 8.333142292871187e-08
+    }
+  ],
+  "thresholds": {
+    "max_rel_H": 1e-10,
+    "max_rel_rho": 1e-10,
+    "max_abs_w": 1e-10
+  },
+  "scientific_promotion_authorized": false,
+  "physical_falsification_authorized": false,
+  "K1": "PASS_WITH_SCOPE",
+  "classification": "M13B_SIMPLEMC_K1_REFERENCE_PASS_WITH_SCOPE",
+  "positive_mass_continuity_diagnostic": {
+    "H_errors": [
+      4.66066605221609e-07,
+      1.1651664989330438e-07,
+      2.9129162525626015e-08
+    ],
+    "rho_errors": [
+      1.3436660934384627e-06,
+      3.3591646071082124e-07,
+      8.397911142603894e-08
+    ],
+    "w_errors": [
+      1.3333015858596475e-06,
+      3.333256297644027e-07,
+      8.333142292871187e-08
+    ],
+    "phi_ini": [
+      0.150390625,
+      0.150390625,
+      0.150390625
+    ]
+  },
+  "limitations": [
+    "background-only provider",
+    "two-field initial-condition search is marked unfinished by provider",
+    "positive-mass continuity is diagnostic and does not alter exact-zero K1 classification",
+    "K3/K4/K5 remain open"
+  ]
+}
