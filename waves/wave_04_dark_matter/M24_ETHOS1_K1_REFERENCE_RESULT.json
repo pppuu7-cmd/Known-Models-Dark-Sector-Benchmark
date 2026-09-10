@@ -1,0 +1,258 @@
+{
+  "K0_provenance": "PASS_WITH_SCOPE_PINNED_CLASS_ETHOS1_LITERATURE_ANCHOR",
+  "K1_reference_limit": "NOT_PROMOTED",
+  "K2_physical_geometry": "ONE_SIDED_A4_GE_0_NO_SIGN_QUOTIENT",
+  "K3_promoted": false,
+  "K4_promoted": false,
+  "a4_Mpc^-1": [
+    60000.0,
+    18000.0,
+    6000.0,
+    1800.0,
+    600.0
+  ],
+  "blocks": {
+    "EE": {
+      "R2_sequence": [
+        6.451675831104826e-06,
+        3.1555676864313077e-06,
+        0.00032434704153920453,
+        5.177542877842805e-06,
+        4.808810750093862e-06
+      ],
+      "fit_smallest3": {
+        "logA": -24.78297790746598,
+        "p": 1.8545955130670684,
+        "valid": true
+      },
+      "largest_response_gt_floor": true,
+      "monotonic_with_2pct_slack": false,
+      "pass": false,
+      "points": [
+        {
+          "R2": 6.451675831104826e-06,
+          "a4": 60000.0,
+          "n": 2499
+        },
+        {
+          "R2": 3.1555676864313077e-06,
+          "a4": 18000.0,
+          "n": 2499
+        },
+        {
+          "R2": 0.00032434704153920453,
+          "a4": 6000.0,
+          "n": 2499
+        },
+        {
+          "R2": 5.177542877842805e-06,
+          "a4": 1800.0,
+          "n": 2499
+        },
+        {
+          "R2": 4.808810750093862e-06,
+          "a4": 600.0,
+          "n": 2499
+        }
+      ],
+      "response_floor": 1e-08,
+      "smallest_le_quarter_largest": false,
+      "status": "FAIL"
+    },
+    "Pk": {
+      "R2_sequence": [
+        1.040776900122081e-05,
+        9.05937511773853e-06,
+        8.645983179681914e-06,
+        8.48013076907521e-06,
+        8.450400163311479e-06
+      ],
+      "fit_smallest3": {
+        "logA": -11.748070339343359,
+        "p": 0.010035144713242593,
+        "valid": true
+      },
+      "largest_response_gt_floor": true,
+      "monotonic_with_2pct_slack": true,
+      "pass": false,
+      "points": [
+        {
+          "R2": 1.040776900122081e-05,
+          "a4": 60000.0,
+          "k_max": 51.80026354444,
+          "k_min": 1.04453258262e-05,
+          "n": 596
+        },
+        {
+          "R2": 9.05937511773853e-06,
+          "a4": 18000.0,
+          "k_max": 51.80026348359,
+          "k_min": 1.04453258262e-05,
+          "n": 596
+        },
+        {
+          "R2": 8.645983179681914e-06,
+          "a4": 6000.0,
+          "k_max": 51.80026289801,
+          "k_min": 1.04453258262e-05,
+          "n": 596
+        },
+        {
+          "R2": 8.48013076907521e-06,
+          "a4": 1800.0,
+          "k_max": 51.80026361374,
+          "k_min": 1.04453258262e-05,
+          "n": 596
+        },
+        {
+          "R2": 8.450400163311479e-06,
+          "a4": 600.0,
+          "k_max": 51.80026353806,
+          "k_min": 1.04453258262e-05,
+          "n": 596
+        }
+      ],
+      "response_floor": 1e-06,
+      "smallest_le_quarter_largest": false,
+      "status": "FAIL"
+    },
+    "TE": {
+      "R2_sequence": [
+        1.705640899762736e-05,
+        1.1322035494226149e-05,
+        0.0006952224262878607,
+        9.738225507756115e-06,
+        1.0861225441304234e-05
+      ],
+      "fit_smallest3": {
+        "logA": -23.891285217460197,
+        "p": 1.8339606459013904,
+        "valid": true
+      },
+      "largest_response_gt_floor": true,
+      "monotonic_with_2pct_slack": false,
+      "pass": false,
+      "points": [
+        {
+          "R2": 1.705640899762736e-05,
+          "a4": 60000.0,
+          "n": 2499
+        },
+        {
+          "R2": 1.1322035494226149e-05,
+          "a4": 18000.0,
+          "n": 2499
+        },
+        {
+          "R2": 0.0006952224262878607,
+          "a4": 6000.0,
+          "n": 2499
+        },
+        {
+          "R2": 9.738225507756115e-06,
+          "a4": 1800.0,
+          "n": 2499
+        },
+        {
+          "R2": 1.0861225441304234e-05,
+          "a4": 600.0,
+          "n": 2499
+        }
+      ],
+      "response_floor": 1e-08,
+      "smallest_le_quarter_largest": false,
+      "status": "FAIL"
+    },
+    "TT": {
+      "R2_sequence": [
+        1.0667307368448654e-05,
+        7.44374947614594e-06,
+        0.00012329856232530843,
+        8.503982409330614e-06,
+        7.13137525572631e-06
+      ],
+      "fit_smallest3": {
+        "logA": -20.28165698288695,
+        "p": 1.2534571445333043,
+        "valid": true
+      },
+      "largest_response_gt_floor": true,
+      "monotonic_with_2pct_slack": false,
+      "pass": false,
+      "points": [
+        {
+          "R2": 1.0667307368448654e-05,
+          "a4": 60000.0,
+          "n": 2499
+        },
+        {
+          "R2": 7.44374947614594e-06,
+          "a4": 18000.0,
+          "n": 2499
+        },
+        {
+          "R2": 0.00012329856232530843,
+          "a4": 6000.0,
+          "n": 2499
+        },
+        {
+          "R2": 8.503982409330614e-06,
+          "a4": 1800.0,
+          "n": 2499
+        },
+        {
+          "R2": 7.13137525572631e-06,
+          "a4": 600.0,
+          "n": 2499
+        }
+      ],
+      "response_floor": 1e-08,
+      "smallest_le_quarter_largest": false,
+      "status": "FAIL"
+    }
+  },
+  "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "classification": "M24_ETHOS1_K1_DECOUPLING_NOT_ESTABLISHED",
+  "diagnostic_failing_blocks": [
+    "TT",
+    "EE",
+    "TE"
+  ],
+  "exact_zero_identity_pass": true,
+  "exact_zero_vs_omitted": {
+    "EE": {
+      "R2": 0.0,
+      "n": 2499
+    },
+    "Pk": {
+      "R2": 0.0,
+      "k_max": 57.94386601407,
+      "k_min": 1.04453258262e-05,
+      "n": 540
+    },
+    "TE": {
+      "R2": 0.0,
+      "n": 2499
+    },
+    "TT": {
+      "R2": 0.0,
+      "n": 2499
+    }
+  },
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M24_ETHOS1_K1_REFERENCE_PREREGISTRATION_v0.1.md",
+  "representative_scope": "ETHOS1_N4_XI0P5_FREE_STREAMING_ALPHA1P5_B0",
+  "schema": "KMDSB.M24.ETHOS1.K1Reference.v1",
+  "status": {
+    "a0": 0,
+    "a1": 0,
+    "a2": 0,
+    "a3": 0,
+    "a4": 0,
+    "build": 0,
+    "checkout": 0,
+    "clone": 0,
+    "ref": 0,
+    "zero": 0
+  }
+}
