@@ -1,0 +1,75 @@
+name: Sync M17 K7a and M19 frontier 20260911
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-m17-k7a-m19-frontier-20260911.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Synchronize authoritative frontier
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv, io
+          from pathlib import Path
+
+          # Mandatory-properties: terminal K7a result is partial covariance weighting, not K7 closure.
+          p=Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(p.open()))
+          fields=list(rows[0].keys())
+          for r in rows:
+              if r['family_id']=='F17':
+                  r['K7_common_observation_space']='PARTIAL_COVARIANCE_WEIGHTING_ONLY'
+                  extra=(' K7a Planck-2018 Plik_lite covariance attempt is terminal operator/output blocked: '
+                         'run/result commit d0b7f411fbc7b150dc6b490a8f26a2be0f850768 reports theory ell coverage ending at 2500 '
+                         'versus prospectively required >=2508. No K7b or observational-significance promotion.')
+                  if extra.strip() not in r['notes']:
+                      r['notes'] += extra
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          # Census: keep family nonterminal; only refine frontier note.
+          p=Path('matrices/model_family_census.csv')
+          rows=list(csv.DictReader(p.open()))
+          fields=list(rows[0].keys())
+          for r in rows:
+              if r['family_id']=='F17':
+                  r['status']='LINEAR_EPPF_K3_PASS_C060_CPL_K6_SURVIVOR_K7A_OUTPUT_BLOCKED'
+                  extra=(' K7a Plik_lite attempt is blocked because generated .theory_cl ends at ell=2500 while frozen operator requires >=2508; '
+                         'K6 survives unchanged and K7 remains partial/open.')
+                  if extra.strip() not in r['notes']:
+                      r['notes'] += extra
+              if r['family_id']=='F19':
+                  extra=(' RECFAST localization run 34529493026 found NaN scale factor reaching Recombination_xe under the bounded exact-zero diagnostic; '
+                         'subsequent external-limit run 34534753238 executed all finite f_ax cases but historical CAMB comparator build was blocked by a compiler-language EV name collision. '
+                         'A preregistered mechanical outtransf identifier compatibility repair is now running; K1 remains blocked.')
+                  if extra.strip() not in r['notes']:
+                      r['notes'] += extra
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          block='''\n\n## 2026-09-11 — M17 K7a / M19 newest validated frontier\n- M17 K7a Planck-2018 Plik_lite covariance attempt persisted at commit `d0b7f411fbc7b150dc6b490a8f26a2be0f850768` with classification `M17_K7A_OPERATOR_OR_OUTPUT_BLOCKED`: both theory cases execute, but provider output ends at ell=2500 while the prospectively frozen operator requires coverage through at least ell=2508. K6 remains unchanged; K7 is only `PARTIAL_COVARIANCE_WEIGHTING_ONLY`; no observational significance claim.\n- M19 RECFAST input-localization run `34529493026`, job `103046449912`, artifact `10172921144` (digest `sha256:f29368a15f7f8721f103d8e1951c644e128f383a36aa2c5ed4f4be38512b0cd4`) observes `KMDSB_RECFAST_A=NaN` before RECFAST interpolation. This is an exact-zero provider defect localization, not FDM falsification.\n- M19 external-CDM convergence run `34534753238`, job `103063647012`, artifact `10174965834` (digest `sha256:6aa296a14f9ba1149ca3672a99a3a7a896adf032d7c17faf306b303d5565f325`) executes all finite ULA cases `f_ax={0.10,0.03,0.01,0.003,0.001}` but the pinned historical CAMB comparator fails to compile on modern GNU Fortran because `outtransf(EV,...)` collides case-insensitively with an imported symbol. Classification remains `M19_EXTERNAL_CDM_REFERENCE_EXECUTION_BLOCKED`; no K1 promotion.\n- A compatibility-only repair has been frozen prospectively in `protocol/W04_M19_EXTERNAL_CDM_REFERENCE_COMPATIBILITY_PREREGISTRATION_v0.1.md`: rename only the local/dummy `EV` identifier to `EVout` inside `outtransf`, archive exact diff, and keep provider pin, cosmology, fractions, outputs and scientific thresholds unchanged. Current launch commit is `f6a029f15b0eacff56a2e785388e68de2ff4ecfe`; consume its Action before any scientific promotion.\n- Strict coverage bookkeeping remains 4/46 terminal/represented among F00-F45; 42 still require strict closure.\n'''
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+              p=Path(fn); s=p.read_text()
+              if '## 2026-09-11 — M17 K7a / M19 newest validated frontier' not in s:
+                  p.write_text(s+block)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'Sync M17 K7a and M19 validated frontier'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
