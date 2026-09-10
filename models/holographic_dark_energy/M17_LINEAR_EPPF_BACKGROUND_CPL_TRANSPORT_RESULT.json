@@ -1,0 +1,176 @@
+{
+  "classification": "M17_LINEAR_EPPF_BACKGROUND_CPL_TRANSPORT_MIXED",
+  "interpretation": "fixed background-derived CPL mapping only; full perturbation-manifold refit and covariance K7 remain open",
+  "linear_isolation_flags": {
+    "c06": true,
+    "c08": true,
+    "c10": true,
+    "c12": true,
+    "h06": true,
+    "h08": true,
+    "h10": true,
+    "h12": true,
+    "r0": true
+  },
+  "observational_significance_claim": false,
+  "pairs": {
+    "06": {
+      "R_equal": 0.45539735745738474,
+      "R_max": 0.45714456419534805,
+      "channels": {
+        "EE": {
+          "cpl_response_norm": 18.68182675154178,
+          "hde_response_norm": 12.861971796423711,
+          "identifiable": true,
+          "residual_fraction": 0.45641423748498106,
+          "residual_norm": 5.87038705001806,
+          "response_angle_deg": 2.84118220333529
+        },
+        "TE": {
+          "cpl_response_norm": 87.74286458181469,
+          "hde_response_norm": 60.342496632921815,
+          "identifiable": true,
+          "residual_fraction": 0.45714456419534805,
+          "residual_norm": 27.5852443257163,
+          "response_angle_deg": 2.5107593176272287
+        },
+        "TT": {
+          "cpl_response_norm": 601.6148132102469,
+          "hde_response_norm": 415.419171395592,
+          "identifiable": true,
+          "residual_fraction": 0.4526203163636779,
+          "residual_norm": 188.02715678060977,
+          "response_angle_deg": 3.0008210646812565
+        }
+      },
+      "classification": "PERTURBATION_RESPONSE_SURVIVES_BACKGROUND_CPL_TRANSPORT_ATTACK",
+      "cpl_case": "c06",
+      "hde_case": "h06"
+    },
+    "08": {
+      "R_equal": 0.11026705077067259,
+      "R_max": 0.11046665357113616,
+      "channels": {
+        "EE": {
+          "cpl_response_norm": 72.75529903891582,
+          "hde_response_norm": 81.69165777624893,
+          "identifiable": true,
+          "residual_fraction": 0.11046665357113616,
+          "residual_norm": 9.024204059220702,
+          "response_angle_deg": 0.9335241474651064
+        },
+        "TE": {
+          "cpl_response_norm": 341.7559639004145,
+          "hde_response_norm": 383.7201233710002,
+          "identifiable": true,
+          "residual_fraction": 0.11020703908156101,
+          "residual_norm": 42.28865863272924,
+          "response_angle_deg": 0.8272943804166978
+        },
+        "TT": {
+          "cpl_response_norm": 2330.4487215461318,
+          "hde_response_norm": 2617.5248434763707,
+          "identifiable": true,
+          "residual_fraction": 0.11012717395200938,
+          "residual_norm": 288.2606137612284,
+          "response_angle_deg": 0.6056009665532777
+        }
+      },
+      "classification": "PERTURBATION_TRANSPORT_PARTIALLY_ABSORBED_BY_BACKGROUND_CPL",
+      "cpl_case": "c08",
+      "hde_case": "h08"
+    },
+    "10": {
+      "R_equal": 0.06985827814896357,
+      "R_max": 0.07031504133738797,
+      "channels": {
+        "EE": {
+          "cpl_response_norm": 143.8437830448457,
+          "hde_response_norm": 154.28891556687043,
+          "identifiable": true,
+          "residual_fraction": 0.07031504133738797,
+          "residual_norm": 10.848831475985257,
+          "response_angle_deg": 1.127648638965236
+        },
+        "TE": {
+          "cpl_response_norm": 676.5362998099573,
+          "hde_response_norm": 725.7929202995599,
+          "identifiable": true,
+          "residual_fraction": 0.06991258060645286,
+          "residual_norm": 50.7420560440358,
+          "response_angle_deg": 0.996552595255481
+        },
+        "TT": {
+          "cpl_response_norm": 4628.1667715334115,
+          "hde_response_norm": 4967.539577465287,
+          "identifiable": true,
+          "residual_fraction": 0.06934380370647067,
+          "residual_norm": 344.4680893638771,
+          "response_angle_deg": 0.7053617660726096
+        }
+      },
+      "classification": "PERTURBATION_TRANSPORT_STRONGLY_ABSORBED_BY_BACKGROUND_CPL",
+      "cpl_case": "c10",
+      "hde_case": "h10"
+    },
+    "12": {
+      "R_equal": 0.05597656087957423,
+      "R_max": 0.056603801443869665,
+      "channels": {
+        "EE": {
+          "cpl_response_norm": 199.68943963418005,
+          "hde_response_norm": 210.7304292047919,
+          "identifiable": true,
+          "residual_fraction": 0.056603801443869665,
+          "residual_norm": 11.928143372889474,
+          "response_angle_deg": 1.2608458120934858
+        },
+        "TE": {
+          "cpl_response_norm": 941.203201585199,
+          "hde_response_norm": 993.6365032593058,
+          "identifiable": true,
+          "residual_fraction": 0.05605492915353738,
+          "residual_norm": 55.698223794568996,
+          "response_angle_deg": 1.1132342897686707
+        },
+        "TT": {
+          "cpl_response_norm": 6469.264168530142,
+          "hde_response_norm": 6836.201947483632,
+          "identifiable": true,
+          "residual_fraction": 0.05526283274868313,
+          "residual_norm": 377.7878848600098,
+          "response_angle_deg": 0.7744728590902634
+        }
+      },
+      "classification": "PERTURBATION_TRANSPORT_STRONGLY_ABSORBED_BY_BACKGROUND_CPL",
+      "cpl_case": "c12",
+      "hde_case": "h12"
+    }
+  },
+  "physical_falsification": false,
+  "provider": {
+    "cosmomc": "eb08c2fe91d9711929802fede310ae58c020fcb4",
+    "idecamb": "4f1093d9efe46f28cf7e2acb4d07ae116ad5e075"
+  },
+  "schema": "KMDSB.M17.linearEPPF.backgroundCPLtransport.v1",
+  "status": {
+    "c06": 0,
+    "c06_elapsed": 3,
+    "c08": 0,
+    "c08_elapsed": 3,
+    "c10": 0,
+    "c10_elapsed": 3,
+    "c12": 0,
+    "c12_elapsed": 2,
+    "h06": 0,
+    "h06_elapsed": 3,
+    "h08": 0,
+    "h08_elapsed": 2,
+    "h10": 0,
+    "h10_elapsed": 2,
+    "h12": 0,
+    "h12_elapsed": 3,
+    "r0": 0,
+    "r0_elapsed": 2
+  }
+}
