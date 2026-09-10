@@ -1,0 +1,80 @@
+name: W03 M14 K1 authority sync
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-k1-authority-sync.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Sync M14 K1 terminal sub-result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          python3 - <<'PY'
+          from pathlib import Path
+          run='34443825112'
+          artifact='10138908138'
+          result_commit='52a20ffe3fa4d80a8361540847d8192b04217734'
+          provider='kabeleh/iDM@dc55e59dec8f5c647df6e9d764f5c6960796e1df'
+          block = f'''\n\n### M14 K1 total-decoupling regression — PASS\n\nProvider: `{provider}`. The source audit separates two interaction mechanisms: the q1-q4 `coupling_scf` sector and the hyperbolic field-dependent CDM-mass branch selected by `model_cdm=i` and controlled by `cdm_c`. The prospectively frozen total-decoupling point retained `model_cdm=i`, kept q1-q4=0 and set `cdm_c=0`; the comparator used the identical scalar/cosmological workload with provider-default standard CDM.\n\nAfter two plumbing-only harness repairs (missing numpy, then duplicate overwrite_root), unchanged physics/thresholds were rerun in Actions run `{run}`. Both cases exited 0. Frozen metrics: background max symmetric relative difference `7.450488193403606e-12` <= `1e-8`; matched P(k) max symmetric relative difference `0.0` <= `1e-6`. Classification: `M14_K1_DECOUPLING_PASS`. Result commit `{result_commit}`; immutable artifact `{artifact}`.\n\nK1 is `PASS_WITH_SCOPE` for this provider/anchor. K2-K9 remain open. Next authorized step is K2 geometry/quotient audit of `cdm_c` around zero with q-sector held at zero; q-sector must be treated as a separate interaction-law axis rather than mixed into one coupling coordinate.\n'''
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+              p=Path(fn); s=p.read_text()
+              if 'M14 K1 total-decoupling regression — PASS' not in s:
+                  p.write_text(s.rstrip()+block+'\n')
+          p=Path('models/coupled_quintessence/audit.md'); s=p.read_text()
+          if 'M14 K1 total-decoupling regression — PASS' not in s:
+              p.write_text(s.rstrip()+block+'\n')
+
+          # Census: update only F14 row.
+          p=Path('matrices/model_family_census.csv'); lines=p.read_text().splitlines()
+          out=[]
+          for line in lines:
+              if line.startswith('F14,'):
+                  cols=line.split(',',7)
+                  # CSV row has unquoted simple status field at index 5 in this file.
+                  parts=line.split(',')
+                  parts[5]='K1_PASS_K2_GEOMETRY_AUDIT_NEXT'
+                  # Replace note conservatively after status token only, retaining rest.
+                  line=','.join(parts)
+                  if 'K1 decoupling PASS' not in line:
+                      line=line.rstrip('"') + '; K1 decoupling PASS in run 34443825112: background max sym-rel 7.45e-12, P(k) 0; K2 geometry audit next"' if line.endswith('"') else line+'; K1 decoupling PASS in run 34443825112; K2 geometry audit next'
+              out.append(line)
+          p.write_text('\n'.join(out)+'\n')
+
+          # Mandatory matrix: use csv module to preserve valid quoting.
+          import csv, io
+          p=Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.reader(io.StringIO(p.read_text())))
+          for r in rows:
+              if r and r[0]=='F14':
+                  r[3]='PASS_WITH_SCOPE'  # K1_reference_limit
+                  r[12]='K1_PASS_K2_GEOMETRY_AUDIT_NEXT'
+                  r[13]=(r[13]+'; ' if r[13] else '') + 'K1 total-decoupling PASS: run 34443825112, artifact 10138908138, background max sym-rel 7.450488e-12, P(k) max sym-rel 0; q1-q4=0 and cdm_c=0 versus identical standard-CDM comparator. K2-K9 open.'
+          buf=io.StringIO(); w=csv.writer(buf,lineterminator='\n'); w.writerows(rows); p.write_text(buf.getvalue())
+
+          # Durable methodology rule.
+          p=Path('protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md'); s=p.read_text()
+          rule='''\n\n### Multi-mechanism decoupling rule (M14-derived)\nWhen a provider contains more than one independent interaction law, a reference/decoupling gate must zero every interaction branch source-by-source. An author/config label such as "uncoupled" is not sufficient if it refers only to one subcoupling. Each interaction law should subsequently receive its own physical coordinate/quotient audit rather than being combined into an undifferentiated coupling parameter.\n'''
+          if 'Multi-mechanism decoupling rule (M14-derived)' not in s:
+              p.write_text(s.rstrip()+rule+'\n')
+          PY
+          git add models/coupled_quintessence/audit.md matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md protocol/FUTURE_MODEL_CONSTRUCTION_METHODOLOGY_v0.2.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'Sync M14 K1 decoupling PASS authority'
+            git push origin HEAD:main
+          fi
