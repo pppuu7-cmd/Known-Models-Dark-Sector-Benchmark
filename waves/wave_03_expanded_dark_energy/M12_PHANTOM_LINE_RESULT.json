@@ -1,0 +1,38 @@
+{
+  "schema": "KMDSB.W03.M12.PhantomLine.v0.1",
+  "reference": {
+    "max_abs_lnP": 0.0,
+    "max_abs_lnH": 0.0
+  },
+  "nonphantom_convergence": {
+    "relative_difference": 0.0012984796614385302,
+    "geometry": {
+      "cosine": 0.999999945825648,
+      "oriented_deg": 0.018859687610007732,
+      "acute_deg": 0.018859687610007732
+    }
+  },
+  "phantom_convergence": {
+    "relative_difference": 0.0012948120694451476,
+    "geometry": {
+      "cosine": 0.9999999458312304,
+      "oriented_deg": 0.018858715881956645,
+      "acute_deg": 0.018858715881956645
+    }
+  },
+  "phantom_vs_nonphantom": {
+    "cosine": -0.9999997813411616,
+    "oriented_deg": 179.9621103008921,
+    "acute_deg": 0.037889699107895865
+  },
+  "best_line_projection_coefficient": -0.9975004706276083,
+  "line_residual_fraction": 0.0006612999533902407,
+  "hard_gates": {
+    "reference_pass": true,
+    "nonphantom_convergence_pass": true,
+    "phantom_convergence_pass": true
+  },
+  "classification": "PHANTOM_RESPONSE_REPRESENTED_BY_CONSTANT_W_LINE_WITH_SCOPE",
+  "physical_scope": "phenomenological smooth phantom response; minimal wrong-sign scalar ghost/stability issue recorded separately; not all effective w<-1 theories",
+  "interpretation": "theory-response only"
+}
