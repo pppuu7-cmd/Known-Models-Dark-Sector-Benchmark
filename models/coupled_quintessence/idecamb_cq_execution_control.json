@@ -1,0 +1,11 @@
+{
+  "schema": "KMDSB.W03.M14.IDECAMBCQExecutionControl.v0.1",
+  "base": "cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4",
+  "overlay": "liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075",
+  "frozen_change": "author test_ide.ini: active Class_IDE 1 -> 2 only",
+  "run_exit": 0,
+  "cq_identity_log_hint": true,
+  "classification": "M14_IDECAMB_CQ_EXECUTION_PASS",
+  "scientific_promotion_authorized": false,
+  "next_if_pass": "Preregister numerical K1 beta_cq=0 decoupling regression before execution."
+}
