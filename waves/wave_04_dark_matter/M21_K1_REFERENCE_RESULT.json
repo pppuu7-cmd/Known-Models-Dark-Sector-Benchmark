@@ -7,8 +7,8 @@
   "blocks": {
     "CMB_EE": {
       "fit_smallest3": {
-        "logA": -9.412448246130236,
-        "p": 0.12743743421501214,
+        "logA": -9.412448246130241,
+        "p": 0.12743743421501152,
         "valid": true
       },
       "monotonic_with_2pct_slack": false,
@@ -66,8 +66,8 @@
     },
     "CMB_TE": {
       "fit_smallest3": {
-        "logA": -7.927412771149155,
-        "p": -0.0010753316586030383,
+        "logA": -7.9274127711491555,
+        "p": -0.0010753316586032135,
         "valid": true
       },
       "monotonic_with_2pct_slack": false,
@@ -125,8 +125,8 @@
     },
     "CMB_TT": {
       "fit_smallest3": {
-        "logA": -10.253287040982373,
-        "p": 0.03845819989901442,
+        "logA": -10.25328704098237,
+        "p": 0.03845819989901494,
         "valid": true
       },
       "monotonic_with_2pct_slack": false,
@@ -184,8 +184,8 @@
     },
     "H": {
       "fit_smallest3": {
-        "logA": 0.6931471805348657,
-        "p": -1.692813814971645e-16,
+        "logA": 0.6931471805348661,
+        "p": -9.258325433535672e-17,
         "valid": true
       },
       "monotonic_with_2pct_slack": true,
@@ -243,8 +243,8 @@
     },
     "Pk": {
       "fit_smallest3": {
-        "logA": -9.532416303002137,
-        "p": 0.05902811965719146,
+        "logA": -9.53241630300214,
+        "p": 0.05902811965719084,
         "valid": true
       },
       "monotonic_with_2pct_slack": true,
