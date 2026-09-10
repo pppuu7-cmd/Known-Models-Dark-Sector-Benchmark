@@ -1,0 +1,71 @@
+name: Sync M19 low-fraction floor localization 20260911
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-m19-floor-localization-20260911.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Synchronize validated M19 diagnostic frontier
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv, json
+          from pathlib import Path
+
+          rp=Path('models/fuzzy_ultralight_axion/M19_LOW_FRACTION_FLOOR_DECOMPOSITION_RESULT.json')
+          r=json.loads(rp.read_text())
+          assert r['classification']=='M19_LOW_FRACTION_BASELINE_FLOOR_LOCALIZED_WITH_SCOPE'
+          assert r['K1_promoted'] is False
+          assert r['unresolved_blocks']==[]
+          assert set(['CMB_TT','CMB_EE','T_g','T_nu']).issubset(set(r['baseline_floor_dominant_blocks']))
+
+          p=Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(p.open())); fields=list(rows[0].keys())
+          for row in rows:
+              if row['family_id']=='F19':
+                  row['K1_reference_limit']='BLOCKED_EXTERNAL_LIMIT_CONVERGENCE_NOT_ESTABLISHED'
+                  extra=(' Hosted low-fraction floor decomposition run 34537372309 shows provider-internal f_ax->0 convergence in all common blocks. Previously failing CMB_TT, CMB_EE, T_g and T_nu are baseline-floor-dominant under the prospectively frozen diagnostic; CMB_TE and T_r are also baseline-floor-dominant, while Pk/T_cdm/T_b/T_tot converge internally with the physical finite-fraction effect still larger than the external baseline at f_ax=0.001. This localizes cross-provider mismatch but does not promote K1 or validate the crashing exact-zero path.')
+                  if extra.strip() not in row['notes']:
+                      row['notes'] += extra
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          p=Path('matrices/model_family_census.csv')
+          rows=list(csv.DictReader(p.open())); fields=list(rows[0].keys())
+          for row in rows:
+              if row['family_id']=='F19':
+                  row['status']='EXTERNAL_LIMIT_INTERNAL_CONVERGENCE_BASELINE_FLOOR_LOCALIZED_K1_OPEN'
+                  extra=(' Low-fraction OLS asymptote diagnostic is hosted/reproducible and leaves no unresolved common block; internal convergence exponents are positive in all blocks, approximately order-one in the principal failing channels. Exact K1 remains open because the external pure-CDM identity is not established and axionCAMB exact zero still crashes.')
+                  if extra.strip() not in row['notes']:
+                      row['notes'] += extra
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          block='''\n\n## 2026-09-11 — M19 low-fraction baseline-floor localization\n- Preregistered diagnostic: `protocol/W04_M19_LOW_FRACTION_FLOOR_DECOMPOSITION_PREREGISTRATION_v0.1.md`; analyzer: `verification/m19/low_fraction_floor_decomposition.py`.\n- Hosted run `34537372309`, job `103072002975`, artifact `10175920762`, digest `sha256:88f917eebf7c867026d4c19219ddd7c0e1887d08b076feee1db459d337bd850b`; canonical result commit `921aa949b6abe2123df7b527205edb61d7f2241b`.\n- Classification: `M19_LOW_FRACTION_BASELINE_FLOOR_LOCALIZED_WITH_SCOPE`. Using only the frozen f_ax={0.01,0.003,0.001} raw outputs, every common block approaches a stable provider-internal linear f_ax->0 asymptote. The previously failing CMB_TT, CMB_EE, T_g and T_nu blocks satisfy the frozen baseline-floor-dominance diagnostic; CMB_TE and T_r do as well. Pk, T_cdm, T_b and T_tot also converge internally but at f_ax=0.001 the finite physical fraction effect is still larger than the external baseline.\n- Representative principal exponents: TT p=0.99299, EE p=0.99543, T_g p=0.99022, T_nu p=1.01597. Their fitted external-floor p95 values are respectively 0.020685, 0.030831, 0.0023123 and 0.276188, while their f_ax=0.001 provider-internal finite effects are 0.0003959, 0.0005079, 5.735e-05 and 0.004884.\n- Scientific boundary: this strongly localizes the previous frozen nonconvergence to cross-provider baseline mismatch for those channels, but it does NOT promote K1, does NOT validate the crashing exact-zero axionCAMB path, and is NOT FDM falsification. Next gate is matched-baseline calibration or an independent implementation with an executable exact CDM limit.\n- Strict terminal/represented census remains 4/46. Operational polygon readiness estimate is now approximately 51%; this is not a strict census metric.\n'''
+          marker='## 2026-09-11 — M19 low-fraction baseline-floor localization'
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+              p=Path(fn); s=p.read_text()
+              if marker not in s:
+                  p.write_text(s+block)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/mandatory_properties_matrix.csv matrices/model_family_census.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'Sync M19 baseline-floor localization frontier'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
