@@ -1,0 +1,26 @@
+{
+  "K1_promoted": false,
+  "axion_pin": "891e779cc0bd422e49f97533e6c2fc761149737d",
+  "blocks": {},
+  "cdm_pin": "dc437acd8c90aa7e5595fcb25c615b03de8357a7",
+  "classification": "M19_EXTERNAL_CDM_REFERENCE_EXECUTION_BLOCKED",
+  "fractions": [
+    0.1,
+    0.03,
+    0.01,
+    0.003,
+    0.001
+  ],
+  "physical_falsification": false,
+  "schema": "KMDSB.M19.externalCDMConvergence.v1",
+  "status": {
+    "a0": 0,
+    "a1": 0,
+    "a2": 0,
+    "a3": 0,
+    "a4": 0,
+    "build_ax": 0,
+    "build_cdm": 2,
+    "c0": 999
+  }
+}
