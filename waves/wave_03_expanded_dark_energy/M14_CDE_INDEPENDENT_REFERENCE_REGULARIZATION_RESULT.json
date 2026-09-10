@@ -1,0 +1,205 @@
+{
+  "schema": "KMDSB.W03.M14.CDEIndependentReferenceRegularization.v0.1",
+  "upstream": "LisaGoh/CDE@b85a675af7544a5183e402964550811aa805b698",
+  "implementation_label": "KMDSB_INDEPENDENT_REFERENCE_REGULARIZATION",
+  "patch_counts": {
+    "R1": 1,
+    "R2": 2
+  },
+  "exits": {
+    "orig_author": 0,
+    "patched_author": 0,
+    "orig_b0tiny": 0,
+    "patched_b0tiny": 0,
+    "patched_b0exact": 0
+  },
+  "noninterference": {
+    "author": {
+      "orig_exit": 0,
+      "patched_exit": 0,
+      "files": {
+        "background": {
+          "pass": true,
+          "rows": 5281,
+          "cols": 32,
+          "finite": true,
+          "max_symmetric_relative": 0.0,
+          "max_abs": 0.0
+        },
+        "pk": {
+          "pass": false,
+          "rows": 607,
+          "cols": 2,
+          "finite": true,
+          "max_symmetric_relative": 3.6285109128641513e-06,
+          "max_abs": 0.03173211999819614
+        },
+        "pk_cb": {
+          "pass": false,
+          "rows": 607,
+          "cols": 2,
+          "finite": true,
+          "max_symmetric_relative": 3.6285107586713773e-06,
+          "max_abs": 0.03195599999889964
+        },
+        "cl": {
+          "pass": false,
+          "rows": 2999,
+          "cols": 8,
+          "finite": true,
+          "max_symmetric_relative": 0.0035533264089911577,
+          "max_abs": 0.0012980591200033587
+        },
+        "cl_lensed": {
+          "pass": false,
+          "rows": 2499,
+          "cols": 8,
+          "finite": true,
+          "max_symmetric_relative": 0.012323316657268579,
+          "max_abs": 0.0008621891000757387
+        },
+        "tk": {
+          "pass": false,
+          "rows": 607,
+          "cols": 8,
+          "finite": true,
+          "max_symmetric_relative": 1.8890433823438529e-06,
+          "max_abs": 6.936691001057625
+        }
+      },
+      "pass": false
+    },
+    "b0tiny": {
+      "orig_exit": 0,
+      "patched_exit": 0,
+      "files": {
+        "background": {
+          "pass": true,
+          "rows": 5281,
+          "cols": 32,
+          "finite": true,
+          "max_symmetric_relative": 0.0,
+          "max_abs": 0.0
+        },
+        "pk": {
+          "pass": false,
+          "rows": 614,
+          "cols": 2,
+          "finite": true,
+          "max_symmetric_relative": 1.5016237992373277e-09,
+          "max_abs": 2.1849999143341847e-07
+        },
+        "pk_cb": {
+          "pass": false,
+          "rows": 614,
+          "cols": 2,
+          "finite": true,
+          "max_symmetric_relative": 1.5011125830737977e-09,
+          "max_abs": 2.204000111305504e-07
+        },
+        "cl": {
+          "pass": false,
+          "rows": 2999,
+          "cols": 8,
+          "finite": true,
+          "max_symmetric_relative": 3.0235196559559734e-08,
+          "max_abs": 1.000444171950221e-10
+        },
+        "cl_lensed": {
+          "pass": false,
+          "rows": 2499,
+          "cols": 8,
+          "finite": true,
+          "max_symmetric_relative": 3.0235196559559734e-08,
+          "max_abs": 1.000444171950221e-09
+        },
+        "tk": {
+          "pass": false,
+          "rows": 614,
+          "cols": 8,
+          "finite": true,
+          "max_symmetric_relative": 5.037493833976291e-08,
+          "max_abs": 0.00011510000331327319
+        }
+      },
+      "pass": false
+    }
+  },
+  "exact_required_outputs": {
+    "background": [
+      "patched/class_CDE/output/b0exact_background.dat"
+    ],
+    "perturbation": [
+      "patched/class_CDE/output/b0exact_perturbations_k0_s.dat"
+    ],
+    "pk": [
+      "patched/class_CDE/output/b0exact_pk.dat"
+    ],
+    "cl": [
+      "patched/class_CDE/output/b0exact_cl.dat"
+    ],
+    "tk": [
+      "patched/class_CDE/output/b0exact_tk.dat"
+    ]
+  },
+  "exact_background_metrics": null,
+  "exact_perturbation_metrics": null,
+  "parse_error": "RuntimeError(\"('z',)/(): [(0, '1:z'), (7, '8:comov.snd.hrz.'), (31, '32:dbeta/dz')]\")",
+  "classification": "M14_CDE_REGULARIZATION_NONINTERFERENCE_FAIL",
+  "verification_K1": "NOT_PASS",
+  "verification_K3_scope": "NOT_PROMOTED",
+  "original_provider_K1_retroactive_promotion": false,
+  "K4_K5_authorized_for_verification_layer": false,
+  "physical_falsification_authorized": false,
+  "sha256_outputs": {
+    "orig": {
+      "author_pk_cb.dat": "debb6311ed1e0346ae62459310b1b15ac776e3831fb3e74f3dd314e9893ba222",
+      "author_pk_cb_nl.dat": "6fe08e7f6bd1c8b6cacda6ed932ce8513b8ad5f1af4a101ea9715a26616f9f65",
+      "author_background.dat": "7bcfda9a4cb2c171b047e4aa6803c1cae2c6b0c02081be8f4ffddbb4d9cd5226",
+      "author_tk.dat": "d43d346f7af3812816a6aa97330e49351fe02c178a9dc043630316af1475ba18",
+      "b0tiny_pk_nl.dat": "dca0084d53fa29d384b7058f52d94e782c7708934d242acd5fd07f686caee24a",
+      "author_pk.dat": "477ee4027607291569134d5a3c77f8e2a4a51efea2fda7fa68733ce4e3ed8f1f",
+      "b0tiny_pk_cb.dat": "a1701fdba16014f36203ea619b112c3d22b51bec5a3458de2768cf643f51c4f7",
+      "author_cl.dat": "34e64b808654f7fbb2e52a30aecb6819d2274006398a80b2709fec6f3022ca79",
+      "b0tiny_pk_cb_nl.dat": "7d0ede843422518c8ceb3a3f92092c78019dbe1f40a2dfebf1a5b40e100bd7cf",
+      "author_cl_lensed.dat": "73df1061c9fde598daf6bc5a226c19ddb1795c2eff6ee5dc0875b835cc990612",
+      "b0tiny_perturbations_k0_s.dat": "9fcae3909fee819f9471c8bc787bb50e224c16c7bb8db2be10ee1a0ba2fa3ded",
+      "author_perturbations_k0_s.dat": "375f84aaa3b1d7692c26f94e922c87466b0cadbdc19e583a3f2f9f4700069d70",
+      "b0tiny_tk.dat": "ee708ed44d6269e31b34e16e965f42b5f2697269d7c2744a7c0f51e7f25f7d0f",
+      "b0tiny_background.dat": "4bd8be5d96f96502ef0e5b5a234887566775eaa27069acb267779fed24a633e1",
+      "b0tiny_pk.dat": "2bcced00ce4e42390f18fe22c46f3ce8d252dda4eed8523af84e90e640554390",
+      "b0tiny_cl.dat": "db10d3b682c5b70b6ff23fbc97fcc6451e439ff1975746e15234a935699470f5",
+      "author_pk_nl.dat": "1a644ce4b985aa15a91e1904a069da14b96bcf43e5165bb137b460390d16229e",
+      "b0tiny_cl_lensed.dat": "18f553d01d4bd8a6cca474b13af827dec2a3bc7e57601ac8b879bb45b046a209"
+    },
+    "patched": {
+      "b0exact_background.dat": "f1aaf59e61e043b165f47271b87f739b48cc95dfaf832a5a936c6ddbb1890b12",
+      "author_pk_cb.dat": "17a1c7251d17fed1fc3d1a1fa37f73fa7bd2e2aa1c38e4aa48a86996fb75cd6a",
+      "author_pk_cb_nl.dat": "b921ce938077facafb5d36020ae81759b6d0085f4846eee57a24a5a30fb42a41",
+      "author_background.dat": "7bcfda9a4cb2c171b047e4aa6803c1cae2c6b0c02081be8f4ffddbb4d9cd5226",
+      "author_tk.dat": "478d081ca88d519be8fedafd2b421e1c062429d4c870dfa520472791b0be02de",
+      "b0tiny_pk_nl.dat": "ca0aefb3f8c2430def22184d1cd83e934332d6e90aa36d9b5a1479da45734080",
+      "b0exact_cl.dat": "f8dd1321154a431b18a668a3e3ddef414e4b97385c228831b03fe9cc16ba9697",
+      "b0exact_tk.dat": "1adc7b3d1fcdc5c6c56ab3da55af0105c4db59b31c47a48e3eeb6f9acabccce5",
+      "author_pk.dat": "fc29ba6ab2be9db05152d9450c56745c925de8af88688bffb173e229ab81ba69",
+      "b0exact_pk_cb.dat": "b968135ac50aef31d5c448394e133629f789c3cb56612bfb13eec9510b4ef4c7",
+      "b0tiny_pk_cb.dat": "c117580d17ff90a26c6c7d31464be7ee52a7932f4e12a140ee0b9a7b62a1f715",
+      "author_cl.dat": "fbc9600e9e050a6d16a679360d77688a12211a1d1f5bcbe37e2fefd4ca9bd1a4",
+      "b0tiny_pk_cb_nl.dat": "47dbb9acdd9caf414ea0c25a37e2640406fdb5eb2746d4e397d512c54f325c1c",
+      "author_cl_lensed.dat": "2d13a88a040f6f8308d28d70fcf7cfe2ed10d06bc26b717c4ce3c5d590e4521e",
+      "b0tiny_perturbations_k0_s.dat": "f8d52ea2dc37d0e8bbbc7260960a76aa967c83e2e40e61e103a19a652081a8f7",
+      "b0exact_pk_cb_nl.dat": "3fd2af0953b188f5ae3acfc3593b79ec939f8cc280ff1ffc570b19d8a4b6ff9f",
+      "author_perturbations_k0_s.dat": "81343267fc63fc3cd4f803a71ff9324a00aa63d23c8a9f280d7a97510eddb6b2",
+      "b0exact_pk_nl.dat": "9e2d67615ded2d100cb1c6e4634baf395d505fa681bd2a2ac7e75b2e7284d85a",
+      "b0tiny_tk.dat": "904a42a5816b3bbee4aae1332684191e908c42b14f1b717be79ec7fd998f72e4",
+      "b0exact_pk.dat": "5a4de6907c7d2a1e4f1732f19656717cb5f69bd4ac462308eba0cef4d5f0b33f",
+      "b0tiny_background.dat": "4bd8be5d96f96502ef0e5b5a234887566775eaa27069acb267779fed24a633e1",
+      "b0tiny_pk.dat": "48f4205bb5742d5e5833ebd31c544412c71ef2debcdaf280decb8f168b1731dc",
+      "b0tiny_cl.dat": "e56ea606f66ceb26f54a32d4915bc77bc2e1670437da6e2fd932bf5bcd60d219",
+      "b0exact_perturbations_k0_s.dat": "fe44a48dec7c9638a733e9722ae714976ed32fdf7a39bc404eb2462fb466963d",
+      "author_pk_nl.dat": "2631b99e0b8b59b35955a708122868f9f96e9a5186dae5f2efbed78e9b11fcf1",
+      "b0exact_cl_lensed.dat": "38a0ff0ff226fc51f73a2c6f39513f957e4683f204ec63246247d3b72ff168d3",
+      "b0tiny_cl_lensed.dat": "631a0cc4de541c1a9b9d6fc584f87260fd19bca6cf4a404f04f6fb8ce744ac3c"
+    }
+  }
+}
