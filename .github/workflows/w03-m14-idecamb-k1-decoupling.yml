@@ -1,0 +1,187 @@
+name: W03 M14 IDECAMB K1 decoupling
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m14-idecamb-k1-decoupling.yml'
+      - 'protocol/W03_M14_IDECAMB_K1_DECOUPLING_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  k1-decoupling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran libblas-dev liblapack-dev make rsync python3
+      - name: Fetch pinned overlay and build
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/cmbant/CosmoMC.git cosmomc_base
+          git -C cosmomc_base checkout eb08c2fe91d9711929802fede310ae58c020fcb4
+          git clone https://github.com/liaocrane/IDECAMB.git idecamb_patch
+          git -C idecamb_patch checkout 4f1093d9efe46f28cf7e2acb4d07ae116ad5e075
+          test "$(git -C cosmomc_base rev-parse HEAD)" = "eb08c2fe91d9711929802fede310ae58c020fcb4"
+          test "$(git -C idecamb_patch rev-parse HEAD)" = "4f1093d9efe46f28cf7e2acb4d07ae116ad5e075"
+          rsync -a --exclude='.git' idecamb_patch/ cosmomc_base/
+          set +e
+          make -C cosmomc_base cosmomc BUILD= FFLAGS='-cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4 -fallow-argument-mismatch' > build.log 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > build.exit
+      - name: Prepare frozen withheld anchors
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path('cosmomc_base/test_ide.ini').read_text()
+          likelihoods=[
+            'DEFAULT(batch3/plik_rd12_HM_v22_TTTEEE.ini)',
+            'DEFAULT(batch3/lowl.ini)','DEFAULT(batch3/lowE.ini)',
+            'DEFAULT(batch3/lensing.ini)','DEFAULT(batch3/BAO.ini)',
+            'DEFAULT(batch3/Pantheon18.ini)']
+          for tag,alpha in [('a020','0.2'),('a080','0.8')]:
+              s=base
+              def one(old,new):
+                  nonlocal_s[0]=nonlocal_s[0]
+              pairs=[
+                ('Class_IDE = 1 ','Class_IDE = 2 '),
+                ('param[alpha_quint]= 0.02 0 1.4 0.1 0.1',f'param[alpha_quint]= {alpha}'),
+                ('param[beta_cq]= 0.01 0 0.15 0.05 0.05','param[beta_cq]= 0'),
+                ('#test_output_root = output_ide',f'test_output_root = m14_k1_{tag}'),
+                ('test_check_compare = 1820.775','#test_check_compare = 1820.775')]
+              for old,new in pairs:
+                  if s.count(old)!=1: raise SystemExit(f'{tag}: unexpected count for {old!r}: {s.count(old)}')
+                  s=s.replace(old,new,1)
+              for x in likelihoods:
+                  if s.count(x)!=1: raise SystemExit(f'{tag}: unexpected likelihood count {x}: {s.count(x)}')
+                  s=s.replace(x,'#'+x,1)
+              if 'DEFAULT(batch3/common.ini)' not in s: raise SystemExit('common.ini missing')
+              Path(f'{tag}.ini').write_text(s)
+          PY
+          diff -u cosmomc_base/test_ide.ini a020.ini > a020.diff || true
+          diff -u cosmomc_base/test_ide.ini a080.ini > a080.diff || true
+      - name: Execute both anchors
+        shell: bash
+        run: |
+          set +e
+          : > case_exits.tsv
+          if [ "$(cat build.exit)" != "0" ]; then exit 0; fi
+          for tag in a020 a080; do
+            cp ${tag}.ini cosmomc_base/${tag}.ini
+            (cd cosmomc_base && rm -f m14_k1_${tag}* && ./cosmomc ${tag}.ini) > ${tag}.log 2>&1
+            rc=$?
+            echo -e "${tag}\t${rc}" >> case_exits.tsv
+          done
+          exit 0
+      - name: Analyze prospectively frozen K1 invariants
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, math, pathlib
+          build=int(pathlib.Path('build.exit').read_text())
+          exits={}
+          if pathlib.Path('case_exits.tsv').exists():
+              for x in pathlib.Path('case_exits.tsv').read_text().splitlines():
+                  if x.strip():
+                      k,v=x.split(); exits[k]=int(v)
+          anchors={}
+          allpass=(build==0)
+          for tag,alpha in [('a020',0.2),('a080',0.8)]:
+              log=pathlib.Path(f'{tag}.log').read_text(errors='replace') if pathlib.Path(f'{tag}.log').exists() else ''
+              q=pathlib.Path('cosmomc_base')/f'm14_k1_{tag}.quantity'
+              cl=pathlib.Path('cosmomc_base')/f'm14_k1_{tag}.theory_cl'
+              rows=[]
+              if q.exists():
+                  for line in q.read_text(errors='replace').splitlines():
+                      y=line.strip()
+                      if not y or y.startswith('#'): continue
+                      try: vals=[float(v.replace('D','E').replace('d','e')) for v in y.split()]
+                      except Exception: continue
+                      rows.append(vals)
+              clrows=[]
+              if cl.exists():
+                  for line in cl.read_text(errors='replace').splitlines():
+                      y=line.strip()
+                      if not y or y.startswith('#'): continue
+                      try: vals=[float(v.replace('D','E').replace('d','e')) for v in y.split()]
+                      except Exception: continue
+                      clrows.append(vals)
+              shape_ok=len(rows)==2000 and all(len(r)==11 for r in rows)
+              finite_q=shape_ok and all(math.isfinite(v) for r in rows for v in r)
+              finite_cl=bool(clrows) and all(math.isfinite(v) for r in clrows for v in r)
+              gq_exact=shape_ok and all(r[6]==0.0 for r in rows)
+              drift=None
+              if shape_ok:
+                  m=[r[0]*r[3] for r in rows]
+                  den=sum(abs(x) for x in m)/len(m)
+                  drift=(max(m)-min(m))/den if den else math.inf
+              cq='The cosmological model is coupled quintessence model' in log
+              passed=(exits.get(tag)==0 and cq and shape_ok and finite_q and finite_cl and gq_exact and drift is not None and drift<=2e-4)
+              anchors[tag]={'alpha_quint':alpha,'beta_cq':0.0,'run_exit':exits.get(tag),'cq_selected':cq,
+                            'quantity_rows':len(rows),'quantity_cols':len(rows[0]) if rows else None,
+                            'theory_cl_rows':len(clrows),'all_finite':finite_q and finite_cl,
+                            'gQ_exact_zero':gq_exact,'a_times_grhoc_relative_drift':drift,
+                            'drift_threshold':2e-4,'pass':passed}
+              allpass=allpass and passed
+          if build!=0: cls='M14_IDECAMB_K1_BLOCKED_BUILD'
+          elif allpass: cls='M14_IDECAMB_K1_DECOUPLING_PASS_WITH_SCOPE'
+          else: cls='M14_IDECAMB_K1_DECOUPLING_FAIL'
+          out={'schema':'KMDSB.W03.M14.IDECAMBK1Decoupling.v0.1',
+               'provider_base':'cmbant/CosmoMC@eb08c2fe91d9711929802fede310ae58c020fcb4',
+               'provider_overlay':'liaocrane/IDECAMB@4f1093d9efe46f28cf7e2acb4d07ae116ad5e075',
+               'build_exit':build,'anchors':anchors,'classification':cls,
+               'scope':'source-exact interaction-off invariants across two prospectively withheld scalar anchors; no independent cross-solver comparator',
+               'physical_falsification_authorized':False}
+          pathlib.Path('m14_idecamb_k1_decoupling.json').write_text(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+      - name: Persist canonical K1 result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m14_idecamb_k1_decoupling.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/coupled_quintessence
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M14_IDECAMB_K1_DECOUPLING_RESULT.json
+          cp /tmp/result.json models/coupled_quintessence/idecamb_k1_decoupling.json
+          git add waves/wave_03_expanded_dark_energy/M14_IDECAMB_K1_DECOUPLING_RESULT.json models/coupled_quintessence/idecamb_k1_decoupling.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record IDECAMB M14 K1 decoupling result'
+            git push origin HEAD:main
+          fi
+      - name: Upload immutable K1 bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m14-idecamb-k1-decoupling
+          path: |
+            m14_idecamb_k1_decoupling.json
+            build.log
+            build.exit
+            case_exits.tsv
+            a020.ini
+            a080.ini
+            a020.diff
+            a080.diff
+            a020.log
+            a080.log
+            cosmomc_base/m14_k1_a020.quantity
+            cosmomc_base/m14_k1_a020.theory_cl
+            cosmomc_base/m14_k1_a020.pars
+            cosmomc_base/m14_k1_a080.quantity
+            cosmomc_base/m14_k1_a080.theory_cl
+            cosmomc_base/m14_k1_a080.pars
+          retention-days: 90
