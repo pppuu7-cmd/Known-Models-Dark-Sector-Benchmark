@@ -1,0 +1,103 @@
+{
+  "cases": {
+    "po": {
+      "contract_pass": true,
+      "exit": 0,
+      "outputs": {
+        "matterpower.dat": {
+          "cols": 2,
+          "finite": true,
+          "rows": 554
+        },
+        "scalCls.dat": {
+          "cols": 4,
+          "finite": true,
+          "rows": 4999
+        },
+        "transfer_out.dat": {
+          "cols": 9,
+          "finite": true,
+          "rows": 192
+        }
+      }
+    },
+    "pp": {
+      "contract_pass": true,
+      "exit": 0,
+      "outputs": {
+        "matterpower.dat": {
+          "cols": 2,
+          "finite": true,
+          "rows": 554
+        },
+        "scalCls.dat": {
+          "cols": 4,
+          "finite": true,
+          "rows": 4999
+        },
+        "transfer_out.dat": {
+          "cols": 9,
+          "finite": true,
+          "rows": 192
+        }
+      }
+    },
+    "zd": {
+      "contract_pass": false,
+      "exit": 139,
+      "outputs": {
+        "matterpower.dat": {
+          "error": "[Errno 2] No such file or directory: 'axc_patch/r0d_matterpower.dat'",
+          "finite": false
+        },
+        "scalCls.dat": {
+          "error": "[Errno 2] No such file or directory: 'axc_patch/r0d_scalCls.dat'",
+          "finite": false
+        },
+        "transfer_out.dat": {
+          "error": "[Errno 2] No such file or directory: 'axc_patch/r0d_transfer_out.dat'",
+          "finite": false
+        }
+      }
+    },
+    "zf": {
+      "contract_pass": false,
+      "exit": 139,
+      "outputs": {
+        "matterpower.dat": {
+          "error": "[Errno 2] No such file or directory: 'axc_patch/r0f_matterpower.dat'",
+          "finite": false
+        },
+        "scalCls.dat": {
+          "error": "[Errno 2] No such file or directory: 'axc_patch/r0f_scalCls.dat'",
+          "finite": false
+        },
+        "transfer_out.dat": {
+          "error": "[Errno 2] No such file or directory: 'axc_patch/r0f_transfer_out.dat'",
+          "finite": false
+        }
+      }
+    }
+  },
+  "classification": "M19_ZERO_BYPASS_RECOVERY_V2_EXECUTION_BLOCKED",
+  "next_if_pass": "run separately preregistered historical pure-CAMB CDM comparator; recovery alone does not promote K1",
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M19_AXIONCAMB2_ZERO_BYPASS_RECOVERY_V2_PREREGISTRATION_v0.1.md",
+  "provider_pin": "891e779cc0bd422e49f97533e6c2fc761149737d",
+  "schema": "KMDSB.M19.axionCAMB2.zeroBypassRecoveryV2.v1",
+  "scientific_promotion": {
+    "K1": false,
+    "K2_K9": false
+  },
+  "status": {
+    "build_debug": 0,
+    "build_orig": 0,
+    "build_patch": 0,
+    "debug_zf": 2,
+    "po": 0,
+    "pp": 0,
+    "zd": 139,
+    "zf": 139
+  },
+  "tolerance": 1e-12
+}
