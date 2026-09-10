@@ -1,0 +1,113 @@
+name: W03 M11b CLASS_GSF provider control
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m11b-class-gsf-provider-control.yml'
+      - 'protocol/W03_M11B_CLASS_GSF_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: write
+
+jobs:
+  provider-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch exact provider and build
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/KunhaoZhong/CLASS_GSF.git class_gsf
+          git -C class_gsf checkout -q 07e015246c4b40f4e22bb50c9a0a63a621bb61f7
+          test "$(git -C class_gsf rev-parse HEAD)" = "07e015246c4b40f4e22bb50c9a0a63a621bb61f7"
+          set +e
+          make -C class_gsf -j2 class > provider_build.log 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > provider_build.exit
+
+      - name: Run unmodified committed DGF example
+        shell: bash
+        run: |
+          set +e
+          echo 999 > provider_dgf.exit
+          if [ "$(cat provider_build.exit)" = 0 ]; then
+            rm -f class_gsf/output/dgf_*
+            (cd class_gsf && ./class dgf.ini) > provider_dgf.log 2>&1
+            rc=$?
+            echo "$rc" > provider_dgf.exit
+          fi
+          exit 0
+
+      - name: Classify provider control
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib, hashlib
+          build=int(pathlib.Path('provider_build.exit').read_text().strip())
+          run=int(pathlib.Path('provider_dgf.exit').read_text().strip())
+          outdir=pathlib.Path('class_gsf/output')
+          files=sorted(str(p.relative_to(pathlib.Path('class_gsf'))) for p in outdir.glob('dgf_*') if p.is_file())
+          has_bg=any('background.dat' in x for x in files)
+          has_pk=any(x.endswith('_pk.dat') or 'pk.dat' in x for x in files)
+          if build != 0:
+              cls='PROVIDER_CONTROL_FAIL_BUILD'
+          elif run != 0 or not (has_bg and has_pk):
+              cls='PROVIDER_CONTROL_FAIL_EXAMPLE'
+          else:
+              cls='PROVIDER_CONTROL_PASS'
+          result={
+            'schema':'KMDSB.W03.M11b.CLASS_GSF.ProviderControl.v0.1',
+            'solver':'KunhaoZhong/CLASS_GSF@07e015246c4b40f4e22bb50c9a0a63a621bb61f7',
+            'input':'provider committed dgf.ini unmodified',
+            'build_exit':build,
+            'dgf_exit':run,
+            'fresh_output_files':files,
+            'fresh_background_present':has_bg,
+            'fresh_pk_present':has_pk,
+            'classification':cls,
+            'm11b_scientific_promotion_authorized':False,
+            'interpretation':'provider-wide executable control only; model-6 k-essence remains separately gated'
+          }
+          pathlib.Path('m11b_provider_control.json').write_text(json.dumps(result,indent=2)+'\n')
+          print(json.dumps(result,indent=2))
+          PY
+
+      - name: Persist provider-control result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m11b_provider_control.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_03_expanded_dark_energy models/covariant_kessence
+          cp /tmp/result.json waves/wave_03_expanded_dark_energy/M11B_CLASS_GSF_PROVIDER_CONTROL_RESULT.json
+          cp /tmp/result.json models/covariant_kessence/provider_control_result.json
+          git add waves/wave_03_expanded_dark_energy/M11B_CLASS_GSF_PROVIDER_CONTROL_RESULT.json models/covariant_kessence/provider_control_result.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record CLASS_GSF provider control result'
+            git push origin HEAD:main
+          fi
+
+      - name: Upload immutable provider-control bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w03-m11b-class-gsf-provider-control
+          path: |
+            m11b_provider_control.json
+            provider_build.log
+            provider_build.exit
+            provider_dgf.log
+            provider_dgf.exit
+            class_gsf/output/dgf_*
+          if-no-files-found: warn
+          retention-days: 90
