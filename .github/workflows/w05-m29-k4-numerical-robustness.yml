@@ -1,0 +1,88 @@
+name: W05 M29 Brans-Dicke K4 numerical robustness
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w05-m29-k4-numerical-robustness.yml'
+
+jobs:
+  compute:
+    strategy:
+      fail-fast: false
+      matrix:
+        omega: ['15','1e4']
+        profile: [default, dense_bg, permille, ref]
+    runs-on: ubuntu-latest
+    env:
+      HICLASS_PIN: 0009f51d89e6465c79e570b496c66fc90058fa77
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute frozen precision arm
+        shell: bash
+        run: |
+          set -euo pipefail
+          OM='${{ matrix.omega }}'; PR='${{ matrix.profile }}'
+          BASE="$GITHUB_WORKSPACE/m29k4/$OM/$PR"
+          mkdir -p "$BASE/output"
+          git clone -q https://github.com/hiclass-code/hi_class_public.git hiclass
+          cd hiclass && git checkout -q --detach "$HICLASS_PIN"
+          test "$(git rev-parse HEAD)" = "$HICLASS_PIN"
+          make -j2 >/dev/null
+          CFG="$BASE/run.ini"
+          cp gravity_models/brans_dicke.ini "$CFG"
+          python3 - "$CFG" "$OM" "$BASE" <<'PY'
+          import re,sys
+          p,om,base=sys.argv[1:]
+          s=open(p).read()
+          s=re.sub(r'^parameters_smg\s*=.*$',f'parameters_smg = 0.7, {om}, 1., 0.',s,flags=re.M)
+          s=re.sub(r'^root\s*=.*$',f'root = {base}/output/bd_',s,flags=re.M)
+          open(p,'w').write(s)
+          PY
+          if [ "$PR" != default ]; then echo 'background_Nloga = 40000' >> "$CFG"; fi
+          EXTRA=()
+          if [ "$PR" = permille ]; then EXTRA=(cl_permille.pre); fi
+          if [ "$PR" = ref ]; then EXTRA=(cl_ref.pre); fi
+          set +e
+          ./class "$CFG" "${EXTRA[@]}" > "$BASE/stdout.log" 2> "$BASE/stderr.log"
+          RC=$?
+          set -e
+          echo "$RC" > "$BASE/exit_code.txt"
+          find "$BASE" -maxdepth 2 -type f -printf '%P %s bytes\n' | sort > "$BASE/file_manifest.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m29-k4-${{ matrix.omega }}-${{ matrix.profile }}
+          path: m29k4/${{ matrix.omega }}/${{ matrix.profile }}
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: compute
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {pattern: 'm29-k4-*', path: downloaded}
+      - name: Reassemble matrix artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p m29k4
+          for om in 15 1e4; do
+            for pr in default dense_bg permille ref; do
+              src="downloaded/m29-k4-$om-$pr"
+              mkdir -p "m29k4/$om/$pr"
+              cp -a "$src"/. "m29k4/$om/$pr/"
+            done
+          done
+      - name: Classify frozen K4 gate
+        run: python3 verification/m29/k4_numerical_robustness.py | tee m29_k4_result_stdout.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m29-k4-aggregate
+          path: |
+            waves/wave_05_modified_gravity/M29_K4_NUMERICAL_ROBUSTNESS_RESULT.json
+            m29_k4_result_stdout.json
+          retention-days: 30
