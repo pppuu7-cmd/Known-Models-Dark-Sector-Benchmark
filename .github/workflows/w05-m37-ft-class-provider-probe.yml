@@ -1,0 +1,109 @@
+name: W05 M37 fT CLASS provider probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w05-m37-ft-class-provider-probe.yml'
+
+jobs:
+  provider-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3
+      - name: Clone exact fT provider
+        shell: bash
+        run: |
+          git clone -q https://github.com/Speeddemon5050/Modified-CLASS-fT-Exact-.git provider
+          cd provider
+          git checkout -q 74e6a8679cdc233fb339c67127ed0921ba547894
+          git rev-parse HEAD | tee ../provider_commit.txt
+      - name: Source audit
+        shell: bash
+        run: |
+          grep -n 'n_fT' provider/source/input.c | head -20 | tee source_input_markers.txt
+          grep -n -E 'n_fT|alpha_ft|F_doubleprime_0' provider/source/background.c | head -80 | tee source_background_markers.txt
+          grep -n -E 'n_fT|alpha_ft|F_prime_0|F_doubleprime_0' provider/source/perturbations.c | head -120 | tee source_perturbation_markers.txt
+      - name: Build exact provider without source modification
+        shell: bash
+        run: |
+          set +e
+          make -C provider -j2 > build_stdout.txt 2> build_stderr.txt
+          echo $? > build_exit.txt
+          set -e
+      - name: Prepare frozen reference and active arms
+        shell: bash
+        run: |
+          mkdir -p provider/output
+          cat > provider/reference.ini <<'EOF'
+          H0 = 67.36
+          omega_b = 0.02237
+          omega_cdm = 0.1200
+          N_ur = 3.044
+          N_ncdm = 0
+          tau_reio = 0.0544
+          A_s = 2.100e-9
+          n_s = 0.9649
+          output = tCl,mPk
+          l_max_scalars = 2500
+          P_k_max_h/Mpc = 1.0
+          z_pk = 0
+          n_fT = 0.0
+          root = output/reference_
+          overwrite_root = yes
+          EOF
+          cp provider/reference.ini provider/active.ini
+          sed -i 's/n_fT = 0.0/n_fT = 0.10/' provider/active.ini
+          sed -i 's#output/reference_#output/active_#' provider/active.ini
+      - name: Execute frozen arms
+        shell: bash
+        run: |
+          set +e
+          (cd provider && ./class reference.ini > ../reference_stdout.txt 2> ../reference_stderr.txt); echo $? > reference_exit.txt
+          (cd provider && ./class active.ini > ../active_stdout.txt 2> ../active_stderr.txt); echo $? > active_exit.txt
+          set -e
+          touch provider/output/reference_cl.dat provider/output/reference_pk.dat provider/output/active_cl.dat provider/output/active_pk.dat
+          ls -lh provider/output | tee output_listing.txt
+      - name: Apply frozen K0 probe gate
+        shell: bash
+        run: |
+          python3 verification/m37/k0_ft_provider_probe.py \
+            --provider-dir provider \
+            --reference-cl provider/output/reference_cl.dat \
+            --active-cl provider/output/active_cl.dat \
+            --reference-pk provider/output/reference_pk.dat \
+            --active-pk provider/output/active_pk.dat \
+            --provider-commit "$(cat provider_commit.txt)" \
+            --expected-commit 74e6a8679cdc233fb339c67127ed0921ba547894 \
+            --reference-exit "$(cat reference_exit.txt)" \
+            --active-exit "$(cat active_exit.txt)" \
+            --out m37_k0_ft_provider_result.json
+      - name: Upload audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: m37-ft-class-provider-probe
+          path: |
+            m37_k0_ft_provider_result.json
+            provider_commit.txt
+            build_exit.txt
+            build_stdout.txt
+            build_stderr.txt
+            reference_exit.txt
+            active_exit.txt
+            reference_stdout.txt
+            reference_stderr.txt
+            active_stdout.txt
+            active_stderr.txt
+            source_input_markers.txt
+            source_background_markers.txt
+            source_perturbation_markers.txt
+            output_listing.txt
+            provider/output/reference_cl.dat
+            provider/output/reference_pk.dat
+            provider/output/active_cl.dat
+            provider/output/active_pk.dat
