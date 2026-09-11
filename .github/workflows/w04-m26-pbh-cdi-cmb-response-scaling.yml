@@ -1,0 +1,104 @@
+name: W04 M26 PBH CDI CMB response scaling
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m26-pbh-cdi-cmb-response-scaling.yml']
+permissions:
+  contents: write
+jobs:
+  response:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        mass: [100, 1000, 10000]
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build pinned CLASS and prepare cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          make -C class -j2 > build.log 2>&1
+          python3 verification/m26/pbh_cdi_cmb_response_scaling.py prepare cases '${{ matrix.mass }}'
+      - name: Execute five cases two-at-a-time
+        shell: bash
+        run: |
+          mkdir -p class/output logs parts
+          printf '%s\n' ref f0 f1 f2 f3 | xargs -P 2 -I{} bash -c '
+            t="$1"; set +e
+            (cd class && ./class "../cases/${t}.ini" > "../logs/${t}.log" 2>&1)
+            printf "%d\n" "$?" > "parts/${t}.status"
+          ' _ {}
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          Path('status.json').write_text(json.dumps({p.stem:int(p.read_text()) for p in Path('parts').glob('*.status')},sort_keys=True)+'\n')
+          PY
+      - name: Analyze fraction scaling
+        run: |
+          python3 verification/m26/pbh_cdi_cmb_response_scaling.py analyze class status.json cases/manifest.json result.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m26-pbh-cdi-cmb-m${{ matrix.mass }}
+          path: |
+            build.log
+            cases/
+            status.json
+            result.json
+            logs/
+            class/output/
+          retention-days: 90
+  aggregate:
+    needs: response
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m26-pbh-cdi-cmb-m*
+          path: collected
+      - run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+      - name: Check mass scaling and persist
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import numpy as np
+          rs=sorted([json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')],key=lambda r:r['mass_Msun'])
+          masses=np.asarray([r['mass_Msun'] for r in rs],float); fracs=np.asarray(rs[0]['fractions'],float); blocks=['TT','EE','TE','Pk']
+          slopes={}; massok=True
+          for b in blocks:
+              slopes[b]={}
+              for i,f in enumerate(fracs):
+                  y=np.asarray([r['blocks'][b]['responses'][i] for r in rs],float)
+                  if np.any(~np.isfinite(y)) or np.any(y<=0): p=None; massok=False
+                  else: p=float(np.polyfit(np.log(masses),np.log(y),1)[0]); massok &= abs(p-1)<=0.05
+                  slopes[b][str(f)]=p
+          child=(len(rs)==3 and all(r['classification']=='M26_PBH_CDI_CMB_RESPONSE_SCALING_PASS_WITH_SCOPE' for r in rs))
+          s={'schema':'KMDSB.M26.PBHCDIMultiObservableScaling.Summary.v1','preregistration':'protocol/W04_M26_PBH_CDI_CMB_RESPONSE_SCALING_PREREGISTRATION_v0.1.md','children':{str(r['mass_Msun']):r['classification'] for r in rs},'mass_scaling_exponents':slopes,'all_mass_scaling_pass':bool(massok),'classification':'M26_PBH_CDI_MULTI_OBSERVABLE_MASS_FRACTION_SCALING_PASS_WITH_SCOPE' if child and massok else 'M26_PBH_CDI_MULTI_OBSERVABLE_SCALING_NOT_ESTABLISHED','K1_promoted':False,'K4_promoted':False,'physical_falsification':False,'observation_likelihood_gate':'OPEN'}
+          Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n'); print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/primordial_black_hole_dark_matter
+          cp /tmp/summary.json waves/wave_04_dark_matter/M26_PBH_CDI_MULTI_OBSERVABLE_SCALING_SUMMARY.json
+          cp /tmp/summary.json models/primordial_black_hole_dark_matter/M26_PBH_CDI_MULTI_OBSERVABLE_SCALING_SUMMARY.json
+          git add waves/wave_04_dark_matter models/primordial_black_hole_dark_matter
+          git diff --cached --quiet || { git commit -m 'Record M26 PBH CDI multi-observable scaling'; git pull --rebase origin main; git push origin HEAD:main; }
