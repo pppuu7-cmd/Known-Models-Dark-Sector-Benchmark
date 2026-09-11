@@ -1,0 +1,71 @@
+name: W05 M30 M31 M33 hi_class K0 provider tranche
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w05-m30-m31-m33-k0-provider-tranche.yml'
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        arm: [m30_horndeski, m31_bh, m33_galileon, lcdm]
+    runs-on: ubuntu-latest
+    env:
+      HICLASS_PIN: 0009f51d89e6465c79e570b496c66fc90058fa77
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pinned hi_class and run frozen arm
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARM='${{ matrix.arm }}'
+          BASE="$GITHUB_WORKSPACE/w05k0/$ARM"
+          mkdir -p "$BASE/output"
+          git clone -q https://github.com/hiclass-code/hi_class_public.git hiclass
+          cd hiclass
+          git checkout -q --detach "$HICLASS_PIN"
+          ACTUAL=$(git rev-parse HEAD)
+          echo "$ACTUAL" > "$BASE/actual_commit.txt"
+          test "$ACTUAL" = "$HICLASS_PIN"
+          make -j2 >/dev/null
+          CFG="$BASE/run.ini"
+          if [ "$ARM" = m30_horndeski ]; then
+            cp gravity_models/propto_omega_bh.ini "$CFG"
+            sed -i 's/^parameters_smg =.*/parameters_smg =   1.,  0.5, 0.2,  0., 0.,  1./' "$CFG"
+            sed -i "s#^root =.*#root = $BASE/output/m30_#" "$CFG"
+          elif [ "$ARM" = m31_bh ]; then
+            cp gravity_models/propto_omega_bh.ini "$CFG"
+            sed -i "s#^root =.*#root = $BASE/output/m31_#" "$CFG"
+          elif [ "$ARM" = m33_galileon ]; then
+            cp gravity_models/galileon_3.ini "$CFG"
+            sed -i "s#^root =.*#root = $BASE/output/m33_#" "$CFG"
+          else
+            cat > "$CFG" <<EOF
+          output = tCl, mPk
+          root = $BASE/output/lcdm_
+          overwrite_root = yes
+          write background = yes
+          input_verbose = 1
+          background_verbose = 1
+          perturbations_verbose = 1
+          harmonic_verbose = 1
+          fourier_verbose = 1
+          output_verbose = 1
+          EOF
+          fi
+          set +e
+          ./class "$CFG" > "$BASE/stdout.log" 2> "$BASE/stderr.log"
+          RC=$?
+          set -e
+          echo "$RC" > "$BASE/exit_code.txt"
+          find "$BASE" -maxdepth 2 -type f -printf '%P %s bytes\n' | sort > "$BASE/file_manifest.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: w05-k0-${{ matrix.arm }}
+          path: w05k0/${{ matrix.arm }}
+          if-no-files-found: error
+          retention-days: 30
