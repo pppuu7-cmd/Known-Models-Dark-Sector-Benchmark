@@ -1,0 +1,25 @@
+{
+  "K0_promoted": false,
+  "checks": {
+    "clean_build_exit_code": 2,
+    "dgp_provenance": true,
+    "exact_pin": true,
+    "native_executable_exists": false
+  },
+  "classification": "M32_K0B_CLEAN_BUILD_STILL_BLOCKED",
+  "physical_falsification": false,
+  "provider": "nat-woodcock/EFT-Ramses",
+  "provider_commit": "849ddb716041316d0e223ba22badc0d630b72435",
+  "schema": "m32_dgp_k0b_clean_build_recovery_v0.1",
+  "scope": "build-only recovery after deleting tracked precompiled .o/.mod artifacts; no physics/source modification; production DGP execution still required before K0 promotion",
+  "workflow_run_id": 34644731617,
+  "aggregate_artifact_id": 10281976196,
+  "aggregate_artifact_digest": "sha256:35efbc0935b390b84cbb50b96dcbedb13e4c8b8f3ce3ca65ade9746f243465c8",
+  "build_localization": {
+    "previous_stale_module_error_removed": true,
+    "current_failure_class": "legacy_MPI_argument_rank_mismatch",
+    "current_failure_file": "amr/bisection.f90",
+    "current_failure_examples": ["MPI_ALLREDUCE scalar vs rank-1 actual argument mismatch at lines 199 and 235"],
+    "interpretation": "clean rebuild successfully removed the tracked precompiled-module incompatibility and exposed the next compiler-compatibility boundary; this is not a physical DGP failure"
+  }
+}
