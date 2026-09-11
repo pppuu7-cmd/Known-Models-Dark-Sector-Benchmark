@@ -1,0 +1,83 @@
+{
+  "changes_parent_K_status": false,
+  "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "classification": "GENERAL_CLASS_PRECISION_PROFILE_NONNESTED_CONTROL",
+  "controls": {
+    "newtonian": {
+      "blocks": {
+        "EE": {
+          "R_coarse": 6.371083859865797e-05,
+          "R_fine": 0.0003838079089153414,
+          "nonmonotone": true,
+          "pass_parent_rule": false
+        },
+        "Pk": {
+          "R_coarse": 0.0,
+          "R_fine": 7.759599736692594e-05,
+          "nonmonotone": true,
+          "pass_parent_rule": false
+        },
+        "TE": {
+          "R_coarse": 0.0,
+          "R_fine": 0.0,
+          "nonmonotone": false,
+          "pass_parent_rule": true
+        },
+        "TT": {
+          "R_coarse": 7.196653614649715e-05,
+          "R_fine": 0.0002912719258180137,
+          "nonmonotone": true,
+          "pass_parent_rule": false
+        }
+      },
+      "statuses": {
+        "default": 0,
+        "permille": 0,
+        "reference": 0
+      }
+    },
+    "synchronous": {
+      "blocks": {
+        "EE": {
+          "R_coarse": 6.371040384660942e-05,
+          "R_fine": 0.00038540041192760134,
+          "nonmonotone": true,
+          "pass_parent_rule": false
+        },
+        "Pk": {
+          "R_coarse": 0.0,
+          "R_fine": 4.667057399200124e-05,
+          "nonmonotone": true,
+          "pass_parent_rule": false
+        },
+        "TE": {
+          "R_coarse": 0.0,
+          "R_fine": 0.0,
+          "nonmonotone": false,
+          "pass_parent_rule": true
+        },
+        "TT": {
+          "R_coarse": 7.195285766827744e-05,
+          "R_fine": 0.0002935588789314951,
+          "nonmonotone": true,
+          "pass_parent_rule": false
+        }
+      },
+      "statuses": {
+        "default": 0,
+        "permille": 0,
+        "reference": 0
+      }
+    }
+  },
+  "parent_localization": "waves/wave_04_dark_matter/M23_K4_PRECISION_LADDER_LOCALIZATION_RESULT.json",
+  "parent_result": "waves/wave_04_dark_matter/M23_K4_CROSS_GAUGE_PRECISION_RESULT.json",
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M23_CLASS_PRECISION_PROFILE_TRANSFER_CONTROL_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M23.CLASSPrecisionProfileTransferControl.v1",
+  "transferred_blocks_both_gauges": [
+    "TT",
+    "EE",
+    "Pk"
+  ]
+}
