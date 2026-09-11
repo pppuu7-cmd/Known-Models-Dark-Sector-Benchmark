@@ -1,0 +1,61 @@
+{
+  "schema": "w05_m30_m31_m33_k0_provider_tranche_v0.1",
+  "provider_repository": "hiclass-code/hi_class_public",
+  "provider_commit": "0009f51d89e6465c79e570b496c66fc90058fa77",
+  "parent_run_id": 34630599435,
+  "parent_head_sha": "c925101b3535aa682f0478b17e15c19d8a58a301",
+  "lcdm_control": {
+    "exit_code": 0,
+    "pin_exact": true,
+    "row_counts": {"background": 40000, "tt": 2499, "pk": 526}
+  },
+  "results": {
+    "M30": {
+      "arm": "m30_horndeski",
+      "exit_code": 0,
+      "pin_exact": true,
+      "row_counts": {"background": 40000, "tt": 2499, "pk": 526},
+      "max_relative_difference_vs_lcdm": {"background_H": 8.23957506829892e-10, "tt": 0.24008910160134256, "pk": 0.1540506666801277},
+      "rms_relative_difference_vs_lcdm": {"background_H": 9.19350432389421e-11, "tt": 0.008603786180668834, "pk": 0.04326142975274357},
+      "branch_active_gt_1e6": true,
+      "all_pass": true,
+      "classification": "M30_K0_PASS_WITH_SCOPE_HORNDESKI_EFFECTIVE_ALPHA_SUBSPACE",
+      "K0_promoted": true,
+      "K1_promoted": false,
+      "physical_falsification": false
+    },
+    "M31": {
+      "arm": "m31_bh",
+      "exit_code": 0,
+      "pin_exact": true,
+      "row_counts": {"background": 40000, "tt": 2499, "pk": 526},
+      "max_symmetric_relative_difference_vs_lcdm": {"background_H": 8.239575071693451e-10, "tt": 2.0, "pk": 2.0},
+      "rms_symmetric_relative_difference_vs_lcdm": {"background_H": 9.193504325302006e-11, "tt": 1.476204427647938, "pk": 0.12129403741733126},
+      "branch_active_gt_1e6": true,
+      "all_pass": true,
+      "classification": "M31_K0_PASS_WITH_SCOPE_EFFECTIVE_BH_PARAMETERIZATION_COVARIANT_GLPV_OPEN",
+      "covariant_self_consistent_glpv_closure": "OPEN_PROVIDER_BOUNDARY",
+      "K0_promoted": true,
+      "K1_promoted": false,
+      "physical_falsification": false
+    },
+    "M33": {
+      "arm": "m33_galileon",
+      "exit_code": 0,
+      "pin_exact": true,
+      "row_counts": {"background": 3000, "tt": 2499, "pk": 530},
+      "max_relative_difference_vs_lcdm": {"background_H": 0.11346630090517823, "tt": 0.7132478744519023, "pk": 0.5933415026747835},
+      "rms_relative_difference_vs_lcdm": {"background_H": 0.00995721408379997, "tt": 0.05014103168189284, "pk": 0.4320069611143152},
+      "branch_active_gt_1e6": true,
+      "all_pass": true,
+      "classification": "M33_K0_PASS_WITH_SCOPE_COVARIANT_CUBIC_GALILEON_PROVIDER",
+      "K0_promoted": true,
+      "K1_promoted": false,
+      "physical_falsification": false
+    }
+  },
+  "all_arms_executed": true,
+  "physical_falsification": false,
+  "scope_guard": "K0 provenance/executability only. No K1-K9 promotion; M31 effective-alpha execution does not establish self-consistent covariant GLPV/DHOST closure.",
+  "preregistration": "protocol/W05_M30_M31_M33_HICLASS_K0_PROVIDER_TRANCHE_PREREGISTRATION_v0.1.md"
+}
