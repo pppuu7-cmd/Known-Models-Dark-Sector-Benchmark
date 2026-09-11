@@ -1,0 +1,63 @@
+name: W04 M25 resonant sterile-DM provider control
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m25-resonant-sterile-dm-provider-control.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  provider-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Execute frozen stock provider control
+        run: bash verification/m25/run_provider_control.sh
+      - name: Validate newly generated provider products
+        run: |
+          python3 verification/m25/provider_control.py m25_status.json generated_provider_outfiles committed_provider_outfiles m25_provider_result.json
+          cat m25_provider_result.json
+      - name: Persist canonical result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m25_provider_result.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/resonant_sterile_neutrino_wdm waves/wave_04_dark_matter
+          cp /tmp/result.json models/resonant_sterile_neutrino_wdm/M25_PROVIDER_CONTROL_RESULT.json
+          cp /tmp/result.json waves/wave_04_dark_matter/M25_PROVIDER_CONTROL_RESULT.json
+          git add models/resonant_sterile_neutrino_wdm/M25_PROVIDER_CONTROL_RESULT.json waves/wave_04_dark_matter/M25_PROVIDER_CONTROL_RESULT.json
+          git diff --cached --quiet || { git commit -m 'Record M25 resonant sterile-DM provider control'; git pull --rebase origin main; git push origin HEAD:main; }
+      - name: Enforce provider-control-only semantics
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/result.json'))
+          allowed={'M25_PROVIDER_CONTROL_BLOCKED_BUILD','M25_PROVIDER_CONTROL_BLOCKED_RUNTIME','M25_PROVIDER_CONTROL_OUTPUT_INVALID','M25_PROVIDER_CONTROL_PASS_STOCK_RESONANT_PSD'}
+          assert r['classification'] in allowed
+          assert r['K1_promoted'] is False
+          assert r['physical_falsification'] is False
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m25-resonant-sterile-dm-provider-control
+          path: |
+            m25_configure.log
+            m25_make.log
+            m25_stock_run.log
+            m25_status.json
+            m25_provider_result.json
+            generated_provider_outfiles/
+          retention-days: 90
