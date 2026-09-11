@@ -1,0 +1,32 @@
+name: KMDSB readiness snapshot
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/readiness-snapshot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compute matrix readiness
+        run: python3 verification/audit_matrix_readiness.py
+      - name: Commit snapshot
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audits/KMDSB_READINESS_SNAPSHOT.json
+          if git diff --cached --quiet; then
+            echo 'snapshot unchanged'
+            exit 0
+          fi
+          git commit -m 'Update KMDSB readiness snapshot'
+          git push
