@@ -1,0 +1,16 @@
+{
+  "K0_promoted": false,
+  "checkpoint_policy": "up to four sequential 25-second serial make intervals with exact generated .o/.mod state carry-forward",
+  "checks": {
+    "exact_pin": true,
+    "final_stage_build_exit_code": 124,
+    "native_executable_exists": false
+  },
+  "classification": "M32_K0E_CHECKPOINT_BUDGET_EXHAUSTED",
+  "physical_falsification": false,
+  "provider": "nat-woodcock/EFT-Ramses",
+  "provider_commit": "849ddb716041316d0e223ba22badc0d630b72435",
+  "schema": "m32_dgp_k0e_checkpointed_intel_build_v0.1",
+  "scope": "infrastructure-only continuation of the provider-intended build; production DGP execution plus reference/control required before K0 promotion",
+  "toolchain": "Intel oneAPI ifx + Intel MPI mpiifx; provider active Intel-style flags preserved"
+}
