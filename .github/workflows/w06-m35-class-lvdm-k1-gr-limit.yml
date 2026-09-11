@@ -1,0 +1,87 @@
+name: W06 M35 CLASS_LVDM K1 GR limit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w06-m35-class-lvdm-k1-gr-limit.yml'
+      - 'verification/m35/k1_gr_limit_ladder.py'
+      - 'protocol/W06_M35_EINSTEIN_AETHER_K1_GR_LIMIT_PREREGISTRATION_v0.1.md'
+  workflow_dispatch:
+
+jobs:
+  k1-gr-limit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential gfortran python3-numpy
+      - name: Clone exact provider
+        run: |
+          git clone --branch LVDM https://github.com/Michalychforever/CLASS_LVDM.git provider
+          cd provider
+          git checkout d9a20bd0c7b7a6c8957410fd245ed06b30b915c1
+          test "$(git rev-parse HEAD)" = "d9a20bd0c7b7a6c8957410fd245ed06b30b915c1"
+          git rev-parse HEAD > ../provider_commit.txt
+      - name: Build exact provider
+        run: |
+          cd provider
+          make -j2 class
+      - name: Prepare frozen control and ladder
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd provider
+          mkdir -p output ../m35k1out
+          cp lcdm.ini control.ini
+          sed -i 's|^[[:space:]]*root[[:space:]]*=.*|root = output/control_|' control.ini
+          declare -A ALPHA=( [s1]=0.05 [s01]=0.005 [s001]=0.0005 [s0001]=0.00005 )
+          declare -A BETA=( [s1]=0.25 [s01]=0.025 [s001]=0.0025 [s0001]=0.00025 )
+          declare -A LAMBDA=( [s1]=-0.10 [s01]=-0.010 [s001]=-0.0010 [s0001]=-0.00010 )
+          for tag in s1 s01 s001 s0001; do
+            cp Misha.ini ${tag}.ini
+            sed -i -E "s|^[[:space:]]*alpha[[:space:]]*=.*|alpha = ${ALPHA[$tag]}|" ${tag}.ini
+            sed -i -E "s|^[[:space:]]*beta[[:space:]]*=.*|beta = ${BETA[$tag]}|" ${tag}.ini
+            sed -i -E "s|^[[:space:]]*lambda[[:space:]]*=.*|lambda = ${LAMBDA[$tag]}|" ${tag}.ini
+            sed -i -E "s|^[[:space:]]*Y_dm[[:space:]]*=.*|Y_dm = 0.0|" ${tag}.ini
+            sed -i "s|^[[:space:]]*root[[:space:]]*=.*|root = output/${tag}_|" ${tag}.ini
+          done
+          grep -E '^(alpha|beta|lambda|Y_dm|root)[[:space:]]*=' control.ini s1.ini s01.ini s001.ini s0001.ini | tee ../frozen_parameters.txt
+      - name: Execute control
+        run: |
+          cd provider
+          ./class control.ini > ../control.stdout 2> ../control.stderr
+      - name: Execute four K1 ladder arms
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd provider
+          for tag in s1 s01 s001 s0001; do
+            ./class ${tag}.ini > ../${tag}.stdout 2> ../${tag}.stderr
+          done
+      - name: Collect observables
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp provider/output/control_cl.dat m35k1out/control_cl.dat
+          cp provider/output/control_pk.dat m35k1out/control_pk.dat
+          for tag in s1 s01 s001 s0001; do
+            cp provider/output/${tag}_cl.dat m35k1out/${tag}_cl.dat
+            cp provider/output/${tag}_pk.dat m35k1out/${tag}_pk.dat
+          done
+      - name: Analyze frozen K1 gate
+        run: |
+          python3 verification/m35/k1_gr_limit_ladder.py m35k1out "$(cat provider_commit.txt)" | tee m35_k1_stdout.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m35-class-lvdm-k1-gr-limit
+          path: |
+            m35_k1_result.json
+            m35_k1_stdout.json
+            provider_commit.txt
+            frozen_parameters.txt
+            *.stdout
+            *.stderr
+            m35k1out/
