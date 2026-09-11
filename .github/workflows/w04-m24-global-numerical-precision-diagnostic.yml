@@ -1,0 +1,162 @@
+name: W04 M24 global numerical-precision diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m24-global-numerical-precision-diagnostic.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  precision:
+    name: precision-${{ matrix.profile }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [cl_permille, cl_ref]
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Pin and build CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+          test -s "class/${{ matrix.profile }}.pre"
+          make -C class -j2 > m24_precision_build.log 2>&1
+      - name: Prepare frozen default and precision cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m24/global_numerical_precision_diagnostic.py prepare m24_precision_cases '${{ matrix.profile }}'
+          cat m24_precision_cases/manifest.json
+      - name: Execute ten independent cases four-at-a-time
+        shell: bash
+        run: |
+          set +e
+          mkdir -p class/output m24_precision_logs m24_precision_status_parts
+          tasks=(default_ref default_zero default_a18k default_a6k default_a1p8k profile_ref profile_zero profile_a18k profile_a6k profile_a1p8k)
+          printf '%s\n' "${tasks[@]}" | xargs -P 4 -I{} bash -c '
+            task="$1"
+            profile="$2"
+            set +e
+            if [[ "$task" == profile_* ]]; then
+              (cd class && ./class "../m24_precision_cases/${task}.ini" "${profile}.pre" > "../m24_precision_logs/${task}.log" 2>&1)
+            else
+              (cd class && ./class "../m24_precision_cases/${task}.ini" > "../m24_precision_logs/${task}.log" 2>&1)
+            fi
+            rc=$?
+            printf "%d\n" "$rc" > "m24_precision_status_parts/${task}.status"
+            exit 0
+          ' _ {} '${{ matrix.profile }}'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d={}
+          for f in sorted(Path('m24_precision_status_parts').glob('*.status')):
+              d[f.stem]=int(f.read_text().strip())
+          Path('m24_precision_status.json').write_text(json.dumps(d,indent=2,sort_keys=True)+'\n')
+          PY
+          cat m24_precision_status.json
+          exit 0
+      - name: Analyze frozen diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m24/global_numerical_precision_diagnostic.py analyze class/output m24_precision_status.json '${{ matrix.profile }}' 'm24_global_precision_${{ matrix.profile }}_result.json'
+          cat 'm24_global_precision_${{ matrix.profile }}_result.json'
+      - name: Upload profile evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m24-global-precision-${{ matrix.profile }}
+          path: |
+            m24_precision_build.log
+            m24_precision_cases/
+            m24_precision_status.json
+            m24_precision_logs/
+            m24_global_precision_${{ matrix.profile }}_result.json
+            class/output/
+          retention-days: 90
+
+  aggregate:
+    name: aggregate-global-precision
+    needs: precision
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m24-global-precision-*
+          path: m24_collected
+      - name: Build and persist precision summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          ps=sorted(Path('m24_collected').glob('m24-global-precision-*/m24_global_precision_*_result.json'))
+          rs=[json.loads(p.read_text()) for p in ps]
+          children={r['precision_profile']:r['classification'] for r in rs}
+          both_insensitive=(len(children)==2 and all(v=='M24_GLOBAL_PRECISION_EXCURSION_INSENSITIVE' for v in children.values()))
+          s={
+            'schema':'KMDSB.M24.GlobalNumericalPrecisionDiagnostic.Summary.v1',
+            'preregistration':'protocol/W04_M24_GLOBAL_NUMERICAL_PRECISION_DIAGNOSTIC_PREREGISTRATION_v0.1.md',
+            'class_pin':'e85808324f51fc694d12e3ed7439552a3c3f9540',
+            'children':children,
+            'n_results':len(rs),
+            'both_provider_precision_profiles_insensitive':both_insensitive,
+            'K1_promoted':False,
+            'K4_promoted':False,
+            'physical_falsification':False,
+          }
+          Path('m24_global_precision_summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n')
+          print(Path('m24_global_precision_summary.json').read_text())
+          PY
+          cp m24_global_precision_summary.json /tmp/m24_summary.json
+          mkdir -p /tmp/m24_results
+          find m24_collected -name 'm24_global_precision_*_result.json' -type f -exec cp {} /tmp/m24_results/ \;
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/ethos_like_dark_sector waves/wave_04_dark_matter
+          cp /tmp/m24_summary.json models/ethos_like_dark_sector/M24_GLOBAL_NUMERICAL_PRECISION_DIAGNOSTIC_SUMMARY.json
+          cp /tmp/m24_summary.json waves/wave_04_dark_matter/M24_GLOBAL_NUMERICAL_PRECISION_DIAGNOSTIC_SUMMARY.json
+          for p in /tmp/m24_results/*.json; do
+            [ -e "$p" ] || continue
+            b=$(basename "$p" | tr '[:lower:]' '[:upper:]')
+            cp "$p" "models/ethos_like_dark_sector/${b}"
+            cp "$p" "waves/wave_04_dark_matter/${b}"
+          done
+          git add models/ethos_like_dark_sector waves/wave_04_dark_matter
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M24 global numerical-precision diagnostic'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Upload summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m24-global-precision-summary
+          path: m24_global_precision_summary.json
+          retention-days: 90
