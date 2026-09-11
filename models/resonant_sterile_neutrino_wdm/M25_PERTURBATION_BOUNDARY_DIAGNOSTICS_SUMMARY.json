@@ -1,0 +1,17 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "children": {
+    "m0:cl_permille": "M25_PERTURBATION_BOUNDARY_INSENSITIVE",
+    "m1:cl_permille": "M25_PERTURBATION_BOUNDARY_INSENSITIVE",
+    "m1:newtonian": "M25_PERTURBATION_BOUNDARY_INSENSITIVE"
+  },
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M25_PERTURBATION_BOUNDARY_DIAGNOSTICS_PREREGISTRATION_v0.1.md",
+  "recovered_blocks": {
+    "m0:cl_permille": [],
+    "m1:cl_permille": [],
+    "m1:newtonian": []
+  },
+  "schema": "KMDSB.M25.PerturbationBoundaryDiagnostics.Summary.v1"
+}
