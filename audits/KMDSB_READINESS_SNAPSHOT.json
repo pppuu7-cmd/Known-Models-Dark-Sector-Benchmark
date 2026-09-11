@@ -2,8 +2,8 @@
   "all_rows_including_M00_control": {
     "K0_assessed": 40,
     "K0_positive": 35,
-    "assessed_cells": 221,
-    "assessed_fraction": 0.4702127659574468,
+    "assessed_cells": 222,
+    "assessed_fraction": 0.4723404255319149,
     "families": 47,
     "gate_cells": 470,
     "positive_cells": 123,
@@ -14,8 +14,8 @@
   "mechanism_rows_excluding_M00_control": {
     "K0_assessed": 39,
     "K0_positive": 34,
-    "assessed_cells": 211,
-    "assessed_fraction": 0.45869565217391306,
+    "assessed_cells": 212,
+    "assessed_fraction": 0.4608695652173913,
     "families": 46,
     "gate_cells": 460,
     "positive_cells": 118,
