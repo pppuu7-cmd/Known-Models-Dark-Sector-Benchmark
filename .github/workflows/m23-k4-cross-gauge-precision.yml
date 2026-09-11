@@ -1,0 +1,286 @@
+name: M23 K4 cross-gauge precision
+
+on:
+  push:
+    paths:
+      - '.github/workflows/m23-k4-cross-gauge-precision.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  branch:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {case: ref,  gamma: OMIT,      gauge: synchronous}
+          - {case: ref,  gamma: OMIT,      gauge: newtonian}
+          - {case: zero, gamma: '0',       gauge: synchronous}
+          - {case: zero, gamma: '0',       gauge: newtonian}
+          - {case: g0,   gamma: '2.371e-8', gauge: synchronous}
+          - {case: g0,   gamma: '2.371e-8', gauge: newtonian}
+          - {case: g1,   gamma: '7.113e-9', gauge: synchronous}
+          - {case: g1,   gamma: '7.113e-9', gauge: newtonian}
+          - {case: g2,   gamma: '2.371e-9', gauge: synchronous}
+          - {case: g2,   gamma: '2.371e-9', gauge: newtonian}
+          - {case: g3,   gamma: '7.113e-10', gauge: synchronous}
+          - {case: g3,   gamma: '7.113e-10', gauge: newtonian}
+          - {case: g4,   gamma: '2.371e-10', gauge: synchronous}
+          - {case: g4,   gamma: '2.371e-10', gauge: newtonian}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin and build CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git class_public
+          cd class_public
+          git checkout -q e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          make -j2
+      - name: Execute frozen precision ladder
+        shell: bash
+        env:
+          CASE: ${{ matrix.case }}
+          GAMMA: ${{ matrix.gamma }}
+          GAUGE: ${{ matrix.gauge }}
+        run: |
+          set -euo pipefail
+          cd class_public
+          OUT="$GITHUB_WORKSPACE/branch_${CASE}_${GAUGE}"
+          mkdir -p "$OUT"
+          cat > "$OUT/base.ini" <<EOF
+          h = 0.675
+          omega_b = 0.0222
+          omega_cdm = 0.1197
+          A_s = 2.196e-9
+          n_s = 0.9655
+          tau_reio = 0.06
+          N_ur = 3.046
+          f_idm = 1
+          N_idr = 0.4290
+          nindex_idm_dr = 0
+          idr_nature = fluid
+          b_idr = 0
+          output = tCl,pCl,mPk
+          lensing = no
+          non linear = none
+          P_k_max_h/Mpc = 20
+          z_pk = 0
+          l_max_scalars = 2500
+          gauge = ${GAUGE}
+          overwrite_root = yes
+          EOF
+          if [ "$GAMMA" != "OMIT" ]; then
+            echo "Gamma_0_nadm = $GAMMA" >> "$OUT/base.ini"
+          fi
+
+          run_one () {
+            local profile="$1"
+            local pre="$2"
+            cp "$OUT/base.ini" "$OUT/${profile}.ini"
+            echo "root = $OUT/${profile}_" >> "$OUT/${profile}.ini"
+            set +e
+            if [ -n "$pre" ]; then
+              ./class "$OUT/${profile}.ini" "$pre" > "$OUT/${profile}.stdout" 2> "$OUT/${profile}.stderr"
+            else
+              ./class "$OUT/${profile}.ini" > "$OUT/${profile}.stdout" 2> "$OUT/${profile}.stderr"
+            fi
+            rc=$?
+            set -e
+            echo "$rc" > "$OUT/${profile}.status"
+          }
+
+          run_one default ""
+          run_one permille cl_permille.pre
+          run_one reference cl_ref.pre
+          printf '%s\n' 'e85808324f51fc694d12e3ed7439552a3c3f9540' > "$OUT/class_pin.txt"
+      - name: Upload branch artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m23-${{ matrix.case }}-${{ matrix.gauge }}
+          path: branch_${{ matrix.case }}_${{ matrix.gauge }}
+          if-no-files-found: warn
+
+  aggregate:
+    if: always()
+    needs: branch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all branch artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m23-*
+          path: all
+      - name: Analyze frozen gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+
+          cases=['ref','zero','g0','g1','g2','g3','g4']
+          gauges=['synchronous','newtonian']
+          profiles=['default','permille','reference']
+          blocks=['TT','TE','EE','Pk']
+          root=Path('all')
+
+          def read_table(path):
+              rows=[]
+              with open(path,'r',encoding='utf-8',errors='replace') as f:
+                  for line in f:
+                      s=line.strip()
+                      if not s or s.startswith('#'): continue
+                      try: rows.append([float(x) for x in s.split()])
+                      except ValueError: continue
+              return rows
+
+          def locate(d, profile, kind):
+              pats=[f'{profile}_*_{kind}.dat', f'{profile}_*{kind}.dat']
+              found=[]
+              for pat in pats: found += list(d.glob(pat))
+              if not found:
+                  # CLASS normally emits profile_00_cl.dat/profile_00_pk.dat
+                  token='_cl.dat' if kind=='cl' else '_pk.dat'
+                  found=[p for p in d.glob(f'{profile}_*.dat') if p.name.endswith(token)]
+              return sorted(set(found))[0] if found else None
+
+          def cmb(path, block):
+              rows=read_table(path)
+              # CLASS unlensed cl.dat: ell, TT, EE, BB, TE, ...
+              col={'TT':1,'EE':2,'TE':4}[block]
+              return {int(round(r[0])):r[col] for r in rows if len(r)>col and r[0]>=2 and math.isfinite(r[col])}
+
+          def pk(path):
+              rows=read_table(path)
+              return [(r[0],r[1]) for r in rows if len(r)>=2 and r[0]>0 and r[1]>0 and math.isfinite(r[1])]
+
+          def r2_vec(a,b):
+              if not a or len(a)!=len(b): return None
+              num=sum((x-y)**2 for x,y in zip(a,b))**0.5
+              den=max(sum(y*y for y in b)**0.5,1e-300)
+              return num/den
+
+          def r2_cmb(pa,pb,block):
+              a,b=cmb(pa,block),cmb(pb,block)
+              keys=sorted(set(a)&set(b))
+              if not keys: return None
+              return r2_vec([a[k] for k in keys],[b[k] for k in keys])
+
+          def interp_log(points, xs):
+              pts=sorted(points)
+              xp=[math.log(x) for x,_ in pts]; yp=[y for _,y in pts]
+              out=[]
+              j=0
+              for x in xs:
+                  lx=math.log(x)
+                  while j+1<len(xp) and xp[j+1]<lx: j+=1
+                  if j+1>=len(xp): out.append(yp[-1]); continue
+                  if lx<=xp[0]: out.append(yp[0]); continue
+                  t=(lx-xp[j])/(xp[j+1]-xp[j])
+                  out.append(yp[j]*(1-t)+yp[j+1]*t)
+              return out
+
+          def r2_pk(pa,pb):
+              a,b=pk(pa),pk(pb)
+              if len(a)<2 or len(b)<2: return None
+              lo=max(a[0][0],b[0][0]); hi=min(a[-1][0],b[-1][0])
+              xs=sorted({x for x,_ in a if lo<=x<=hi} | {x for x,_ in b if lo<=x<=hi})
+              if len(xs)<2: return None
+              return r2_vec(interp_log(a,xs),interp_log(b,xs))
+
+          def metric(pa,pb,block):
+              try:
+                  return r2_pk(pa,pb) if block=='Pk' else r2_cmb(pa,pb,block)
+              except Exception:
+                  return None
+
+          result={
+            'schema':'KMDSB.M23.K4CrossGaugePrecision.v1',
+            'class_pin':'e85808324f51fc694d12e3ed7439552a3c3f9540',
+            'preregistration':'protocol/W04_M23_DM_DR_DAO_K4_CROSS_GAUGE_PRECISION_PREREGISTRATION_v0.1.md',
+            'branches':{}, 'cross_gauge':{}, 'physical_falsification':False
+          }
+          provider_blocked=False
+          precision_all=True
+          paths={}
+          for case in cases:
+            paths[case]={}
+            for gauge in gauges:
+              d=root/f'm23-{case}-{gauge}'
+              br={'statuses':{},'blocks':{}}
+              paths[case][gauge]={}
+              for profile in profiles:
+                sf=d/f'{profile}.status'
+                try: rc=int(sf.read_text().strip())
+                except Exception: rc=None
+                br['statuses'][profile]=rc
+                if rc!=0: provider_blocked=True
+                cp=locate(d,profile,'cl'); pp=locate(d,profile,'pk')
+                paths[case][gauge][profile]={'cl':cp,'pk':pp}
+                if rc==0 and (cp is None or pp is None): provider_blocked=True
+              for block in blocks:
+                kind='pk' if block=='Pk' else 'cl'
+                p0=paths[case][gauge]['default'][kind]
+                p1=paths[case][gauge]['permille'][kind]
+                p2=paths[case][gauge]['reference'][kind]
+                rc=None if None in (p0,p1,p2) else metric(p0,p1,block)
+                rf=None if None in (p0,p1,p2) else metric(p1,p2,block)
+                ok=(rc is not None and rf is not None and math.isfinite(rc) and math.isfinite(rf)
+                    and rf<=1e-4 and (rf<=0.5*rc or (rc<=1e-8 and rf<=1e-8)))
+                if not ok: precision_all=False
+                br['blocks'][block]={'R_coarse':rc,'R_fine':rf,'pass':ok}
+              result['branches'][f'{case}:{gauge}']=br
+
+          gauge_all=True
+          for case in cases:
+            result['cross_gauge'][case]={}
+            for block in blocks:
+              kind='pk' if block=='Pk' else 'cl'
+              ps=paths[case]['synchronous']['reference'][kind]
+              pn=paths[case]['newtonian']['reference'][kind]
+              rg=None if None in (ps,pn) else metric(ps,pn,block)
+              ok=(rg is not None and math.isfinite(rg) and rg<=1e-4)
+              if not ok: gauge_all=False
+              result['cross_gauge'][case][block]={'R_gauge':rg,'pass':ok}
+
+          if provider_blocked:
+              k4='M23_K4_PROVIDER_OR_PRECISION_EXECUTION_BLOCKED'
+          elif precision_all:
+              k4='M23_K4_PASS_WITH_SCOPE_PROVIDER_PRECISION_LADDER_BOTH_GAUGES'
+          else:
+              k4='M23_K4_NUMERICAL_ROBUSTNESS_NOT_ESTABLISHED'
+          k3=('M23_K3_CROSS_GAUGE_NUMERICAL_PASS_WITH_COMMON_OBSERVABLE_SCOPE'
+              if gauge_all and not provider_blocked else
+              'M23_K3_CROSS_GAUGE_NUMERICAL_NOT_ESTABLISHED')
+          result['provider_blocked']=provider_blocked
+          result['precision_all_pass']=precision_all and not provider_blocked
+          result['cross_gauge_all_pass']=gauge_all and not provider_blocked
+          result['K4_classification']=k4
+          result['K3_cross_gauge_classification']=k3
+          Path('M23_K4_CROSS_GAUGE_PRECISION_RESULT.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({'K4':k4,'K3':k3,'provider_blocked':provider_blocked},indent=2))
+          PY
+      - name: Upload aggregate result
+        uses: actions/upload-artifact@v4
+        with:
+          name: m23-k4-cross-gauge-aggregate
+          path: M23_K4_CROSS_GAUGE_PRECISION_RESULT.json
+      - name: Commit machine result
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p waves/wave_04_dark_matter
+          cp M23_K4_CROSS_GAUGE_PRECISION_RESULT.json waves/wave_04_dark_matter/M23_K4_CROSS_GAUGE_PRECISION_RESULT.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add waves/wave_04_dark_matter/M23_K4_CROSS_GAUGE_PRECISION_RESULT.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Record M23 K4 cross-gauge precision result'
+          git push
