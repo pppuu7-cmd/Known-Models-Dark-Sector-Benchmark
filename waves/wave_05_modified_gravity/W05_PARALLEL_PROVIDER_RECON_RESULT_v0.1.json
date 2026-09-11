@@ -1,0 +1,19 @@
+{
+  "schema": "w05_parallel_provider_recon_result_v0.1",
+  "run_id": 34650903154,
+  "head_sha": "37534bb67439107634445613072d7e6b0b06614f",
+  "classification": "SEVEN_LANE_RECON_NO_PROVIDER_GRADE_CANDIDATE",
+  "K0_promotions": [],
+  "physical_falsification": false,
+  "scope": "Public GitHub reconnaissance only. A zero candidate count is not evidence that the physical family is false or absent; exact-pin source/build/execution/provenance audit remains required before any K0 promotion.",
+  "lanes": {
+    "M34": {"classification": "NO_PROVIDER_GRADE_CANDIDATE_FOUND_IN_FROZEN_SEARCH", "candidate_count": 0, "artifact_id": 10283044548, "digest": "sha256:38dd376d6b70f86bca9a203eb70cf25229e578e7abf11287da2f3bd178477c44"},
+    "M36": {"classification": "NO_PROVIDER_GRADE_CANDIDATE_FOUND_IN_FROZEN_SEARCH", "candidate_count": 0, "artifact_id": 10283562150, "digest": "sha256:82e2f6d669fb65ce9d8a8437d5fc2c9143a974af431588d2e32b6d4403b8d20d"},
+    "M38": {"classification": "NO_PROVIDER_GRADE_CANDIDATE_FOUND_IN_FROZEN_SEARCH", "candidate_count": 0, "artifact_id": 10282699833, "digest": "sha256:5e8a49bcebf451b353f07657ccfd90693ba6ad7b7e1c5dd3162cc090d77958ed"},
+    "M39": {"classification": "NO_PROVIDER_GRADE_CANDIDATE_FOUND_IN_FROZEN_SEARCH", "candidate_count": 0, "artifact_id": 10282734623, "digest": "sha256:a33d35a8c0cb66f2bac9f6eb229bf3a7959f295278aa90a9ddb82a15c117f859"},
+    "M41": {"classification": "NO_PROVIDER_GRADE_CANDIDATE_FOUND_IN_FROZEN_SEARCH", "candidate_count": 0, "artifact_id": 10283577263, "digest": "sha256:68b8ef4f4194c457367039d584282c4e15e9a5e6af9cd7120b3ec4d8cc8a8ff8"},
+    "M42": {"classification": "NO_PROVIDER_GRADE_CANDIDATE_FOUND_IN_FROZEN_SEARCH", "candidate_count": 0, "artifact_id": 10283986802, "digest": "sha256:68a282508d5999be4cf6c25c8c063713aef1b7ff9d4e0e68c22a79c95b61e9ea"},
+    "M43": {"classification": "NO_PROVIDER_GRADE_CANDIDATE_FOUND_IN_FROZEN_SEARCH", "candidate_count": 0, "artifact_id": 10283507355, "digest": "sha256:c5e0d75d3ce6e0ea1b5904c9a47ba06ed86ce8001f3d2310ad3bba1f7123ad59"}
+  },
+  "next_rule": "Do not repeat the same frozen keyword tranche. Continue only with independently justified provider routes, literature-linked repositories, or preregistered verification implementations; absence of a search hit is BLOCKED/OPEN coverage, not physical failure."
+}
