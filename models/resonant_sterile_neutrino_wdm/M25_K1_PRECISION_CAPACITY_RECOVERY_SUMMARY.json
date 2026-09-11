@@ -1,0 +1,18 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "capacity_recovery_preregistration": "protocol/W04_M25_K1_PRECISION_QUADRATURE_CAPACITY_RECOVERY_PREREGISTRATION_v0.1.md",
+  "n_results": 4,
+  "next_step_authorized": "NO_FULL_K1_CONFIRMATION_YET",
+  "physical_falsification": false,
+  "pk_ref_both_models_tail_scaling_recovered": false,
+  "quadrature_max": 4000,
+  "quadrature_max_bg": 4000,
+  "results": {
+    "m0:cl_ref": "M25_PRECISION_FLOOR_DIAGNOSTIC_PROVIDER_BLOCKED",
+    "m0:pk_ref": "M25_PRECISION_FLOOR_DIAGNOSTIC_PROVIDER_BLOCKED",
+    "m1:cl_ref": "M25_PRECISION_FLOOR_DIAGNOSTIC_PROVIDER_BLOCKED",
+    "m1:pk_ref": "M25_PRECISION_FLOOR_DIAGNOSTIC_PROVIDER_BLOCKED"
+  },
+  "schema": "KMDSB.M25.K1PrecisionFloorDiagnostic.CapacityRecoverySummary.v1"
+}

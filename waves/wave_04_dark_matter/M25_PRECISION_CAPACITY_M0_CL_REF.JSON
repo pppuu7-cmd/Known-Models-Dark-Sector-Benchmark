@@ -1,0 +1,38 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "capacity_recovery_preregistration": "protocol/W04_M25_K1_PRECISION_QUADRATURE_CAPACITY_RECOVERY_PREREGISTRATION_v0.1.md",
+  "classification": "M25_PRECISION_FLOOR_DIAGNOSTIC_PROVIDER_BLOCKED",
+  "etas": [
+    0.01,
+    0.003,
+    0.001
+  ],
+  "failed_status_keys": [
+    "e2",
+    "e3",
+    "e4"
+  ],
+  "model": "m0",
+  "original_artifact_id": 10180157389,
+  "original_run_id": 34548988620,
+  "physical_falsification": false,
+  "precision_profile": "cl_ref",
+  "preregistration": "protocol/W04_M25_K1_PRECISION_FLOOR_DIAGNOSTIC_PREREGISTRATION_v0.1.md",
+  "quadrature_max": 4000,
+  "quadrature_max_bg": 4000,
+  "schema": "KMDSB.M25.K1PrecisionFloorDiagnostic.CapacityRecovery.v1",
+  "status": {
+    "build": 0,
+    "checkout": 0,
+    "clone": 0,
+    "e2": 1,
+    "e3": 1,
+    "e4": 1,
+    "patch": 0,
+    "pip": 0,
+    "quadrature_max": 4000,
+    "quadrature_max_bg": 4000,
+    "ref": 0
+  }
+}
