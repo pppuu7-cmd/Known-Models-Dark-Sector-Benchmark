@@ -1,0 +1,33 @@
+{
+  "schema": "m37_k1_ft_decoupling_result_v0.1",
+  "model_id": "M37",
+  "family_id": "F37",
+  "classification": "M37_K1_PASS_WITH_SCOPE_DECOUPLING_LADDER_PROVENANCE_GUARDED",
+  "K0": "PARTIAL",
+  "K1": "PARTIAL",
+  "K1_numerical_reference_limit": "PASS_WITH_SCOPE",
+  "K2_K9": "OPEN",
+  "physical_falsification": false,
+  "provider": "Speeddemon5050/Modified-CLASS-fT-Exact-",
+  "provider_commit": "74e6a8679cdc233fb339c67127ed0921ba547894",
+  "canonical_run_id": 34655725404,
+  "canonical_job_id": 103447582406,
+  "artifact_id": 10285765241,
+  "artifact_digest": "sha256:c4b65eb1732d7203588be149641c8af252b21a262904c8f66a3b295fdf91d2cf",
+  "D_finest_over_D_coarsest": 0.0010313729271702774,
+  "loglog_pearson": 0.9998990277952139,
+  "criteria": {
+    "finest_less_than_coarsest": true,
+    "adjacent_within_20pct_nonincrease": true,
+    "finest_to_coarsest_le_0p25": true,
+    "loglog_correlation_ge_0p90": true
+  },
+  "arms": [
+    {"n_fT": 0.1, "D": 0.02436209792954675, "TT_normalized_L2": 0.02436209792954675, "Pk_normalized_L2": 0.015707492689034718},
+    {"n_fT": 0.01, "D": 0.0022972160462384167, "TT_normalized_L2": 0.0022972160462384167, "Pk_normalized_L2": 0.001481787124799673},
+    {"n_fT": 0.001, "D": 0.0002578707595488523, "TT_normalized_L2": 0.0002578707595488523, "Pk_normalized_L2": 0.00014719134090260887},
+    {"n_fT": 0.0001, "D": 0.000025126408253605587, "TT_normalized_L2": 0.000025126408253605587, "Pk_normalized_L2": 0.000014805689897175446}
+  ],
+  "provenance_guard": "The exact-pin implementation has an executable and strongly convergent n_fT -> 0 reference limit, but publication/author provenance for the f(T) modification is still unresolved. Therefore K0 remains PARTIAL and the mandatory-matrix K1 must remain provenance-guarded PARTIAL rather than being counted as a positive family-level PASS.",
+  "scope": "Exact-pin f(T) CLASS route, linear TT and P(k), n_fT -> 0 reference-limit behavior only."
+}
