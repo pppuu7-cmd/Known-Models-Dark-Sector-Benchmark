@@ -1,0 +1,114 @@
+name: W05 M29 hi_class Brans-Dicke K0 provider probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w05-m29-hiclass-k0-provider-probe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        arm: [bd_author, lcdm_control]
+    runs-on: ubuntu-latest
+    env:
+      HICLASS_PIN: 0009f51d89e6465c79e570b496c66fc90058fa77
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pinned hi_class and execute arm
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARM='${{ matrix.arm }}'
+          mkdir -p "probe/$ARM/output"
+          git clone https://github.com/hiclass-code/hi_class_public.git hiclass
+          cd hiclass
+          git checkout --detach "$HICLASS_PIN"
+          ACTUAL=$(git rev-parse HEAD)
+          echo "$ACTUAL" > "$GITHUB_WORKSPACE/probe/$ARM/actual_commit.txt"
+          test "$ACTUAL" = "$HICLASS_PIN"
+          make -j2
+          if [ "$ARM" = bd_author ]; then
+            cp gravity_models/brans_dicke.ini "$GITHUB_WORKSPACE/probe/$ARM/run.ini"
+            sed -i "s#^root =.*#root = $GITHUB_WORKSPACE/probe/$ARM/output/bd_#" "$GITHUB_WORKSPACE/probe/$ARM/run.ini"
+          else
+            cat > "$GITHUB_WORKSPACE/probe/$ARM/run.ini" <<EOF
+          output = tCl, mPk
+          root = $GITHUB_WORKSPACE/probe/$ARM/output/lcdm_
+          overwrite_root = yes
+          write parameters = yes
+          write background = yes
+          input_verbose = 1
+          background_verbose = 1
+          perturbations_verbose = 1
+          transfer_verbose = 1
+          harmonic_verbose = 1
+          fourier_verbose = 1
+          output_verbose = 1
+          EOF
+          fi
+          set +e
+          ./class "$GITHUB_WORKSPACE/probe/$ARM/run.ini" > "$GITHUB_WORKSPACE/probe/$ARM/stdout.log" 2> "$GITHUB_WORKSPACE/probe/$ARM/stderr.log"
+          RC=$?
+          set -e
+          echo "$RC" > "$GITHUB_WORKSPACE/probe/$ARM/exit_code.txt"
+          find "$GITHUB_WORKSPACE/probe/$ARM" -maxdepth 2 -type f -printf '%P %s bytes\n' | sort > "$GITHUB_WORKSPACE/probe/$ARM/file_manifest.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m29-k0-${{ matrix.arm }}
+          path: probe/${{ matrix.arm }}
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: probe
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      HICLASS_PIN: 0009f51d89e6465c79e570b496c66fc90058fa77
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m29-k0-bd_author
+          path: probe/bd_author
+      - uses: actions/download-artifact@v4
+        with:
+          name: m29-k0-lcdm_control
+          path: probe/lcdm_control
+      - name: Analyze frozen K0 gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL=$(cat probe/bd_author/actual_commit.txt 2>/dev/null || true)
+          export PINNED_HICLASS_COMMIT="$HICLASS_PIN"
+          export ACTUAL_HICLASS_COMMIT="$ACTUAL"
+          python3 verification/m29/k0_hiclass_provider_probe.py probe | tee m29_k0_result_stdout.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m29-k0-aggregate
+          path: |
+            waves/wave_05_modified_gravity/M29_K0_HICLASS_PROVIDER_RESULT.json
+            m29_k0_result_stdout.json
+            probe/bd_author/file_manifest.txt
+            probe/lcdm_control/file_manifest.txt
+          retention-days: 30
+      - name: Persist canonical result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add waves/wave_05_modified_gravity/M29_K0_HICLASS_PROVIDER_RESULT.json
+          if git diff --cached --quiet; then
+            echo 'No result delta to commit.'
+            exit 0
+          fi
+          git commit -m 'Record M29 pinned hi_class K0 provider probe'
+          git push
