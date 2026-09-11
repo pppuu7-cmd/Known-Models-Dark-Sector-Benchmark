@@ -1,0 +1,83 @@
+name: W04 M26 evaporation NumPy compatibility
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m26-evaporation-numpy-compat.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  evaporation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      PIN: 7c4b26e50d240f1f45f120b623aab2dba13094fd
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m26-runtime-recovery-evaporation
+          path: prior
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34550083757
+      - name: Install compatible dependencies
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6 scipy==1.13.1 PyYAML dill future
+      - name: Build pinned provider with two compatibility-only patches
+        shell: bash
+        run: |
+          git clone -q https://github.com/GFAbellan/ExoCLASS.git exoclass
+          git -C exoclass checkout -q --detach "$PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('exoclass/DarkAgesModule/DarkAges/__init__.py'); s=p.read_text()
+          a="\t\ttransfer_dump(transfer_functions[idx], os.path.join(os.environ['DARKAGES_BASE'],'transfer_functions/transfer_Ch{:d}.obj'.format(idx+1)))"
+          b="\ttransfer_dump(transfer_functions_corr, os.path.join(os.environ['DARKAGES_BASE'],'transfer_functions/transfer_Corr.obj'))"
+          assert s.count(a)==1 and s.count(b)==1
+          p.write_text(s.replace(a,'\t\t# KMDSB: cache disabled').replace(b,'\t# KMDSB: cache disabled'))
+          p=Path('exoclass/DarkAgesModule/DarkAges/evaporator.py'); s=p.read_text()
+          old="np.linspace(np.log10(time_at_z(z_start)), np.log10(time_at_z(1.)), 1e5)"
+          new="np.linspace(np.log10(time_at_z(z_start)), np.log10(time_at_z(1.)), 100000)"
+          assert s.count(old)==1
+          p.write_text(s.replace(old,new))
+          PY
+          git -C exoclass diff -- DarkAgesModule/DarkAges/__init__.py DarkAgesModule/DarkAges/evaporator.py > provider.patch
+          make -C exoclass -j2 class > build.log 2>&1
+      - name: Execute unchanged evaporation finite case
+        shell: bash
+        env:
+          PYTHONPATH: ${{ github.workspace }}/exoclass/DarkAgesModule
+        run: |
+          mkdir -p exoclass/output
+          cp -a prior/exoclass/output/. exoclass/output/
+          rm -f exoclass/output/m26_evaporation_finite_*.dat
+          python3 verification/m26/m26_energy_injection_provider_control.py prepare evaporation cases
+          rm -f exoclass/DarkAgesModule/transfer_functions/*.obj
+          set +e
+          (cd exoclass && ./class ../cases/finite.ini > ../finite.log 2>&1)
+          rc=$?
+          set -e
+          python3 - <<PY
+          import json
+          q=json.load(open('prior/m26_status.json'))
+          d={'build':0,'baseline':q.get('baseline',999),'zero':q.get('zero',999),'finite':$rc,'numpy':'2.2.6','scipy':'1.13.1','linspace_num':100000,'cacheless':True}
+          open('status.json','w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          python3 verification/m26/m26_energy_injection_provider_control.py analyze exoclass status.json cases/manifest.json result.json
+          cat status.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m26-evaporation-numpy-compat
+          path: |
+            provider.patch
+            build.log
+            finite.log
+            status.json
+            result.json
+            cases/manifest.json
+            exoclass/output/
+          retention-days: 90
