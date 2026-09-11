@@ -1,0 +1,116 @@
+name: W06 M33 Galileon K1 reference-map discovery
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w06-m33-galileon-k1-reference-map-discovery.yml'
+      - 'protocol/W06_M33_GALILEON_K1_REFERENCE_MAP_DISCOVERY_PREREGISTRATION_v0.1.md'
+  workflow_dispatch:
+
+jobs:
+  reference-map:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      HICLASS_PIN: 0009f51d89e6465c79e570b496c66fc90058fa77
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pinned hi_class
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3-numpy >/dev/null
+          git clone -q https://github.com/hiclass-code/hi_class_public.git provider
+          cd provider
+          git checkout -q --detach "$HICLASS_PIN"
+          test "$(git rev-parse HEAD)" = "$HICLASS_PIN"
+          make -j2 >/dev/null
+          git rev-parse HEAD > ../provider_commit.txt
+      - name: Prepare frozen discovery arms
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p m33ref
+          python3 - <<'PY'
+          import pathlib,re
+          src=pathlib.Path('provider/gravity_models/galileon_3.ini').read_text()
+          out=pathlib.Path('m33ref')
+          arms=[]
+          for fam,ol in [('A',0.0),('B',-1.0)]:
+              for val in [0.5,0.1,0.01,0.001]:
+                  tag=f'{fam}_om{str(val).replace(".","p")}'
+                  t=re.sub(r'(?m)^Omega_smg\s*=.*$',f'Omega_smg = {val}',src)
+                  t=re.sub(r'(?m)^Omega_Lambda\s*=.*$',f'Omega_Lambda = {ol}',t)
+                  t=re.sub(r'(?m)^root\s*=.*$',f'root = {out.resolve()}/{tag}_',t)
+                  (out/f'{tag}.ini').write_text(t)
+                  arms.append(tag)
+          t=re.sub(r'(?m)^Omega_smg\s*=.*$','Omega_smg = 0.',src)
+          t=re.sub(r'(?m)^Omega_Lambda\s*=.*$','Omega_Lambda = -1.',t)
+          t=re.sub(r'(?m)^root\s*=.*$',f'root = {out.resolve()}/C_zero_',t)
+          (out/'C_zero.ini').write_text(t); arms.append('C_zero')
+          # D: same cosmological inputs, provider source untouched, plain CLASS/GR input.
+          t=src
+          t=re.sub(r'(?m)^Omega_smg\s*=.*\n','',t)
+          t=re.sub(r'(?m)^gravity_model\s*=.*\n','',t)
+          t=re.sub(r'(?m)^gravity_submodel\s*=.*\n','',t)
+          t=re.sub(r'(?m)^Omega_Lambda\s*=.*$','Omega_Lambda = -1.',t)
+          t=re.sub(r'(?m)^root\s*=.*$',f'root = {out.resolve()}/D_lcdm_',t)
+          (out/'D_lcdm.ini').write_text(t); arms.append('D_lcdm')
+          (out/'arms.txt').write_text('\n'.join(arms)+'\n')
+          PY
+      - name: Execute all discovery arms independently
+        shell: bash
+        run: |
+          set +e
+          while read tag; do
+            ./provider/class "m33ref/${tag}.ini" > "m33ref/${tag}.stdout" 2> "m33ref/${tag}.stderr"
+            echo $? > "m33ref/${tag}.exit"
+          done < m33ref/arms.txt
+          exit 0
+      - name: Classify discovery map
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,numpy as np
+          b=pathlib.Path('m33ref'); rows=[]
+          def finite_table(p):
+              if not p.exists(): return False,0
+              rr=[]
+              for line in p.read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  try: rr.append([float(x) for x in s.split()])
+                  except ValueError: pass
+              if not rr: return False,0
+              a=np.asarray(rr,float)
+              return bool(a.ndim==2 and a.shape[0]>=5 and np.isfinite(a).all()),len(rr)
+          for tag in b.joinpath('arms.txt').read_text().split():
+              ex=int((b/f'{tag}.exit').read_text())
+              cl,cln=finite_table(b/f'{tag}_cl.dat'); pk,pkn=finite_table(b/f'{tag}_pk.dat')
+              rows.append({'arm':tag,'exit':ex,'finite_cl':cl,'cl_rows':cln,'finite_pk':pk,'pk_rows':pkn,
+                           'stderr_tail':'\n'.join((b/f'{tag}.stderr').read_text(errors='replace').splitlines()[-20:])})
+          valid=[r['arm'] for r in rows if r['exit']==0 and r['finite_cl'] and r['finite_pk']]
+          has_endpoint='D_lcdm' in valid
+          finite_small=any(x in valid for x in ['A_om0p001','B_om0p001','C_zero'])
+          if has_endpoint and finite_small:
+              cls='REFERENCE_MAP_CANDIDATE_FOUND_REQUIRES_PREREGISTERED_K1'
+          elif valid:
+              cls='REFERENCE_MAP_PARTIAL_EXECUTABLE'
+          else:
+              cls='REFERENCE_MAP_BLOCKED_IMPLEMENTATION'
+          out={'schema':'m33_k1_reference_map_discovery_v0.1','model_id':'M33','provider_commit':pathlib.Path('provider_commit.txt').read_text().strip(),
+               'classification':cls,'K1_promoted':False,'physical_falsification':False,'valid_arms':valid,'arms':rows,
+               'scope':'discovery-only native cubic Galileon Omega_smg/Lambda closure map; separate preregistration required for any K1 promotion'}
+          pathlib.Path('M33_K1_REFERENCE_MAP_DISCOVERY_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: M33-galileon-k1-reference-map-discovery
+          path: |
+            M33_K1_REFERENCE_MAP_DISCOVERY_RESULT.json
+            provider_commit.txt
+            m33ref/
+          retention-days: 30
