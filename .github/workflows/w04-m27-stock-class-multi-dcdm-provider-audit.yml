@@ -1,0 +1,172 @@
+name: W04 M27 stock CLASS multi-DCDM provider audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m27-stock-class-multi-dcdm-provider-audit.yml']
+permissions:
+  contents: write
+jobs:
+  source-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin official CLASS
+        run: |
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          cd provider
+          git checkout -q e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+      - name: Audit native multi-DCDM capability
+        run: |
+          python3 - <<'PY'
+          import json,re
+          from pathlib import Path
+          files={p:Path('provider/'+p).read_text(errors='replace') for p in ['include/background.h','source/input.c','source/background.c','source/perturbations.c']}
+          blob='\n'.join(files.values())
+          # Native stock CLASS uses names Gamma_dcdm/rho_dcdm/rho_dr. The gate requires indexed/list semantics
+          # for independently decaying parents, not mere repeated textual occurrences.
+          gamma_scalar=bool(re.search(r'\bdouble\s+Gamma_dcdm\s*;',files['include/background.h']))
+          gamma_array=bool(re.search(r'Gamma_dcdm\s*\[',blob))
+          rho_array=bool(re.search(r'rho_dcdm\s*\[',blob))
+          parser_vector=bool(re.search(r'(list|array).*Gamma_dcdm|Gamma_dcdm.*(list|array)',files['source/input.c'],re.I))
+          indexed_parent_loop=bool(re.search(r'for\s*\([^\n]*\)[\s\S]{0,500}Gamma_dcdm\s*\[',blob))
+          capable=bool(gamma_array and rho_array and parser_vector and indexed_parent_loop)
+          snippets={}
+          for key in ['Gamma_dcdm','rho_dcdm','rho_dr']:
+            hits=[]
+            for fn,txt in files.items():
+              for i,line in enumerate(txt.splitlines(),1):
+                if key in line and len(hits)<20: hits.append(f'{fn}:{i}:{line.strip()}')
+            snippets[key]=hits
+          out={
+            'schema':'KMDSB.M27.StockCLASSMultiDCDMSourceAudit.v1',
+            'provider':'lesgourg/class_public',
+            'commit':'e85808324f51fc694d12e3ed7439552a3c3f9540',
+            'preregistration':'protocol/W04_M27_STOCK_CLASS_MULTI_DCDM_PROVIDER_CAPABILITY_PREREGISTRATION_v0.1.md',
+            'gamma_scalar_declaration':gamma_scalar,
+            'gamma_array_semantics_found':gamma_array,
+            'rho_dcdm_array_semantics_found':rho_array,
+            'parser_vector_semantics_found':parser_vector,
+            'indexed_parent_loop_found':indexed_parent_loop,
+            'classification':'NATIVE_MULTI_DCDM_CAPABLE' if capable else 'NATIVE_MULTI_DCDM_NOT_EXPOSED',
+            'snippets':snippets,
+            'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False
+          }
+          Path('source_audit.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(Path('source_audit.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m27-stock-class-source-audit
+          path: source_audit.json
+          retention-days: 90
+
+  provider-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin and build official CLASS
+        run: |
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          cd provider
+          git checkout -q e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          make -j2 class
+      - name: Execute one-species DCDM control
+        shell: bash
+        run: |
+          cd provider
+          mkdir -p output
+          cat > m27_dcdm_control.ini <<'EOF'
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.10
+          Omega_dcdmdr = 0.02
+          Gamma_dcdm = 1.0
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = tCl,pCl,mPk
+          lensing = no
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          root = output/m27_dcdm_control_
+          overwrite_root = yes
+          write background = yes
+          EOF
+          set +e
+          ./class m27_dcdm_control.ini > control.log 2>&1
+          ec=$?
+          set -e
+          python3 - "$ec" <<'PY'
+          import json,sys,glob,numpy as np
+          from pathlib import Path
+          ec=int(sys.argv[1])
+          bg=glob.glob('output/m27_dcdm_control_*background.dat')
+          pk=glob.glob('output/m27_dcdm_control_*pk.dat')
+          cls=glob.glob('output/m27_dcdm_control_*cl.dat')
+          finite=True
+          checked=[]
+          for fn in bg+pk+cls:
+            try:
+              a=np.loadtxt(fn)
+              finite=finite and bool(np.all(np.isfinite(a))) and a.size>0
+              checked.append({'file':fn,'shape':list(np.shape(a))})
+            except Exception:
+              finite=False
+          ok=(ec==0 and len(bg)>=1 and len(pk)>=1 and len(cls)>=1 and finite)
+          out={'schema':'KMDSB.M27.StockCLASSDCDMControl.v1','provider':'lesgourg/class_public','commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','preregistration':'protocol/W04_M27_STOCK_CLASS_MULTI_DCDM_PROVIDER_CAPABILITY_PREREGISTRATION_v0.1.md','exit_code':ec,'background_files':len(bg),'pk_files':len(pk),'cl_files':len(cls),'finite_outputs':finite,'checked':checked,'classification':'ONE_SPECIES_DCDM_PROVIDER_CONTROL_PASS' if ok else 'ONE_SPECIES_DCDM_PROVIDER_CONTROL_BLOCKED','K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          Path('../provider_control.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(Path('../provider_control.json').read_text())
+          PY
+          cp control.log ../control.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m27-stock-class-provider-control
+          path: |
+            provider_control.json
+            control.log
+          retention-days: 90
+
+  aggregate:
+    needs: [source-audit, provider-control]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m27-stock-class-*
+          path: collected
+      - name: Classify and persist capability result
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          sa=list(Path('collected').glob('m27-stock-class-source-audit/source_audit.json'))
+          pc=list(Path('collected').glob('m27-stock-class-provider-control/provider_control.json'))
+          source=json.loads(sa[0].read_text()) if sa else None
+          control=json.loads(pc[0].read_text()) if pc else None
+          if source and control and control.get('classification')=='ONE_SPECIES_DCDM_PROVIDER_CONTROL_PASS':
+            cls='M27_STOCK_CLASS_NATIVE_MULTI_DCDM_PROVIDER_AVAILABLE_WITH_SCOPE' if source.get('classification')=='NATIVE_MULTI_DCDM_CAPABLE' else 'M27_STOCK_CLASS_MULTI_DCDM_PROVIDER_UNAVAILABLE'
+          else:
+            cls='M27_STOCK_CLASS_PROVIDER_CAPABILITY_AUDIT_BLOCKED'
+          out={'schema':'KMDSB.M27.StockCLASSMultiDCDMProviderCapability.Summary.v1','preregistration':'protocol/W04_M27_STOCK_CLASS_MULTI_DCDM_PROVIDER_CAPABILITY_PREREGISTRATION_v0.1.md','provider':'lesgourg/class_public','commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','source_classification':source.get('classification') if source else None,'control_classification':control.get('classification') if control else None,'classification':cls,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False,'continuation':'use_native_provider' if cls.endswith('AVAILABLE_WITH_SCOPE') else ('seek_other_public_provider_or_preregister_independent_covariant_implementation' if cls.endswith('UNAVAILABLE') else 'repair_infrastructure_only')}
+          Path('summary.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p models/dynamical_dark_matter waves/wave_04_dark_matter
+          cp /tmp/summary.json models/dynamical_dark_matter/M27_STOCK_CLASS_MULTI_DCDM_PROVIDER_CAPABILITY_SUMMARY.json
+          cp /tmp/summary.json waves/wave_04_dark_matter/M27_STOCK_CLASS_MULTI_DCDM_PROVIDER_CAPABILITY_SUMMARY.json
+          git add models/dynamical_dark_matter waves/wave_04_dark_matter
+          git diff --cached --quiet || { git commit -m 'Record M27 stock CLASS multi-DCDM provider capability'; git pull --rebase origin main; git push origin HEAD:main; }
