@@ -1,0 +1,237 @@
+name: W04 M26 DarkAges transfer-cache bypass
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m26-darkages-transfer-cache-bypass.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  finite-recovery:
+    name: cache-bypass-${{ matrix.child }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        child: [evaporation, spherical, disk]
+    env:
+      EXOCLASS_PIN: 7c4b26e50d240f1f45f120b623aab2dba13094fd
+      OMP_NUM_THREADS: '1'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download immutable successful baseline and null evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: m26-runtime-recovery-${{ matrix.child }}
+          path: m26_previous
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34550083757
+
+      - name: Pin provider, patch cache bypass, and build executable target
+        shell: bash
+        run: |
+          set +e
+          python3 -m pip install --disable-pip-version-check --no-input numpy scipy PyYAML dill future
+          pip_rc=$?
+          git clone -q https://github.com/GFAbellan/ExoCLASS.git exoclass
+          clone_rc=$?
+          checkout_rc=999
+          patch_rc=999
+          build_rc=999
+          if [ "$clone_rc" -eq 0 ]; then
+            git -C exoclass checkout -q --detach "$EXOCLASS_PIN"
+            checkout_rc=$?
+          fi
+          if [ "$checkout_rc" -eq 0 ]; then
+            python3 - <<'PY'
+          from pathlib import Path
+          p=Path('exoclass/DarkAgesModule/bin/DarkAges')
+          s=p.read_text()
+          marker='from DarkAges.__init__ import transfer_functions, get_logEnergies, set_logEnergies, get_redshift, DarkAgesError, print_info, set_background, get_background'
+          inject="""# KMDSB infrastructure recovery: bypass inter-process serialized transfer cache.\n# Immutable transfer_functions/original tables remain untouched.\n_transfer_cache_dir = os.path.join(root_path, 'transfer_functions')\nfor _cache_name in os.listdir(_transfer_cache_dir):\n    if _cache_name.endswith('.obj'):\n        os.remove(os.path.realpath(os.path.join(_transfer_cache_dir, _cache_name)))\n\n"""
+          assert s.count(marker)==1
+          p.write_text(s.replace(marker, inject+marker))
+          PY
+            patch_rc=$?
+            git -C exoclass diff -- DarkAgesModule/bin/DarkAges | tee m26_darkages_cache_bypass.patch
+          fi
+          if [ "$patch_rc" -eq 0 ]; then
+            make -C exoclass -j2 class > "m26_${{ matrix.child }}_cache_bypass_build.log" 2>&1
+            build_rc=$?
+          fi
+          python3 - <<PY
+          import json
+          previous=json.load(open('m26_previous/m26_status.json'))
+          d={
+            'pip':$pip_rc,
+            'clone':$clone_rc,
+            'checkout':$checkout_rc,
+            'patch':$patch_rc,
+            'build':$build_rc,
+            'baseline':previous.get('baseline',999),
+            'zero':previous.get('zero',999),
+            'finite':999,
+            'baseline_null_source_run_id':34550083757,
+            'build_target':'class',
+            'transfer_cache_bypass':True,
+          }
+          open('m26_status.json','w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          cat m26_status.json
+          exit 0
+
+      - name: Restore immutable baseline-null outputs and prepare unchanged finite case
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p exoclass/output
+          cp -a m26_previous/exoclass/output/. exoclass/output/
+          rm -f exoclass/output/m26_${{ matrix.child }}_finite_*.dat
+          rm -rf m26_cases
+          python3 verification/m26/m26_energy_injection_provider_control.py prepare '${{ matrix.child }}' m26_cases
+          test -s m26_cases/finite.ini
+
+      - name: Execute only finite case with per-subprocess transfer-cache bypass
+        shell: bash
+        env:
+          PYTHONPATH: ${{ github.workspace }}/exoclass/DarkAgesModule
+        run: |
+          set +e
+          mkdir -p m26_logs
+          build=$(python3 -c "import json;print(json.load(open('m26_status.json'))['build'])")
+          if [ "$build" -eq 0 ]; then
+            rm -f exoclass/DarkAgesModule/transfer_functions/*.obj
+            (cd exoclass && ./class ../m26_cases/finite.ini > ../m26_logs/finite.log 2>&1)
+            rc=$?
+          else
+            rc=999
+          fi
+          python3 - <<PY
+          import json
+          p='m26_status.json'; d=json.load(open(p)); d['finite']=$rc
+          open(p,'w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          cat m26_status.json
+          exit 0
+
+      - name: Analyze unchanged provider-control gate
+        shell: bash
+        run: |
+          set +e
+          result='m26_${{ matrix.child }}_cache_bypass_result.json'
+          python3 verification/m26/m26_energy_injection_provider_control.py analyze exoclass m26_status.json m26_cases/manifest.json "$result"
+          rc=$?
+          if [ "$rc" -ne 0 ] || [ ! -s "$result" ]; then
+            python3 - <<PY
+          import json
+          r={'schema':'KMDSB.M26.PBHEnergyInjectionProviderControl.CacheBypassRecovery.v1','child':'${{ matrix.child }}','classification':'M26_${{ matrix.child }}_PROVIDER_EXECUTION_BLOCKED'.upper(),'analysis_return_code':$rc,'K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          open('$result','w').write(json.dumps(r,indent=2,sort_keys=True)+'\n')
+          PY
+          fi
+          python3 - <<PY
+          import json
+          p='$result'; r=json.load(open(p))
+          r['schema']='KMDSB.M26.PBHEnergyInjectionProviderControl.CacheBypassRecovery.v1'
+          r['cache_bypass_preregistration']='protocol/W04_M26_DARKAGES_TRANSFER_CACHE_BYPASS_PREREGISTRATION_v0.1.md'
+          r['baseline_null_source_run_id']=34550083757
+          r['finite_recomputed_only']=True
+          r['transfer_cache_bypass_per_darkages_subprocess']=True
+          open(p,'w').write(json.dumps(r,indent=2,sort_keys=True)+'\n')
+          PY
+          cat "$result"
+          exit 0
+
+      - name: Upload immutable child recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m26-cache-bypass-${{ matrix.child }}
+          path: |
+            m26_status.json
+            m26_cases/manifest.json
+            m26_logs/
+            m26_darkages_cache_bypass.patch
+            m26_${{ matrix.child }}_cache_bypass_build.log
+            m26_${{ matrix.child }}_cache_bypass_result.json
+            exoclass/output/
+          retention-days: 90
+
+  aggregate:
+    name: aggregate-cache-bypass
+    needs: finite-recovery
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m26-cache-bypass-*
+          path: m26_collected
+      - name: Build and persist cache-bypass summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rs=[json.loads(p.read_text()) for p in sorted(Path('m26_collected').glob('m26-cache-bypass-*/m26_*_cache_bypass_result.json'))]
+          children={r['child']:r['classification'] for r in rs}
+          passes=sum(v.endswith('PROVIDER_REFERENCE_CONTROL_PASS_WITH_SCOPE') for v in children.values())
+          s={
+            'schema':'KMDSB.M26.PBHEnergyInjectionProviderControls.CacheBypassRecoverySummary.v1',
+            'cache_bypass_preregistration':'protocol/W04_M26_DARKAGES_TRANSFER_CACHE_BYPASS_PREREGISTRATION_v0.1.md',
+            'baseline_null_source_run_id':34550083757,
+            'children':children,
+            'n_results':len(rs),
+            'n_scoped_provider_passes':passes,
+            'K1_promoted':False,
+            'K4_promoted':False,
+            'physical_falsification':False,
+            'poisson_structure_channel':'NOT_TESTED',
+          }
+          Path('m26_cache_bypass_summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n')
+          print(Path('m26_cache_bypass_summary.json').read_text())
+          PY
+          cp m26_cache_bypass_summary.json /tmp/m26_cache_bypass_summary.json
+          mkdir -p /tmp/m26_results
+          find m26_collected -name 'm26_*_cache_bypass_result.json' -type f -exec cp {} /tmp/m26_results/ \;
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/primordial_black_hole_dark_matter waves/wave_04_dark_matter
+          cp /tmp/m26_cache_bypass_summary.json models/primordial_black_hole_dark_matter/M26_DARKAGES_CACHE_BYPASS_SUMMARY.json
+          cp /tmp/m26_cache_bypass_summary.json waves/wave_04_dark_matter/M26_DARKAGES_CACHE_BYPASS_SUMMARY.json
+          for p in /tmp/m26_results/*.json; do
+            [ -e "$p" ] || continue
+            b=$(basename "$p" | tr '[:lower:]' '[:upper:]')
+            cp "$p" "models/primordial_black_hole_dark_matter/${b}"
+            cp "$p" "waves/wave_04_dark_matter/${b}"
+          done
+          git add models/primordial_black_hole_dark_matter waves/wave_04_dark_matter
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M26 DarkAges transfer-cache bypass recovery'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Upload summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m26-darkages-cache-bypass-summary
+          path: m26_cache_bypass_summary.json
+          retention-days: 90
