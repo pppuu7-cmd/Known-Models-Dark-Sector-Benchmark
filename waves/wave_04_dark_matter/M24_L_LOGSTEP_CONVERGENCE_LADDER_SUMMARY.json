@@ -1,0 +1,91 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "classification": "M24_L_LOGSTEP_CONVERGENCE_LADDER_NOT_ESTABLISHED",
+  "fine_pair_stability": true,
+  "first_localized_value": 1.1,
+  "monotone_Emax_with_10pct_slack": false,
+  "parent_isolation_run_id": 34556010712,
+  "physical_falsification": false,
+  "points": [
+    {
+      "Emax": 0.23026690746463432,
+      "classification": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+      "exact_identity_pass": true,
+      "excursion_factors": {
+        "EE": 0.13319919871455113,
+        "TE": 0.10371671026977534,
+        "TT": 0.23026690746463432
+      },
+      "l_logstep": 1.1
+    },
+    {
+      "Emax": 0.7508012518682701,
+      "classification": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+      "exact_identity_pass": true,
+      "excursion_factors": {
+        "EE": 0.47381003356755214,
+        "TE": 0.6547461500939958,
+        "TT": 0.7508012518682701
+      },
+      "l_logstep": 1.08
+    },
+    {
+      "Emax": 0.8764884160975974,
+      "classification": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+      "exact_identity_pass": true,
+      "excursion_factors": {
+        "EE": 0.6171794796228991,
+        "TE": 0.7040029840051912,
+        "TT": 0.8764884160975974
+      },
+      "l_logstep": 1.06
+    },
+    {
+      "Emax": 0.6221924220217243,
+      "classification": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+      "exact_identity_pass": true,
+      "excursion_factors": {
+        "EE": 0.6071079459595117,
+        "TE": 0.6221924220217243,
+        "TT": 0.6219093336101317
+      },
+      "l_logstep": 1.04
+    },
+    {
+      "Emax": 0.8497680413058704,
+      "classification": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+      "exact_identity_pass": true,
+      "excursion_factors": {
+        "EE": 0.5956033034973155,
+        "TE": 0.6643683133972229,
+        "TT": 0.8497680413058704
+      },
+      "l_logstep": 1.03
+    },
+    {
+      "Emax": 0.8229530211772723,
+      "classification": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+      "exact_identity_pass": true,
+      "excursion_factors": {
+        "EE": 0.5747753391754347,
+        "TE": 0.8011359864501428,
+        "TT": 0.8229530211772723
+      },
+      "l_logstep": 1.026
+    },
+    {
+      "Emax": 0.7551593262320857,
+      "classification": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+      "exact_identity_pass": true,
+      "excursion_factors": {
+        "EE": 0.5913724572851811,
+        "TE": 0.734651641792157,
+        "TT": 0.7551593262320857
+      },
+      "l_logstep": 1.02
+    }
+  ],
+  "preregistration": "protocol/W04_M24_L_LOGSTEP_CONVERGENCE_LADDER_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M24.LLogstepConvergenceLadder.Summary.v1"
+}
