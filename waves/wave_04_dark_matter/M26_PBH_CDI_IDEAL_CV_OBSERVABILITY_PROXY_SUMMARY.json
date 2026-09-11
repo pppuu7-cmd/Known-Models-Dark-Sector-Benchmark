@@ -1,0 +1,333 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "all_masses_fraction_scaling_pass": true,
+  "all_masses_numerically_valid": true,
+  "classification": "M26_PBH_CDI_IDEAL_CV_OBSERVABILITY_PROXY_ESTABLISHED",
+  "interpretation": "Optimistic full-sky noise-free fixed-parameter Gaussian CMB cosmic-variance proxy only; not a survey likelihood or exclusion.",
+  "masses": [
+    {
+      "K1_promoted": false,
+      "K4_promoted": false,
+      "classification": "M26_PBH_CDI_IDEAL_CV_MASS_PROXY_VALID",
+      "five_sigma_sampled_constraint": {
+        "threshold_fraction_gt": 1.0,
+        "type": "lower_bound"
+      },
+      "fraction_loglog_snr_slope": 0.9999983700266906,
+      "fraction_scaling_pass": true,
+      "fractions": [
+        1.0,
+        0.1,
+        0.01,
+        0.001
+      ],
+      "mass_Msun": 100.0,
+      "numerically_valid": true,
+      "observation_likelihood_gate": "OPEN",
+      "parent_run_id": 34555112732,
+      "physical_falsification": false,
+      "preregistration": "protocol/W04_M26_PBH_CDI_IDEAL_CV_OBSERVABILITY_PROXY_PREREGISTRATION_v0.1.md",
+      "results": [
+        {
+          "bad_fraction": 0.0,
+          "band_snr": {
+            "1501-2500": 0.0009249216011108984,
+            "2-30": 1.1051730736729594e-07,
+            "31-500": 8.422476924781318e-05,
+            "501-1500": 0.0004349312700691935
+          },
+          "case": "f0",
+          "fraction": 1.0,
+          "ill_conditioned_gt_1e12": 0,
+          "multipoles_requested": 2499,
+          "multipoles_used": 2499,
+          "nonfinite_multipoles": 0,
+          "nonpositive_multipoles": 0,
+          "numerically_valid": true,
+          "snr": 0.0010255432715660867,
+          "snr2": 1.0517390018544724e-06,
+          "tier": "BELOW_IDEAL_CV_1SIGMA"
+        },
+        {
+          "bad_fraction": 0.0,
+          "band_snr": {
+            "1501-2500": 9.249217138297077e-05,
+            "2-30": 1.1052895328550001e-08,
+            "31-500": 8.42247803752486e-06,
+            "501-1500": 4.349312802953275e-05
+          },
+          "case": "f1",
+          "fraction": 0.1,
+          "ill_conditioned_gt_1e12": 0,
+          "multipoles_requested": 2499,
+          "multipoles_used": 2499,
+          "nonfinite_multipoles": 0,
+          "nonpositive_multipoles": 0,
+          "numerically_valid": true,
+          "snr": 0.00010255433784774424,
+          "snr2": 1.0517392211389268e-08,
+          "tier": "BELOW_IDEAL_CV_1SIGMA"
+        },
+        {
+          "bad_fraction": 0.0,
+          "band_snr": {
+            "1501-2500": 9.249234089595487e-06,
+            "2-30": 1.1103849391969864e-09,
+            "31-500": 8.422446264477254e-07,
+            "501-1500": 4.349329910942523e-06
+          },
+          "case": "f2",
+          "fraction": 0.01,
+          "ill_conditioned_gt_1e12": 0,
+          "multipoles_requested": 2499,
+          "multipoles_used": 2499,
+          "nonfinite_multipoles": 0,
+          "nonpositive_multipoles": 0,
+          "numerically_valid": true,
+          "snr": 1.0255456067971296e-05,
+          "snr2": 1.0517437916208926e-10,
+          "tier": "BELOW_IDEAL_CV_1SIGMA"
+        },
+        {
+          "bad_fraction": 0.0,
+          "band_snr": {
+            "1501-2500": 9.249320131530181e-07,
+            "2-30": 1.1468302667804169e-10,
+            "31-500": 8.422016868135325e-08,
+            "501-1500": 4.34938519004041e-07
+          },
+          "case": "f3",
+          "fraction": 0.001,
+          "ill_conditioned_gt_1e12": 0,
+          "multipoles_requested": 2499,
+          "multipoles_used": 2499,
+          "nonfinite_multipoles": 0,
+          "nonpositive_multipoles": 0,
+          "numerically_valid": true,
+          "snr": 1.0255553589317513e-06,
+          "snr2": 1.0517637942336334e-12,
+          "tier": "BELOW_IDEAL_CV_1SIGMA"
+        }
+      ],
+      "schema": "KMDSB.M26.PBHCDIIdealCVObservabilityProxy.v1"
+    },
+    {
+      "K1_promoted": false,
+      "K4_promoted": false,
+      "classification": "M26_PBH_CDI_IDEAL_CV_MASS_PROXY_VALID",
+      "five_sigma_sampled_constraint": {
+        "threshold_fraction_gt": 1.0,
+        "type": "lower_bound"
+      },
+      "fraction_loglog_snr_slope": 0.9999996961007906,
+      "fraction_scaling_pass": true,
+      "fractions": [
+        1.0,
+        0.1,
+        0.01,
+        0.001
+      ],
+      "mass_Msun": 1000.0,
+      "numerically_valid": true,
+      "observation_likelihood_gate": "OPEN",
+      "parent_run_id": 34555112732,
+      "physical_falsification": false,
+      "preregistration": "protocol/W04_M26_PBH_CDI_IDEAL_CV_OBSERVABILITY_PROXY_PREREGISTRATION_v0.1.md",
+      "results": [
+        {
+          "bad_fraction": 0.0,
+          "band_snr": {
+            "1501-2500": 0.00924921583569246,
+            "2-30": 1.1051706981917346e-06,
+            "31-500": 0.0008422477781704451,
+            "501-1500": 0.004349312556613691
+          },
+          "case": "f0",
+          "fraction": 1.0,
+          "ill_conditioned_gt_1e12": 0,
+          "multipoles_requested": 2499,
+          "multipoles_used": 2499,
+          "nonfinite_multipoles": 0,
+          "nonpositive_multipoles": 0,
+          "numerically_valid": true,
+          "snr": 0.01025543250338945,
+          "snr2": 0.0001051738958315768,
+          "tier": "BELOW_IDEAL_CV_1SIGMA"
+        },
+        {
+          "bad_fraction": 0.0,
+          "band_snr": {
+            "1501-2500": 0.0009249216011108984,
+            "2-30": 1.1051730736729594e-07,
+            "31-500": 8.422476924781318e-05,
+            "501-1500": 0.0004349312700691935
+          },
+          "case": "f1",
+          "fraction": 0.1,
+          "ill_conditioned_gt_1e12": 0,
+          "multipoles_requested": 2499,
+          "multipoles_used": 2499,
+          "nonfinite_multipoles": 0,
+          "nonpositive_multipoles": 0,
+          "numerically_valid": true,
+          "snr": 0.0010255432715660867,
+          "snr2": 1.0517390018544724e-06,
+          "tier": "BELOW_IDEAL_CV_1SIGMA"
+        },
+        {
+          "bad_fraction": 0.0,
+          "band_snr": {
+            "1501-2500": 9.249217138297077e-05,
+            "2-30": 1.1052895328550001e-08,
+            "31-500": 8.42247803752486e-06,
+            "501-1500": 4.349312802953275e-05
+          },
+          "case": "f2",
+          "fraction": 0.01,
+          "ill_conditioned_gt_1e12": 0,
+          "multipoles_requested": 2499,
+          "multipoles_used": 2499,
+          "nonfinite_multipoles": 0,
+          "nonpositive_multipoles": 0,
+          "numerically_valid": true,
+          "snr": 0.00010255433784774424,
+          "snr2": 1.0517392211389268e-08,
+          "tier": "BELOW_IDEAL_CV_1SIGMA"
+        },
+        {
+          "bad_fraction": 0.0,
+          "band_snr": {
+            "1501-2500": 9.249234089595487e-06,
+            "2-30": 1.1103849391969864e-09,
+            "31-500": 8.422446264477254e-07,
+            "501-1500": 4.349329910942523e-06
+          },
+          "case": "f3",
+          "fraction": 0.001,
+          "ill_conditioned_gt_1e12": 0,
+          "multipoles_requested": 2499,
+          "multipoles_used": 2499,
+          "nonfinite_multipoles": 0,
+          "nonpositive_multipoles": 0,
+          "numerically_valid": true,
+          "snr": 1.0255456067971296e-05,
+          "snr2": 1.0517437916208926e-10,
+          "tier": "BELOW_IDEAL_CV_1SIGMA"
+        }
+      ],
+      "schema": "KMDSB.M26.PBHCDIIdealCVObservabilityProxy.v1"
+    },
+    {
+      "K1_promoted": false,
+      "K4_promoted": false,
+      "classification": "M26_PBH_CDI_IDEAL_CV_MASS_PROXY_VALID",
+      "five_sigma_sampled_constraint": {
+        "threshold_fraction_gt": 1.0,
+        "type": "lower_bound"
+      },
+      "fraction_loglog_snr_slope": 0.9999999827309898,
+      "fraction_scaling_pass": true,
+      "fractions": [
+        1.0,
+        0.1,
+        0.01,
+        0.001
+      ],
+      "mass_Msun": 10000.0,
+      "numerically_valid": true,
+      "observation_likelihood_gate": "OPEN",
+      "parent_run_id": 34555112732,
+      "physical_falsification": false,
+      "preregistration": "protocol/W04_M26_PBH_CDI_IDEAL_CV_OBSERVABILITY_PROXY_PREREGISTRATION_v0.1.md",
+      "results": [
+        {
+          "bad_fraction": 0.0,
+          "band_snr": {
+            "1501-2500": 0.09249215833636486,
+            "2-30": 1.1051682498181452e-05,
+            "31-500": 0.008422477897305849,
+            "501-1500": 0.04349312541865702
+          },
+          "case": "f0",
+          "fraction": 1.0,
+          "ill_conditioned_gt_1e12": 0,
+          "multipoles_requested": 2499,
+          "multipoles_used": 2499,
+          "nonfinite_multipoles": 0,
+          "nonpositive_multipoles": 0,
+          "numerically_valid": true,
+          "snr": 0.10255432496229744,
+          "snr2": 0.010517389568472504,
+          "tier": "BELOW_IDEAL_CV_1SIGMA"
+        },
+        {
+          "bad_fraction": 0.0,
+          "band_snr": {
+            "1501-2500": 0.00924921583569246,
+            "2-30": 1.1051706981917346e-06,
+            "31-500": 0.0008422477781704451,
+            "501-1500": 0.004349312556613691
+          },
+          "case": "f1",
+          "fraction": 0.1,
+          "ill_conditioned_gt_1e12": 0,
+          "multipoles_requested": 2499,
+          "multipoles_used": 2499,
+          "nonfinite_multipoles": 0,
+          "nonpositive_multipoles": 0,
+          "numerically_valid": true,
+          "snr": 0.01025543250338945,
+          "snr2": 0.0001051738958315768,
+          "tier": "BELOW_IDEAL_CV_1SIGMA"
+        },
+        {
+          "bad_fraction": 0.0,
+          "band_snr": {
+            "1501-2500": 0.0009249216011108984,
+            "2-30": 1.1051730736729594e-07,
+            "31-500": 8.422476924781318e-05,
+            "501-1500": 0.0004349312700691935
+          },
+          "case": "f2",
+          "fraction": 0.01,
+          "ill_conditioned_gt_1e12": 0,
+          "multipoles_requested": 2499,
+          "multipoles_used": 2499,
+          "nonfinite_multipoles": 0,
+          "nonpositive_multipoles": 0,
+          "numerically_valid": true,
+          "snr": 0.0010255432715660867,
+          "snr2": 1.0517390018544724e-06,
+          "tier": "BELOW_IDEAL_CV_1SIGMA"
+        },
+        {
+          "bad_fraction": 0.0,
+          "band_snr": {
+            "1501-2500": 9.249217138297077e-05,
+            "2-30": 1.1052895328550001e-08,
+            "31-500": 8.42247803752486e-06,
+            "501-1500": 4.349312802953275e-05
+          },
+          "case": "f3",
+          "fraction": 0.001,
+          "ill_conditioned_gt_1e12": 0,
+          "multipoles_requested": 2499,
+          "multipoles_used": 2499,
+          "nonfinite_multipoles": 0,
+          "nonpositive_multipoles": 0,
+          "numerically_valid": true,
+          "snr": 0.00010255433784774424,
+          "snr2": 1.0517392211389268e-08,
+          "tier": "BELOW_IDEAL_CV_1SIGMA"
+        }
+      ],
+      "schema": "KMDSB.M26.PBHCDIIdealCVObservabilityProxy.v1"
+    }
+  ],
+  "observation_likelihood_gate": "OPEN",
+  "parent_run_id": 34555112732,
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M26_PBH_CDI_IDEAL_CV_OBSERVABILITY_PROXY_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M26.PBHCDIIdealCVObservabilityProxy.Summary.v1"
+}
