@@ -1,0 +1,17 @@
+{
+  "K1_promoted": false,
+  "K3_promoted": false,
+  "K4_promoted": false,
+  "classification": "M27_DDM_DR_HIERARCHY_CONVERGENCE_NOT_ESTABLISHED",
+  "max_L17_vs_L32_amp_norm_residual": 0.004003933161124123,
+  "max_L8_vs_L17_amp_norm_residual": 0.2675798875931739,
+  "max_N1_exact_vs_direct_amp_norm_residual": 1.6438895199043206e-06,
+  "n_control_pass": 3,
+  "n_control_results": 3,
+  "n_ensemble_pass": 20,
+  "n_ensemble_results": 27,
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M27_DDM_DR_HIERARCHY_CONVERGENCE_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M27.DDMDRHierarchyConvergence.Summary.v1",
+  "self_consistent_metric_gate": "OPEN"
+}
