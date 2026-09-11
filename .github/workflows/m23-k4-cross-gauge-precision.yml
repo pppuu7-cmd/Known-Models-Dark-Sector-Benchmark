@@ -78,14 +78,13 @@ jobs:
             echo "Gamma_0_nadm = $GAMMA" >> "$OUT/base.ini"
           fi
 
-          # Prospectively frozen compatibility repair only: stock cl_ref.pre
-          # leaves the IDR trigger at a value colliding with ur_fluid=50 for
-          # this nonzero-IDR cosmology. Preserve cl_ref byte-for-byte and add
-          # one dedicated IDR trigger distinct from 50, 51, and 240.
+          # Prospectively frozen v0.2 compatibility repair only. The pinned
+          # provider field is idr_streaming_trigger_tau_over_tau_k; the v0.1
+          # error-text spelling did not set this precision field.
           cp cl_ref.pre m23_cl_ref_idr.pre
-          printf '\ndark_radiation_trigger_tau_over_tau_k = 49.\n' >> m23_cl_ref_idr.pre
+          printf '\nidr_streaming_trigger_tau_over_tau_k = 49.\n' >> m23_cl_ref_idr.pre
           sha256sum cl_ref.pre m23_cl_ref_idr.pre > "$OUT/reference_profile_sha256.txt"
-          printf '%s\n' 'protocol/W04_M23_K4_CLREF_IDR_TRIGGER_REPAIR_v0.1.md' > "$OUT/reference_repair_preregistration.txt"
+          printf '%s\n' 'protocol/W04_M23_K4_CLREF_IDR_TRIGGER_REPAIR_v0.2.md' > "$OUT/reference_repair_preregistration.txt"
 
           run_one () {
             local profile="$1"
@@ -212,7 +211,7 @@ jobs:
             'schema':'KMDSB.M23.K4CrossGaugePrecision.v1',
             'class_pin':'e85808324f51fc694d12e3ed7439552a3c3f9540',
             'preregistration':'protocol/W04_M23_DM_DR_DAO_K4_CROSS_GAUGE_PRECISION_PREREGISTRATION_v0.1.md',
-            'reference_profile_repair':'protocol/W04_M23_K4_CLREF_IDR_TRIGGER_REPAIR_v0.1.md',
+            'reference_profile_repair':'protocol/W04_M23_K4_CLREF_IDR_TRIGGER_REPAIR_v0.2.md',
             'branches':{}, 'cross_gauge':{}, 'physical_falsification':False
           }
           provider_blocked=False
