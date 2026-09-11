@@ -1,0 +1,125 @@
+name: W05 M29 K4b high-k localization
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w05-m29-k4b-highk-localization.yml'
+
+jobs:
+  compute:
+    strategy:
+      fail-fast: false
+      matrix:
+        omega: ['15','1e4']
+        profile: [baseline_permille, grid_ref, evolution_ref, pk_core_ref, full_ref]
+    runs-on: ubuntu-latest
+    env:
+      HICLASS_PIN: 0009f51d89e6465c79e570b496c66fc90058fa77
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute frozen K4b arm
+        shell: bash
+        run: |
+          set -euo pipefail
+          OM='${{ matrix.omega }}'; PR='${{ matrix.profile }}'
+          BASE="$GITHUB_WORKSPACE/m29k4b/$OM/$PR"
+          mkdir -p "$BASE/output"
+          git clone -q https://github.com/hiclass-code/hi_class_public.git hiclass
+          cd hiclass && git checkout -q --detach "$HICLASS_PIN"
+          test "$(git rev-parse HEAD)" = "$HICLASS_PIN"
+          make -j2 >/dev/null
+          CFG="$BASE/run.ini"
+          cp gravity_models/brans_dicke.ini "$CFG"
+          python3 - "$CFG" "$OM" "$BASE" <<'PY'
+          import re,sys
+          p,om,base=sys.argv[1:]
+          s=open(p).read()
+          s=re.sub(r'^parameters_smg\s*=.*$',f'parameters_smg = 0.7, {om}, 1., 0.',s,flags=re.M)
+          s=re.sub(r'^root\s*=.*$',f'root = {base}/output/bd_',s,flags=re.M)
+          s += '\nbackground_Nloga = 40000\n'
+          open(p,'w').write(s)
+          PY
+          GRID="$BASE/grid_ref.pre"
+          EVOL="$BASE/evolution_ref.pre"
+          cat > "$GRID" <<'EOF'
+          k_min_tau0=0.002
+          k_max_tau0_over_l_max=3.
+          k_step_sub=0.015
+          k_step_super=0.0001
+          k_step_super_reduction=0.1
+          EOF
+          cat > "$EVOL" <<'EOF'
+          evolver=0
+          start_small_k_at_tau_c_over_tau_h=0.0004
+          start_large_k_at_tau_h_over_tau_k=0.05
+          tight_coupling_trigger_tau_c_over_tau_h=0.005
+          tight_coupling_trigger_tau_c_over_tau_k=0.008
+          start_sources_at_tau_c_over_tau_h=0.006
+          l_max_g=50
+          l_max_pol_g=25
+          l_max_ur=50
+          l_max_ncdm=50
+          tol_perturbations_integration=1.e-6
+          perturbations_sampling_stepsize=0.01
+          radiation_streaming_approximation=2
+          radiation_streaming_trigger_tau_over_tau_k=240.
+          radiation_streaming_trigger_tau_c_over_tau=100.
+          ur_fluid_approximation=2
+          ur_fluid_trigger_tau_over_tau_k=50.
+          ncdm_fluid_approximation=3
+          ncdm_fluid_trigger_tau_over_tau_k=51.
+          EOF
+          ARGS=()
+          case "$PR" in
+            baseline_permille) ARGS=(cl_permille.pre) ;;
+            grid_ref) ARGS=(cl_permille.pre "$GRID") ;;
+            evolution_ref) ARGS=(cl_permille.pre "$EVOL") ;;
+            pk_core_ref) ARGS=(cl_permille.pre "$GRID" "$EVOL") ;;
+            full_ref) ARGS=(cl_ref.pre) ;;
+          esac
+          set +e
+          ./class "$CFG" "${ARGS[@]}" > "$BASE/stdout.log" 2> "$BASE/stderr.log"
+          RC=$?
+          set -e
+          echo "$RC" > "$BASE/exit_code.txt"
+          find "$BASE" -maxdepth 2 -type f -printf '%P %s bytes\n' | sort > "$BASE/file_manifest.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m29-k4b-${{ matrix.omega }}-${{ matrix.profile }}
+          path: m29k4b/${{ matrix.omega }}/${{ matrix.profile }}
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: compute
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: 'm29-k4b-*'
+          path: downloaded
+      - name: Reassemble K4b artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p m29k4b
+          for om in 15 1e4; do
+            for pr in baseline_permille grid_ref evolution_ref pk_core_ref full_ref; do
+              src="downloaded/m29-k4b-$om-$pr"
+              mkdir -p "m29k4b/$om/$pr"
+              cp -a "$src"/. "m29k4b/$om/$pr/"
+            done
+          done
+      - name: Classify preregistered K4b diagnostic
+        run: python3 verification/m29/k4b_highk_localization.py | tee m29_k4b_result_stdout.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m29-k4b-aggregate
+          path: |
+            waves/wave_05_modified_gravity/M29_K4B_HIGHK_LOCALIZATION_RESULT.json
+            m29_k4b_result_stdout.json
+          retention-days: 30
