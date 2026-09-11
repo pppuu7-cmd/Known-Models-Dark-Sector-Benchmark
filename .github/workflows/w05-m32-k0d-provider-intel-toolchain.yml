@@ -1,0 +1,144 @@
+name: W05 M32 DGP K0d provider Intel toolchain
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w05-m32-k0d-provider-intel-toolchain.yml'
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    env:
+      PROVIDER_PIN: 849ddb716041316d0e223ba22badc0d630b72435
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install official Intel oneAPI Fortran and MPI SDK
+        shell: bash
+        run: |
+          set -u
+          mkdir -p m32k0d
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gpg-agent wget ca-certificates
+          wget -qO- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg >/dev/null
+          echo 'deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main' | sudo tee /etc/apt/sources.list.d/oneAPI.list >/dev/null
+          sudo apt-get update -qq
+          set +e
+          sudo apt-get install -y -qq intel-oneapi-compiler-fortran intel-oneapi-mpi-devel >m32k0d/install_stdout.log 2>m32k0d/install_stderr.log
+          RC=$?
+          set -e
+          echo "$RC" > m32k0d/install_exit_code.txt
+          dpkg-query -W -f='${Package} ${Version}\n' 'intel-oneapi-compiler-fortran*' 'intel-oneapi-mpi*' 2>/dev/null | sort > m32k0d/intel_packages.txt || true
+      - name: Exact-pin clean serial provider build under Intel MPI/ifx
+        shell: bash
+        run: |
+          set -u
+          INSTALL_RC=$(cat m32k0d/install_exit_code.txt 2>/dev/null || echo 999)
+          if [ "$INSTALL_RC" != 0 ]; then
+            echo 998 > m32k0d/build_exit_code.txt
+            echo 1 > m32k0d/executable_test_exit.txt
+            exit 0
+          fi
+          set +u
+          source /opt/intel/oneapi/setvars.sh --force >/dev/null 2>&1
+          set -u
+          command -v ifx > m32k0d/ifx_path.txt 2>&1 || true
+          command -v mpiifx > m32k0d/mpiifx_path.txt 2>&1 || true
+          ifx --version > m32k0d/ifx_version.txt 2>&1 || true
+          mpiifx -v > m32k0d/mpiifx_version.txt 2>&1 || true
+          git clone -q https://github.com/nat-woodcock/EFT-Ramses.git provider
+          cd provider
+          git checkout -q --detach "$PROVIDER_PIN"
+          ACTUAL=$(git rev-parse HEAD)
+          echo "$ACTUAL" > ../m32k0d/provider_head.txt
+          if [ "$ACTUAL" = "$PROVIDER_PIN" ]; then echo 0 > ../m32k0d/pin_test_exit.txt; else echo 1 > ../m32k0d/pin_test_exit.txt; fi
+          if grep -Eqi 'self-accelerating DGP|normal-branch DGP|DGP braneworld' README.md; then echo 0 > ../m32k0d/dgp_provenance_exit.txt; else echo 1 > ../m32k0d/dgp_provenance_exit.txt; fi
+          cp bin/Makefile ../m32k0d/provider_Makefile.txt
+          cd bin
+          find . -maxdepth 1 -type f \( -name '*.o' -o -name '*.mod' \) -printf '%f %s\n' | sort > ../../m32k0d/tracked_build_products_before.txt
+          rm -f -- *.o *.mod
+          set +e
+          make \
+            F90='mpiifx' \
+            FFLAGS='-O3 -g -mcmodel=large -traceback -fpe0 -ftrapuv -cpp $(DEFINES)' \
+            > ../../m32k0d/build_stdout.log 2> ../../m32k0d/build_stderr.log
+          RC=$?
+          set -e
+          echo "$RC" > ../../m32k0d/build_exit_code.txt
+          if test -x ramses3d; then echo 0 > ../../m32k0d/executable_test_exit.txt; else echo 1 > ../../m32k0d/executable_test_exit.txt; fi
+          find . -maxdepth 1 -type f \( -name '*.o' -o -name '*.mod' -o -name 'ramses3d' \) -printf '%f %s\n' | sort > ../../m32k0d/build_products_after_make.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m32-k0d-intel-toolchain-probe
+          path: m32k0d
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: probe
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m32-k0d-intel-toolchain-probe
+          path: m32k0d
+      - name: Frozen K0d classification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('m32k0d')
+          def iv(n,d=999):
+              try:return int((p/n).read_text().strip())
+              except:return d
+          pin=(p/'provider_head.txt').read_text().strip() if (p/'provider_head.txt').exists() else None
+          exact=pin=='849ddb716041316d0e223ba22badc0d630b72435'
+          prov=iv('dgp_provenance_exit.txt')==0
+          install=iv('install_exit_code.txt')
+          build=iv('build_exit_code.txt')
+          exe=iv('executable_test_exit.txt')==0
+          if install!=0:
+              c='M32_K0D_BLOCKED_TOOLCHAIN_INSTALL'
+          elif not exact or not prov:
+              c='M32_K0D_BLOCKED_PROVENANCE'
+          elif build!=0 or not exe:
+              c='M32_K0D_PROVIDER_INTEL_BUILD_STILL_BLOCKED'
+          else:
+              c='M32_K0D_PROVIDER_INTEL_BUILD_RECOVERED'
+          out={
+            'schema':'m32_dgp_k0d_provider_intel_toolchain_v0.1',
+            'provider':'nat-woodcock/EFT-Ramses',
+            'provider_commit':'849ddb716041316d0e223ba22badc0d630b72435',
+            'classification':c,
+            'checks':{'toolchain_install_exit_code':install,'exact_pin':exact,'dgp_provenance':prov,'build_exit_code':build,'native_executable_exists':exe},
+            'toolchain':'Intel oneAPI Fortran ifx + Intel MPI mpiifx; exact installed versions retained in artifact',
+            'provider_active_flags':'-O3 -g -mcmodel=large -traceback -fpe0 -ftrapuv -cpp $(DEFINES)',
+            'K0_promoted':False,
+            'physical_falsification':False,
+            'scope':'provider-intended Intel-family build recovery only; no source/physics modification; native DGP production execution plus reference/control required before K0 promotion'
+          }
+          q=pathlib.Path('waves/wave_05_modified_gravity/M32_K0D_PROVIDER_INTEL_TOOLCHAIN_RESULT.json')
+          q.parent.mkdir(parents=True,exist_ok=True); q.write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m32-k0d-intel-toolchain-aggregate
+          path: |
+            waves/wave_05_modified_gravity/M32_K0D_PROVIDER_INTEL_TOOLCHAIN_RESULT.json
+            m32k0d/install_stdout.log
+            m32k0d/install_stderr.log
+            m32k0d/intel_packages.txt
+            m32k0d/ifx_version.txt
+            m32k0d/mpiifx_version.txt
+            m32k0d/build_stdout.log
+            m32k0d/build_stderr.log
+            m32k0d/provider_Makefile.txt
+            m32k0d/tracked_build_products_before.txt
+            m32k0d/build_products_after_make.txt
+          if-no-files-found: warn
+          retention-days: 30
