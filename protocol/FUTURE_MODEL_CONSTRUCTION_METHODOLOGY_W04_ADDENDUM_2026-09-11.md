@@ -38,5 +38,17 @@ M23 calibration: the correct simple DM-DR scattering reference retains `f_idm=1`
 
 Construction consequence: future-model reference maps should expose separate coordinates for species content and coupling strength and test each decoupling path independently.
 
+## A4 — A family label is not a benchmark coordinate when the mechanism changes the response operator
+
+Coverage is defined by physically/observationally distinct response mechanisms, not by a shared object name. A top-level family can require multiple scoped children when different mechanisms, prescriptions or mass regimes feed observables through different operators.
+
+F26 calibration: `primordial-black-hole dark matter` contains at least (i) Hawking evaporation energy injection, (ii) baryonic accretion energy injection with prescription-dependent radiative feedback, and (iii) discrete/Poisson gravitational structure response. Even within accretion, the pinned ExoCLASS interface exposes separate spherical and disk prescriptions, while later feedback-aware treatments can change the CMB response. A successful calculation in one child cannot automatically represent the others.
+
+Construction consequence:
+- the future model/census interface must bind every response to mechanism + regime + prescription, not only to a family name;
+- family-level terminal status requires explicit coverage/representation of all maintained response-distinct children in scope;
+- an exclusion curve is not a forward operator and cannot substitute for the source-complete mechanism that generated it;
+- historical implementations with known later corrections may remain reproduction controls, but corrected/current physics must be validated separately before family-level promotion.
+
 ## Promotion status
-These rules are durable methodological constraints supported by controlled W04 cases, but their design-prior ledger level must still be governed by the normal evidence/promotion policy. They do not by themselves establish `NEW_REQUIRED`.
+These rules are durable methodological constraints supported by controlled/source-audited W04 cases, but their design-prior ledger level must still be governed by the normal evidence/promotion policy. They do not by themselves establish `NEW_REQUIRED`.
