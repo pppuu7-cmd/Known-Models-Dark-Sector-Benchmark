@@ -1,0 +1,14 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "children": {
+    "disk": "M26_DISK_PROVIDER_EXECUTION_BLOCKED",
+    "evaporation": "M26_EVAPORATION_PROVIDER_EXECUTION_BLOCKED",
+    "spherical": "M26_SPHERICAL_PROVIDER_EXECUTION_BLOCKED"
+  },
+  "n_results": 3,
+  "physical_falsification": false,
+  "poisson_structure_channel": "NOT_TESTED",
+  "runtime_recovery_preregistration": "protocol/W04_M26_PBH_PROVIDER_RUNTIME_RECOVERY_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M26.PBHEnergyInjectionProviderControls.RuntimeRecoverySummary.v1"
+}
