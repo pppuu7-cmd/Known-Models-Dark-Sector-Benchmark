@@ -1,0 +1,34 @@
+{
+  "Emax": {
+    "hyper_flat_threshold": {
+      "control": 62.644974496926224,
+      "subblock": 62.644974496926224
+    },
+    "hyper_sampling": {
+      "control": 62.644974496926224,
+      "subblock": 62.64442471683094
+    },
+    "l_sampling": {
+      "control": 62.6449744969262,
+      "subblock": 0.8233792245829291
+    },
+    "q_sampling": {
+      "control": 62.644974496926224,
+      "subblock": 62.64565245657011
+    }
+  },
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "children": {
+    "hyper_flat_threshold": "M24_GLOBAL_PRECISION_EXCURSION_INSENSITIVE",
+    "hyper_sampling": "M24_GLOBAL_PRECISION_EXCURSION_INSENSITIVE",
+    "l_sampling": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+    "q_sampling": "M24_GLOBAL_PRECISION_EXCURSION_INSENSITIVE"
+  },
+  "localized_subblocks": [
+    "l_sampling"
+  ],
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M24_SAMPLING_PROJECTION_SUBBLOCK_ISOLATION_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M24.SamplingProjectionSubblockIsolation.Summary.v1"
+}
