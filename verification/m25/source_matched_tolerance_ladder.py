@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse,json
+import argparse,json,sys
 from pathlib import Path
+
+ROOT=Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0,str(ROOT))
+
 from verification.m25.m25_k1_precision_floor_diagnostic import analyze as base_analyze
 
 PREREG='protocol/W04_M25_SOURCE_MATCHED_TOLERANCE_LADDER_PREREGISTRATION_v0.1.md'
