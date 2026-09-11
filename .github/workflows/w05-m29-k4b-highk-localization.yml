@@ -42,6 +42,7 @@ jobs:
           PY
           GRID="$BASE/grid_ref.pre"
           EVOL="$BASE/evolution_ref.pre"
+          MERGED="$BASE/merged.pre"
           cat > "$GRID" <<'EOF'
           k_min_tau0=0.002
           k_max_tau0_over_l_max=3.
@@ -70,16 +71,15 @@ jobs:
           ncdm_fluid_approximation=3
           ncdm_fluid_trigger_tau_over_tau_k=51.
           EOF
-          ARGS=()
           case "$PR" in
-            baseline_permille) ARGS=(cl_permille.pre) ;;
-            grid_ref) ARGS=(cl_permille.pre "$GRID") ;;
-            evolution_ref) ARGS=(cl_permille.pre "$EVOL") ;;
-            pk_core_ref) ARGS=(cl_permille.pre "$GRID" "$EVOL") ;;
-            full_ref) ARGS=(cl_ref.pre) ;;
+            baseline_permille) cp cl_permille.pre "$MERGED" ;;
+            grid_ref) cat cl_permille.pre "$GRID" > "$MERGED" ;;
+            evolution_ref) cat cl_permille.pre "$EVOL" > "$MERGED" ;;
+            pk_core_ref) cat cl_permille.pre "$GRID" "$EVOL" > "$MERGED" ;;
+            full_ref) cp cl_ref.pre "$MERGED" ;;
           esac
           set +e
-          ./class "$CFG" "${ARGS[@]}" > "$BASE/stdout.log" 2> "$BASE/stderr.log"
+          ./class "$CFG" "$MERGED" > "$BASE/stdout.log" 2> "$BASE/stderr.log"
           RC=$?
           set -e
           echo "$RC" > "$BASE/exit_code.txt"
