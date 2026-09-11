@@ -1,0 +1,31 @@
+{
+  "schema": "m24_k1_ethos_decoupling_result_v0.1",
+  "model_id": "M24",
+  "family_id": "F24",
+  "classification": "M24_K1_NOT_ESTABLISHED_DECOUPLING_LADDER",
+  "K0": "PASS_WITH_SCOPE",
+  "K1": "PARTIAL",
+  "K2_K9": "OPEN",
+  "physical_falsification": false,
+  "provider": "lesgourg/class_public",
+  "provider_commit": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "canonical_run_id": 34655725404,
+  "canonical_job_id": 103447582333,
+  "artifact_id": 10286190461,
+  "artifact_digest": "sha256:baad0ca33d341e61debb2835c97c6ce5718e89db5566a7c081cabaa4fe8f2deb",
+  "D_finest_over_D_coarsest": 0.2520457980536602,
+  "loglog_pearson": 0.9425185216998003,
+  "criteria": {
+    "finest_less_than_coarsest": true,
+    "adjacent_within_20pct_nonincrease": true,
+    "finest_to_coarsest_le_0p25": false,
+    "loglog_correlation_ge_0p90": true
+  },
+  "arms": [
+    {"a_idm_dr": 1000000.0, "D": 0.11137833079343545, "TT_normalized_L2": 0.0001823067275639058, "Pk_normalized_L2": 0.11137833079343545},
+    {"a_idm_dr": 100000.0, "D": 0.08955206721653017, "TT_normalized_L2": 0.00002953034968884858, "Pk_normalized_L2": 0.08955206721653017},
+    {"a_idm_dr": 10000.0, "D": 0.06749093825970945, "TT_normalized_L2": 0.000156612116568647, "Pk_normalized_L2": 0.06749093825970945},
+    {"a_idm_dr": 1000.0, "D": 0.028072440270715995, "TT_normalized_L2": 0.000005432733643834067, "Pk_normalized_L2": 0.028072440270715995}
+  ],
+  "scope": "Native CLASS ETHOS IDM-DR scalar closure; a_idm_dr toward the zero-interaction reference. The preregistered finest/coarsest contraction requirement was <=0.25 and the measured value was 0.2520457981, so K1 is not established. This is not physical falsification and the threshold is not altered post hoc."
+}
