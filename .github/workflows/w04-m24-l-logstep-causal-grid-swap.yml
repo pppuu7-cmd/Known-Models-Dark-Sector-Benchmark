@@ -1,0 +1,167 @@
+name: W04 M24 l_logstep causal grid swap
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m24-l-logstep-causal-grid-swap.yml']
+permissions:
+  actions: read
+  contents: write
+jobs:
+  swap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arm: native_1195
+            logstep: '1.1195'
+            target: 'none'
+          - arm: force_1200_on_1195
+            logstep: '1.1195'
+            target: '1200'
+          - arm: native_1200
+            logstep: '1.1200'
+            target: 'none'
+          - arm: force_1195_on_1200
+            logstep: '1.1200'
+            target: '1195'
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download frozen 1.1195 parent grids
+        uses: actions/download-artifact@v4
+        with:
+          name: m24-l-grid-topology-1.1195
+          path: parent/1195
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 34626787237
+      - name: Download frozen 1.1200 parent grids
+        uses: actions/download-artifact@v4
+        with:
+          name: m24-l-grid-topology-1.1200
+          path: parent/1200
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 34626787237
+      - name: Build pinned CLASS with dormant force-grid intervention
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class/source/transfer.c')
+          s=p.read_text()
+          needle='''  if (ptr->l[index_l] != l_max) {\n\n    index_l ++;\n    ptr->l[index_l]= l_max;\n\n  }\n\n  /* for each mode and type, find relevant size of l array,'''
+          insert='''  if (ptr->l[index_l] != l_max) {\n\n    index_l ++;\n    ptr->l[index_l]= l_max;\n\n  }\n\n  /* KMDSB diagnostic-only causal intervention: optionally replace the\n     finalized transfer multipole grid with an immutable frozen grid. */\n  {\n    const char *kmdsb_force_path = getenv("KMDSB_FORCE_LGRID_PATH");\n    if ((kmdsb_force_path != NULL) && (kmdsb_force_path[0] != '\\0')) {\n      FILE *kmdsb_force = fopen(kmdsb_force_path,"r");\n      int kmdsb_n = 0;\n      int kmdsb_i = 0;\n      int kmdsb_idx = 0;\n      int kmdsb_ell = 0;\n      class_test(kmdsb_force == NULL,ptr->error_message,\n                 "KMDSB force-grid file could not be opened: %s",kmdsb_force_path);\n      class_test(fscanf(kmdsb_force,"l_size_max\\t%d",&kmdsb_n) != 1,ptr->error_message,\n                 "KMDSB force-grid header parse failed: %s",kmdsb_force_path);\n      class_test(kmdsb_n < 2,ptr->error_message,\n                 "KMDSB force-grid size invalid: %d",kmdsb_n);\n      class_realloc(ptr->l,kmdsb_n*sizeof(int),ptr->error_message);\n      for (kmdsb_i=0; kmdsb_i<kmdsb_n; kmdsb_i++) {\n        class_test(fscanf(kmdsb_force,"%d\\t%d",&kmdsb_idx,&kmdsb_ell) != 2,ptr->error_message,\n                   "KMDSB force-grid row parse failed at %d: %s",kmdsb_i,kmdsb_force_path);\n        class_test(kmdsb_idx != kmdsb_i,ptr->error_message,\n                   "KMDSB force-grid non-contiguous index %d expected %d",kmdsb_idx,kmdsb_i);\n        ptr->l[kmdsb_i] = kmdsb_ell;\n      }\n      fclose(kmdsb_force);\n      ptr->l_size_max = kmdsb_n;\n    }\n  }\n\n  /* KMDSB diagnostic-only dump of the final grid actually used. */\n  {\n    const char *kmdsb_grid_path = getenv("KMDSB_LGRID_PATH");\n    if ((kmdsb_grid_path != NULL) && (kmdsb_grid_path[0] != '\\0')) {\n      FILE *kmdsb_grid = fopen(kmdsb_grid_path,"w");\n      if (kmdsb_grid != NULL) {\n        int kmdsb_i;\n        fprintf(kmdsb_grid,"l_size_max\\t%d\\n",ptr->l_size_max);\n        for (kmdsb_i=0; kmdsb_i<ptr->l_size_max; kmdsb_i++)\n          fprintf(kmdsb_grid,"%d\\t%d\\n",kmdsb_i,ptr->l[kmdsb_i]);\n        fclose(kmdsb_grid);\n      }\n    }\n  }\n\n  /* for each mode and type, find relevant size of l array,'''
+          if s.count(needle) != 1:
+              raise SystemExit(f'expected one force-grid anchor, got {s.count(needle)}')
+          p.write_text(s.replace(needle,insert,1))
+          PY
+          make -C class -j2 > build.log 2>&1
+          python3 verification/m24/global_numerical_precision_diagnostic.py prepare cases cl_ref
+          printf 'idr_streaming_trigger_tau_over_tau_k = 49\n' > control.pre
+          cp control.pre profile.pre
+          printf 'l_logstep = %s\n' '${{ matrix.logstep }}' >> profile.pre
+      - name: Execute ten cases with frozen grid intervention
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          mkdir -p class/output logs parts grids
+          printf '%s\n' default_ref default_zero default_a18k default_a6k default_a1p8k profile_ref profile_zero profile_a18k profile_a6k profile_a1p8k | xargs -P 4 -I{} bash -c '
+            t="$1"; set +e
+            if [[ "$t" == profile_* ]]; then
+              pre=../profile.pre
+              force=""
+              if [[ "$TARGET" != "none" ]]; then
+                force="$GITHUB_WORKSPACE/parent/$TARGET/grids/${t}.tsv"
+              fi
+            else
+              pre=../control.pre
+              force=""
+            fi
+            dump="$GITHUB_WORKSPACE/grids/${t}.tsv"
+            if [[ -n "$force" ]]; then
+              (cd class && KMDSB_FORCE_LGRID_PATH="$force" KMDSB_LGRID_PATH="$dump" ./class "../cases/${t}.ini" "$pre" > "../logs/${t}.log" 2>&1)
+            else
+              (cd class && KMDSB_LGRID_PATH="$dump" ./class "../cases/${t}.ini" "$pre" > "../logs/${t}.log" 2>&1)
+            fi
+            printf "%d\n" "$?" > "parts/${t}.status"
+          ' _ {}
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          Path('status.json').write_text(json.dumps({p.stem:int(p.read_text()) for p in Path('parts').glob('*.status')},sort_keys=True)+'\n')
+          PY
+      - name: Analyze causal-swap arm
+        shell: bash
+        env:
+          ARM: ${{ matrix.arm }}
+          LOGSTEP: ${{ matrix.logstep }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          python3 verification/m24/global_numerical_precision_diagnostic.py analyze class/output status.json cl_ref raw.json
+          if [[ "$TARGET" == "none" ]]; then targetdir=.; else targetdir="parent/$TARGET/grids"; fi
+          python3 verification/m24/l_logstep_causal_grid_swap.py arm \
+            --raw raw.json --status status.json --grids grids \
+            --arm "$ARM" --logstep "$LOGSTEP" --target "$TARGET" \
+            --target-grids "$targetdir" --output result.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m24-causal-grid-swap-${{ matrix.arm }}
+          path: |
+            profile.pre
+            control.pre
+            status.json
+            raw.json
+            result.json
+            grids/
+            logs/
+            build.log
+          retention-days: 90
+  aggregate:
+    needs: swap
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m24-causal-grid-swap-*
+          path: collected
+      - name: Persist frozen causal grid-swap summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m24/l_logstep_causal_grid_swap.py aggregate --collected collected --output summary.json
+          cat summary.json
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/ethos_like_dark_sector
+          cp /tmp/summary.json waves/wave_04_dark_matter/M24_L_LOGSTEP_CAUSAL_GRID_SWAP_SUMMARY.json
+          cp /tmp/summary.json models/ethos_like_dark_sector/M24_L_LOGSTEP_CAUSAL_GRID_SWAP_SUMMARY.json
+          git add waves/wave_04_dark_matter/M24_L_LOGSTEP_CAUSAL_GRID_SWAP_SUMMARY.json models/ethos_like_dark_sector/M24_L_LOGSTEP_CAUSAL_GRID_SWAP_SUMMARY.json
+          git diff --cached --quiet || {
+            git commit -m 'Record M24 causal multipole-grid swap gate'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          }
