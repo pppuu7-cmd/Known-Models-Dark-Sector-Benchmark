@@ -1,0 +1,38 @@
+{
+  "K1_promoted": false,
+  "analytic_wrong_to_correct_factor": 124.02510672119926,
+  "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "classification": "M25_CLASS_CONVENTION_CORRECTED_DENSITY_VALIDATED",
+  "models": {
+    "ms7.115E-03s24.000E-11L2.971E-03": {
+      "class_omega_2x_h2": 0.23763639903939365,
+      "class_omega_corrected_h2": 0.1188179433088504,
+      "density_gate": true,
+      "factor_two_negative_control": true,
+      "final_T_MeV": 10.000000000000012,
+      "provider_omega_wdm_h2": 0.11879095367594796,
+      "q_max": 10.067397836300321,
+      "q_min": 0.0005033701435000882,
+      "relative_density_error": 0.00022720276306619565,
+      "rows": 1000,
+      "two_x_ratio": 2.0000043126625373
+    },
+    "ms7.115E-03s28.000E-12L4.849E-03": {
+      "class_omega_2x_h2": 0.23786139582631288,
+      "class_omega_corrected_h2": 0.11893069791315644,
+      "density_gate": true,
+      "factor_two_negative_control": true,
+      "final_T_MeV": 10.000000000000012,
+      "provider_omega_wdm_h2": 0.11878737960725178,
+      "q_max": 10.0675536571804,
+      "q_min": 0.0005033779345479877,
+      "relative_density_error": 0.001206511216751487,
+      "rows": 1000,
+      "two_x_ratio": 2.0
+    }
+  },
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M25_CLASS_PSD_CONVENTION_CORRECTION_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M25.PSDClassBridge.CorrectedConvention.v1",
+  "sterile_provider_pin": "e4486265e8207aa0dd28decc8c8d897266c0a52a"
+}
