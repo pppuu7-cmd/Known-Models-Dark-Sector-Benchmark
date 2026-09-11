@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - '.github/workflows/w04-m46-massive-neutrino-k0.yml'
+      - 'verification/m46/k0_massive_neutrino_comparator.py'
 
 jobs:
   compute:
