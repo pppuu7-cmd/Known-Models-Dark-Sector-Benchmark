@@ -1,0 +1,41 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "all_mass_scaling_pass": true,
+  "children": {
+    "100.0": "M26_PBH_CDI_CMB_RESPONSE_SCALING_PASS_WITH_SCOPE",
+    "1000.0": "M26_PBH_CDI_CMB_RESPONSE_SCALING_PASS_WITH_SCOPE",
+    "10000.0": "M26_PBH_CDI_CMB_RESPONSE_SCALING_PASS_WITH_SCOPE"
+  },
+  "classification": "M26_PBH_CDI_MULTI_OBSERVABLE_MASS_FRACTION_SCALING_PASS_WITH_SCOPE",
+  "mass_scaling_exponents": {
+    "EE": {
+      "0.001": 0.9999956389888464,
+      "0.01": 0.9999994046928408,
+      "0.1": 0.9999999887970616,
+      "1.0": 0.9999999941982589
+    },
+    "Pk": {
+      "0.001": 1.000002033099548,
+      "0.01": 0.9999998427758573,
+      "0.1": 1.000000025156402,
+      "1.0": 1.0000000033011227
+    },
+    "TE": {
+      "0.001": 0.9999986973952635,
+      "0.01": 0.9999997996076818,
+      "0.1": 1.0000000739615842,
+      "1.0": 1.0000000062082923
+    },
+    "TT": {
+      "0.001": 0.9999998513172874,
+      "0.01": 0.9999999042090854,
+      "0.1": 0.9999999599568435,
+      "1.0": 0.9999999962597117
+    }
+  },
+  "observation_likelihood_gate": "OPEN",
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M26_PBH_CDI_CMB_RESPONSE_SCALING_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M26.PBHCDIMultiObservableScaling.Summary.v1"
+}
