@@ -1,0 +1,70 @@
+name: W04 M26 PBH Poisson-isocurvature scaling
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m26-pbh-poisson-isocurvature-scaling.yml']
+permissions:
+  contents: write
+jobs:
+  mass:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mass: [1, 10, 100, 1000, 10000]
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+      - name: Evaluate frozen fraction ladder
+        run: |
+          python3 verification/m26/pbh_poisson_isocurvature_scaling.py '${{ matrix.mass }}' result.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m26-pbh-poisson-m${{ matrix.mass }}
+          path: result.json
+          retention-days: 90
+  aggregate:
+    needs: mass
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m26-pbh-poisson-m*
+          path: collected
+      - name: Check mass scaling and persist
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,math
+          from pathlib import Path
+          import numpy as np
+          rs=[json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')]
+          rs=sorted(rs,key=lambda r:r['mass_Msun'])
+          masses=np.array([r['mass_Msun'] for r in rs],float)
+          fracs=np.array(rs[0]['fractions'],float)
+          slopes={}
+          all_mass=True
+          for j,f in enumerate(fracs):
+              y=np.array([r['P_shot_total_Mpc3'][j] for r in rs])
+              p=float(np.polyfit(np.log(masses),np.log(y),1)[0]); slopes[str(f)]=p
+              all_mass &= abs(p-1.0)<=1e-12
+          all_child=(len(rs)==5 and all(r['classification']=='M26_PBH_POISSON_K1_ANALYTIC_PASS_WITH_SCOPE' for r in rs))
+          s={'schema':'KMDSB.M26.PBHPoissonIsocurvatureScaling.Summary.v1','preregistration':'protocol/W04_M26_PBH_POISSON_ISOCURVATURE_SCALING_PREREGISTRATION_v0.1.md','children':{str(r['mass_Msun']):r['classification'] for r in rs},'mass_loglog_slopes_by_fraction':slopes,'all_fraction_gates_pass':all_child,'all_mass_scaling_gates_pass':bool(all_mass),'classification':'M26_PBH_POISSON_MASS_FRACTION_SCALING_PASS_WITH_SCOPE' if all_child and all_mass else 'M26_PBH_POISSON_SCALING_NOT_ESTABLISHED','K1_promoted':False,'K4_promoted':False,'physical_falsification':False,'observable_transfer_gate':'OPEN'}
+          Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n')
+          print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/primordial_black_hole_dark_matter
+          cp /tmp/summary.json waves/wave_04_dark_matter/M26_PBH_POISSON_ISOCURVATURE_SCALING_SUMMARY.json
+          cp /tmp/summary.json models/primordial_black_hole_dark_matter/M26_PBH_POISSON_ISOCURVATURE_SCALING_SUMMARY.json
+          git add waves/wave_04_dark_matter models/primordial_black_hole_dark_matter
+          git diff --cached --quiet || { git commit -m 'Record M26 PBH Poisson-isocurvature scaling'; git pull --rebase origin main; git push origin HEAD:main; }
