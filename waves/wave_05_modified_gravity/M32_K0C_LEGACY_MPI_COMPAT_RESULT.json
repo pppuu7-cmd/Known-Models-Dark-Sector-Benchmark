@@ -1,0 +1,26 @@
+{
+  "K0_promoted": false,
+  "aggregate_artifact_digest": "sha256:44f359f9fde5afb16b589bf8f37cc77a704ee48ce92d20675faa3634277b0844",
+  "aggregate_artifact_id": 10282066455,
+  "checks": {
+    "build_exit_code": 2,
+    "dgp_provenance": true,
+    "exact_pin": true,
+    "native_executable_exists": false
+  },
+  "classification": "M32_K0C_LEGACY_MPI_COMPAT_STILL_BLOCKED",
+  "compiler_compatibility_flag": "-fallow-argument-mismatch",
+  "physical_falsification": false,
+  "provider": "nat-woodcock/EFT-Ramses",
+  "provider_commit": "849ddb716041316d0e223ba22badc0d630b72435",
+  "schema": "m32_dgp_k0c_legacy_mpi_compat_v0.1",
+  "scope": "build-only GNU compiler-compatibility recovery; no source or physics change; native DGP production execution and reference/control still required before K0 promotion",
+  "workflow_run_id": 34645011496,
+  "build_localization": {
+    "previous_MPI_argument_mismatch_errors_demoted_to_warnings": true,
+    "current_failure_class": "GNU_rejects_logical_equality_operator",
+    "current_failure_file": "poisson/multigrid_fine_fine_extradof.f90",
+    "current_failure_count": 5,
+    "interpretation": "GNU portability remains blocked, while the pinned Makefile's active COSMA configuration is Intel-Fortran-style; next recovery should reproduce the provider-intended Intel toolchain rather than patch source"
+  }
+}
