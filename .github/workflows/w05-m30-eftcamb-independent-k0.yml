@@ -1,0 +1,58 @@
+name: W05 M30 EFTCAMB independent K0 provider probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w05-m30-eftcamb-independent-k0.yml'
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        arm: [horndeski_rph, eft_gr_control]
+    runs-on: ubuntu-latest
+    env:
+      EFTCAMB_PIN: 16d9c4e9f85751e30efd0a53b177941713078904
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pinned EFTCAMB and execute native arm
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARM='${{ matrix.arm }}'
+          BASE="$GITHUB_WORKSPACE/m30eftk0/$ARM"
+          mkdir -p "$BASE"
+          git clone -q https://github.com/EFTCAMB/EFTCAMB.git eftcamb
+          cd eftcamb
+          git checkout -q --detach "$EFTCAMB_PIN"
+          ACTUAL=$(git rev-parse HEAD)
+          echo "$ACTUAL" > "$BASE/actual_commit.txt"
+          test "$ACTUAL" = "$EFTCAMB_PIN"
+          cd fortran
+          make clean >/dev/null 2>&1 || true
+          make camb > "$BASE/build_stdout.log" 2> "$BASE/build_stderr.log"
+          if [ "$ARM" = horndeski_rph ]; then
+            CFG=eftcamb_test/parameters/3_RPH_MB_OmegaDE_1.ini
+            ROOT=eftcamb_test/results/spectra_results/3_RPH_MB_OmegaDE_1
+          else
+            CFG=eftcamb_test/parameters/1_EFT_GR.ini
+            ROOT=eftcamb_test/results/spectra_results/1_EFT_GR
+          fi
+          rm -f "${ROOT}"* || true
+          set +e
+          ./camb "$CFG" > "$BASE/stdout.log" 2> "$BASE/stderr.log"
+          RC=$?
+          set -e
+          echo "$RC" > "$BASE/exit_code.txt"
+          mkdir -p "$BASE/output"
+          cp -f "${ROOT}"* "$BASE/output/" 2>/dev/null || true
+          find "$BASE" -maxdepth 2 -type f -printf '%P %s bytes\n' | sort > "$BASE/file_manifest.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m30-eft-k0-${{ matrix.arm }}
+          path: m30eftk0/${{ matrix.arm }}
+          if-no-files-found: error
+          retention-days: 30
