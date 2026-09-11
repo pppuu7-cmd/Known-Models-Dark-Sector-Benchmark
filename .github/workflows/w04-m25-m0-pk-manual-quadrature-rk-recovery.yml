@@ -1,0 +1,184 @@
+name: W04 M25 m0 Pk manual quadrature RK recovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m25-m0-pk-manual-quadrature-rk-recovery.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  qgrid:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        bins: [500, 1000, 2000, 4000]
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: w04-m25-k1-abundance-decoupling
+          path: original
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34548988620
+      - uses: actions/download-artifact@v4
+        with:
+          name: m25-ncdm-nofluid-m0
+          path: baseline
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34551925134
+      - name: Build pinned CLASS and prepare explicit-RK q grid
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -a original/m25_k1_cases m25_k1_cases
+          python3 - <<'PY'
+          from pathlib import Path
+          for i in (2,3,4):
+              p=Path(f'm25_k1_cases/m0_e{i}.ini')
+              s=p.read_text()
+              s=s.replace('output = tCl,pCl,mPk','output = mPk')
+              p.write_text(s)
+          PY
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class/include/common.h')
+          s=p.read_text()
+          assert s.count('#define _QUADRATURE_MAX_ 250')==1
+          assert s.count('#define _QUADRATURE_MAX_BG_ 800')==1
+          p.write_text(s.replace('#define _QUADRATURE_MAX_ 250','#define _QUADRATURE_MAX_ 4000').replace('#define _QUADRATURE_MAX_BG_ 800','#define _QUADRATURE_MAX_BG_ 4000'))
+          PY
+          make -C class -j2 > build.log 2>&1
+          mkdir -p class/output logs parts
+          cp original/class_provider/output/ref_00_background.dat class/output/ref_00_background.dat
+          cp original/class_provider/output/ref_00_pk.dat class/output/ref_00_pk.dat
+          cat > qgrid.pre <<EOF
+          tol_ncdm_bg = 1e-6
+          tol_ncdm = 1e-6
+          ncdm_fluid_approximation = 3
+          ncdm_quadrature_strategy = 3
+          ncdm_maximum_q = 10.0
+          ncdm_N_momentum_bins = ${{ matrix.bins }}
+          evolver = 0
+          EOF
+          cat qgrid.pre
+      - name: Execute three eta cases in parallel
+        shell: bash
+        run: |
+          printf '%s\n' e2 e3 e4 | xargs -P 3 -I{} bash -c '
+            s="$1"; id="m0_${s}"; set +e
+            (cd class && ./class "../m25_k1_cases/${id}.ini" ../qgrid.pre > "../logs/${id}.log" 2>&1)
+            printf "%d\n" "$?" > "parts/${s}.status"
+          ' _ {}
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d={'build':0,'ref':0}
+          d.update({p.stem:int(p.read_text()) for p in Path('parts').glob('*.status')})
+          Path('status.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - name: Analyze H and Pk only
+        shell: bash
+        run: |
+          python3 verification/m25/m0_pk_manual_quadrature_diagnostic.py class status.json '${{ matrix.bins }}' baseline/result.json result.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m25-m0-pk-qgrid-rk-${{ matrix.bins }}
+          path: |
+            qgrid.pre
+            build.log
+            status.json
+            result.json
+            logs/
+            class/output/*_background.dat
+            class/output/*_pk.dat
+          retention-days: 90
+  aggregate:
+    needs: qgrid
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m25-m0-pk-qgrid-rk-*
+          path: collected
+      - name: Persist explicit-RK recovery summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rs=[json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')]
+          rs=sorted(rs,key=lambda r:r.get('ncdm_N_momentum_bins',0))
+          by={r.get('ncdm_N_momentum_bins'):r for r in rs}
+          def sym(a,b): return 2*abs(a-b)/(abs(a)+abs(b)+1e-300)
+          admissible=(len(rs)==4 and all(r.get('admissible',False) for r in rs))
+          r2=by.get(2000,{}).get('Pk',{}).get('r95')
+          r4=by.get(4000,{}).get('Pk',{}).get('r95')
+          fine=[] if r2 is None or r4 is None else [sym(float(a),float(b)) for a,b in zip(r2,r4)]
+          finepass=(len(fine)==3 and all(x<=0.25 for x in fine))
+          flat=None if r4 is None else max(r4)/max(min(r4),1e-300)
+          flatpass=(flat is not None and flat<=2.0)
+          base=by.get(4000,{}).get('baseline_auto_Pk_r95')
+          agreement=[] if r4 is None or base is None else [sym(float(a),float(b)) for a,b in zip(r4,base)]
+          agree=(len(agreement)==3 and all(x<=0.25 for x in agreement))
+          tail=bool(by.get(4000,{}).get('Pk',{}).get('tail_scaling_recovered',False))
+          blocked=any(r.get('classification')=='M25_M0_PK_MANUAL_QUADRATURE_PROVIDER_BLOCKED' for r in rs)
+          if blocked or len(rs)<4:
+              cls='M25_M0_PK_MANUAL_QUADRATURE_RK_PROVIDER_BLOCKED'
+          elif admissible and finepass and tail:
+              cls='M25_M0_PK_MANUAL_QUADRATURE_RK_TAIL_RECOVERED'
+          elif admissible and finepass and flatpass and agree:
+              cls='M25_M0_PK_QUADRATURE_RK_FLOOR_INSENSITIVE_STABLE'
+          elif admissible and finepass and not agree:
+              cls='M25_M0_PK_QUADRATURE_RK_SENSITIVE'
+          else:
+              cls='M25_M0_PK_MANUAL_QUADRATURE_RK_NOT_ESTABLISHED'
+          s={
+            'schema':'KMDSB.M25.M0PkManualMomentumQuadratureRKRecovery.Summary.v1',
+            'preregistration':'protocol/W04_M25_M0_PK_MANUAL_QUADRATURE_RK_RECOVERY_PREREGISTRATION_v0.1.md',
+            'parent_gate':'waves/wave_04_dark_matter/M25_M0_PK_MANUAL_MOMENTUM_QUADRATURE_SUMMARY.json',
+            'recovery_change':{'evolver':0},
+            'n_results':len(rs),
+            'points':[{'bins':r.get('ncdm_N_momentum_bins'),'classification':r.get('classification'),'admissible':r.get('admissible'),'H_tail_recovered':r.get('H',{}).get('tail_scaling_recovered'),'Pk_r95':r.get('Pk',{}).get('r95'),'Pk_tail_exponent':r.get('Pk',{}).get('tail_exponent_p'),'Pk_tail_recovered':r.get('Pk',{}).get('tail_scaling_recovered')} for r in rs],
+            'fine_2000_4000_symmetric_relative_differences':fine,
+            'fine_bin_stability':finepass,
+            'fine_4000_floor_spread_ratio':flat,
+            'fine_floor_flatness':flatpass,
+            'auto_baseline_Pk_r95':base,
+            'auto_manual_4000_symmetric_relative_differences':agreement,
+            'auto_manual_fine_agreement':agree,
+            'classification':cls,
+            'K1_promoted':False,
+            'K4_promoted':False,
+            'physical_falsification':False
+          }
+          Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n')
+          print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm
+          cp /tmp/summary.json waves/wave_04_dark_matter/M25_M0_PK_MANUAL_QUADRATURE_RK_RECOVERY_SUMMARY.json
+          cp /tmp/summary.json models/resonant_sterile_neutrino_wdm/M25_M0_PK_MANUAL_QUADRATURE_RK_RECOVERY_SUMMARY.json
+          git add waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm
+          git diff --cached --quiet || { git commit -m 'Record M25 m0 Pk manual quadrature RK recovery'; git pull --rebase origin main; git push origin HEAD:main; }
