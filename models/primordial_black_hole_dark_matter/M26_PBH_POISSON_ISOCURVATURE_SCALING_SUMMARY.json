@@ -1,0 +1,28 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "all_fraction_gates_pass": true,
+  "all_mass_scaling_gates_pass": true,
+  "children": {
+    "1.0": "M26_PBH_POISSON_K1_ANALYTIC_PASS_WITH_SCOPE",
+    "10.0": "M26_PBH_POISSON_K1_ANALYTIC_PASS_WITH_SCOPE",
+    "100.0": "M26_PBH_POISSON_K1_ANALYTIC_PASS_WITH_SCOPE",
+    "1000.0": "M26_PBH_POISSON_K1_ANALYTIC_PASS_WITH_SCOPE",
+    "10000.0": "M26_PBH_POISSON_K1_ANALYTIC_PASS_WITH_SCOPE"
+  },
+  "classification": "M26_PBH_POISSON_MASS_FRACTION_SCALING_PASS_WITH_SCOPE",
+  "mass_loglog_slopes_by_fraction": {
+    "0.001": 1.0000000000000022,
+    "0.003": 1.0000000000000013,
+    "0.01": 1.0000000000000007,
+    "0.03": 1.000000000000001,
+    "0.1": 1.0000000000000018,
+    "0.3": 0.9999999999999999,
+    "1.0": 1.0000000000000007
+  },
+  "observable_transfer_gate": "OPEN",
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M26_PBH_POISSON_ISOCURVATURE_SCALING_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M26.PBHPoissonIsocurvatureScaling.Summary.v1",
+  "source_run_id": 34552030016
+}
