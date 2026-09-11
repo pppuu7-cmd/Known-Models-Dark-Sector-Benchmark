@@ -1,0 +1,125 @@
+{
+  "K1_promoted": false,
+  "classification": "M25_PROVIDER_CONTROL_PASS_STOCK_RESONANT_PSD",
+  "models": [
+    {
+      "checks": {
+        "closure_target": true,
+        "density_sum": true,
+        "momentum_positive_strict": true,
+        "params_six_finite": true,
+        "psd_nonnegative": true,
+        "snapshot_shape": true,
+        "state_shape": true
+      },
+      "committed_reference_sha256": {
+        "Snapshot100.dat": "1a2f90e361fbb92aadadfba28f67ae4a0fc725845f4954fb8f3ff99880a38e70",
+        "params.dat": "3f4f5019b13cda89c903c97663241cbc99441b60c09239cf7f3f26853448eaf7",
+        "state.dat": "27478098b741db44b3b62aa369f6780825bec558487a0f579b306c4c1d7a80b9"
+      },
+      "density_summary": {
+        "omega_s_h2": 0.11833978674675318,
+        "omega_sbar_h2": 0.0004511669291947795,
+        "omega_wdm_h2": 0.11879095367594796,
+        "sum_residual": 0.0,
+        "target_residual": 9.04632405204775e-06
+      },
+      "directory": "ms7.115E-03s24.000E-11L2.971E-03",
+      "files_present": {
+        "Snapshot100.dat": true,
+        "params.dat": true,
+        "state.dat": true
+      },
+      "generated_sha256": {
+        "Snapshot100.dat": "9a75d93418aab7800b8d9833ad9f2677ef2450eb0f5c44268631f87ea4d08fe1",
+        "params.dat": "b037cdcf56c87f508c575f059a9175cc0427ad695276dcf54593378a5dc7c65c",
+        "state.dat": "19a05f3c789ea3db2b3c6ef707b8532ecc54819f41cc141c10ee743a8fcbb54e"
+      },
+      "params_values": [
+        0.007115,
+        4e-11,
+        0.012197266498108681,
+        0.11879095367594796,
+        0.11833978674675318,
+        0.0004511669291947795
+      ],
+      "snapshot_rows": 1000,
+      "snapshot_summary": {
+        "f_nu_max": 0.2682554237454925,
+        "f_nu_min": 1.6181123270554735e-08,
+        "f_nubar_max": 1.6400656880461723e-05,
+        "f_nubar_min": 3.773893403619517e-10,
+        "p_max_MeV": 100.67397836300333,
+        "p_min_MeV": 0.005033701435000888
+      },
+      "state_rows": 100,
+      "valid": true
+    },
+    {
+      "checks": {
+        "closure_target": true,
+        "density_sum": true,
+        "momentum_positive_strict": true,
+        "params_six_finite": true,
+        "psd_nonnegative": true,
+        "snapshot_shape": true,
+        "state_shape": true
+      },
+      "committed_reference_sha256": {
+        "Snapshot100.dat": "ccd8a96da00d04066efb1be3d3e6e85dabe2415b59f9bd871b38260f09a2e7d4",
+        "params.dat": "336f1272d242ada8728eaf359363c233df05e7edccb36d9e74da5f690771e9d6",
+        "state.dat": "c720ebcff156f6d617421ab66a00432ecd2530a2d790f050bbd7bcdb6aae0431"
+      },
+      "density_summary": {
+        "omega_s_h2": 0.11873653369152276,
+        "omega_sbar_h2": 5.0845915729017644e-05,
+        "omega_wdm_h2": 0.11878737960725178,
+        "sum_residual": 0.0,
+        "target_residual": 1.2620392748227682e-05
+      },
+      "directory": "ms7.115E-03s28.000E-12L4.849E-03",
+      "files_present": {
+        "Snapshot100.dat": true,
+        "params.dat": true,
+        "state.dat": true
+      },
+      "generated_sha256": {
+        "Snapshot100.dat": "954691f3b3cde1952e5836605227a99283414c9b82ca318f1a2f1ec4e490119a",
+        "params.dat": "69ebbc3b66967348704c72fd4ff0bfbd81b8fbb7e448ed42edcb741da3de621e",
+        "state.dat": "dbc2bd8e312af4a08bec16dfd678b950a027442ea620963bfc9b8a2babd52097"
+      },
+      "params_values": [
+        0.007115,
+        8e-12,
+        0.01990511433833882,
+        0.11878737960725178,
+        0.11873653369152276,
+        5.0845915729017644e-05
+      ],
+      "snapshot_rows": 1000,
+      "snapshot_summary": {
+        "f_nu_max": 0.09924681903263582,
+        "f_nu_min": 6.285320981452477e-08,
+        "f_nubar_max": 2.128764322327568e-06,
+        "f_nubar_min": 4.766277878042427e-11,
+        "p_max_MeV": 100.67553657180412,
+        "p_min_MeV": 0.005033779345479883
+      },
+      "state_rows": 100,
+      "valid": true
+    }
+  ],
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M25_RESONANT_STERILE_DM_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md",
+  "provider": "ntveem/sterile-dm",
+  "provider_pin": "e4486265e8207aa0dd28decc8c8d897266c0a52a",
+  "schema": "KMDSB.M25.ProviderControl.v1",
+  "status": {
+    "build_rc": 0,
+    "configure_rc": 0,
+    "make_rc": 0,
+    "run_rc": 0,
+    "timed_out": false
+  },
+  "valid_model_count": 2
+}
