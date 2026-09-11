@@ -16,6 +16,14 @@ jobs:
       PROVIDER_PIN: 849ddb716041316d0e223ba22badc0d630b72435
     steps:
       - uses: actions/checkout@v4
+      - name: Install preregistered MPI Fortran toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gfortran openmpi-bin libopenmpi-dev
+          command -v mpif90
+          mpif90 --version | head -n 2
       - name: Clone and audit exact provider
         shell: bash
         run: |
@@ -62,7 +70,7 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          import json, pathlib, os
+          import json, pathlib
           p=pathlib.Path('m32k0')
           def iv(name, default=-999):
               q=p/name
