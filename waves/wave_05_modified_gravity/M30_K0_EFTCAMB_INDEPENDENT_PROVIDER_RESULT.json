@@ -1,0 +1,35 @@
+{
+  "schema": "m30_k0_eftcamb_independent_provider_v0.1",
+  "family": "F30",
+  "benchmark": "M30",
+  "provider_repository": "EFTCAMB/EFTCAMB",
+  "provider_commit": "16d9c4e9f85751e30efd0a53b177941713078904",
+  "parent_run_id": 34633223819,
+  "parent_head_sha": "f89ee6fdc4571df5ac65687ed4f531a4fc19e02c",
+  "arms": {
+    "horndeski_rph": {
+      "config": "eftcamb_test/parameters/3_RPH_MB_OmegaDE_1.ini",
+      "exit_code": 0,
+      "stderr_empty": true,
+      "finite_output_bundle_present": true,
+      "artifact_id": 10277502000,
+      "artifact_digest": "sha256:dfd7d23819f9147b991e70903aa69cb7ebbb13a298954adb0a1e33654a5c086d"
+    },
+    "eft_gr_control": {
+      "config": "eftcamb_test/parameters/1_EFT_GR.ini",
+      "exit_code": 0,
+      "stderr_empty": true,
+      "finite_output_bundle_present": true,
+      "artifact_id": 10277541763,
+      "artifact_digest": "sha256:8aad63adf683b486eb850679937f3f05cdc192eb8bebd12179a08137e53cd20a"
+    }
+  },
+  "all_arms_executed": true,
+  "pin_exact": true,
+  "classification": "M30_K0_PASS_WITH_SCOPE_INDEPENDENT_EFTCAMB_RPH_PROVIDER",
+  "K0_promoted": true,
+  "K1_promoted": false,
+  "physical_falsification": false,
+  "scope": "independent pinned-provider provenance/executability corroboration of the M30 Horndeski/EFT-DE family only; no K1-K9 promotion and no observational conclusion",
+  "note": "The earlier runner link failure was infrastructure-only (missing BLAS/LAPACK development libraries). The rerun changed only system link dependencies; provider pin, native configs, model arms and scientific criteria were unchanged."
+}
