@@ -1,0 +1,52 @@
+name: Sync M24 K0 matrix
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/sync-m24-k0-matrix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply canonical M24 K0 state
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import csv
+          from pathlib import Path
+          p=Path('matrices/mandatory_properties_matrix.csv')
+          with p.open(newline='',encoding='utf-8') as f:
+              rows=list(csv.DictReader(f))
+          fields=list(rows[0].keys())
+          found=False
+          for r in rows:
+              if r['benchmark_id']=='M24':
+                  found=True
+                  r['K0_provenance']='PASS_WITH_SCOPE'
+                  for k in ['K1_reference_limit','K2_physical_geometry','K3_conservation_gauge_closure','K4_numerical_robustness','K5_multichannel_rank','K6_nearest_family_manifold','K7_common_observation_space','K8_quotient_novelty','K9_prospective_holdout']:
+                      r[k]='OPEN'
+                  r['coverage_state']='K0_NATIVE_CLASS_ETHOS_PASS_K1_K9_OPEN'
+                  r['notes']='ETHOS-like dark sector: pinned native CLASS IDM-DR implementation explicitly following ETHOS parameterization executes uncoupled control plus vector/scalar angular-response arms with exact provider pin, finite CMB/P(k), and active nonzero response. K0 PASS_WITH_SCOPE only; no claim of complete ETHOS microphysics/nonlinear coverage; K1-K9 remain open.'
+          if not found: raise SystemExit('M24 row missing')
+          tmp=p.with_suffix('.tmp')
+          with tmp.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows)
+          tmp.replace(p)
+          PY
+      - name: Commit matrix sync
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/mandatory_properties_matrix.csv
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Sync M24 ETHOS K0 into mandatory matrix'
+          git push
