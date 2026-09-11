@@ -3,6 +3,18 @@ import csv
 from pathlib import Path
 
 RECON = {'F34','F36','F38','F39','F41','F42','F43'}
+KCOLS = {
+    0: 'K0_provenance',
+    1: 'K1_reference_limit',
+    2: 'K2_physical_geometry',
+    3: 'K3_conservation_gauge_closure',
+    4: 'K4_numerical_robustness',
+    5: 'K5_multichannel_rank',
+    6: 'K6_nearest_family_manifold',
+    7: 'K7_common_observation_space',
+    8: 'K8_quotient_novelty',
+    9: 'K9_prospective_holdout',
+}
 
 
 def patch_csv(path, kind):
@@ -23,20 +35,20 @@ def patch_csv(path, kind):
                 r['notes'] = (r.get('notes','') + ' Frozen seven-lane public-GitHub reconnaissance run 34650903154 found no provider-grade candidate in the preregistered keyword tranche. This is an open provider/provenance boundary, not physical falsification; do not repeat the same keyword tranche.').strip()
         else:
             if fid == 'F37':
-                r['K0'] = 'PARTIAL'
+                r[KCOLS[0]] = 'PARTIAL'
                 for i in range(1,10):
-                    k=f'K{i}'
+                    k = KCOLS[i]
                     if r[k] == 'NOT_TESTED':
                         r[k] = 'OPEN'
-                r['overall_status'] = 'K0_PARTIAL_EXECUTABLE_PROVIDER_PROVENANCE_OPEN_K1_K9_OPEN'
+                r['coverage_state'] = 'K0_PARTIAL_EXECUTABLE_PROVIDER_PROVENANCE_OPEN_K1_K9_OPEN'
                 r['notes'] = (
                     'f(T): exact-pin provider build and two frozen arms execute with finite TT/P(k) and active response in run 34652066337, artifact 10284291219, digest sha256:e885cda93e26c13268f86e58e667aa8596d0cbeff4e26ff8f80a4edece32f4b5. '
                     'K0 remains PARTIAL because publication/author provenance is unresolved; K1-K9 OPEN; no physical falsification.'
                 )
             elif fid in RECON:
-                if r['K0'] == 'NOT_TESTED':
-                    r['K0'] = 'OPEN'
-                r['overall_status'] = 'PROVIDER_RECON_NO_GRADE_CANDIDATE_K0_OPEN'
+                if r[KCOLS[0]] == 'NOT_TESTED':
+                    r[KCOLS[0]] = 'OPEN'
+                r['coverage_state'] = 'PROVIDER_RECON_NO_GRADE_CANDIDATE_K0_OPEN'
                 r['notes'] = (r.get('notes','') + ' Public-provider reconnaissance run 34650903154 returned zero provider-grade candidates in the frozen search tranche. Coverage remains OPEN; absence of a search hit is not a family failure.').strip()
     with p.open('w', newline='', encoding='utf-8') as f:
         w=csv.DictWriter(f, fieldnames=fields)
