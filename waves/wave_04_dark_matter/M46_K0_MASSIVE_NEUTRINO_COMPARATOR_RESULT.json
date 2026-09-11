@@ -1,0 +1,42 @@
+{
+  "K0_promoted": true,
+  "arms": {
+    "massive_nu_006": {
+      "active_response": {
+        "Pk_normalized_L2": null,
+        "TT_normalized_L2": 0.0032234393679265463,
+        "criterion": "TT OR P(k)",
+        "pass": true,
+        "threshold": 1e-06
+      },
+      "cl_rows": 2499,
+      "exact_pin": true,
+      "exit_code": 0,
+      "finite_cl": true,
+      "finite_pk": true,
+      "pk_rows": 535
+    },
+    "massless_control": {
+      "cl_rows": 2499,
+      "exact_pin": true,
+      "exit_code": 0,
+      "finite_cl": true,
+      "finite_pk": true,
+      "pk_rows": 535
+    }
+  },
+  "checks": {
+    "active_comparator_response": true,
+    "both_execute_exact_pin": true,
+    "finite_outputs": true
+  },
+  "classification": "M46_K0_PASS_WITH_SCOPE_PINNED_CLASS_MASSIVE_NEUTRINO_COMPARATOR",
+  "physical_falsification": false,
+  "provider_commit": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "provider_repository": "lesgourg/class_public",
+  "parent_run_id": 34639793518,
+  "aggregate_artifact_id": 10280140531,
+  "aggregate_artifact_digest": "sha256:f2e293d5cc808c531bf77d57b461f33ba66b6ef5dd7952de296700f55a487067",
+  "schema": "m46_k0_massive_neutrino_comparator_v0.1",
+  "scope": "known-sector massive-neutrino comparator K0 only; no mass constraint and no K1-K9 promotion"
+}
