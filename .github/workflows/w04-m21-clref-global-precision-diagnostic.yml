@@ -1,0 +1,49 @@
+name: W04 M21 cl_ref global-precision diagnostic
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-clref-global-precision-diagnostic.yml']
+permissions:
+  contents: write
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+      - name: Execute frozen cl_ref profile
+        run: bash verification/m21/run_clref_global_precision.sh
+      - name: Analyze
+        run: python3 verification/m21/clref_global_precision_diagnostic.py m21_clref_output m21_clref_status.json m21_clref_result.json
+      - name: Persist
+        run: |
+          cp m21_clref_result.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p models/mixed_cold_warm_dark_matter waves/wave_04_dark_matter
+          cp /tmp/result.json models/mixed_cold_warm_dark_matter/M21_CLREF_GLOBAL_PRECISION_DIAGNOSTIC_RESULT.json
+          cp /tmp/result.json waves/wave_04_dark_matter/M21_CLREF_GLOBAL_PRECISION_DIAGNOSTIC_RESULT.json
+          git add models/mixed_cold_warm_dark_matter/M21_CLREF_GLOBAL_PRECISION_DIAGNOSTIC_RESULT.json waves/wave_04_dark_matter/M21_CLREF_GLOBAL_PRECISION_DIAGNOSTIC_RESULT.json
+          git diff --cached --quiet || (git commit -m 'Record M21 cl_ref global-precision diagnostic' && git pull --rebase origin main && git push origin HEAD:main)
+      - name: Enforce diagnostic semantics
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/result.json'))
+          assert r['K1_promoted'] is False and r['physical_falsification'] is False
+          assert r['classification'] in {'M21_CLREF_DIAGNOSTIC_PROVIDER_BLOCKED','M21_CLREF_EXCURSION_LOCALIZED_TO_LOWER_PRECISION','M21_CLREF_EXCURSION_STRONGLY_REDUCED','M21_CLREF_EXCURSION_PERSISTS'}
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: w04-m21-clref-global-precision-diagnostic
+          path: |
+            m21_clref_*.log
+            m21_clref_status.*
+            m21_clref_result.json
+            m21_clref_output/
+          retention-days: 90
