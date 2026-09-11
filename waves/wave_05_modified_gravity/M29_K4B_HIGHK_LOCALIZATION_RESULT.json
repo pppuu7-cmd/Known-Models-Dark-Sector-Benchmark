@@ -1,0 +1,47 @@
+{
+  "schema": "m29_k4b_highk_localization_v0.1",
+  "provider_commit": "0009f51d89e6465c79e570b496c66fc90058fa77",
+  "parent_run_id": 34634736488,
+  "aggregate_artifact_id": 10277624797,
+  "aggregate_artifact_digest": "sha256:eb83564a0e0f79503d6c759f4dfcc86c9dc924edcfda0bd2f54932fc1bac502d",
+  "parent_classification": "M29_K4_NOT_ESTABLISHED_NUMERICAL_ROBUSTNESS",
+  "classification": "M29_K4B_GRID_DOMINATED",
+  "K4_promoted": false,
+  "physical_falsification": false,
+  "checks": {
+    "all_exit_zero": true,
+    "finite_outputs": true,
+    "sufficient_both_omegas": {
+      "grid_ref": true,
+      "evolution_ref": false,
+      "pk_core_ref": true
+    }
+  },
+  "reductions": {
+    "15": {
+      "grid_ref": 0.9782408544584293,
+      "evolution_ref": -0.005983326367013486,
+      "pk_core_ref": 0.9999884784943591
+    },
+    "1e4": {
+      "grid_ref": 0.9611765834811031,
+      "evolution_ref": -0.009625508525270554,
+      "pk_core_ref": 0.999990575596692
+    }
+  },
+  "metrics": {
+    "15": {
+      "baseline_permille_vs_full_ref": {"max": 0.034861135666150476, "rms": 0.0018729108157859392, "median": 3.615402743293387e-05, "p95": 0.00025600160055727183, "p99": 0.002498655157893469, "max_k": 1.576534025594, "n": 499},
+      "grid_ref_vs_full_ref": {"max": 0.0007585485247042097, "rms": 6.573280378713776e-05, "median": 1.785025736945329e-05, "p95": 8.865531588935376e-05, "p99": 0.00025226848816390843, "max_k": 0.1192009146344, "n": 6236},
+      "evolution_ref_vs_full_ref": {"max": 0.03506972121836579, "rms": 0.001884879117556148, "median": 6.879235944937216e-08, "p95": 2.3269294818922822e-05, "p99": 0.0026011879449868015, "max_k": 1.576534025594, "n": 499},
+      "pk_core_ref_vs_full_ref": {"max": 4.016527712252894e-07, "rms": 4.3725051317444333e-08, "median": 3.3293009031895276e-08, "p95": 7.36777475788834e-08, "p99": 7.419573062095583e-08, "max_k": 1.666359293323, "n": 6236}
+    },
+    "1e4": {
+      "baseline_permille_vs_full_ref": {"max": 0.020760655416789713, "rms": 0.0011283983169090032, "median": 3.413277129695802e-05, "p95": 0.00025893452481942435, "p99": 0.0007226166221678457, "max_k": 1.228663357651, "n": 525},
+      "grid_ref_vs_full_ref": {"max": 0.0008059995724513194, "rms": 7.092930428358983e-05, "median": 1.4643534581976784e-05, "p95": 0.00012083504468374724, "p99": 0.000287989816946987, "max_k": 0.09512639696537, "n": 6507},
+      "evolution_ref_vs_full_ref": {"max": 0.020960487282494226, "rms": 0.0011369493885880228, "median": 8.16316562067348e-08, "p95": 2.342197827582734e-05, "p99": 7.821727886751265e-05, "max_k": 1.228663357651, "n": 525},
+      "pk_core_ref_vs_full_ref": {"max": 1.9565678958581047e-07, "rms": 5.386755441075026e-08, "median": 3.924828821165198e-08, "p95": 9.168577815417644e-08, "p99": 1.1189196323533865e-07, "max_k": 1.188280207976, "n": 6507}
+    }
+  },
+  "scope": "diagnostic attribution of parent K4 P(k) maximum discrepancy only; k-sampling block is sufficient under the frozen >=80% rule at both omega points; no K4 promotion, no K3 resolution, no physical falsification"
+}
