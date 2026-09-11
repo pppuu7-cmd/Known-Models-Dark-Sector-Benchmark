@@ -1,0 +1,47 @@
+name: W04 M26 PBH CDI ideal-CV aggregate recovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m26-pbh-cdi-ideal-cv-aggregate-recovery.yml']
+permissions:
+  actions: read
+  contents: write
+jobs:
+  aggregate-recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install frozen aggregate dependency
+        shell: bash
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+      - name: Download immutable successful child results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m26-ideal-cv-proxy-*
+          path: collected
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 34626989657
+      - name: Aggregate without recomputation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m26/pbh_cdi_ideal_cv_observability_proxy.py aggregate --collected collected --output summary.json
+          cat summary.json
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/primordial_black_hole_dark_matter
+          cp /tmp/summary.json waves/wave_04_dark_matter/M26_PBH_CDI_IDEAL_CV_OBSERVABILITY_PROXY_SUMMARY.json
+          cp /tmp/summary.json models/primordial_black_hole_dark_matter/M26_PBH_CDI_IDEAL_CV_OBSERVABILITY_PROXY_SUMMARY.json
+          git add waves/wave_04_dark_matter/M26_PBH_CDI_IDEAL_CV_OBSERVABILITY_PROXY_SUMMARY.json models/primordial_black_hole_dark_matter/M26_PBH_CDI_IDEAL_CV_OBSERVABILITY_PROXY_SUMMARY.json
+          git diff --cached --quiet || {
+            git commit -m 'Recover M26 ideal cosmic-variance proxy aggregate'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          }
