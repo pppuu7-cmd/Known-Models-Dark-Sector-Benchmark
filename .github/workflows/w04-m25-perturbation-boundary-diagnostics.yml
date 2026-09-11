@@ -1,0 +1,135 @@
+name: W04 M25 perturbation-boundary diagnostics
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m25-perturbation-boundary-diagnostics.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [m0, m1]
+        diagnostic: [cl_permille, newtonian]
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: w04-m25-k1-abundance-decoupling
+          path: original
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34548988620
+      - name: Restore frozen cases and build pinned CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -a original/m25_k1_cases m25_k1_cases
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class/include/common.h'); s=p.read_text()
+          assert s.count('#define _QUADRATURE_MAX_ 250')==1
+          assert s.count('#define _QUADRATURE_MAX_BG_ 800')==1
+          s=s.replace('#define _QUADRATURE_MAX_ 250','#define _QUADRATURE_MAX_ 4000')
+          s=s.replace('#define _QUADRATURE_MAX_BG_ 800','#define _QUADRATURE_MAX_BG_ 4000')
+          p.write_text(s)
+          PY
+          make -C class -j2 > build.log 2>&1
+      - name: Prepare preregistered perturbation branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'tol_ncdm_bg = 1e-6\ntol_ncdm = 1e-6\nncdm_fluid_approximation = 3\n' > diagnostic.pre
+          if [ '${{ matrix.diagnostic }}' = 'cl_permille' ]; then
+            cat class/cl_permille.pre >> diagnostic.pre
+          else
+            python3 - <<'PY'
+          from pathlib import Path
+          for p in Path('m25_k1_cases').glob('*.ini'):
+              s=p.read_text()
+              if 'gauge = synchronous' in s:
+                  s=s.replace('gauge = synchronous','gauge = newtonian')
+              elif 'gauge=' in s:
+                  raise SystemExit(f'unexpected gauge syntax in {p}')
+              else:
+                  s += '\ngauge = newtonian\n'
+              p.write_text(s)
+          PY
+          fi
+          cat diagnostic.pre
+      - name: Execute four cases two-at-a-time
+        shell: bash
+        run: |
+          mkdir -p class/output logs parts
+          printf '%s\n' ref e2 e3 e4 | xargs -P 2 -I{} bash -c '
+            short="$1"; model="$2"; id="$short"; [ "$short" = ref ] || id="${model}_${short}"
+            set +e
+            (cd class && ./class "../m25_k1_cases/${id}.ini" ../diagnostic.pre > "../logs/${id}.log" 2>&1)
+            printf "%d\n" "$?" > "parts/${short}.status"
+          ' _ {} '${{ matrix.model }}'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d={'build':0}; d.update({p.stem:int(p.read_text()) for p in Path('parts').glob('*.status')})
+          Path('status.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - name: Analyze boundary
+        run: |
+          python3 verification/m25/perturbation_boundary_diagnostic.py class '${{ matrix.model }}' '${{ matrix.diagnostic }}' status.json result.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m25-perturbation-${{ matrix.model }}-${{ matrix.diagnostic }}
+          path: |
+            diagnostic.pre
+            build.log
+            status.json
+            result.json
+            logs/
+            class/output/
+          retention-days: 90
+  aggregate:
+    needs: diagnostic
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m25-perturbation-*
+          path: collected
+      - name: Persist summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rs=[json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')]
+          s={'schema':'KMDSB.M25.PerturbationBoundaryDiagnostics.Summary.v1','preregistration':'protocol/W04_M25_PERTURBATION_BOUNDARY_DIAGNOSTICS_PREREGISTRATION_v0.1.md','children':{f"{r['model']}:{r['diagnostic']}":r['classification'] for r in rs},'recovered_blocks':{f"{r['model']}:{r['diagnostic']}":r.get('recovered_perturbation_blocks',[]) for r in rs},'K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n')
+          print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm
+          cp /tmp/summary.json waves/wave_04_dark_matter/M25_PERTURBATION_BOUNDARY_DIAGNOSTICS_SUMMARY.json
+          cp /tmp/summary.json models/resonant_sterile_neutrino_wdm/M25_PERTURBATION_BOUNDARY_DIAGNOSTICS_SUMMARY.json
+          git add waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm
+          git diff --cached --quiet || { git commit -m 'Record M25 perturbation-boundary diagnostics'; git pull --rebase origin main; git push origin HEAD:main; }
