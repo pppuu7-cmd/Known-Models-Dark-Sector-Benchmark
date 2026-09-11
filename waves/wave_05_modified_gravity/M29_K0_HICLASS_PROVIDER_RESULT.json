@@ -1,0 +1,54 @@
+{
+  "K0_promoted": true,
+  "K1_promoted": false,
+  "actual_commit": "0009f51d89e6465c79e570b496c66fc90058fa77",
+  "all_pass": true,
+  "checks": {
+    "bd_background_finite_nonempty": true,
+    "bd_cl_finite_nonempty": true,
+    "bd_pk_finite_nonempty": true,
+    "both_exit_zero": true,
+    "branch_distinct_gt_1e6": true,
+    "lcdm_cl_finite_nonempty": true,
+    "lcdm_pk_finite_nonempty": true,
+    "pin_exact": true
+  },
+  "classification": "M29_K0_PASS_WITH_SCOPE_PINNED_HICLASS_BRANS_DICKE_PROVIDER",
+  "exit_codes": {
+    "bd_author": 0,
+    "lcdm_control": 0
+  },
+  "files": {
+    "bd_author": {
+      "background": "probe/bd_author/output/bd__background.dat",
+      "cl": "probe/bd_author/output/bd__cl.dat",
+      "pk": "probe/bd_author/output/bd__pk.dat"
+    },
+    "lcdm_control": {
+      "background": "probe/lcdm_control/output/lcdm__background.dat",
+      "cl": "probe/lcdm_control/output/lcdm__cl.dat",
+      "pk": "probe/lcdm_control/output/lcdm__pk.dat"
+    }
+  },
+  "max_rel_diff": {
+    "cmb_col1": 1.2570788923296279,
+    "max": 1.2570788923296279,
+    "pk_col1": 0.8885214506305759
+  },
+  "physical_falsification": false,
+  "pinned_commit": "0009f51d89e6465c79e570b496c66fc90058fa77",
+  "row_counts": {
+    "bd_author": {
+      "background": 3000,
+      "cl": 2499,
+      "pk": 499
+    },
+    "lcdm_control": {
+      "background": 40000,
+      "cl": 2499,
+      "pk": 526
+    }
+  },
+  "schema": "m29_k0_hiclass_provider_probe_v0.1",
+  "scope": "provider/provenance executability only; no GR-limit or physical-family conclusion"
+}
