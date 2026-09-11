@@ -25,8 +25,6 @@ jobs:
           from pathlib import Path
           files={p:Path('provider/'+p).read_text(errors='replace') for p in ['include/background.h','source/input.c','source/background.c','source/perturbations.c']}
           blob='\n'.join(files.values())
-          # Native stock CLASS uses names Gamma_dcdm/rho_dcdm/rho_dr. The gate requires indexed/list semantics
-          # for independently decaying parents, not mere repeated textual occurrences.
           gamma_scalar=bool(re.search(r'\bdouble\s+Gamma_dcdm\s*;',files['include/background.h']))
           gamma_array=bool(re.search(r'Gamma_dcdm\s*\[',blob))
           rho_array=bool(re.search(r'rho_dcdm\s*\[',blob))
@@ -40,20 +38,7 @@ jobs:
               for i,line in enumerate(txt.splitlines(),1):
                 if key in line and len(hits)<20: hits.append(f'{fn}:{i}:{line.strip()}')
             snippets[key]=hits
-          out={
-            'schema':'KMDSB.M27.StockCLASSMultiDCDMSourceAudit.v1',
-            'provider':'lesgourg/class_public',
-            'commit':'e85808324f51fc694d12e3ed7439552a3c3f9540',
-            'preregistration':'protocol/W04_M27_STOCK_CLASS_MULTI_DCDM_PROVIDER_CAPABILITY_PREREGISTRATION_v0.1.md',
-            'gamma_scalar_declaration':gamma_scalar,
-            'gamma_array_semantics_found':gamma_array,
-            'rho_dcdm_array_semantics_found':rho_array,
-            'parser_vector_semantics_found':parser_vector,
-            'indexed_parent_loop_found':indexed_parent_loop,
-            'classification':'NATIVE_MULTI_DCDM_CAPABLE' if capable else 'NATIVE_MULTI_DCDM_NOT_EXPOSED',
-            'snippets':snippets,
-            'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False
-          }
+          out={'schema':'KMDSB.M27.StockCLASSMultiDCDMSourceAudit.v1','provider':'lesgourg/class_public','commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','preregistration':'protocol/W04_M27_STOCK_CLASS_MULTI_DCDM_PROVIDER_CAPABILITY_PREREGISTRATION_v0.1.md','gamma_scalar_declaration':gamma_scalar,'gamma_array_semantics_found':gamma_array,'rho_dcdm_array_semantics_found':rho_array,'parser_vector_semantics_found':parser_vector,'indexed_parent_loop_found':indexed_parent_loop,'classification':'NATIVE_MULTI_DCDM_CAPABLE' if capable else 'NATIVE_MULTI_DCDM_NOT_EXPOSED','snippets':snippets,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
           Path('source_audit.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
           print(Path('source_audit.json').read_text())
           PY
@@ -75,6 +60,8 @@ jobs:
           git checkout -q e85808324f51fc694d12e3ed7439552a3c3f9540
           test "$(git rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
           make -j2 class
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
       - name: Execute one-species DCDM control
         shell: bash
         run: |
