@@ -1,0 +1,547 @@
+{
+  "K3_cross_gauge_classification": "M23_K3_CROSS_GAUGE_NUMERICAL_NOT_ESTABLISHED",
+  "K4_classification": "M23_K4_PROVIDER_OR_PRECISION_EXECUTION_BLOCKED",
+  "branches": {
+    "g0:newtonian": {
+      "blocks": {
+        "EE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "Pk": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TT": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        }
+      },
+      "statuses": {
+        "default": 0,
+        "permille": 0,
+        "reference": 1
+      }
+    },
+    "g0:synchronous": {
+      "blocks": {
+        "EE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "Pk": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TT": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        }
+      },
+      "statuses": {
+        "default": 0,
+        "permille": 0,
+        "reference": 1
+      }
+    },
+    "g1:newtonian": {
+      "blocks": {
+        "EE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "Pk": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TT": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        }
+      },
+      "statuses": {
+        "default": 0,
+        "permille": 0,
+        "reference": 1
+      }
+    },
+    "g1:synchronous": {
+      "blocks": {
+        "EE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "Pk": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TT": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        }
+      },
+      "statuses": {
+        "default": 0,
+        "permille": 0,
+        "reference": 1
+      }
+    },
+    "g2:newtonian": {
+      "blocks": {
+        "EE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "Pk": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TT": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        }
+      },
+      "statuses": {
+        "default": 0,
+        "permille": 0,
+        "reference": 1
+      }
+    },
+    "g2:synchronous": {
+      "blocks": {
+        "EE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "Pk": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TT": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        }
+      },
+      "statuses": {
+        "default": 0,
+        "permille": 0,
+        "reference": 1
+      }
+    },
+    "g3:newtonian": {
+      "blocks": {
+        "EE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "Pk": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TT": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        }
+      },
+      "statuses": {
+        "default": 0,
+        "permille": 0,
+        "reference": 1
+      }
+    },
+    "g3:synchronous": {
+      "blocks": {
+        "EE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "Pk": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TT": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        }
+      },
+      "statuses": {
+        "default": 0,
+        "permille": 0,
+        "reference": 1
+      }
+    },
+    "g4:newtonian": {
+      "blocks": {
+        "EE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "Pk": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TT": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        }
+      },
+      "statuses": {
+        "default": 0,
+        "permille": 0,
+        "reference": 1
+      }
+    },
+    "g4:synchronous": {
+      "blocks": {
+        "EE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "Pk": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TT": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        }
+      },
+      "statuses": {
+        "default": 0,
+        "permille": 0,
+        "reference": 1
+      }
+    },
+    "ref:newtonian": {
+      "blocks": {
+        "EE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "Pk": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TT": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        }
+      },
+      "statuses": {
+        "default": 0,
+        "permille": 0,
+        "reference": 1
+      }
+    },
+    "ref:synchronous": {
+      "blocks": {
+        "EE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "Pk": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TT": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        }
+      },
+      "statuses": {
+        "default": 0,
+        "permille": 0,
+        "reference": 1
+      }
+    },
+    "zero:newtonian": {
+      "blocks": {
+        "EE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "Pk": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TT": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        }
+      },
+      "statuses": {
+        "default": 0,
+        "permille": 0,
+        "reference": 1
+      }
+    },
+    "zero:synchronous": {
+      "blocks": {
+        "EE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "Pk": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TE": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        },
+        "TT": {
+          "R_coarse": null,
+          "R_fine": null,
+          "pass": false
+        }
+      },
+      "statuses": {
+        "default": 0,
+        "permille": 0,
+        "reference": 1
+      }
+    }
+  },
+  "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "cross_gauge": {
+    "g0": {
+      "EE": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "Pk": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "TE": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "TT": {
+        "R_gauge": null,
+        "pass": false
+      }
+    },
+    "g1": {
+      "EE": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "Pk": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "TE": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "TT": {
+        "R_gauge": null,
+        "pass": false
+      }
+    },
+    "g2": {
+      "EE": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "Pk": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "TE": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "TT": {
+        "R_gauge": null,
+        "pass": false
+      }
+    },
+    "g3": {
+      "EE": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "Pk": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "TE": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "TT": {
+        "R_gauge": null,
+        "pass": false
+      }
+    },
+    "g4": {
+      "EE": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "Pk": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "TE": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "TT": {
+        "R_gauge": null,
+        "pass": false
+      }
+    },
+    "ref": {
+      "EE": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "Pk": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "TE": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "TT": {
+        "R_gauge": null,
+        "pass": false
+      }
+    },
+    "zero": {
+      "EE": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "Pk": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "TE": {
+        "R_gauge": null,
+        "pass": false
+      },
+      "TT": {
+        "R_gauge": null,
+        "pass": false
+      }
+    }
+  },
+  "cross_gauge_all_pass": false,
+  "physical_falsification": false,
+  "precision_all_pass": false,
+  "preregistration": "protocol/W04_M23_DM_DR_DAO_K4_CROSS_GAUGE_PRECISION_PREREGISTRATION_v0.1.md",
+  "provider_blocked": true,
+  "schema": "KMDSB.M23.K4CrossGaugePrecision.v1"
+}
