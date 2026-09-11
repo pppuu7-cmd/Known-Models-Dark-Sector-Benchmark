@@ -171,3 +171,6 @@ Validated run `34614012430`, result commit `97e56cc6e90b4337ac915198362903582d05
 
 ### 2026-09-11 — M25 evolver-isolation control
 Prospectively frozen control classified `M25_M0_PK_CAPACITY_OR_EVOLVER_CONFOUNDED`. M25 evolver-isolation classification M25_M0_PK_CAPACITY_OR_EVOLVER_CONFOUNDED. default-vs-explicit-RK D=[0.00033737134333093973, 0.00028064006403436003, 0.00038114151078310097]; raised-cap-default-vs-old-auto D=[1.9969086343781357, 1.9976958815287216, 1.9978555964406235]. Matched-evolver quadrature agreement and manual N=2000->4000 convergence are preserved. K1/K4 are not promoted and physical falsification is false. Canonical machine result: `models/resonant_sterile_neutrino_wdm/M25_M0_PK_EVOLVER_ISOLATION_CONTROL_RESULT.json`.
+
+### 2026-09-11 — M25 compile-capacity isolation control
+M25 compile-capacity isolation classification M25_M0_PK_STOCK_CAPACITY_PROVIDER_BLOCKED. Matched-evolver quadrature agreement, manual N=2000->4000 convergence, and prior evolver-isolation evidence are preserved. K1/K4 are not promoted and physical falsification is false. Canonical machine result: `models/resonant_sterile_neutrino_wdm/M25_M0_PK_COMPILE_CAPACITY_ISOLATION_CONTROL_RESULT.json`.

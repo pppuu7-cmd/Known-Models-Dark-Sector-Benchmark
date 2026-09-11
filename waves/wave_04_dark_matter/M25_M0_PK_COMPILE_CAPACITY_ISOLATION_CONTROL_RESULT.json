@@ -1,0 +1,41 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "classification": "M25_M0_PK_STOCK_CAPACITY_PROVIDER_BLOCKED",
+  "diagnostic_variable": "compile_time_quadrature_capacity_stock_250_800_vs_raised_4000_4000",
+  "parent_evolver_isolation_commit": "8b80ff824c9ebf9ecb6c479153180c803d6b8c2f",
+  "parent_evolver_isolation_run": 34619973784,
+  "parts": [
+    {
+      "case": "e2",
+      "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+      "eta": 0.01,
+      "evolver": "provider_default",
+      "exit_code": 1,
+      "quadrature_max": 250,
+      "quadrature_max_bg": 800
+    },
+    {
+      "case": "e3",
+      "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+      "eta": 0.003,
+      "evolver": "provider_default",
+      "exit_code": 1,
+      "quadrature_max": 250,
+      "quadrature_max_bg": 800
+    },
+    {
+      "case": "e4",
+      "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+      "eta": 0.001,
+      "evolver": "provider_default",
+      "exit_code": 1,
+      "quadrature_max": 250,
+      "quadrature_max_bg": 800
+    }
+  ],
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M25_M0_PK_COMPILE_CAPACITY_ISOLATION_CONTROL_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M25.M0PkCompileCapacityIsolationControl.v1"
+}
