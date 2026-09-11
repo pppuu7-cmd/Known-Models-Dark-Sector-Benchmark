@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/w04-m25-k1-support-order-recovery.yml'
+      - 'verification/m25/m25_k1_support_order_recovery.py'
 
 permissions:
   contents: write
