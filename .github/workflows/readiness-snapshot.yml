@@ -5,6 +5,8 @@ on:
   push:
     paths:
       - '.github/workflows/readiness-snapshot.yml'
+      - 'matrices/mandatory_properties_matrix.csv'
+      - 'verification/audit_matrix_readiness.py'
 
 permissions:
   contents: write
