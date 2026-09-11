@@ -1,0 +1,249 @@
+name: W04 M23 shared CLASS precision-profile transfer control
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m23-class-precision-transfer-control.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  control:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        gauge: [synchronous, newtonian]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin and build CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git class_public
+          cd class_public
+          git checkout -q e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          make -j2
+      - name: Execute pure LambdaCDM precision profiles
+        shell: bash
+        env:
+          GAUGE: ${{ matrix.gauge }}
+        run: |
+          set -euo pipefail
+          cd class_public
+          OUT="$GITHUB_WORKSPACE/control_${GAUGE}"
+          mkdir -p "$OUT"
+          cat > "$OUT/base.ini" <<EOF
+          h = 0.675
+          omega_b = 0.0222
+          omega_cdm = 0.1197
+          A_s = 2.196e-9
+          n_s = 0.9655
+          tau_reio = 0.06
+          N_ur = 3.046
+          output = tCl,pCl,mPk
+          lensing = no
+          non linear = none
+          P_k_max_h/Mpc = 20
+          z_pk = 0
+          l_max_scalars = 2500
+          gauge = ${GAUGE}
+          overwrite_root = yes
+          EOF
+
+          run_one () {
+            local profile="$1"
+            local pre="$2"
+            cp "$OUT/base.ini" "$OUT/${profile}.ini"
+            echo "root = $OUT/${profile}_" >> "$OUT/${profile}.ini"
+            set +e
+            if [ -n "$pre" ]; then
+              ./class "$OUT/${profile}.ini" "$pre" > "$OUT/${profile}.stdout" 2> "$OUT/${profile}.stderr"
+            else
+              ./class "$OUT/${profile}.ini" > "$OUT/${profile}.stdout" 2> "$OUT/${profile}.stderr"
+            fi
+            rc=$?
+            set -e
+            echo "$rc" > "$OUT/${profile}.status"
+          }
+
+          run_one default ""
+          run_one permille cl_permille.pre
+          run_one reference cl_ref.pre
+          sha256sum cl_permille.pre cl_ref.pre > "$OUT/profile_sha256.txt"
+          printf '%s\n' 'e85808324f51fc694d12e3ed7439552a3c3f9540' > "$OUT/class_pin.txt"
+          printf '%s\n' 'protocol/W04_M23_CLASS_PRECISION_PROFILE_TRANSFER_CONTROL_PREREGISTRATION_v0.1.md' > "$OUT/preregistration.txt"
+      - name: Upload control artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m23-class-precision-control-${{ matrix.gauge }}
+          path: control_${{ matrix.gauge }}
+          if-no-files-found: warn
+
+  aggregate:
+    if: always()
+    needs: control
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download both control artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m23-class-precision-control-*
+          path: all
+      - name: Apply frozen transfer classification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+
+          gauges=['synchronous','newtonian']
+          profiles=['default','permille','reference']
+          blocks=['TT','TE','EE','Pk']
+          root=Path('all')
+
+          def read_table(path):
+              rows=[]
+              with open(path,'r',encoding='utf-8',errors='replace') as f:
+                  for line in f:
+                      s=line.strip()
+                      if not s or s.startswith('#'): continue
+                      try: rows.append([float(x) for x in s.split()])
+                      except ValueError: continue
+              return rows
+
+          def locate(d, profile, kind):
+              pats=[f'{profile}_*_{kind}.dat', f'{profile}_*{kind}.dat']
+              found=[]
+              for pat in pats: found += list(d.glob(pat))
+              if not found:
+                  token='_cl.dat' if kind=='cl' else '_pk.dat'
+                  found=[p for p in d.glob(f'{profile}_*.dat') if p.name.endswith(token)]
+              return sorted(set(found))[0] if found else None
+
+          def cmb(path, block):
+              rows=read_table(path)
+              col={'TT':1,'EE':2,'TE':4}[block]
+              return {int(round(r[0])):r[col] for r in rows if len(r)>col and r[0]>=2 and math.isfinite(r[col])}
+
+          def pk(path):
+              rows=read_table(path)
+              return [(r[0],r[1]) for r in rows if len(r)>=2 and r[0]>0 and r[1]>0 and math.isfinite(r[1])]
+
+          def r2_vec(a,b):
+              if not a or len(a)!=len(b): return None
+              num=sum((x-y)**2 for x,y in zip(a,b))**0.5
+              den=max(sum(y*y for y in b)**0.5,1e-300)
+              return num/den
+
+          def r2_cmb(pa,pb,block):
+              a,b=cmb(pa,block),cmb(pb,block)
+              keys=sorted(set(a)&set(b))
+              if not keys: return None
+              return r2_vec([a[k] for k in keys],[b[k] for k in keys])
+
+          def interp_log(points, xs):
+              pts=sorted(points)
+              xp=[math.log(x) for x,_ in pts]; yp=[y for _,y in pts]
+              out=[]; j=0
+              for x in xs:
+                  lx=math.log(x)
+                  while j+1<len(xp) and xp[j+1]<lx: j+=1
+                  if j+1>=len(xp): out.append(yp[-1]); continue
+                  if lx<=xp[0]: out.append(yp[0]); continue
+                  t=(lx-xp[j])/(xp[j+1]-xp[j])
+                  out.append(yp[j]*(1-t)+yp[j+1]*t)
+              return out
+
+          def r2_pk(pa,pb):
+              a,b=pk(pa),pk(pb)
+              if len(a)<2 or len(b)<2: return None
+              lo=max(a[0][0],b[0][0]); hi=min(a[-1][0],b[-1][0])
+              xs=sorted({x for x,_ in a if lo<=x<=hi} | {x for x,_ in b if lo<=x<=hi})
+              if len(xs)<2: return None
+              return r2_vec(interp_log(a,xs),interp_log(b,xs))
+
+          def metric(pa,pb,block):
+              return r2_pk(pa,pb) if block=='Pk' else r2_cmb(pa,pb,block)
+
+          result={
+            'schema':'KMDSB.M23.CLASSPrecisionProfileTransferControl.v1',
+            'class_pin':'e85808324f51fc694d12e3ed7439552a3c3f9540',
+            'preregistration':'protocol/W04_M23_CLASS_PRECISION_PROFILE_TRANSFER_CONTROL_PREREGISTRATION_v0.1.md',
+            'parent_result':'waves/wave_04_dark_matter/M23_K4_CROSS_GAUGE_PRECISION_RESULT.json',
+            'parent_localization':'waves/wave_04_dark_matter/M23_K4_PRECISION_LADDER_LOCALIZATION_RESULT.json',
+            'controls':{},
+            'physical_falsification':False,
+            'changes_parent_K_status':False
+          }
+          provider_blocked=False
+          for gauge in gauges:
+              d=root/f'm23-class-precision-control-{gauge}'
+              statuses={}
+              paths={}
+              for profile in profiles:
+                  try: rc=int((d/f'{profile}.status').read_text().strip())
+                  except Exception: rc=None
+                  statuses[profile]=rc
+                  if rc!=0: provider_blocked=True
+                  cp=locate(d,profile,'cl'); pp=locate(d,profile,'pk')
+                  paths[profile]={'cl':cp,'pk':pp}
+                  if rc==0 and (cp is None or pp is None): provider_blocked=True
+              br={'statuses':statuses,'blocks':{}}
+              for block in blocks:
+                  kind='pk' if block=='Pk' else 'cl'
+                  p0,p1,p2=paths['default'][kind],paths['permille'][kind],paths['reference'][kind]
+                  try:
+                      rc=None if None in (p0,p1) else metric(p0,p1,block)
+                      rf=None if None in (p1,p2) else metric(p1,p2,block)
+                  except Exception:
+                      rc=rf=None
+                  if rc is None or rf is None or not math.isfinite(rc) or not math.isfinite(rf):
+                      provider_blocked=True
+                  passed=(rc is not None and rf is not None and math.isfinite(rc) and math.isfinite(rf)
+                          and rf<=1e-4 and (rf<=0.5*rc or (rc<=1e-8 and rf<=1e-8)))
+                  nonmono=(rc is not None and rf is not None and math.isfinite(rc) and math.isfinite(rf) and rf>rc)
+                  br['blocks'][block]={'R_coarse':rc,'R_fine':rf,'pass_parent_rule':passed,'nonmonotone':nonmono}
+              result['controls'][gauge]=br
+
+          if provider_blocked:
+              cls='CONTROL_PROVIDER_BLOCKED'
+          else:
+              transferred=[]
+              for block in ['TT','EE','Pk']:
+                  if all(result['controls'][g]['blocks'][block]['nonmonotone'] for g in gauges):
+                      transferred.append(block)
+              if transferred:
+                  cls='GENERAL_CLASS_PRECISION_PROFILE_NONNESTED_CONTROL'
+              else:
+                  any_nonmono=any(result['controls'][g]['blocks'][b]['nonmonotone'] for g in gauges for b in ['TT','EE','Pk'])
+                  cls='CONTROL_MIXED_OR_INCONCLUSIVE' if any_nonmono else 'M23_OR_IDR_SPECIFIC_PRECISION_NONMONOTONICITY'
+              result['transferred_blocks_both_gauges']=transferred
+          result['classification']=cls
+          Path('M23_CLASS_PRECISION_PROFILE_TRANSFER_CONTROL_RESULT.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({'classification':cls,'provider_blocked':provider_blocked},indent=2))
+          PY
+      - name: Upload aggregate result
+        uses: actions/upload-artifact@v4
+        with:
+          name: m23-class-precision-transfer-control-aggregate
+          path: M23_CLASS_PRECISION_PROFILE_TRANSFER_CONTROL_RESULT.json
+      - name: Commit result and research-log entry
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p waves/wave_04_dark_matter
+          cp M23_CLASS_PRECISION_PROFILE_TRANSFER_CONTROL_RESULT.json waves/wave_04_dark_matter/M23_CLASS_PRECISION_PROFILE_TRANSFER_CONTROL_RESULT.json
+          CLASS=$(python3 -c "import json; print(json.load(open('M23_CLASS_PRECISION_PROFILE_TRANSFER_CONTROL_RESULT.json'))['classification'])")
+          printf '\n### 2026-09-11 — M23 shared CLASS precision-profile transfer control\nPure LambdaCDM control at pinned CLASS e85808324f51fc694d12e3ed7439552a3c3f9540 classified `%s` under preregistered stock default -> cl_permille -> cl_ref comparison in synchronous and Newtonian gauges. This diagnostic preserves the parent M23 K3/K4 classifications and is not physical falsification. See `waves/wave_04_dark_matter/M23_CLASS_PRECISION_PROFILE_TRANSFER_CONTROL_RESULT.json`.\n' "$CLASS" >> logs/research_log.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add waves/wave_04_dark_matter/M23_CLASS_PRECISION_PROFILE_TRANSFER_CONTROL_RESULT.json logs/research_log.md
+          git commit -m 'Record M23 CLASS precision-profile transfer control'
+          git push
