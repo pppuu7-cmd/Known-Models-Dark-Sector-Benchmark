@@ -1,0 +1,24 @@
+{
+  "schema": "KMDSB.M26.PBHProviderControlCompatibilitySummary.v1",
+  "provider": "GFAbellan/ExoCLASS",
+  "provider_pin": "7c4b26e50d240f1f45f120b623aab2dba13094fd",
+  "baseline_null_source_run_id": 34550083757,
+  "scipy_compatibility_run_id": 34551381588,
+  "evaporation_numpy_compatibility_run_id": 34551564091,
+  "compatibility_interventions": {
+    "serialized_transfer_cache_disabled": true,
+    "numpy_version": "2.2.6",
+    "scipy_version": "1.13.1",
+    "evaporation_linspace_num_literal": 100000
+  },
+  "children": {
+    "evaporation": "M26_EVAPORATION_PROVIDER_REFERENCE_CONTROL_PASS_WITH_SCOPE",
+    "spherical": "M26_SPHERICAL_PROVIDER_REFERENCE_CONTROL_PASS_WITH_SCOPE",
+    "disk": "M26_DISK_PROVIDER_REFERENCE_CONTROL_PASS_WITH_SCOPE"
+  },
+  "all_three_provider_controls_pass_with_scope": true,
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "physical_falsification": false,
+  "poisson_structure_channel": "NOT_TESTED"
+}
