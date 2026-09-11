@@ -1,0 +1,67 @@
+name: Sync W05 K1 batch state
+
+on:
+  push:
+    paths:
+      - '.github/workflows/sync-w05-k1-batch-state.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply frozen K1 classifications
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import csv
+          from pathlib import Path
+          p=Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(p.open(newline='',encoding='utf-8')))
+          fields=list(rows[0].keys())
+          found=set()
+          for r in rows:
+              mid=r['benchmark_id']
+              if mid=='M24':
+                  found.add(mid)
+                  r['K1_reference_limit']='PARTIAL'
+                  r['coverage_state']='K0_PASS_K1_NOT_ESTABLISHED_DECOUPLING_K2_K9_OPEN'
+                  r['notes']=(r['notes']+' | W05 K1 frozen ladder run 34655725404 artifact 10286190461: monotone contraction and log-log r=0.94252, but D_finest/D_coarsest=0.2520458 missed preregistered <=0.25 threshold. K1 PARTIAL/not established; no physical falsification.').strip(' |')
+              elif mid=='M35':
+                  found.add(mid)
+                  r['K1_reference_limit']='PASS_WITH_SCOPE'
+                  r['coverage_state']='K0_K1_PINNED_CLASS_LVDM_AETHER_GRAVITY_PASS_K2_K9_OPEN'
+                  r['notes']=(r['notes']+' | W05 K1 frozen ladder run 34655725404 artifact 10286255150 PASS_WITH_SCOPE: D ratio=0.00116152, log-log r=0.9999768. Scoped to pinned CLASS_LVDM preferred-frame/LV scalar-sector route; not full Einstein-Aether SVT closure.').strip(' |')
+              elif mid=='M37':
+                  found.add(mid)
+                  r['K1_reference_limit']='PARTIAL'
+                  r['coverage_state']='K0_PARTIAL_K1_PARTIAL_NUMERICAL_LIMIT_PASS_PROVENANCE_OPEN_K2_K9_OPEN'
+                  r['notes']=(r['notes']+' | W05 K1 frozen ladder run 34655725404 artifact 10285765241: executable n_fT->0 limit contracts strongly (ratio=0.00103137, r=0.999899), but provider publication/author provenance remains unresolved. Keep K0/K1 mandatory status PARTIAL; do not count as positive family PASS.').strip(' |')
+          missing={'M24','M35','M37'}-found
+          if missing:
+              raise SystemExit(f'missing matrix rows: {sorted(missing)}')
+          with p.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n')
+              w.writeheader(); w.writerows(rows)
+          PY
+      - name: Recompute readiness from synchronized matrix
+        run: python3 verification/audit_matrix_readiness.py
+      - name: Commit and push atomically
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/mandatory_properties_matrix.csv audits/KMDSB_READINESS_SNAPSHOT.json
+          if git diff --cached --quiet; then
+            echo 'ledger already synchronized'
+            exit 0
+          fi
+          git commit -m 'Sync W05 K1 batch classifications and readiness'
+          git pull --rebase origin main
+          git push origin HEAD:main
