@@ -1,0 +1,112 @@
+name: W04 M27 dark-radiation hierarchy convergence
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m27-ddm-dr-hierarchy-convergence.yml']
+permissions:
+  contents: write
+jobs:
+  ensemble:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        delta: [0.5, 1.0, 2.0]
+        y: [1.0, 2.0, 3.0]
+        g0: [0.03, 0.3, 3.0]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3 scipy==1.16.2
+      - name: Run frozen ensemble hierarchy gate
+        run: |
+          python3 verification/m27/ddm_dr_hierarchy_convergence.py ensemble '${{ matrix.delta }}' '${{ matrix.y }}' '${{ matrix.g0 }}' result.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m27-hierarchy-d${{ matrix.delta }}-y${{ matrix.y }}-g${{ matrix.g0 }}
+          path: result.json
+          retention-days: 90
+  controls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        g0: [0.03, 0.3, 3.0]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3 scipy==1.16.2
+      - name: Run frozen N1 hierarchy control
+        run: |
+          python3 verification/m27/ddm_dr_hierarchy_convergence.py control '${{ matrix.g0 }}' result.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m27-hierarchy-n1-g${{ matrix.g0 }}
+          path: result.json
+          retention-days: 90
+  aggregate:
+    needs: [ensemble, controls]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m27-hierarchy-*
+          path: collected
+      - name: Aggregate against frozen gate and persist result
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          files=list(Path('collected').glob('*/result.json'))
+          rs=[json.loads(p.read_text()) for p in files]
+          ens=[r for r in rs if r.get('mode')=='ensemble']
+          ctl=[r for r in rs if r.get('mode')=='control']
+          et='M27_DDM_DR_HIERARCHY_CONVERGENCE_PASS_WITH_PRESCRIBED_METRIC_SCOPE'
+          ct='M27_DDM_DR_HIERARCHY_N1_CONTROL_PASS_WITH_SCOPE'
+          ok=(len(ens)==27 and len(ctl)==3 and all(r.get('classification')==et for r in ens) and all(r.get('classification')==ct for r in ctl))
+          fine=[]; coarse=[]; n1=[]
+          for r in ens:
+              for v in r.get('comparisons',{}).values():
+                  fine.extend(v.get('L17_vs_L32',{}).values())
+                  coarse.extend(v.get('L8_vs_L17',{}).values())
+          for r in ctl:
+              for v in r.get('comparisons',{}).values(): n1.extend(v.get('N1_exact_vs_direct',{}).values())
+          out={
+            'schema':'KMDSB.M27.DDMDRHierarchyConvergence.Summary.v1',
+            'preregistration':'protocol/W04_M27_DDM_DR_HIERARCHY_CONVERGENCE_PREREGISTRATION_v0.1.md',
+            'n_ensemble_results':len(ens),'n_control_results':len(ctl),
+            'n_ensemble_pass':sum(r.get('classification')==et for r in ens),
+            'n_control_pass':sum(r.get('classification')==ct for r in ctl),
+            'max_L17_vs_L32_amp_norm_residual':max(fine) if fine else None,
+            'max_L8_vs_L17_amp_norm_residual':max(coarse) if coarse else None,
+            'max_N1_exact_vs_direct_amp_norm_residual':max(n1) if n1 else None,
+            'classification':'M27_DDM_27_BRANCH_DR_HIERARCHY_CONVERGENCE_PASS_WITH_PRESCRIBED_METRIC_SCOPE' if ok else 'M27_DDM_DR_HIERARCHY_CONVERGENCE_NOT_ESTABLISHED',
+            'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,
+            'physical_falsification':False,'self_consistent_metric_gate':'OPEN'
+          }
+          Path('summary.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/dynamical_dark_matter
+          cp /tmp/summary.json waves/wave_04_dark_matter/M27_DDM_DR_HIERARCHY_CONVERGENCE_SUMMARY.json
+          cp /tmp/summary.json models/dynamical_dark_matter/M27_DDM_DR_HIERARCHY_CONVERGENCE_SUMMARY.json
+          git add waves/wave_04_dark_matter models/dynamical_dark_matter
+          git diff --cached --quiet || { git commit -m 'Record M27 dark-radiation hierarchy convergence'; git pull --rebase origin main; git push origin HEAD:main; }
