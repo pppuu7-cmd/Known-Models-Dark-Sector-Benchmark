@@ -1,0 +1,17 @@
+{
+  "K0_promoted": false,
+  "K1_promoted": false,
+  "K3_promoted": false,
+  "K5_promoted": false,
+  "classification": "M28_BACKGROUND_ONLY_PROVIDER_EXECUTABLE_K1_K3_K5_OPEN",
+  "commit": "860818c776bf8f000c08e4f02c1a23c5f48a8f52",
+  "continuation": "seek_authoritative_source_complete_superfluid_cosmology_provider_with_explicit_reference_map",
+  "control_classification": "M28_BACKGROUND_PROVIDER_CONTROL_PASS",
+  "explicit_k1_reference_map": "ABSENT",
+  "perturbation_closure": "ABSENT",
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M28_SUPERFLUID_BACKGROUND_PROVIDER_AUDIT_PREREGISTRATION_v0.1.md",
+  "provider": "azieg/Superfluid-Dark-Matter-Cosmo",
+  "schema": "KMDSB.M28.SuperfluidBackgroundProviderAudit.Summary.v1",
+  "source_classification": "M28_BACKGROUND_PROVIDER_CANDIDATE_WITH_SCOPE"
+}
