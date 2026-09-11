@@ -1,0 +1,27 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "all_mass_scaling_pass": true,
+  "children": {
+    "100.0": "M26_PBH_CDI_TRANSFER_PASS_WITH_PROVIDER_NULL_SCOPE",
+    "1000.0": "M26_PBH_CDI_TRANSFER_PASS_WITH_PROVIDER_NULL_SCOPE",
+    "10000.0": "M26_PBH_CDI_TRANSFER_PASS_WITH_PROVIDER_NULL_SCOPE"
+  },
+  "classification": "M26_PBH_CDI_TRANSFER_MASS_FRACTION_PASS_WITH_PROVIDER_NULL_SCOPE",
+  "fraction_scaling_exponents": {
+    "100.0": 1.0000000000437266,
+    "1000.0": 1.0000000000146227,
+    "10000.0": 1.000000000009516
+  },
+  "mass_scaling_exponents": {
+    "0.001": 1.0000000000560987,
+    "0.01": 1.0000000000191127,
+    "0.1": 1.0000000000156597,
+    "1.0": 1.0000000000002327
+  },
+  "observation_space_gate": "OPEN",
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M26_PBH_CDI_NULL_REPRESENTATION_RECOVERY_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M26.PBHCDINullRepresentationRecovery.Summary.v1",
+  "source_run_id": 34552202481
+}
