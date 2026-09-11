@@ -1,0 +1,88 @@
+name: W04 M25 K1 support-order recovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m25-k1-support-order-recovery.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download immutable original M25 K1 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: w04-m25-k1-abundance-decoupling
+          path: m25_original_artifact
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34548988620
+
+      - name: Install frozen analysis dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+
+      - name: Reanalyze immutable outputs with support-order normalization
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m25/m25_k1_support_order_recovery.py m25_original_artifact m25_k1_support_order_recovery_result.json
+          cat m25_k1_support_order_recovery_result.json
+
+      - name: Persist canonical recovery result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m25_k1_support_order_recovery_result.json /tmp/m25_k1_support_order_recovery_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/resonant_sterile_neutrino_wdm waves/wave_04_dark_matter
+          cp /tmp/m25_k1_support_order_recovery_result.json models/resonant_sterile_neutrino_wdm/M25_K1_SUPPORT_ORDER_RECOVERY_RESULT.json
+          cp /tmp/m25_k1_support_order_recovery_result.json waves/wave_04_dark_matter/M25_K1_SUPPORT_ORDER_RECOVERY_RESULT.json
+          git add models/resonant_sterile_neutrino_wdm/M25_K1_SUPPORT_ORDER_RECOVERY_RESULT.json waves/wave_04_dark_matter/M25_K1_SUPPORT_ORDER_RECOVERY_RESULT.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M25 K1 support-order recovery'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Enforce frozen recovery semantics
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/m25_k1_support_order_recovery_result.json'))
+          allowed={
+            'M25_K1_ABUNDANCE_DECOUPLING_PASS_WITH_SCOPE_ORDER_RECOVERED',
+            'M25_K1_ABUNDANCE_DECOUPLING_NOT_ESTABLISHED_ORDER_RECOVERED',
+            'M25_K1_SUPPORT_ORDER_RECOVERY_BLOCKED',
+          }
+          assert r['classification'] in allowed
+          assert r['physical_falsification'] is False
+          assert r['K4_promoted'] is False
+          assert r.get('reanalysis_only_no_class_recompute', True) is True
+          if r['classification']=='M25_K1_ABUNDANCE_DECOUPLING_PASS_WITH_SCOPE_ORDER_RECOVERED':
+              assert r['K1_reference_limit']=='PASS_WITH_SCOPE_ABUNDANCE_TO_ZERO_MIXED_CDM_EMBEDDING'
+          else:
+              assert r['K1_reference_limit']=='NOT_PROMOTED'
+          PY
+
+      - name: Upload immutable recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m25-k1-support-order-recovery
+          path: m25_k1_support_order_recovery_result.json
+          retention-days: 90
