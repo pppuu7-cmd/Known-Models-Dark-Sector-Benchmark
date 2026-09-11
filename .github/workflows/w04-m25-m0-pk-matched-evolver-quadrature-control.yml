@@ -1,0 +1,177 @@
+name: W04 M25 m0 Pk matched-evolver quadrature control
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m25-m0-pk-matched-evolver-quadrature-control.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: w04-m25-k1-abundance-decoupling
+          path: original
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34548988620
+      - uses: actions/download-artifact@v4
+        with:
+          name: m25-m0-pk-qgrid-rk-4000
+          path: manual4000
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34601708310
+      - uses: actions/download-artifact@v4
+        with:
+          name: m25-ncdm-nofluid-m0
+          path: oldauto
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34551925134
+      - name: Build pinned CLASS and prepare matched automatic-RK control
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -a original/m25_k1_cases m25_k1_cases
+          python3 - <<'PY'
+          from pathlib import Path
+          for i in (2,3,4):
+              p=Path(f'm25_k1_cases/m0_e{i}.ini')
+              s=p.read_text().replace('output = tCl,pCl,mPk','output = mPk')
+              p.write_text(s)
+          PY
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class/include/common.h')
+          s=p.read_text()
+          assert s.count('#define _QUADRATURE_MAX_ 250')==1
+          assert s.count('#define _QUADRATURE_MAX_BG_ 800')==1
+          p.write_text(s.replace('#define _QUADRATURE_MAX_ 250','#define _QUADRATURE_MAX_ 4000').replace('#define _QUADRATURE_MAX_BG_ 800','#define _QUADRATURE_MAX_BG_ 4000'))
+          PY
+          make -C class -j2 > build.log 2>&1
+          mkdir -p class/output logs parts
+          cp original/class_provider/output/ref_00_background.dat class/output/ref_00_background.dat
+          cp original/class_provider/output/ref_00_pk.dat class/output/ref_00_pk.dat
+          cat > auto_rk.pre <<'EOF'
+          tol_ncdm_bg = 1e-6
+          tol_ncdm = 1e-6
+          ncdm_fluid_approximation = 3
+          ncdm_quadrature_strategy = 0
+          ncdm_maximum_q = 10.0
+          evolver = 0
+          EOF
+          cat auto_rk.pre
+      - name: Execute three eta cases concurrently
+        shell: bash
+        run: |
+          printf '%s\n' e2 e3 e4 | xargs -P 3 -I{} bash -c '
+            s="$1"; id="m0_${s}"; set +e
+            (cd class && ./class "../m25_k1_cases/${id}.ini" ../auto_rk.pre > "../logs/${id}.log" 2>&1)
+            printf "%d\n" "$?" > "parts/${s}.status"
+          ' _ {}
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d={'build':0,'ref':0}
+          d.update({p.stem:int(p.read_text()) for p in Path('parts').glob('*.status')})
+          Path('status.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - name: Apply frozen matched-evolver classification
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,sys
+          from pathlib import Path
+          sys.path.insert(0,'.')
+          from verification.m25.m25_k1_precision_floor_diagnostic import load_table,output,metric,judge
+          ETAS=[0.01,0.003,0.001]
+          st=json.loads(Path('status.json').read_text())
+          result={
+            'schema':'KMDSB.M25.M0PkMatchedEvolverQuadratureControl.v1',
+            'preregistration':'protocol/W04_M25_M0_PK_MATCHED_EVOLVER_QUADRATURE_CONTROL_PREREGISTRATION_v0.1.md',
+            'class_pin':'e85808324f51fc694d12e3ed7439552a3c3f9540',
+            'manual_comparator_run':34601708310,
+            'old_auto_baseline_run':34551925134,
+            'status':st,
+            'K1_promoted':False,
+            'K4_promoted':False,
+            'physical_falsification':False
+          }
+          req=['build','ref','e2','e3','e4']
+          if any(st.get(k)!=0 for k in req):
+              result['classification']='M25_M0_PK_MATCHED_EVOLVER_QUADRATURE_PROVIDER_BLOCKED'
+              result['failed_status_keys']=[k for k in req if st.get(k)!=0]
+          else:
+              ref_pk=load_table(output(Path('class'),'ref','pk'))
+              ref_bg=load_table(output(Path('class'),'ref','background'))[:,[0,3]]
+              ppts=[]; hpts=[]
+              for eta,i in zip(ETAS,(2,3,4)):
+                  pk=load_table(output(Path('class'),f'm0_e{i}','pk'))
+                  bg=load_table(output(Path('class'),f'm0_e{i}','background'))[:,[0,3]]
+                  q=metric(pk,ref_pk); q['eta']=eta; ppts.append(q)
+                  q=metric(bg,ref_bg); q['eta']=eta; hpts.append(q)
+              Pk=judge(ppts); H=judge(hpts)
+              manual=json.loads(Path('manual4000/result.json').read_text())['Pk']['r95']
+              old=json.loads(Path('oldauto/result.json').read_text())['blocks']['Pk']['r95']
+              auto=Pk['r95']
+              def sym(a,b): return 2*abs(float(a)-float(b))/(abs(float(a))+abs(float(b))+1e-300)
+              primary=[sym(a,b) for a,b in zip(auto,manual)]
+              olddiff=[sym(a,b) for a,b in zip(auto,old)]
+              result.update({
+                'H':H,'Pk_auto_rk':Pk,
+                'manual_rk_N4000_Pk_r95':manual,
+                'old_auto_baseline_Pk_r95':old,
+                'matched_auto_manual_symmetric_relative_differences':primary,
+                'auto_rk_vs_old_auto_symmetric_relative_differences':olddiff,
+                'matched_quadrature_agreement':all(x<=0.25 for x in primary),
+                'auto_rk_old_auto_agreement':all(x<=0.25 for x in olddiff)
+              })
+              if not H['tail_scaling_recovered']:
+                  result['classification']='M25_M0_PK_MATCHED_EVOLVER_QUADRATURE_BACKGROUND_NOT_ADMISSIBLE'
+              elif all(x<=0.25 for x in primary):
+                  result['classification']='M25_M0_PK_MATCHED_EVOLVER_QUADRATURE_AGREEMENT'
+              else:
+                  result['classification']='M25_M0_PK_MATCHED_EVOLVER_QUADRATURE_SENSITIVITY'
+          Path('result.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          print(Path('result.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m25-m0-pk-matched-evolver-quadrature-control
+          path: |
+            auto_rk.pre
+            build.log
+            status.json
+            result.json
+            logs/
+            class/output/*_background.dat
+            class/output/*_pk.dat
+          retention-days: 90
+      - name: Persist machine result
+        if: always()
+        shell: bash
+        run: |
+          cp result.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm
+          cp /tmp/result.json waves/wave_04_dark_matter/M25_M0_PK_MATCHED_EVOLVER_QUADRATURE_CONTROL_RESULT.json
+          cp /tmp/result.json models/resonant_sterile_neutrino_wdm/M25_M0_PK_MATCHED_EVOLVER_QUADRATURE_CONTROL_RESULT.json
+          git add waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm
+          git diff --cached --quiet || { git commit -m 'Record M25 matched-evolver quadrature control'; git pull --rebase origin main; git push origin HEAD:main; }
