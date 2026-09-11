@@ -1,0 +1,70 @@
+name: W05 M30 M31 K1 output-path recovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w05-m30-m31-k1-output-path-recovery.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recover-analysis:
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [M30, M31]
+    runs-on: ubuntu-22.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PARENT_RUN: '34656276938'
+      HICLASS_PIN: '0009f51d89e6465c79e570b496c66fc90058fa77'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download immutable parent artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir parent
+          gh run download "$PARENT_RUN" --repo "$GITHUB_REPOSITORY" -n "${{ matrix.model }}-k1-reference-limit" -D parent
+          find parent -type f -print | sort
+      - name: Verify parent execution and recover emitted paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODEL='${{ matrix.model }}'
+          BASE="parent/k1_${MODEL}"
+          test "$(cat parent/provider_commit.txt)" = "$HICLASS_PIN"
+          for label in ref s1 s01 s001 s0001; do
+            test "$(cat "$BASE/${label}.exit")" = 0
+            test -s "$BASE/${label}_00_cl.dat"
+            test -s "$BASE/${label}_00_pk.dat"
+          done
+          python3 - "$BASE" <<'PY'
+          import json,pathlib,sys
+          b=pathlib.Path(sys.argv[1])
+          arms=[]
+          for label,x in [('s1',1.0),('s01',0.1),('s001',0.01),('s0001',0.001)]:
+              arms.append({'label':label,'x':x,'cl':str(b/f'{label}_00_cl.dat'),'pk':str(b/f'{label}_00_pk.dat'),'exit':int((b/f'{label}.exit').read_text())})
+          pathlib.Path('arms_recovered.json').write_text(json.dumps(arms))
+          PY
+      - name: Apply unchanged frozen K1 analyzer
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODEL='${{ matrix.model }}'; BASE="parent/k1_${MODEL}"
+          python3 verification/k1/decoupling_ladder.py \
+            --model "$MODEL" \
+            --provider-commit "$(cat parent/provider_commit.txt)" --expected-commit "$HICLASS_PIN" \
+            --reference-cl "$BASE/ref_00_cl.dat" --reference-pk "$BASE/ref_00_pk.dat" \
+            --arms-json arms_recovered.json --out "${MODEL}_k1_recovered_result.json" \
+            --scope 'analysis-only recovery of parent run 34656276938; pinned hi_class propto_omega family; joint alpha-coefficient scaling to zero with M2_ini=1 and LCDM expansion fixed'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.model }}-k1-output-path-recovered
+          path: |
+            ${{ matrix.model }}_k1_recovered_result.json
+            arms_recovered.json
+          retention-days: 30
