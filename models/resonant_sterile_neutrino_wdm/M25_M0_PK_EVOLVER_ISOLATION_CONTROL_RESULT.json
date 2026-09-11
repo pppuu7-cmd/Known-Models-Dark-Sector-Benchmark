@@ -1,0 +1,97 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "capacity_control_agreement": false,
+  "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "classification": "M25_M0_PK_CAPACITY_OR_EVOLVER_CONFOUNDED",
+  "default_evolver_Pk_r95": [
+    0.05791622351960271,
+    0.057491188177280494,
+    0.057363063657491865
+  ],
+  "default_vs_RK_agreement": true,
+  "default_vs_RK_symmetric_relative_differences": [
+    0.00033737134333093973,
+    0.00028064006403436003,
+    0.00038114151078310097
+  ],
+  "explicit_RK_Pk_r95": [
+    0.057935766090283836,
+    0.05750732477229951,
+    0.05738493126956478
+  ],
+  "old_auto_baseline_Pk_r95": [
+    4.47946747635781e-05,
+    3.3135714306605436e-05,
+    3.076888469743661e-05
+  ],
+  "parent_matched_evolver_commit": "97e56cc6e90b4337ac915198362903582d05ca32",
+  "parent_matched_evolver_run": 34614012430,
+  "parts": [
+    {
+      "H": {
+        "median_abs": 3.5532468321183778e-09,
+        "n": 40000,
+        "p95_abs": 6.261567702317779e-07,
+        "rms": 4.0159304389126687e-07
+      },
+      "Pk": {
+        "median_abs": 0.00011161349653230989,
+        "n": 124,
+        "p95_abs": 0.05791622351960271,
+        "rms": 0.019395582863840508
+      },
+      "case": "e2",
+      "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+      "eta": 0.01,
+      "exit_code": 0,
+      "finite": true
+    },
+    {
+      "H": {
+        "median_abs": 1.0659722358151314e-09,
+        "n": 40000,
+        "p95_abs": 1.878470993964321e-07,
+        "rms": 1.2047796880989655e-07
+      },
+      "Pk": {
+        "median_abs": 0.0001143875898035591,
+        "n": 124,
+        "p95_abs": 0.057491188177280494,
+        "rms": 0.018898070471017502
+      },
+      "case": "e3",
+      "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+      "eta": 0.003,
+      "exit_code": 0,
+      "finite": true
+    },
+    {
+      "H": {
+        "median_abs": 3.5532715083818483e-10,
+        "n": 40000,
+        "p95_abs": 6.261569777806031e-08,
+        "rms": 4.015932786492161e-08
+      },
+      "Pk": {
+        "median_abs": 0.00011752134767619135,
+        "n": 124,
+        "p95_abs": 0.057363063657491865,
+        "rms": 0.01875839421883616
+      },
+      "case": "e4",
+      "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+      "eta": 0.001,
+      "exit_code": 0,
+      "finite": true
+    }
+  ],
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M25_M0_PK_EVOLVER_ISOLATION_CONTROL_PREREGISTRATION_v0.1.md",
+  "raisedcap_default_vs_oldauto_symmetric_relative_differences": [
+    1.9969086343781357,
+    1.9976958815287216,
+    1.9978555964406235
+  ],
+  "schema": "KMDSB.M25.M0PkEvolverIsolationControl.v1"
+}
