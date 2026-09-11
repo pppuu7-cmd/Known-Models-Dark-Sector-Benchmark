@@ -1,0 +1,184 @@
+name: W04 M25 provider momentum-support extension
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m25-provider-momentum-support-extension.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  extension:
+    name: support-${{ matrix.profile }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [p30_n1500, p40_n2000]
+    env:
+      STERILE_PIN: e4486265e8207aa0dd28decc8c8d897266c0a52a
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download immutable stock-provider evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: w04-m25-resonant-sterile-dm-provider-control
+          path: stock_provider
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34544624039
+      - name: Pin provider and apply preregistered support profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/ntveem/sterile-dm.git provider
+          git -C provider checkout -q --detach "$STERILE_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$STERILE_PIN"
+          python3 - '${{ matrix.profile }}' <<'PY'
+          import sys
+          from pathlib import Path
+          profile=sys.argv[1]
+          p=Path('provider/src/defaults.f90')
+          s=p.read_text()
+          assert s.count('integer, parameter :: N_P_BINS = 1000')==1
+          assert s.count('double precision, parameter :: PTMAX_IN = 20.0D0 - 1.0D-5')==1
+          if profile=='p30_n1500':
+              s=s.replace('integer, parameter :: N_P_BINS = 1000','integer, parameter :: N_P_BINS = 1500')
+              s=s.replace('double precision, parameter :: PTMAX_IN = 20.0D0 - 1.0D-5','double precision, parameter :: PTMAX_IN = 30.0D0 - 1.0D-5')
+          elif profile=='p40_n2000':
+              s=s.replace('integer, parameter :: N_P_BINS = 1000','integer, parameter :: N_P_BINS = 2000')
+              s=s.replace('double precision, parameter :: PTMAX_IN = 20.0D0 - 1.0D-5','double precision, parameter :: PTMAX_IN = 40.0D0 - 1.0D-5')
+              assert s.count('integer, parameter :: NMAX = 4096')==1
+              s=s.replace('integer, parameter :: NMAX = 4096','integer, parameter :: NMAX = 8192')
+          else:
+              raise SystemExit(profile)
+          p.write_text(s)
+          PY
+          git -C provider diff -- src/defaults.f90 | tee m25_support_patch.diff
+      - name: Build and run extended provider
+        shell: bash
+        run: |
+          set +e
+          cd provider
+          ./configure gfortran > ../m25_support_configure.log 2>&1
+          cfg=$?
+          mk=999
+          if [ "$cfg" -eq 0 ]; then
+            make > ../m25_support_make.log 2>&1
+            mk=$?
+          fi
+          run=999
+          timed=false
+          if [ "$cfg" -eq 0 ] && [ "$mk" -eq 0 ] && [ -x sterile-nu ]; then
+            rm -rf outfiles; mkdir -p outfiles
+            timeout --signal=TERM 2400s ./sterile-nu params.ini > ../m25_support_run.log 2>&1
+            run=$?
+            if [ "$run" -eq 124 ] || [ "$run" -eq 137 ]; then timed=true; fi
+          fi
+          cd ..
+          rm -rf generated_provider_outfiles
+          if [ -d provider/outfiles ]; then cp -a provider/outfiles generated_provider_outfiles; else mkdir generated_provider_outfiles; fi
+          python3 - <<PY
+          import json
+          d={'configure_rc':$cfg,'make_rc':$mk,'build_rc':0 if ($cfg==0 and $mk==0) else 1,'run_rc':$run,'timed_out':str('$timed').lower()=='true','profile':'${{ matrix.profile }}'}
+          open('m25_support_status.json','w').write(json.dumps(d,indent=2,sort_keys=True)+'\n')
+          PY
+          cat m25_support_status.json
+          exit 0
+      - name: Analyze support extension against stock artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m25/provider_momentum_support_extension.py m25_support_status.json generated_provider_outfiles stock_provider/generated_provider_outfiles '${{ matrix.profile }}' 'm25_support_${{ matrix.profile }}_result.json'
+          cat 'm25_support_${{ matrix.profile }}_result.json'
+      - name: Upload extended-provider evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m25-provider-support-${{ matrix.profile }}
+          path: |
+            m25_support_patch.diff
+            m25_support_configure.log
+            m25_support_make.log
+            m25_support_run.log
+            m25_support_status.json
+            m25_support_${{ matrix.profile }}_result.json
+            generated_provider_outfiles/
+          retention-days: 90
+
+  aggregate:
+    name: aggregate-provider-support
+    needs: extension
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m25-provider-support-*
+          path: m25_collected
+      - name: Build and persist summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          ps=sorted(Path('m25_collected').glob('m25-provider-support-*/m25_support_*_result.json'))
+          rs=[json.loads(p.read_text()) for p in ps]
+          children={r['profile']:r['classification'] for r in rs}
+          good=sum(v=='M25_PROVIDER_MOMENTUM_SUPPORT_EXTENDED_WITH_STABLE_CLOSURE' for v in children.values())
+          s={
+            'schema':'KMDSB.M25.ProviderMomentumSupportExtension.Summary.v1',
+            'preregistration':'protocol/W04_M25_PROVIDER_MOMENTUM_SUPPORT_EXTENSION_PREREGISTRATION_v0.1.md',
+            'provider_pin':'e4486265e8207aa0dd28decc8c8d897266c0a52a',
+            'stock_source_run_id':34544624039,
+            'children':children,
+            'n_results':len(rs),
+            'n_stable_support_extensions':good,
+            'K1_promoted':False,
+            'K4_promoted':False,
+            'physical_falsification':False,
+          }
+          Path('m25_provider_support_summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n')
+          print(Path('m25_provider_support_summary.json').read_text())
+          PY
+          cp m25_provider_support_summary.json /tmp/m25_summary.json
+          mkdir -p /tmp/m25_results
+          find m25_collected -name 'm25_support_*_result.json' -type f -exec cp {} /tmp/m25_results/ \;
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/resonant_sterile_neutrino_wdm waves/wave_04_dark_matter
+          cp /tmp/m25_summary.json models/resonant_sterile_neutrino_wdm/M25_PROVIDER_MOMENTUM_SUPPORT_EXTENSION_SUMMARY.json
+          cp /tmp/m25_summary.json waves/wave_04_dark_matter/M25_PROVIDER_MOMENTUM_SUPPORT_EXTENSION_SUMMARY.json
+          for p in /tmp/m25_results/*.json; do
+            [ -e "$p" ] || continue
+            b=$(basename "$p" | tr '[:lower:]' '[:upper:]')
+            cp "$p" "models/resonant_sterile_neutrino_wdm/${b}"
+            cp "$p" "waves/wave_04_dark_matter/${b}"
+          done
+          git add models/resonant_sterile_neutrino_wdm waves/wave_04_dark_matter
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M25 provider momentum-support extension'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Upload summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m25-provider-support-summary
+          path: m25_provider_support_summary.json
+          retention-days: 90
