@@ -1,0 +1,65 @@
+name: Sync M26 K0 state
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/sync-m26-k0-state.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply canonical M26 matrix and census state
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import csv
+          from pathlib import Path
+          p=Path('matrices/mandatory_properties_matrix.csv')
+          with p.open(newline='',encoding='utf-8') as f: rows=list(csv.DictReader(f))
+          fields=list(rows[0].keys()); found=False
+          for r in rows:
+              if r['benchmark_id']=='M26':
+                  found=True
+                  r['K0_provenance']='PASS_WITH_SCOPE'
+                  for k in ['K1_reference_limit','K2_physical_geometry','K3_conservation_gauge_closure','K4_numerical_robustness','K5_multichannel_rank','K6_nearest_family_manifold','K7_common_observation_space','K8_quotient_novelty','K9_prospective_holdout']:
+                      r[k]='OPEN'
+                  r['coverage_state']='K0_PBH_ENERGY_INJECTION_PASS_PBH_DISCRETENESS_OPEN'
+                  r['notes']='Primordial-black-hole DM: pinned native CLASS zero control plus Hawking-evaporation and disk-accretion energy-injection arms execute at exact provider pin with finite TT/P(k) and active TT response above the frozen 1e-6 threshold. K0 PASS_WITH_SCOPE is limited to evaporation/accretion energy injection. PBH discreteness/Poisson/isocurvature and K1-K9 remain open. Attempt-1 f_acc=1e-2 reionization incompatibility is preserved; prospective K0b f_acc=1e-3 passes.'
+          if not found: raise SystemExit('M26 matrix row missing')
+          t=p.with_suffix('.tmp')
+          with t.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows)
+          t.replace(p)
+
+          p=Path('matrices/model_family_census.csv')
+          with p.open(newline='',encoding='utf-8') as f: rows=list(csv.DictReader(f))
+          fields=list(rows[0].keys()); found=False
+          for r in rows:
+              if r['family_id']=='F26':
+                  found=True
+                  for k,v in list(r.items()):
+                      if v=='QUEUED': r[k]='K0_PBH_ENERGY_INJECTION_PASS_DISCRETENESS_OPEN'
+                  r[fields[-1]]='Pinned native CLASS PBH evaporation/accretion energy-injection K0 PASS_WITH_SCOPE after preserving the stronger accretion stress-point reionization incompatibility and prospectively reducing only f_acc to 1e-3. Compact-object discreteness/Poisson/isocurvature remains a distinct open PBH response layer; K1-K9 open.'
+          if not found: raise SystemExit('F26 census row missing')
+          t=p.with_suffix('.tmp')
+          with t.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows)
+          t.replace(p)
+          PY
+      - name: Commit synchronized state
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/mandatory_properties_matrix.csv matrices/model_family_census.csv
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Sync M26 PBH K0 scoped state'
+          git push
