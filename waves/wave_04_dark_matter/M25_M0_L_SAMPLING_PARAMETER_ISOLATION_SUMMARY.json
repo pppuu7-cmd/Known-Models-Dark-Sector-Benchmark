@@ -1,0 +1,39 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "children": {
+    "l_linstep_only": "M25_M0_L_SAMPLING_PARAMETER_PARTIALLY_LOCALIZED",
+    "l_logstep_only": "M25_M0_L_SAMPLING_PARAMETER_PARTIALLY_LOCALIZED"
+  },
+  "eta_0p003_p95": {
+    "l_linstep_only": {
+      "CMB_EE": 0.0001921846229553662,
+      "CMB_TE": 0.0013404743091060668,
+      "CMB_TT": 5.311526810952625e-05
+    },
+    "l_logstep_only": {
+      "CMB_EE": 7.163299956888408e-06,
+      "CMB_TE": 7.984747335245205e-05,
+      "CMB_TT": 1.8560122801681847e-05
+    }
+  },
+  "improvement_factors": {
+    "l_linstep_only": {
+      "CMB_EE": 5.388501606630685,
+      "CMB_TE": 6.364011779375871,
+      "CMB_TT": 5.901967009773036
+    },
+    "l_logstep_only": {
+      "CMB_EE": 144.56844691654393,
+      "CMB_TE": 106.83862538074622,
+      "CMB_TT": 16.890220148180642
+    }
+  },
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M25_M0_L_SAMPLING_PARAMETER_ISOLATION_PREREGISTRATION_v0.1.md",
+  "recovered_CMB_blocks": {
+    "l_linstep_only": [],
+    "l_logstep_only": []
+  },
+  "schema": "KMDSB.M25.M0LSamplingParameterIsolation.Summary.v1"
+}
