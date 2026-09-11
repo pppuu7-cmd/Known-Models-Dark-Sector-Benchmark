@@ -1,0 +1,107 @@
+name: W05 M32 DGP K0 EFT-Ramses provider probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w05-m32-dgp-k0-eftramses-probe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      PROVIDER_PIN: 849ddb716041316d0e223ba22badc0d630b72435
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clone and audit exact provider
+        shell: bash
+        run: |
+          set -u
+          mkdir -p m32k0
+          git clone -q https://github.com/nat-woodcock/EFT-Ramses.git provider
+          cd provider
+          git checkout -q --detach "$PROVIDER_PIN"
+          git rev-parse HEAD > ../m32k0/provider_head.txt
+          find . -maxdepth 3 -type f -printf '%P\n' | sort > ../m32k0/provider_manifest.txt
+          cp README.md ../m32k0/provider_README.md
+          PIN_OK=0; DGP_OK=0; VAIN_OK=0
+          test "$(git rev-parse HEAD)" = "$PROVIDER_PIN" && PIN_OK=1
+          grep -Eqi 'self-accelerating DGP|normal-branch DGP|DGP braneworld' README.md && DGP_OK=1
+          grep -Eqi 'Vainshtein|master Vainshtein equation' README.md && VAIN_OK=1
+          echo "$PIN_OK" > ../m32k0/pin_ok.txt
+          echo "$DGP_OK" > ../m32k0/dgp_provenance_ok.txt
+          echo "$VAIN_OK" > ../m32k0/vainshtein_provenance_ok.txt
+          set +e
+          cd bin
+          make > ../../m32k0/build_stdout.log 2> ../../m32k0/build_stderr.log
+          RC=$?
+          set -e
+          echo "$RC" > ../../m32k0/build_exit_code.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m32-k0-eftramses-probe
+          path: m32k0
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: probe
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m32-k0-eftramses-probe
+          path: m32k0
+      - name: Frozen classification
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, os
+          p=pathlib.Path('m32k0')
+          def iv(name, default=-999):
+              q=p/name
+              try:return int(q.read_text().strip())
+              except:return default
+          pin=iv('pin_ok.txt',0); dgp=iv('dgp_provenance_ok.txt',0); vain=iv('vainshtein_provenance_ok.txt',0); rc=iv('build_exit_code.txt')
+          if not (pin and dgp and vain): c='M32_K0_BLOCKED_PROVENANCE'
+          elif rc!=0: c='M32_K0_BLOCKED_PROVIDER_BUILD'
+          else: c='M32_K0_PROVIDER_PROBE_PASS_WITH_SCOPE'
+          out={
+            'schema':'m32_dgp_k0_eftramses_probe_v0.1',
+            'provider':'nat-woodcock/EFT-Ramses',
+            'provider_commit':'849ddb716041316d0e223ba22badc0d630b72435',
+            'classification':c,
+            'checks':{'exact_pin':bool(pin),'dgp_provenance':bool(dgp),'vainshtein_provenance':bool(vain),'build_exit_code':rc},
+            'K0_promoted': c=='M32_K0_PROVIDER_PROBE_PASS_WITH_SCOPE',
+            'physical_falsification':False,
+            'scope':'provider provenance and unmodified documented build only; not a DGP production cosmology calculation; K1-K9 remain open'
+          }
+          q=pathlib.Path('waves/wave_05_modified_gravity/M32_K0_EFTRAMSES_PROBE_RESULT.json'); q.parent.mkdir(parents=True,exist_ok=True); q.write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m32-k0-eftramses-aggregate
+          path: |
+            waves/wave_05_modified_gravity/M32_K0_EFTRAMSES_PROBE_RESULT.json
+            m32k0/build_stdout.log
+            m32k0/build_stderr.log
+            m32k0/provider_head.txt
+            m32k0/provider_manifest.txt
+          retention-days: 30
+      - name: Commit machine result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add waves/wave_05_modified_gravity/M32_K0_EFTRAMSES_PROBE_RESULT.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Record M32 DGP K0 EFT-Ramses provider probe'
+          git push
