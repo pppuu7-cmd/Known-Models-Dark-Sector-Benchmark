@@ -1,0 +1,24 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "children": {
+    "m0:k_start_tca": "M25_CLREF_SUBBLOCK_INSENSITIVE",
+    "m0:perturb_integrator": "M25_CLREF_SUBBLOCK_INSENSITIVE",
+    "m1:k_start_tca": "M25_CLREF_SUBBLOCK_INSENSITIVE",
+    "m1:perturb_integrator": "M25_CLREF_SUBBLOCK_LOCALIZED"
+  },
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M25_CLREF_PERTURBATION_SUBBLOCKS_PREREGISTRATION_v0.1.md",
+  "recovered_blocks": {
+    "m0:k_start_tca": [],
+    "m0:perturb_integrator": [],
+    "m1:k_start_tca": [],
+    "m1:perturb_integrator": [
+      "Pk",
+      "CMB_TT",
+      "CMB_EE",
+      "CMB_TE"
+    ]
+  },
+  "schema": "KMDSB.M25.ClRefPerturbationSubblocks.Summary.v1"
+}
