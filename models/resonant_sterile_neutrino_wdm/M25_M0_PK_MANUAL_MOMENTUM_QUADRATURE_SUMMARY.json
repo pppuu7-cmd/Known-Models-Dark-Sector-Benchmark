@@ -1,0 +1,33 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "auto_baseline_Pk_r95": null,
+  "auto_manual_4000_symmetric_relative_differences": [],
+  "auto_manual_fine_agreement": false,
+  "classification": "M25_M0_PK_MANUAL_QUADRATURE_PROVIDER_BLOCKED",
+  "fine_2000_4000_symmetric_relative_differences": [],
+  "fine_4000_floor_spread_ratio": null,
+  "fine_bin_stability": false,
+  "fine_floor_flatness": false,
+  "physical_falsification": false,
+  "points": [
+    {
+      "H_tail_recovered": null,
+      "Pk_r95": null,
+      "Pk_tail_exponent": null,
+      "Pk_tail_recovered": null,
+      "bins": 2000,
+      "classification": "M25_M0_PK_MANUAL_QUADRATURE_PROVIDER_BLOCKED"
+    },
+    {
+      "H_tail_recovered": null,
+      "Pk_r95": null,
+      "Pk_tail_exponent": null,
+      "Pk_tail_recovered": null,
+      "bins": 4000,
+      "classification": "M25_M0_PK_MANUAL_QUADRATURE_PROVIDER_BLOCKED"
+    }
+  ],
+  "preregistration": "protocol/W04_M25_M0_PK_MANUAL_MOMENTUM_QUADRATURE_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M25.M0PkManualMomentumQuadrature.Summary.v1"
+}
