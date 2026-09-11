@@ -1,0 +1,60 @@
+name: W04 M24 cl_ref IDR-switch compatibility
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m24-clref-idr-switch-compat.yml']
+permissions:
+  contents: read
+jobs:
+  clref:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pinned CLASS and compatible precision files
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          make -C class -j2 > build.log 2>&1
+          printf 'idr_streaming_trigger_tau_over_tau_k = 49\n' > default_compat.pre
+          cp class/cl_ref.pre cl_ref_compat.pre
+          printf '\nidr_streaming_trigger_tau_over_tau_k = 49\n' >> cl_ref_compat.pre
+          python3 verification/m24/global_numerical_precision_diagnostic.py prepare cases cl_ref
+      - name: Execute ten cases four-at-a-time
+        shell: bash
+        run: |
+          mkdir -p class/output logs parts
+          printf '%s\n' default_ref default_zero default_a18k default_a6k default_a1p8k profile_ref profile_zero profile_a18k profile_a6k profile_a1p8k | xargs -P 4 -I{} bash -c '
+            t="$1"; set +e
+            if [[ "$t" == profile_* ]]; then pre=../cl_ref_compat.pre; else pre=../default_compat.pre; fi
+            (cd class && ./class "../cases/${t}.ini" "$pre" > "../logs/${t}.log" 2>&1)
+            printf "%d\n" "$?" > "parts/${t}.status"
+          ' _ {}
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d={p.stem:int(p.read_text()) for p in Path('parts').glob('*.status')}
+          Path('status.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          python3 verification/m24/global_numerical_precision_diagnostic.py analyze class/output status.json cl_ref result.json
+          cat status.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m24-clref-idr-switch-compat
+          path: |
+            default_compat.pre
+            cl_ref_compat.pre
+            build.log
+            status.json
+            result.json
+            logs/
+            class/output/
+          retention-days: 90
