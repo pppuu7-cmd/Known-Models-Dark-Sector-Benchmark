@@ -1,0 +1,83 @@
+{
+  "blocks": {
+    "EE": {
+      "absolute_bound_pass_but_contraction_fail": 0,
+      "fail": 14,
+      "max_R_coarse": 6.50128497046519e-05,
+      "max_R_fine": 0.0003695627697741671,
+      "n": 14,
+      "nonmonotone_Rfine_gt_Rcoarse": 14,
+      "pass": 0
+    },
+    "Pk": {
+      "absolute_bound_pass_but_contraction_fail": 14,
+      "fail": 14,
+      "max_R_coarse": 0.0,
+      "max_R_fine": 8.424545930258487e-05,
+      "n": 14,
+      "nonmonotone_Rfine_gt_Rcoarse": 14,
+      "pass": 0
+    },
+    "TE": {
+      "absolute_bound_pass_but_contraction_fail": 0,
+      "fail": 0,
+      "max_R_coarse": 0.0,
+      "max_R_fine": 0.0,
+      "n": 14,
+      "nonmonotone_Rfine_gt_Rcoarse": 0,
+      "pass": 14
+    },
+    "TT": {
+      "absolute_bound_pass_but_contraction_fail": 0,
+      "fail": 14,
+      "max_R_coarse": 7.221987214669862e-05,
+      "max_R_fine": 0.0002967447749036288,
+      "n": 14,
+      "nonmonotone_Rfine_gt_Rcoarse": 14,
+      "pass": 0
+    }
+  },
+  "classification": "M23_K4_PRECISION_LADDER_NONMONOTONE_IN_CMB_BLOCKS",
+  "cross_gauge": {
+    "EE": {
+      "all_pass": true,
+      "max_R_gauge": 1.3253835555879616e-05
+    },
+    "Pk": {
+      "all_pass": true,
+      "max_R_gauge": 8.191829404564539e-05
+    },
+    "TE": {
+      "all_pass": true,
+      "max_R_gauge": 0.0
+    },
+    "TT": {
+      "all_pass": true,
+      "max_R_gauge": 3.6804631045157496e-05
+    },
+    "global_max_R_gauge": 8.191829404564539e-05
+  },
+  "gauges": {
+    "newtonian": {
+      "entries": 28,
+      "fail": 21,
+      "max_R_fine": 0.00036835779545820265,
+      "nonmonotone_Rfine_gt_Rcoarse": 21,
+      "pass": 7
+    },
+    "synchronous": {
+      "entries": 28,
+      "fail": 21,
+      "max_R_fine": 0.0003695627697741671,
+      "nonmonotone_Rfine_gt_Rcoarse": 21,
+      "pass": 7
+    }
+  },
+  "physical_falsification": false,
+  "schema": "KMDSB.M23.K4PrecisionLadderLocalization.v1",
+  "source_artifact": 10262840156,
+  "source_artifact_digest": "sha256:d36dc8134fe4d4066a0de635093610263915262c072d67152f335ffc86f7a1b4",
+  "source_commit": "605d97039eedee0d779b8a2d518667a92a32250e",
+  "source_result": "waves/wave_04_dark_matter/M23_K4_CROSS_GAUGE_PRECISION_RESULT.json",
+  "source_run": 34596841563
+}
