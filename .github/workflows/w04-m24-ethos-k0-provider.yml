@@ -1,0 +1,105 @@
+name: W04 M24 ETHOS K0 provider
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w04-m24-ethos-k0-provider.yml'
+
+jobs:
+  compute:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {arm: uncoupled_control, a: '0', alpha: '1.5'}
+          - {arm: ethos_vector, a: '1e6', alpha: '0.75'}
+          - {arm: ethos_scalar, a: '1e6', alpha: '1.5'}
+    runs-on: ubuntu-latest
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pinned CLASS and execute ETHOS arm
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARM='${{ matrix.arm }}'
+          BASE="$GITHUB_WORKSPACE/m24k0/$ARM"
+          mkdir -p "$BASE/output"
+          git clone -q https://github.com/lesgourg/class_public.git class_public
+          cd class_public
+          git checkout -q --detach "$CLASS_PIN"
+          ACTUAL=$(git rev-parse HEAD)
+          echo "$ACTUAL" > "$BASE/actual_commit.txt"
+          test "$ACTUAL" = "$CLASS_PIN"
+          make -j2 >/dev/null
+          CFG="$BASE/run.ini"
+          cat > "$CFG" <<EOF
+          h = 0.675
+          omega_b = 0.0222
+          omega_cdm = 0.1197
+          A_s = 2.196e-9
+          n_s = 0.9655
+          tau_reio = 0.06
+          N_ur = 3.046
+          f_idm = 1
+          N_idr = 0.4290
+          a_idm_dr = ${{ matrix.a }}
+          nindex_idm_dr = 4
+          idr_nature = free_streaming
+          b_idr = 0
+          alpha_idm_dr = ${{ matrix.alpha }}
+          beta_idr = 1.5
+          output = tCl,pCl,mPk
+          lensing = no
+          non linear = none
+          P_k_max_h/Mpc = 20
+          z_pk = 0
+          l_max_scalars = 2500
+          gauge = synchronous
+          overwrite_root = yes
+          root = $BASE/output/ethos_
+          EOF
+          set +e
+          ./class "$CFG" > "$BASE/stdout.log" 2> "$BASE/stderr.log"
+          RC=$?
+          set -e
+          echo "$RC" > "$BASE/exit_code.txt"
+          find "$BASE" -maxdepth 2 -type f -printf '%P %s bytes\n' | sort > "$BASE/file_manifest.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m24-k0-${{ matrix.arm }}
+          path: m24k0/${{ matrix.arm }}
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: compute
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: 'm24-k0-*'
+          path: downloaded
+      - name: Reassemble artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p m24k0
+          for arm in uncoupled_control ethos_vector ethos_scalar; do
+            mkdir -p "m24k0/$arm"
+            cp -a "downloaded/m24-k0-$arm"/. "m24k0/$arm/"
+          done
+      - name: Classify frozen M24 K0
+        run: python3 verification/m24/k0_ethos_provider.py | tee m24_k0_stdout.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m24-k0-aggregate
+          path: |
+            waves/wave_04_dark_matter/M24_K0_ETHOS_PROVIDER_RESULT.json
+            m24_k0_stdout.json
+          retention-days: 30
