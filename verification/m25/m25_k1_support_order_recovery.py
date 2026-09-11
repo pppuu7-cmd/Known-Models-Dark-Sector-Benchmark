@@ -8,8 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
-from verification.m25.m25_k1_abundance_decoupling import ETAS
-
+ETAS = [0.1, 0.03, 0.01, 0.003, 0.001]
 ORIGINAL_RUN_ID = 34548988620
 ORIGINAL_ARTIFACT_ID = 10180157389
 RECOVERY_PREREG = "protocol/W04_M25_K1_SUPPORT_ORDER_RECOVERY_PREREGISTRATION_v0.1.md"
