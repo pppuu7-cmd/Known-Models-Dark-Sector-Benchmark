@@ -1,0 +1,73 @@
+name: W04 terminal ledger sync 2026-09-11
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-terminal-ledger-sync-20260911.yml']
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Synchronize M23 and M25 evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv
+          from pathlib import Path
+
+          def patch_csv(path, key, value, updates):
+              p=Path(path)
+              with p.open(newline='') as f:
+                  rows=list(csv.DictReader(f))
+                  fields=list(rows[0].keys())
+              found=False
+              for r in rows:
+                  if r[key]==value:
+                      r.update(updates); found=True
+              if not found:
+                  raise SystemExit(f'{value} not found in {path}')
+              with p.open('w',newline='') as f:
+                  w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n')
+                  w.writeheader(); w.writerows(rows)
+
+          patch_csv('matrices/mandatory_properties_matrix.csv','family_id','F25',{
+            'K0_provenance':'PASS_WITH_SCOPE_PINNED_STERILE_PROVIDER_AND_CLASS_BRIDGE',
+            'K1_reference_limit':'NOT_ESTABLISHED_NUMERICAL_FLOOR',
+            'K2_physical_geometry':'ONE_SIDED_ETA_GE_0',
+            'K3_conservation_gauge_closure':'NOT_TESTED',
+            'K4_numerical_robustness':'NOT_ESTABLISHED_QUADRATURE_RK_SENSITIVE',
+            'K5_multichannel_rank':'NOT_TESTED',
+            'K6_nearest_family_manifold':'NOT_TESTED',
+            'K7_common_observation_space':'NOT_TESTED',
+            'K8_quotient_novelty':'NOT_TESTED',
+            'K9_prospective_holdout':'NOT_TESTED',
+            'coverage_state':'K1_K4_NUMERICAL_LOCALIZATION_ACTIVE',
+            'notes':'M25 resonant sterile-neutrino-like WDM: pinned sterile-provider to CLASS density bridge is convention-corrected and validated; abundance-decoupling K1 remains NOT_ESTABLISHED. Explicit-RK manual quadrature recovery run 34601708310 makes N=2000 and N=4000 highly stable (symmetric differences <=9.91e-6) but manual N=4000 differs strongly from the earlier automatic baseline (~1.997 symmetric relative difference); classification M25_M0_PK_QUADRATURE_RK_SENSITIVE, no K1/K4 promotion and no physical falsification. Matched-evolver automatic-quadrature control is prospectively preregistered separately to remove the evolver confound.'
+          })
+
+          patch_csv('matrices/model_family_census.csv','family_id','F25',{
+            'status':'K1_K4_NUMERICAL_LOCALIZATION_ACTIVE',
+            'notes':'Pinned sterile-production provider and convention-corrected CLASS bridge are validated. K1 abundance decoupling is not established. Explicit-RK manual q-grid recovery run 34601708310 is internally converged at N=2000->4000 but differs strongly from the pre-recovery automatic baseline, so quadrature/evolver numerical localization remains active; no physical family failure.'
+          })
+
+          state_add='''\n\n## 2026-09-11 — W04 numerical-localization update\n- M23 shared-CLASS precision-profile transfer control: run `34607933085`, result commit `1c69421819506b4d2ec1bb701ff7401079b7f3ca`, aggregate artifact `10266359162` (`sha256:5c63da518699a50529498dde7f391b8d5a851fabdd1d0e4c3d411d3fadee6412`). Pure LambdaCDM in both synchronous and Newtonian gauges reproduces the same non-nested `default -> cl_permille -> cl_ref` behavior in TT, EE and P(k). Classification `GENERAL_CLASS_PRECISION_PROFILE_NONNESTED_CONTROL`. This localizes the M23 K4 failure to a shared CLASS precision-profile property rather than IDM-DR-specific physics; M23 K4 remains NOT_ESTABLISHED and no physical falsification is inferred.\n- M25 explicit-RK manual quadrature recovery: run `34601708310`, result commit `e2208c3ab135ae7de566d9283f7e90599949d4fd`; N=500/1000/2000/4000 all execute. N=2000->4000 P(k) tail-r95 symmetric differences are `[9.9095922e-06, 3.0539054e-06, 1.0696168e-06]`, but manual N=4000 versus the earlier automatic baseline is `[1.9969104, 1.9976967, 1.9978565]`. Classification `M25_M0_PK_QUADRATURE_RK_SENSITIVE`; K1/K4 not promoted; no physical falsification. A matched-evolver automatic-quadrature control is preregistered to remove the remaining evolver confound.\n'''
+          for path in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md']:
+              p=Path(path); s=p.read_text()
+              if 'M25_M0_PK_QUADRATURE_RK_SENSITIVE' not in s:
+                  p.write_text(s.rstrip()+state_add+'\n')
+          log=Path('logs/research_log.md'); s=log.read_text()
+          if 'run `34601708310`' not in s:
+              log.write_text(s.rstrip()+state_add+'\n')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          git diff --cached --quiet || git commit -m 'Sync M23 transfer and M25 quadrature evidence'
+          git pull --rebase origin main
+          git push origin HEAD:main
