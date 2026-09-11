@@ -6,6 +6,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 
 PREREG='protocol/W04_M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PREREGISTRATION_v0.1.md'
+RECOVERY='protocol/W04_M27_DDM_ENERGY_TRANSFER_JSON_SERIALIZATION_RECOVERY_PREREGISTRATION_v0.1.md'
 AI=1e-5; OB=0.05; OR=9e-5; OL=0.69; ODM=0.26; N=64; DM=0.25
 X=np.linspace(math.log(AI),0.0,4001); A=np.exp(X)
 
@@ -42,6 +43,12 @@ def p95sym(a,b,mask=None):
     d=2*np.abs(a[m]-b[m])/(np.abs(a[m])+np.abs(b[m])+1e-300)
     return float(np.percentile(d,95)) if d.size else None
 
+def json_native(o):
+    if isinstance(o,np.bool_): return bool(o)
+    if isinstance(o,np.integer): return int(o)
+    if isinstance(o,np.floating): return float(o)
+    raise TypeError(f'Object of type {o.__class__.__name__} is not JSON serializable')
+
 def run(delta,y,g0,out):
     try:
         e=exact_solver(delta,y,g0,N); e1=exact_solver(delta,y,g0,1); d1=direct_single(g0)
@@ -53,16 +60,16 @@ def run(delta,y,g0,out):
         comp=A**3*e['rp']; parentmono=bool(np.all(np.diff(comp)<=1e-10*np.maximum(comp[:-1],1.0)))
         dmono=bool(np.all(np.diff(e['D'])>=-1e-10*np.maximum(np.abs(e['D'][:-1]),1.0)))
         daughter=bool(abs(float(e['D'][0]))<=1e-14 and e['D'][-1]>0)
-        q=float(np.trapezoid(e['integrand'],X)); cons=abs(q-e['D'][-1])/max(abs(e['D'][-1]),1e-300); conspass=cons<=1e-4
+        q=float(np.trapezoid(e['integrand'],X)); cons=float(abs(q-e['D'][-1])/max(abs(e['D'][-1]),1e-300)); conspass=bool(cons<=1e-4)
         geff=float(np.dot(e['w'],e['G'])); c=exact_solver(delta,y,geff,1)
         drm2=(e['rr']+c['rr'])>1e-12*max(float(np.max(e['rr'])),float(np.max(c['rr'])),1.0)
         comparator={'Gamma_eff_initial':geff,'H_p95_symmetric':p95sym(e['H'],c['H']),'parent_p95_symmetric':p95sym(e['rp'],c['rp']),'daughter_p95_symmetric':p95sym(e['rr'],c['rr'],drm2)}
-        gates={'n1_reference':refpass,'finite':finite,'positive':positive,'parent_comoving_nonincreasing':parentmono,'daughter_comoving_nondecreasing':dmono,'daughter_created':daughter,'source_integral_conservation':conspass}
+        gates={'n1_reference':bool(refpass),'finite':bool(finite),'positive':positive,'parent_comoving_nonincreasing':parentmono,'daughter_comoving_nondecreasing':dmono,'daughter_created':daughter,'source_integral_conservation':conspass}
         ok=all(gates.values())
-        r={'schema':'KMDSB.M27.DDMCosmologicalEnergyTransfer.v1','preregistration':PREREG,'delta':delta,'y':y,'gamma':-y,'Gamma0_over_Hstar':g0,'N':N,'reference_residuals':reference,'source_integral_relative_residual':cons,'final':{'t_Hstar':float(e['t'][-1]),'parent_density':float(e['rp'][-1]),'daughter_radiation_density':float(e['rr'][-1]),'H_over_Hstar':float(e['H'][-1])},'moment_matched_single_comparator':comparator,'gates':gates,'classification':'M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_SCOPE' if ok else 'M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED','K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
+        r={'schema':'KMDSB.M27.DDMCosmologicalEnergyTransfer.v1','preregistration':PREREG,'serialization_recovery_preregistration':RECOVERY,'parent_serialization_blocked_run_id':34555410796,'delta':float(delta),'y':float(y),'gamma':float(-y),'Gamma0_over_Hstar':float(g0),'N':N,'reference_residuals':reference,'source_integral_relative_residual':cons,'final':{'t_Hstar':float(e['t'][-1]),'parent_density':float(e['rp'][-1]),'daughter_radiation_density':float(e['rr'][-1]),'H_over_Hstar':float(e['H'][-1])},'moment_matched_single_comparator':comparator,'gates':gates,'classification':'M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_SCOPE' if ok else 'M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED','K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
     except Exception as exc:
-        r={'schema':'KMDSB.M27.DDMCosmologicalEnergyTransfer.v1','preregistration':PREREG,'delta':delta,'y':y,'Gamma0_over_Hstar':g0,'classification':'M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NUMERICAL_BLOCKED','error':repr(exc),'K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
-    out.write_text(json.dumps(r,indent=2,sort_keys=True)+'\n')
+        r={'schema':'KMDSB.M27.DDMCosmologicalEnergyTransfer.v1','preregistration':PREREG,'serialization_recovery_preregistration':RECOVERY,'parent_serialization_blocked_run_id':34555410796,'delta':float(delta),'y':float(y),'Gamma0_over_Hstar':float(g0),'classification':'M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NUMERICAL_BLOCKED','error':repr(exc),'K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
+    out.write_text(json.dumps(r,indent=2,sort_keys=True,default=json_native)+'\n')
 
 if __name__=='__main__':
     ap=argparse.ArgumentParser(); ap.add_argument('delta',type=float); ap.add_argument('y',type=float); ap.add_argument('g0',type=float); ap.add_argument('out',type=Path); a=ap.parse_args(); run(a.delta,a.y,a.g0,a.out)
