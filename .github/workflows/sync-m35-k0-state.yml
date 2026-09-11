@@ -61,8 +61,8 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git pull --rebase origin main
           git add matrices/mandatory_properties_matrix.csv matrices/model_family_census.csv
           if git diff --cached --quiet; then exit 0; fi
           git commit -m 'Sync M35 CLASS_LVDM K0 scoped state'
+          git pull --rebase origin main
           git push
