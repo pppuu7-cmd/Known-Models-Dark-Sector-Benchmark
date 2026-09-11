@@ -1,0 +1,31 @@
+{
+  "schema": "m35_k1_class_lvdm_decoupling_result_v0.1",
+  "model_id": "M35",
+  "family_id": "F35",
+  "classification": "M35_K1_PASS_WITH_SCOPE_DECOUPLING_LADDER",
+  "K0": "PASS_WITH_SCOPE",
+  "K1": "PASS_WITH_SCOPE",
+  "K2_K9": "OPEN",
+  "physical_falsification": false,
+  "provider": "Michalychforever/CLASS_LVDM",
+  "provider_commit": "d9a20bd0c7b7a6c8957410fd245ed06b30b915c1",
+  "canonical_run_id": 34655725404,
+  "canonical_job_id": 103447582442,
+  "artifact_id": 10286255150,
+  "artifact_digest": "sha256:4121748dbe3c570d08314c813b32740bab0cadd6a3ef8daf99369043e80916f3",
+  "D_finest_over_D_coarsest": 0.0011615241173279327,
+  "loglog_pearson": 0.9999768263737695,
+  "criteria": {
+    "finest_less_than_coarsest": true,
+    "adjacent_within_20pct_nonincrease": true,
+    "finest_to_coarsest_le_0p25": true,
+    "loglog_correlation_ge_0p90": true
+  },
+  "arms": [
+    {"scale": 1.0, "D": 0.3987044857396753, "TT_normalized_L2": 0.3987044857396753, "Pk_normalized_L2": 0.39837134217563563},
+    {"scale": 0.1, "D": 0.0436164878611354, "TT_normalized_L2": 0.0436164878611354, "Pk_normalized_L2": 0.04352225815275097},
+    {"scale": 0.01, "D": 0.004389698478139386, "TT_normalized_L2": 0.004389698478139386, "Pk_normalized_L2": 0.004344608667604057},
+    {"scale": 0.001, "D": 0.0004631048758734637, "TT_normalized_L2": 0.0004631048758734637, "Pk_normalized_L2": 0.000395254613340203}
+  ],
+  "scope": "Pinned CLASS_LVDM preferred-frame/Lorentz-violating gravity scalar-sector route only. Uniform scaling of the committed gravity parameters approaches the provider LCDM reference cleanly. This does not establish complete Einstein-Aether scalar/vector/tensor closure."
+}
