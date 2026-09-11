@@ -1,0 +1,55 @@
+name: Sync M28 background provider ledgers
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/sync-m28-background-provider-ledgers.yml']
+permissions:
+  contents: write
+jobs:
+  sync-ledgers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Synchronize M28 terminal scoped provider evidence
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          stamp='''\n### 2026-09-11 — M28 superfluid background-provider audit\nProspectively frozen audit `protocol/W04_M28_SUPERFLUID_BACKGROUND_PROVIDER_AUDIT_PREREGISTRATION_v0.1.md` pinned `azieg/Superfluid-Dark-Matter-Cosmo@860818c776bf8f000c08e4f02c1a23c5f48a8f52`. Actions run `34572388771` completed: source-audit job `103177121614`, provider-control `103177121964`, aggregate `103177269000`; artifacts `10188258584` (`sha256:5c1617743ad90a027d6aa021ece4bb6da153ded72dd859d9eda875b14eb692a0`) and `10188270990` (`sha256:3e0e786fec6ae99189ca112f534b46693d62f10fb7898cdb1d8a0f8a5645df38`). Canonical result commit `b40d50908e42c5989630371887af0722fa3192e7`: `M28_BACKGROUND_ONLY_PROVIDER_EXECUTABLE_K1_K3_K5_OPEN`. The committed notebook is a genuine superfluid-DM background candidate and executes with finite output, but has no explicit same-model CDM/decoupling coordinate and no perturbation/Boltzmann/Einstein closure. Therefore no K0/K1/K3/K5 promotion and no physical falsification. Continuation is an authoritative source-complete superfluid cosmology provider with explicit reference map; background execution alone cannot establish response-distinctness from CDM.\n'''
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+            p=Path(fn); txt=p.read_text()
+            if '34572388771' not in txt:
+              p.write_text(txt.rstrip()+'\n'+stamp+'\n')
+          p=Path('matrices/model_family_census.csv'); txt=p.read_text()
+          old='F28,superfluid / emergent collective dark matter,dark_matter,C,M28,QUEUED,W04/W09,phase-dependent collective/nonlinear response,linear-cosmology equivalence to CDM must be tested before top-level promotion'
+          new='F28,superfluid / emergent collective dark matter,dark_matter,C,M28,BACKGROUND_PROVIDER_EXECUTABLE_K1_K3_K5_OPEN,W04/W09,phase-dependent collective/nonlinear response,"Pinned azieg/Superfluid-Dark-Matter-Cosmo background notebook executes with finite output and explicitly implements a superfluid-DM background equation, but it exposes no same-model CDM/decoupling coordinate and no perturbation/Boltzmann/Einstein closure. Background-only provider evidence does not establish response-distinctness from CDM; seek an authoritative source-complete provider with explicit reference map. No physical falsification."'
+          if old in txt: txt=txt.replace(old,new)
+          p.write_text(txt)
+          p=Path('matrices/mandatory_properties_matrix.csv'); txt=p.read_text()
+          old='F28,M28,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,QUEUED,superfluid/emergent collective DM'
+          new='F28,M28,PARTIAL_BACKGROUND_PROVIDER_PROVENANCE_ONLY,NOT_ESTABLISHED,NOT_TESTED,NOT_ESTABLISHED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,BACKGROUND_PROVIDER_EXECUTABLE_K1_K3_K5_OPEN,"Pinned public provider executes a superfluid-DM background equation with finite output, but explicit same-model CDM/decoupling reference map is absent and perturbation/Boltzmann/Einstein closure is absent. Result M28_BACKGROUND_ONLY_PROVIDER_EXECUTABLE_K1_K3_K5_OPEN; no K promotion and no physical falsification."
+          if old in txt: txt=txt.replace(old,new)
+          p.write_text(txt)
+          PY
+      - name: Commit synchronized ledgers
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          python3 - <<'PY'
+          from pathlib import Path
+          stamp='''\n### 2026-09-11 — M28 superfluid background-provider audit\nProspectively frozen audit `protocol/W04_M28_SUPERFLUID_BACKGROUND_PROVIDER_AUDIT_PREREGISTRATION_v0.1.md` pinned `azieg/Superfluid-Dark-Matter-Cosmo@860818c776bf8f000c08e4f02c1a23c5f48a8f52`. Actions run `34572388771` completed: source-audit job `103177121614`, provider-control `103177121964`, aggregate `103177269000`; artifacts `10188258584` (`sha256:5c1617743ad90a027d6aa021ece4bb6da153ded72dd859d9eda875b14eb692a0`) and `10188270990` (`sha256:3e0e786fec6ae99189ca112f534b46693d62f10fb7898cdb1d8a0f8a5645df38`). Canonical result commit `b40d50908e42c5989630371887af0722fa3192e7`: `M28_BACKGROUND_ONLY_PROVIDER_EXECUTABLE_K1_K3_K5_OPEN`. The committed notebook is a genuine superfluid-DM background candidate and executes with finite output, but has no explicit same-model CDM/decoupling coordinate and no perturbation/Boltzmann/Einstein closure. Therefore no K0/K1/K3/K5 promotion and no physical falsification. Continuation is an authoritative source-complete superfluid cosmology provider with explicit reference map; background execution alone cannot establish response-distinctness from CDM.\n'''
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+            p=Path(fn); txt=p.read_text()
+            if '34572388771' not in txt: p.write_text(txt.rstrip()+'\n'+stamp+'\n')
+          p=Path('matrices/model_family_census.csv'); txt=p.read_text(); old='F28,superfluid / emergent collective dark matter,dark_matter,C,M28,QUEUED,W04/W09,phase-dependent collective/nonlinear response,linear-cosmology equivalence to CDM must be tested before top-level promotion'; new='F28,superfluid / emergent collective dark matter,dark_matter,C,M28,BACKGROUND_PROVIDER_EXECUTABLE_K1_K3_K5_OPEN,W04/W09,phase-dependent collective/nonlinear response,"Pinned azieg/Superfluid-Dark-Matter-Cosmo background notebook executes with finite output and explicitly implements a superfluid-DM background equation, but it exposes no same-model CDM/decoupling coordinate and no perturbation/Boltzmann/Einstein closure. Background-only provider evidence does not establish response-distinctness from CDM; seek an authoritative source-complete provider with explicit reference map. No physical falsification."'; p.write_text(txt.replace(old,new))
+          p=Path('matrices/mandatory_properties_matrix.csv'); txt=p.read_text(); old='F28,M28,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,QUEUED,superfluid/emergent collective DM'; new='F28,M28,PARTIAL_BACKGROUND_PROVIDER_PROVENANCE_ONLY,NOT_ESTABLISHED,NOT_TESTED,NOT_ESTABLISHED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,NOT_TESTED,BACKGROUND_PROVIDER_EXECUTABLE_K1_K3_K5_OPEN,"Pinned public provider executes a superfluid-DM background equation with finite output, but explicit same-model CDM/decoupling reference map is absent and perturbation/Boltzmann/Einstein closure is absent. Result M28_BACKGROUND_ONLY_PROVIDER_EXECUTABLE_K1_K3_K5_OPEN; no K promotion and no physical falsification."'; p.write_text(txt.replace(old,new))
+          PY
+          git add recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv
+          git diff --cached --quiet && exit 0
+          git commit -m 'Sync M28 background-provider result into ledgers'
+          git pull --rebase origin main
+          git push origin HEAD:main
