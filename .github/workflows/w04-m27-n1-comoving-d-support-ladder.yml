@@ -1,0 +1,60 @@
+name: W04 M27 N1 comoving-D support ladder
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m27-n1-comoving-d-support-ladder.yml']
+permissions:
+  contents: write
+jobs:
+  ladder:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        g0: [0.03, 0.3, 3.0]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3 scipy==1.16.2
+      - name: Measure comoving-D support ladder
+        run: |
+          python3 verification/m27/n1_comoving_d_support_ladder.py '${{ matrix.g0 }}' result.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m27-D-support-g${{ matrix.g0 }}
+          path: result.json
+          retention-days: 90
+  aggregate:
+    needs: ladder
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m27-D-support-g*
+          path: collected
+      - name: Persist D-support ladder summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rs=sorted([json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')],key=lambda r:r['Gamma0_over_Hstar'])
+          s={'schema':'KMDSB.M27.N1ComovingDSupportLadder.Summary.v1','preregistration':'protocol/W04_M27_N1_COMOVING_D_SUPPORT_LADDER_PREREGISTRATION_v0.1.md','children':{str(r['Gamma0_over_Hstar']):r['classification'] for r in rs},'slices':{str(r['Gamma0_over_Hstar']):r.get('slices') for r in rs},'D_amplitude_normalized_max_abs':{str(r['Gamma0_over_Hstar']):r.get('D_amplitude_normalized_max_abs') for r in rs},'classification':'M27_N1_COMOVING_D_SUPPORT_LADDER_COMPLETE' if len(rs)==3 else 'M27_N1_COMOVING_D_SUPPORT_LADDER_INCOMPLETE','K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n'); print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/dynamical_dark_matter
+          cp /tmp/summary.json waves/wave_04_dark_matter/M27_N1_COMOVING_D_SUPPORT_LADDER_SUMMARY.json
+          cp /tmp/summary.json models/dynamical_dark_matter/M27_N1_COMOVING_D_SUPPORT_LADDER_SUMMARY.json
+          git add waves/wave_04_dark_matter models/dynamical_dark_matter
+          git diff --cached --quiet || { git commit -m 'Record M27 comoving-D support ladder'; git pull --rebase origin main; git push origin HEAD:main; }
