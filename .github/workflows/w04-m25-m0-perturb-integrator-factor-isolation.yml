@@ -1,0 +1,125 @@
+name: W04 M25 m0 perturb-integrator factor isolation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m25-m0-perturb-integrator-factor-isolation.yml']
+permissions:
+  contents: write
+jobs:
+  factor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [E, T, S, ET, ES, TS]
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: w04-m25-k1-abundance-decoupling
+          path: original
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34548988620
+      - name: Build pinned CLASS and frozen profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -a original/m25_k1_cases m25_k1_cases
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class/include/common.h'); s=p.read_text()
+          assert s.count('#define _QUADRATURE_MAX_ 250')==1 and s.count('#define _QUADRATURE_MAX_BG_ 800')==1
+          p.write_text(s.replace('#define _QUADRATURE_MAX_ 250','#define _QUADRATURE_MAX_ 4000').replace('#define _QUADRATURE_MAX_BG_ 800','#define _QUADRATURE_MAX_BG_ 4000'))
+          PY
+          make -C class -j2 > build.log 2>&1
+          printf 'tol_ncdm_bg = 1e-6\ntol_ncdm = 1e-6\nncdm_fluid_approximation = 3\n' > factor.pre
+          p='${{ matrix.profile }}'
+          [[ "$p" == *E* ]] && printf 'evolver = 0\n' >> factor.pre || true
+          [[ "$p" == *T* ]] && printf 'tol_perturbations_integration = 1e-6\n' >> factor.pre || true
+          [[ "$p" == *S* ]] && printf 'perturbations_sampling_stepsize = 0.01\n' >> factor.pre || true
+          cat factor.pre
+      - name: Execute four m0 cases two-at-a-time
+        shell: bash
+        run: |
+          mkdir -p class/output logs parts
+          printf '%s\n' ref e2 e3 e4 | xargs -P 2 -I{} bash -c '
+            s="$1"; id="$s"; [ "$s" = ref ] || id="m0_${s}"
+            set +e
+            (cd class && ./class "../m25_k1_cases/${id}.ini" ../factor.pre > "../logs/${id}.log" 2>&1)
+            printf "%d\n" "$?" > "parts/${s}.status"
+          ' _ {}
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d={'build':0}; d.update({p.stem:int(p.read_text()) for p in Path('parts').glob('*.status')}); Path('status.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - name: Analyze factor profile
+        shell: bash
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: |
+          python3 verification/m25/m25_k1_precision_floor_diagnostic.py class m0 pk_ref status.json raw.json
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open('raw.json')); targets=['Pk','CMB_TT','CMB_EE','CMB_TE']; recovered=[k for k in targets if r.get('blocks',{}).get(k,{}).get('tail_scaling_recovered')]
+          if r.get('classification')=='M25_PRECISION_FLOOR_DIAGNOSTIC_PROVIDER_BLOCKED': cls='M25_M0_PERTURB_FACTOR_PROVIDER_BLOCKED'
+          elif len(recovered)==4 and r.get('blocks',{}).get('H',{}).get('tail_scaling_recovered'): cls='M25_M0_PERTURB_FACTOR_LOCALIZED'
+          elif recovered: cls='M25_M0_PERTURB_FACTOR_PARTIAL'
+          else: cls='M25_M0_PERTURB_FACTOR_INSENSITIVE'
+          r.update({'schema':'KMDSB.M25.M0PerturbIntegratorFactorIsolation.v1','preregistration':'protocol/W04_M25_M0_PERTURB_INTEGRATOR_FACTOR_ISOLATION_PREREGISTRATION_v0.1.md','factor_profile':os.environ['PROFILE'],'recovered_perturbation_blocks':recovered,'classification':cls,'eta_0p003_p95':{k:r['blocks'][k]['r95'][1] for k in ['CMB_TT','CMB_EE','CMB_TE']},'K1_promoted':False,'K4_promoted':False,'physical_falsification':False})
+          open('result.json','w').write(json.dumps(r,indent=2,sort_keys=True)+'\n')
+          PY
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m25-m0-factor-${{ matrix.profile }}
+          path: |
+            factor.pre
+            build.log
+            status.json
+            result.json
+            logs/
+            class/output/
+          retention-days: 90
+  aggregate:
+    needs: factor
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m25-m0-factor-*
+          path: collected
+      - name: Persist factorial summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rs=[json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')]
+          s={'schema':'KMDSB.M25.M0PerturbIntegratorFactorIsolation.Summary.v1','preregistration':'protocol/W04_M25_M0_PERTURB_INTEGRATOR_FACTOR_ISOLATION_PREREGISTRATION_v0.1.md','parent_full_ETS_run_id':34555169307,'children':{r['factor_profile']:r['classification'] for r in rs},'eta_0p003_p95':{r['factor_profile']:r.get('eta_0p003_p95') for r in rs},'localized_profiles':[r['factor_profile'] for r in rs if r['classification']=='M25_M0_PERTURB_FACTOR_LOCALIZED'],'K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n'); print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm
+          cp /tmp/summary.json waves/wave_04_dark_matter/M25_M0_PERTURB_INTEGRATOR_FACTOR_ISOLATION_SUMMARY.json
+          cp /tmp/summary.json models/resonant_sterile_neutrino_wdm/M25_M0_PERTURB_INTEGRATOR_FACTOR_ISOLATION_SUMMARY.json
+          git add waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm
+          git diff --cached --quiet || { git commit -m 'Record M25 m0 perturb-integrator factor isolation'; git pull --rebase origin main; git push origin HEAD:main; }
