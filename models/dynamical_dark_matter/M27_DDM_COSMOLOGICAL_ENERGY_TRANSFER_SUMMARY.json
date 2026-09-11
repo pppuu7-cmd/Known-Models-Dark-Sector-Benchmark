@@ -1,0 +1,13 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "children": {},
+  "classification": "M27_DDM_ENERGY_TRANSFER_NOT_ESTABLISHED",
+  "max_source_integral_relative_residual": null,
+  "n_pass": 0,
+  "n_results": 0,
+  "perturbation_gate": "OPEN",
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M27.DDMCosmologicalEnergyTransfer.Summary.v1"
+}
