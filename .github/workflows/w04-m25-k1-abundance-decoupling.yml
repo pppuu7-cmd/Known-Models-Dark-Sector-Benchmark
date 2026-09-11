@@ -1,0 +1,150 @@
+name: W04 M25 K1 abundance decoupling
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m25-k1-abundance-decoupling.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  k1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download immutable upstream M25 provider artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: w04-m25-resonant-sterile-dm-provider-control
+          path: m25_upstream
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34544624039
+
+      - name: Pin CLASS and apply frozen quadrature-capacity repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3 scipy cython setuptools wheel
+          git clone -q https://github.com/lesgourg/class_public.git class_provider
+          git -C class_provider checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class_provider rev-parse HEAD)" = "$CLASS_PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class_provider/include/common.h')
+          s=p.read_text()
+          old='#define _QUADRATURE_MAX_BG_ 800'
+          new='#define _QUADRATURE_MAX_BG_ 4000'
+          assert s.count(old)==1
+          p.write_text(s.replace(old,new))
+          PY
+          git -C class_provider diff -- include/common.h | tee m25_k1_class_patch.diff
+          test "$(grep -c '^[-+]#define _QUADRATURE_MAX_BG_' m25_k1_class_patch.diff)" -eq 2
+          make -C class_provider -j2 > m25_k1_class_build.log 2>&1
+          test -x class_provider/class
+
+      - name: Prepare prospectively frozen eta ladder
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m25/m25_k1_abundance_decoupling.py prepare m25_upstream m25_k1_cases
+          cat m25_k1_cases/manifest.json
+
+      - name: Execute reference and finite sterile-abundance cases
+        shell: bash
+        run: |
+          set -u
+          mkdir -p class_provider/output
+          python3 - <<'PY'
+          import json
+          json.dump({'build':0}, open('m25_k1_status.json','w'), indent=2, sort_keys=True)
+          PY
+          run_case () {
+            key="$1"
+            ini="$2"
+            set +e
+            (cd class_provider && ./class "../$ini") > "m25_k1_${key}.log" 2>&1
+            rc=$?
+            set -e
+            python3 - "$key" "$rc" <<'PY'
+          import json,sys
+          p='m25_k1_status.json'
+          d=json.load(open(p)); d[sys.argv[1]]=int(sys.argv[2])
+          json.dump(d,open(p,'w'),indent=2,sort_keys=True)
+          PY
+          }
+          set -e
+          run_case ref m25_k1_cases/ref.ini
+          for m in 0 1; do
+            for i in 0 1 2 3 4; do
+              run_case "m${m}_e${i}" "m25_k1_cases/m${m}_e${i}.ini"
+            done
+          done
+          cat m25_k1_status.json
+
+      - name: Analyze against frozen K1 gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m25/m25_k1_abundance_decoupling.py analyze class_provider/output m25_k1_status.json m25_k1_cases/manifest.json m25_k1_result.json
+          cat m25_k1_result.json
+
+      - name: Persist canonical M25 K1 result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m25_k1_result.json /tmp/m25_k1_result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/resonant_sterile_neutrino_wdm waves/wave_04_dark_matter
+          cp /tmp/m25_k1_result.json models/resonant_sterile_neutrino_wdm/M25_K1_ABUNDANCE_DECOUPLING_RESULT.json
+          cp /tmp/m25_k1_result.json waves/wave_04_dark_matter/M25_K1_ABUNDANCE_DECOUPLING_RESULT.json
+          git add models/resonant_sterile_neutrino_wdm/M25_K1_ABUNDANCE_DECOUPLING_RESULT.json waves/wave_04_dark_matter/M25_K1_ABUNDANCE_DECOUPLING_RESULT.json
+          git diff --cached --quiet || { git commit -m 'Record M25 abundance-decoupling K1 result'; git pull --rebase origin main; git push origin HEAD:main; }
+
+      - name: Enforce frozen classification semantics
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/m25_k1_result.json'))
+          allowed={
+            'M25_K1_ABUNDANCE_DECOUPLING_PROVIDER_BLOCKED',
+            'M25_K1_ABUNDANCE_DECOUPLING_PASS_WITH_SCOPE',
+            'M25_K1_ABUNDANCE_DECOUPLING_NOT_ESTABLISHED',
+          }
+          assert r['classification'] in allowed
+          assert r['physical_falsification'] is False
+          assert r['K4_promoted'] is False
+          if r['classification']=='M25_K1_ABUNDANCE_DECOUPLING_PASS_WITH_SCOPE':
+            assert r['K1_reference_limit']=='PASS_WITH_SCOPE_ABUNDANCE_TO_ZERO_MIXED_CDM_EMBEDDING'
+          else:
+            assert r['K1_reference_limit']=='NOT_PROMOTED'
+          PY
+
+      - name: Upload immutable M25 K1 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m25-k1-abundance-decoupling
+          path: |
+            m25_k1_class_patch.diff
+            m25_k1_class_build.log
+            m25_k1_cases/
+            m25_k1_status.json
+            m25_k1_*.log
+            m25_k1_result.json
+            class_provider/output/
+          retention-days: 90
