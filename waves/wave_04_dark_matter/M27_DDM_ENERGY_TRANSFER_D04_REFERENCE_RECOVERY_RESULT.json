@@ -1,0 +1,712 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "children": {
+    "d=0.5:y=1.0:g=0.03": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=0.5:y=1.0:g=0.3": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=0.5:y=1.0:g=3.0": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=0.5:y=2.0:g=0.03": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=0.5:y=2.0:g=0.3": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=0.5:y=2.0:g=3.0": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=0.5:y=3.0:g=0.03": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=0.5:y=3.0:g=0.3": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=0.5:y=3.0:g=3.0": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=1.0:y=1.0:g=0.03": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=1.0:y=1.0:g=0.3": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=1.0:y=1.0:g=3.0": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=1.0:y=2.0:g=0.03": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=1.0:y=2.0:g=0.3": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=1.0:y=2.0:g=3.0": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=1.0:y=3.0:g=0.03": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=1.0:y=3.0:g=0.3": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=1.0:y=3.0:g=3.0": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=2.0:y=1.0:g=0.03": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=2.0:y=1.0:g=0.3": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=2.0:y=1.0:g=3.0": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=2.0:y=2.0:g=0.03": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=2.0:y=2.0:g=0.3": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=2.0:y=2.0:g=3.0": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=2.0:y=3.0:g=0.03": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=2.0:y=3.0:g=0.3": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+    "d=2.0:y=3.0:g=3.0": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE"
+  },
+  "classification": "M27_DDM_27_BRANCH_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+  "max_source_integral_relative_residual": 1.7736192502568625e-06,
+  "n_pass": 27,
+  "n_results": 27,
+  "perturbation_gate": "OPEN",
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M27_DDM_ENERGY_TRANSFER_D04_REFERENCE_RECOVERY_PREREGISTRATION_v0.1.md",
+  "recovered_results": [
+    {
+      "Gamma0_over_Hstar": 0.03,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 0.5,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 4.89124322710591e-09,
+        "D_amp_norm_max_abs": 3.054577144651856e-11,
+        "H_p95": 3.032675649590664e-13,
+        "parent_p95": 2.360846243369141e-13
+      },
+      "source_integral_relative_residual": 1.7736192502568625e-06,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 1.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.3,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 0.5,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 5.600334837667e-09,
+        "D_amp_norm_max_abs": 8.273296367251038e-11,
+        "H_p95": 2.6811809314649507e-12,
+        "parent_p95": 3.6627776661663784e-12
+      },
+      "source_integral_relative_residual": 7.410249354043726e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 1.0
+    },
+    {
+      "Gamma0_over_Hstar": 3.0,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 0.5,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 9.237613394944913e-09,
+        "D_amp_norm_max_abs": 6.805203056826454e-10,
+        "H_p95": 1.56457122821874e-11,
+        "parent_p95": 5.962101618224584e-11
+      },
+      "source_integral_relative_residual": 1.466191715692168e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 1.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.03,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 0.5,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 4.89124322710591e-09,
+        "D_amp_norm_max_abs": 3.054577144651856e-11,
+        "H_p95": 3.032675649590664e-13,
+        "parent_p95": 2.360846243369141e-13
+      },
+      "source_integral_relative_residual": 1.59169366425853e-06,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 2.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.3,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 0.5,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 5.600334837667e-09,
+        "D_amp_norm_max_abs": 8.273296367251038e-11,
+        "H_p95": 2.6811809314649507e-12,
+        "parent_p95": 3.6627776661663784e-12
+      },
+      "source_integral_relative_residual": 4.1757832569270636e-08,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 2.0
+    },
+    {
+      "Gamma0_over_Hstar": 3.0,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 0.5,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 9.237613394944913e-09,
+        "D_amp_norm_max_abs": 6.805203056826454e-10,
+        "H_p95": 1.56457122821874e-11,
+        "parent_p95": 5.962101618224584e-11
+      },
+      "source_integral_relative_residual": 9.531834286078644e-08,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 2.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.03,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 0.5,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 4.89124322710591e-09,
+        "D_amp_norm_max_abs": 3.054577144651856e-11,
+        "H_p95": 3.032675649590664e-13,
+        "parent_p95": 2.360846243369141e-13
+      },
+      "source_integral_relative_residual": 1.21647348828139e-06,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 3.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.3,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 0.5,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 5.600334837667e-09,
+        "D_amp_norm_max_abs": 8.273296367251038e-11,
+        "H_p95": 2.6811809314649507e-12,
+        "parent_p95": 3.6627776661663784e-12
+      },
+      "source_integral_relative_residual": 5.8796442167848156e-08,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 3.0
+    },
+    {
+      "Gamma0_over_Hstar": 3.0,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 0.5,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 9.237613394944913e-09,
+        "D_amp_norm_max_abs": 6.805203056826454e-10,
+        "H_p95": 1.56457122821874e-11,
+        "parent_p95": 5.962101618224584e-11
+      },
+      "source_integral_relative_residual": 1.379037275693973e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 3.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.03,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 1.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 4.89124322710591e-09,
+        "D_amp_norm_max_abs": 3.054577144651856e-11,
+        "H_p95": 3.032675649590664e-13,
+        "parent_p95": 2.360846243369141e-13
+      },
+      "source_integral_relative_residual": 1.4391035034799308e-06,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 1.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.3,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 1.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 5.600334837667e-09,
+        "D_amp_norm_max_abs": 8.273296367251038e-11,
+        "H_p95": 2.6811809314649507e-12,
+        "parent_p95": 3.6627776661663784e-12
+      },
+      "source_integral_relative_residual": 7.355339196516347e-08,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 1.0
+    },
+    {
+      "Gamma0_over_Hstar": 3.0,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 1.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 9.237613394944913e-09,
+        "D_amp_norm_max_abs": 6.805203056826454e-10,
+        "H_p95": 1.56457122821874e-11,
+        "parent_p95": 5.962101618224584e-11
+      },
+      "source_integral_relative_residual": 1.5811673285163585e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 1.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.03,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 1.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 4.89124322710591e-09,
+        "D_amp_norm_max_abs": 3.054577144651856e-11,
+        "H_p95": 3.032675649590664e-13,
+        "parent_p95": 2.360846243369141e-13
+      },
+      "source_integral_relative_residual": 7.506753550292936e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 2.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.3,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 1.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 5.600334837667e-09,
+        "D_amp_norm_max_abs": 8.273296367251038e-11,
+        "H_p95": 2.6811809314649507e-12,
+        "parent_p95": 3.6627776661663784e-12
+      },
+      "source_integral_relative_residual": 2.9079691251674945e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 2.0
+    },
+    {
+      "Gamma0_over_Hstar": 3.0,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 1.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 9.237613394944913e-09,
+        "D_amp_norm_max_abs": 6.805203056826454e-10,
+        "H_p95": 1.56457122821874e-11,
+        "parent_p95": 5.962101618224584e-11
+      },
+      "source_integral_relative_residual": 2.441088581214677e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 2.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.03,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 1.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 4.89124322710591e-09,
+        "D_amp_norm_max_abs": 3.054577144651856e-11,
+        "H_p95": 3.032675649590664e-13,
+        "parent_p95": 2.360846243369141e-13
+      },
+      "source_integral_relative_residual": 9.26382458126546e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 3.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.3,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 1.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 5.600334837667e-09,
+        "D_amp_norm_max_abs": 8.273296367251038e-11,
+        "H_p95": 2.6811809314649507e-12,
+        "parent_p95": 3.6627776661663784e-12
+      },
+      "source_integral_relative_residual": 4.3893257639352404e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 3.0
+    },
+    {
+      "Gamma0_over_Hstar": 3.0,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 1.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 9.237613394944913e-09,
+        "D_amp_norm_max_abs": 6.805203056826454e-10,
+        "H_p95": 1.56457122821874e-11,
+        "parent_p95": 5.962101618224584e-11
+      },
+      "source_integral_relative_residual": 3.1433916355847776e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 3.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.03,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 2.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 4.89124322710591e-09,
+        "D_amp_norm_max_abs": 3.054577144651856e-11,
+        "H_p95": 3.032675649590664e-13,
+        "parent_p95": 2.360846243369141e-13
+      },
+      "source_integral_relative_residual": 8.57763475600489e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 1.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.3,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 2.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 5.600334837667e-09,
+        "D_amp_norm_max_abs": 8.273296367251038e-11,
+        "H_p95": 2.6811809314649507e-12,
+        "parent_p95": 3.6627776661663784e-12
+      },
+      "source_integral_relative_residual": 5.299456323955646e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 1.0
+    },
+    {
+      "Gamma0_over_Hstar": 3.0,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 2.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 9.237613394944913e-09,
+        "D_amp_norm_max_abs": 6.805203056826454e-10,
+        "H_p95": 1.56457122821874e-11,
+        "parent_p95": 5.962101618224584e-11
+      },
+      "source_integral_relative_residual": 3.3447430705711645e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 1.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.03,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 2.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 4.89124322710591e-09,
+        "D_amp_norm_max_abs": 3.054577144651856e-11,
+        "H_p95": 3.032675649590664e-13,
+        "parent_p95": 2.360846243369141e-13
+      },
+      "source_integral_relative_residual": 1.2574990452622129e-06,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 2.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.3,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 2.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 5.600334837667e-09,
+        "D_amp_norm_max_abs": 8.273296367251038e-11,
+        "H_p95": 2.6811809314649507e-12,
+        "parent_p95": 3.6627776661663784e-12
+      },
+      "source_integral_relative_residual": 7.766678712139732e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 2.0
+    },
+    {
+      "Gamma0_over_Hstar": 3.0,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 2.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 9.237613394944913e-09,
+        "D_amp_norm_max_abs": 6.805203056826454e-10,
+        "H_p95": 1.56457122821874e-11,
+        "parent_p95": 5.962101618224584e-11
+      },
+      "source_integral_relative_residual": 3.9984336582099694e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 2.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.03,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 2.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 4.89124322710591e-09,
+        "D_amp_norm_max_abs": 3.054577144651856e-11,
+        "H_p95": 3.032675649590664e-13,
+        "parent_p95": 2.360846243369141e-13
+      },
+      "source_integral_relative_residual": 1.3871369927451272e-06,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 3.0
+    },
+    {
+      "Gamma0_over_Hstar": 0.3,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 2.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 5.600334837667e-09,
+        "D_amp_norm_max_abs": 8.273296367251038e-11,
+        "H_p95": 2.6811809314649507e-12,
+        "parent_p95": 3.6627776661663784e-12
+      },
+      "source_integral_relative_residual": 8.54601773511572e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 3.0
+    },
+    {
+      "Gamma0_over_Hstar": 3.0,
+      "classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_D04_REFERENCE_SCOPE",
+      "delta": 2.0,
+      "original_classification": "M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_NOT_ESTABLISHED",
+      "original_n1_reference": false,
+      "recovered_n1_D04_reference": true,
+      "reference_metrics": {
+        "D04_p95": 9.237613394944913e-09,
+        "D_amp_norm_max_abs": 6.805203056826454e-10,
+        "H_p95": 1.56457122821874e-11,
+        "parent_p95": 5.962101618224584e-11
+      },
+      "source_integral_relative_residual": 4.1144632504425636e-07,
+      "unchanged_ensemble_gates": {
+        "daughter_comoving_nondecreasing": true,
+        "daughter_created": true,
+        "finite": true,
+        "parent_comoving_nonincreasing": true,
+        "positive": true,
+        "source_integral_conservation": true
+      },
+      "y": 3.0
+    }
+  ],
+  "reference_by_Gamma0_over_Hstar": {
+    "0.03": {
+      "D04_p95": 4.89124322710591e-09,
+      "D_amp_norm_max_abs": 3.054577144651856e-11,
+      "H_p95": 3.032675649590664e-13,
+      "parent_p95": 2.360846243369141e-13
+    },
+    "0.3": {
+      "D04_p95": 5.600334837667e-09,
+      "D_amp_norm_max_abs": 8.273296367251038e-11,
+      "H_p95": 2.6811809314649507e-12,
+      "parent_p95": 3.6627776661663784e-12
+    },
+    "3.0": {
+      "D04_p95": 9.237613394944913e-09,
+      "D_amp_norm_max_abs": 6.805203056826454e-10,
+      "H_p95": 1.56457122821874e-11,
+      "parent_p95": 5.962101618224584e-11
+    }
+  },
+  "schema": "KMDSB.M27.DDMEnergyTransferD04ReferenceRecovery.v1",
+  "source_solver_run_id": 34555747835
+}
