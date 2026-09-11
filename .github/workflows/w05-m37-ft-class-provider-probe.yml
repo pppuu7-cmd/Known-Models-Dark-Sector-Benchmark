@@ -67,17 +67,16 @@ jobs:
           (cd provider && ./class reference.ini > ../reference_stdout.txt 2> ../reference_stderr.txt); echo $? > reference_exit.txt
           (cd provider && ./class active.ini > ../active_stdout.txt 2> ../active_stderr.txt); echo $? > active_exit.txt
           set -e
-          touch provider/output/reference_cl.dat provider/output/reference_pk.dat provider/output/active_cl.dat provider/output/active_pk.dat
           ls -lh provider/output | tee output_listing.txt
-      - name: Apply frozen K0 probe gate
+      - name: Apply frozen K0 probe gate to actual provider outputs
         shell: bash
         run: |
           python3 verification/m37/k0_ft_provider_probe.py \
             --provider-dir provider \
-            --reference-cl provider/output/reference_cl.dat \
-            --active-cl provider/output/active_cl.dat \
-            --reference-pk provider/output/reference_pk.dat \
-            --active-pk provider/output/active_pk.dat \
+            --reference-cl provider/output/reference__cl.dat \
+            --active-cl provider/output/active__cl.dat \
+            --reference-pk provider/output/reference__pk.dat \
+            --active-pk provider/output/active__pk.dat \
             --provider-commit "$(cat provider_commit.txt)" \
             --expected-commit 74e6a8679cdc233fb339c67127ed0921ba547894 \
             --reference-exit "$(cat reference_exit.txt)" \
@@ -86,7 +85,7 @@ jobs:
       - name: Upload audit artifact
         uses: actions/upload-artifact@v4
         with:
-          name: m37-ft-class-provider-probe
+          name: m37-ft-class-provider-probe-recovery
           path: |
             m37_k0_ft_provider_result.json
             provider_commit.txt
@@ -103,7 +102,7 @@ jobs:
             source_background_markers.txt
             source_perturbation_markers.txt
             output_listing.txt
-            provider/output/reference_cl.dat
-            provider/output/reference_pk.dat
-            provider/output/active_cl.dat
-            provider/output/active_pk.dat
+            provider/output/reference__cl.dat
+            provider/output/reference__pk.dat
+            provider/output/active__cl.dat
+            provider/output/active__pk.dat
