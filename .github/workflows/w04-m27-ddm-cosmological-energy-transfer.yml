@@ -1,0 +1,64 @@
+name: W04 M27 DDM cosmological energy transfer
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m27-ddm-cosmological-energy-transfer.yml']
+permissions:
+  contents: write
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        delta: [0.5, 1.0, 2.0]
+        y: [1.0, 2.0, 3.0]
+        g0: [0.03, 0.3, 3.0]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3 scipy==1.16.2
+      - name: Solve frozen cosmological transfer system
+        run: |
+          python3 verification/m27/ddm_cosmological_energy_transfer.py '${{ matrix.delta }}' '${{ matrix.y }}' '${{ matrix.g0 }}' result.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m27-transfer-d${{ matrix.delta }}-y${{ matrix.y }}-g${{ matrix.g0 }}
+          path: result.json
+          retention-days: 90
+  aggregate:
+    needs: transfer
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m27-transfer-d*-y*-g*
+          path: collected
+      - name: Persist 27-branch summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rs=[json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')]
+          rs=sorted(rs,key=lambda r:(r['delta'],r['y'],r['Gamma0_over_Hstar']))
+          good=(len(rs)==27 and all(r['classification']=='M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_SCOPE' for r in rs))
+          s={'schema':'KMDSB.M27.DDMCosmologicalEnergyTransfer.Summary.v1','preregistration':'protocol/W04_M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PREREGISTRATION_v0.1.md','n_results':len(rs),'n_pass':sum(r['classification']=='M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_SCOPE' for r in rs),'children':{f"d={r['delta']}:y={r['y']}:g={r['Gamma0_over_Hstar']}":r['classification'] for r in rs},'max_source_integral_relative_residual':max([r.get('source_integral_relative_residual',float('inf')) for r in rs],default=None),'classification':'M27_DDM_27_BRANCH_ENERGY_TRANSFER_PASS_WITH_SCOPE' if good else 'M27_DDM_ENERGY_TRANSFER_NOT_ESTABLISHED','K1_promoted':False,'K4_promoted':False,'physical_falsification':False,'perturbation_gate':'OPEN'}
+          Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n'); print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/dynamical_dark_matter
+          cp /tmp/summary.json waves/wave_04_dark_matter/M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_SUMMARY.json
+          cp /tmp/summary.json models/dynamical_dark_matter/M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_SUMMARY.json
+          git add waves/wave_04_dark_matter models/dynamical_dark_matter
+          git diff --cached --quiet || { git commit -m 'Record M27 DDM cosmological energy transfer'; git pull --rebase origin main; git push origin HEAD:main; }
