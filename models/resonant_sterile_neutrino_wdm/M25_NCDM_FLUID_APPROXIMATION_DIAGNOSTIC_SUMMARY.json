@@ -1,0 +1,15 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "children": {
+    "m0": "M25_NCDM_FLUID_APPROXIMATION_INSENSITIVE",
+    "m1": "M25_NCDM_FLUID_APPROXIMATION_INSENSITIVE"
+  },
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M25_NCDM_FLUID_APPROXIMATION_DIAGNOSTIC_PREREGISTRATION_v0.1.md",
+  "recovered_blocks": {
+    "m0": [],
+    "m1": []
+  },
+  "schema": "KMDSB.M25.NCDMFluidApproximationDiagnostic.Summary.v1"
+}
