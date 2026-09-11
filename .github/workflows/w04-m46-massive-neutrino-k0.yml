@@ -1,0 +1,105 @@
+name: W04 M46 massive-neutrino comparator K0
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w04-m46-massive-neutrino-k0.yml'
+
+jobs:
+  compute:
+    strategy:
+      fail-fast: false
+      matrix:
+        arm: [massless_control, massive_nu_006]
+    runs-on: ubuntu-latest
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pinned CLASS and execute comparator arm
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARM='${{ matrix.arm }}'
+          BASE="$GITHUB_WORKSPACE/m46k0/$ARM"
+          mkdir -p "$BASE/output"
+          git clone -q https://github.com/lesgourg/class_public.git class_public
+          cd class_public
+          git checkout -q --detach "$CLASS_PIN"
+          ACTUAL=$(git rev-parse HEAD)
+          echo "$ACTUAL" > "$BASE/actual_commit.txt"
+          test "$ACTUAL" = "$CLASS_PIN"
+          make -j2 >/dev/null
+          CFG="$BASE/run.ini"
+          cat > "$CFG" <<EOF
+          h = 0.675
+          omega_b = 0.0222
+          omega_cdm = 0.1197
+          A_s = 2.196e-9
+          n_s = 0.9655
+          tau_reio = 0.06
+          output = tCl,pCl,mPk
+          lensing = no
+          non linear = none
+          P_k_max_h/Mpc = 10
+          z_pk = 0
+          l_max_scalars = 2500
+          gauge = synchronous
+          overwrite_root = yes
+          root = $BASE/output/nu_
+          EOF
+          if [ "$ARM" = massless_control ]; then
+            cat >> "$CFG" <<'EOF'
+          N_ncdm = 0
+          N_ur = 3.044
+          EOF
+          else
+            cat >> "$CFG" <<'EOF'
+          N_ncdm = 1
+          m_ncdm = 0.06
+          N_ur = 2.0308
+          EOF
+          fi
+          set +e
+          ./class "$CFG" > "$BASE/stdout.log" 2> "$BASE/stderr.log"
+          RC=$?
+          set -e
+          echo "$RC" > "$BASE/exit_code.txt"
+          find "$BASE" -maxdepth 2 -type f -printf '%P %s bytes\n' | sort > "$BASE/file_manifest.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m46-k0-${{ matrix.arm }}
+          path: m46k0/${{ matrix.arm }}
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: compute
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: 'm46-k0-*'
+          path: downloaded
+      - name: Reassemble artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p m46k0
+          for arm in massless_control massive_nu_006; do
+            mkdir -p "m46k0/$arm"
+            cp -a "downloaded/m46-k0-$arm"/. "m46k0/$arm/"
+          done
+      - name: Classify frozen M46 K0
+        run: python3 verification/m46/k0_massive_neutrino_comparator.py | tee m46_k0_stdout.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m46-k0-aggregate
+          path: |
+            waves/wave_04_dark_matter/M46_K0_MASSIVE_NEUTRINO_COMPARATOR_RESULT.json
+            m46_k0_stdout.json
+          retention-days: 30
