@@ -1,0 +1,113 @@
+{
+  "K0_assumed_prerequisite": true,
+  "K1_promoted": true,
+  "all_pass": true,
+  "checks": {
+    "all_exit_zero": true,
+    "branch_active_at_1e2": true,
+    "final_1e5_not_above_1e4_by_gt20pct": {
+      "background": true,
+      "pk": true,
+      "tt": true
+    },
+    "final_thresholds": {
+      "background": true,
+      "pk": true,
+      "tt": true
+    },
+    "finite_common_support": true,
+    "strict_contraction_1e2_to_1e4": {
+      "background": true,
+      "pk": true,
+      "tt": true
+    }
+  },
+  "classification": "M29_K1_PASS_WITH_SCOPE_BRANS_DICKE_GR_LIMIT",
+  "exit_codes": {
+    "bd_1e2": 0,
+    "bd_1e3": 0,
+    "bd_1e4": 0,
+    "bd_1e5": 0,
+    "lcdm": 0
+  },
+  "metrics": {
+    "1e2": {
+      "background": {
+        "max": 0.039788620345022854,
+        "n": 3000,
+        "rms": 0.033951240283846294
+      },
+      "pk": {
+        "max": 0.11017636802433428,
+        "n": 521,
+        "rms": 0.05668407139238073
+      },
+      "tt": {
+        "max": 0.2700315106631203,
+        "n": 2499,
+        "rms": 0.10835737570252053
+      }
+    },
+    "1e3": {
+      "background": {
+        "max": 0.004014370848339986,
+        "n": 3000,
+        "rms": 0.0034247476616529257
+      },
+      "pk": {
+        "max": 0.016583423605016166,
+        "n": 525,
+        "rms": 0.0057085106587877995
+      },
+      "tt": {
+        "max": 0.028435326106024922,
+        "n": 2499,
+        "rms": 0.01149966524729065
+      }
+    },
+    "1e4": {
+      "background": {
+        "max": 0.00040179012925250417,
+        "n": 3000,
+        "rms": 0.0003426910381710654
+      },
+      "pk": {
+        "max": 0.0011482578947558907,
+        "n": 525,
+        "rms": 0.0005849944515208351
+      },
+      "tt": {
+        "max": 0.0029346766905353127,
+        "n": 2499,
+        "rms": 0.0011570909953918043
+      }
+    },
+    "1e5": {
+      "background": {
+        "max": 4.018199142980251e-05,
+        "n": 3000,
+        "rms": 3.419219115692714e-05
+      },
+      "pk": {
+        "max": 0.00017038585645905502,
+        "n": 525,
+        "rms": 7.893549133217464e-05
+      },
+      "tt": {
+        "max": 0.0007545217653660786,
+        "n": 2499,
+        "rms": 0.00021766480849554334
+      }
+    }
+  },
+  "omega_ladder": [
+    100.0,
+    1000.0,
+    10000.0,
+    100000.0
+  ],
+  "physical_falsification": false,
+  "provider_commit": "0009f51d89e6465c79e570b496c66fc90058fa77",
+  "schema": "m29_k1_brans_dicke_gr_limit_v0.1",
+  "scope": "same-provider GR/reference limit only; no K2-K9 or observational conclusion"
+}
