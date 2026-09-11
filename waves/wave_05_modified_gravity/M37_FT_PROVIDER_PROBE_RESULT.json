@@ -1,0 +1,28 @@
+{
+  "model_id": "M37",
+  "family_id": "F37",
+  "model_family": "f(T) teleparallel gravity",
+  "classification": "M37_K0_PARTIAL_EXECUTABLE_FT_PROVIDER_PROVENANCE_OPEN",
+  "K0": "PARTIAL",
+  "K0_promoted": false,
+  "K1_K9": "OPEN",
+  "physical_falsification": false,
+  "provider": "Speeddemon5050/Modified-CLASS-fT-Exact-",
+  "provider_commit": "74e6a8679cdc233fb339c67127ed0921ba547894",
+  "recovery_preregistration_commit": "77ab1dc653de2f749a0ff60088b8d67c80391b78",
+  "recovery_launch_commit": "0e38bab4d04a0080239101c7a12715ef4441ee6f",
+  "canonical_run_id": 34652066337,
+  "canonical_job_id": 103436265579,
+  "artifact_id": 10284291219,
+  "artifact_digest": "sha256:e885cda93e26c13268f86e58e667aa8596d0cbeff4e26ff8f80a4edece32f4b5",
+  "reference": {"n_fT": 0.0, "exit": 0},
+  "active": {"n_fT": 0.10, "exit": 0},
+  "finite_outputs": {"reference_TT": true, "reference_Pk": true, "active_TT": true, "active_Pk": true},
+  "response_activity": {
+    "threshold": 1e-6,
+    "TT_normalized_L2": 0.011484175401063655,
+    "Pk_normalized_L2": 0.015756960779908492
+  },
+  "source_scope": "Exact-pin source audit finds n_fT-related input/background/perturbation markers and executable finite response. Publication/author provenance for the f(T) modification is not established by the repository README, so K0 cannot be promoted to PASS_WITH_SCOPE.",
+  "harness_history": "Parent run 34650851131 built and executed both arms but analyzed zero-byte single-underscore placeholders. Recovery changed only output-path plumbing to consume provider-emitted double-underscore CLASS outputs; scientific configuration and threshold were frozen unchanged."
+}
