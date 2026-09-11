@@ -26,6 +26,7 @@ jobs:
           python3 verification/m27/ddm_cosmological_energy_transfer.py '${{ matrix.delta }}' '${{ matrix.y }}' '${{ matrix.g0 }}' result.json
           cat result.json
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: m27-transfer-d${{ matrix.delta }}-y${{ matrix.y }}-g${{ matrix.g0 }}
           path: result.json
@@ -51,7 +52,8 @@ jobs:
           rs=[json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')]
           rs=sorted(rs,key=lambda r:(r['delta'],r['y'],r['Gamma0_over_Hstar']))
           good=(len(rs)==27 and all(r['classification']=='M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_SCOPE' for r in rs))
-          s={'schema':'KMDSB.M27.DDMCosmologicalEnergyTransfer.Summary.v1','preregistration':'protocol/W04_M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PREREGISTRATION_v0.1.md','n_results':len(rs),'n_pass':sum(r['classification']=='M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_SCOPE' for r in rs),'children':{f"d={r['delta']}:y={r['y']}:g={r['Gamma0_over_Hstar']}":r['classification'] for r in rs},'max_source_integral_relative_residual':max([r.get('source_integral_relative_residual',float('inf')) for r in rs],default=None),'classification':'M27_DDM_27_BRANCH_ENERGY_TRANSFER_PASS_WITH_SCOPE' if good else 'M27_DDM_ENERGY_TRANSFER_NOT_ESTABLISHED','K1_promoted':False,'K4_promoted':False,'physical_falsification':False,'perturbation_gate':'OPEN'}
+          finite_cons=[r['source_integral_relative_residual'] for r in rs if 'source_integral_relative_residual' in r]
+          s={'schema':'KMDSB.M27.DDMCosmologicalEnergyTransfer.Summary.v1','preregistration':'protocol/W04_M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PREREGISTRATION_v0.1.md','serialization_recovery_preregistration':'protocol/W04_M27_DDM_ENERGY_TRANSFER_JSON_SERIALIZATION_RECOVERY_PREREGISTRATION_v0.1.md','parent_serialization_blocked_run_id':34555410796,'n_results':len(rs),'n_pass':sum(r['classification']=='M27_DDM_COSMOLOGICAL_ENERGY_TRANSFER_PASS_WITH_SCOPE' for r in rs),'children':{f"d={r['delta']}:y={r['y']}:g={r['Gamma0_over_Hstar']}":r['classification'] for r in rs},'max_source_integral_relative_residual':max(finite_cons) if finite_cons else None,'classification':'M27_DDM_27_BRANCH_ENERGY_TRANSFER_PASS_WITH_SCOPE' if good else 'M27_DDM_ENERGY_TRANSFER_NOT_ESTABLISHED','K1_promoted':False,'K4_promoted':False,'physical_falsification':False,'perturbation_gate':'OPEN'}
           Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n'); print(Path('summary.json').read_text())
           PY
           cp summary.json /tmp/summary.json
