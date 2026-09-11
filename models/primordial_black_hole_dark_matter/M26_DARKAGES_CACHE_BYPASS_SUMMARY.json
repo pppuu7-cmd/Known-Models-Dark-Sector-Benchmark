@@ -1,0 +1,16 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "baseline_null_source_run_id": 34550083757,
+  "cache_bypass_preregistration": "protocol/W04_M26_DARKAGES_TRANSFER_CACHE_BYPASS_PREREGISTRATION_v0.1.md",
+  "children": {
+    "disk": "M26_DISK_PROVIDER_EXECUTION_BLOCKED",
+    "evaporation": "M26_EVAPORATION_PROVIDER_EXECUTION_BLOCKED",
+    "spherical": "M26_SPHERICAL_PROVIDER_EXECUTION_BLOCKED"
+  },
+  "n_results": 3,
+  "n_scoped_provider_passes": 0,
+  "physical_falsification": false,
+  "poisson_structure_channel": "NOT_TESTED",
+  "schema": "KMDSB.M26.PBHEnergyInjectionProviderControls.CacheBypassRecoverySummary.v1"
+}
