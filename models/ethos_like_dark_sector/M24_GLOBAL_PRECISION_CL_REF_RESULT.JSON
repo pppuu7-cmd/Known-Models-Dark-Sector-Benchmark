@@ -1,0 +1,22 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "classification": "M24_GLOBAL_PRECISION_PROVIDER_BLOCKED",
+  "physical_falsification": false,
+  "precision_profile": "cl_ref",
+  "preregistration": "protocol/W04_M24_GLOBAL_NUMERICAL_PRECISION_DIAGNOSTIC_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M24.GlobalNumericalPrecisionDiagnostic.v1",
+  "status": {
+    "default_a18k": 0,
+    "default_a1p8k": 0,
+    "default_a6k": 0,
+    "default_ref": 0,
+    "default_zero": 0,
+    "profile_a18k": 1,
+    "profile_a1p8k": 1,
+    "profile_a6k": 1,
+    "profile_ref": 1,
+    "profile_zero": 1
+  }
+}

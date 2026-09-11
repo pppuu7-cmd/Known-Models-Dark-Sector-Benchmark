@@ -1,0 +1,14 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "both_provider_precision_profiles_insensitive": false,
+  "children": {
+    "cl_permille": "M24_GLOBAL_PRECISION_EXCURSION_INSENSITIVE",
+    "cl_ref": "M24_GLOBAL_PRECISION_PROVIDER_BLOCKED"
+  },
+  "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "n_results": 2,
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M24_GLOBAL_NUMERICAL_PRECISION_DIAGNOSTIC_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M24.GlobalNumericalPrecisionDiagnostic.Summary.v1"
+}
