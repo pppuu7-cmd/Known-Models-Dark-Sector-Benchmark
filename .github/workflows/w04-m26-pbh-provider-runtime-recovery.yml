@@ -1,0 +1,207 @@
+name: W04 M26 PBH provider runtime recovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m26-pbh-provider-runtime-recovery.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  provider-control:
+    name: runtime-${{ matrix.child }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        child: [evaporation, spherical, disk]
+    env:
+      EXOCLASS_PIN: 7c4b26e50d240f1f45f120b623aab2dba13094fd
+      OMP_NUM_THREADS: '1'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pin provider and build executable-only target
+        shell: bash
+        run: |
+          set +e
+          python3 -m pip install --disable-pip-version-check --no-input numpy scipy PyYAML dill future
+          pip_rc=$?
+          git clone -q https://github.com/GFAbellan/ExoCLASS.git exoclass
+          clone_rc=$?
+          checkout_rc=999
+          build_rc=999
+          if [ "$clone_rc" -eq 0 ]; then
+            git -C exoclass checkout -q --detach "$EXOCLASS_PIN"
+            checkout_rc=$?
+          fi
+          if [ "$checkout_rc" -eq 0 ]; then
+            make -C exoclass -j2 class > "m26_${{ matrix.child }}_runtime_build.log" 2>&1
+            build_rc=$?
+          fi
+          python3 - <<PY
+          import json
+          d={'pip':$pip_rc,'clone':$clone_rc,'checkout':$checkout_rc,'build':$build_rc,'build_target':'class'}
+          open('m26_status.json','w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          exit 0
+
+      - name: Prepare unchanged cases and provider-valid full null
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m26/m26_energy_injection_provider_control.py prepare '${{ matrix.child }}' m26_cases
+          python3 - <<'PY'
+          from pathlib import Path
+          child='${{ matrix.child }}'
+          p=Path('m26_cases/zero.ini')
+          lines=p.read_text().splitlines()
+          out=[]
+          for line in lines:
+              if child=='evaporation' and line.startswith('PBH_evaporating_mass'):
+                  out.append('PBH_evaporating_mass = 0')
+              elif child!='evaporation' and line.startswith('PBH_accreting_mass'):
+                  out.append('PBH_accreting_mass = 0')
+              elif child!='evaporation' and line.startswith('PBH_accretion_recipe'):
+                  continue
+              else:
+                  out.append(line)
+          p.write_text('\n'.join(out)+'\n')
+          PY
+          cat m26_cases/zero.ini
+
+      - name: Execute cases serially with fresh DarkAges cache
+        shell: bash
+        env:
+          PYTHONPATH: ${{ github.workspace }}/exoclass/DarkAgesModule
+        run: |
+          set +e
+          mkdir -p exoclass/output m26_logs
+          build=$(python3 -c "import json;print(json.load(open('m26_status.json'))['build'])")
+          if [ "$build" -eq 0 ]; then
+            for case_id in baseline zero finite; do
+              rm -f exoclass/DarkAgesModule/transfer_functions/transfer_Ch*.obj exoclass/DarkAgesModule/transfer_functions/transfer_Corr.obj
+              (cd exoclass && ./class "../m26_cases/${case_id}.ini" > "../m26_logs/${case_id}.log" 2>&1)
+              rc=$?
+              python3 - <<PY
+          import json
+          p='m26_status.json'
+          d=json.load(open(p)); d['${case_id}']=$rc
+          open(p,'w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+            done
+          else
+            python3 - <<'PY'
+          import json
+          p='m26_status.json'; d=json.load(open(p))
+          d.update({'baseline':999,'zero':999,'finite':999})
+          open(p,'w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          fi
+          cat m26_status.json
+          exit 0
+
+      - name: Analyze frozen provider gate
+        shell: bash
+        run: |
+          set +e
+          result='m26_${{ matrix.child }}_runtime_recovery_result.json'
+          python3 verification/m26/m26_energy_injection_provider_control.py analyze exoclass m26_status.json m26_cases/manifest.json "$result"
+          rc=$?
+          if [ "$rc" -ne 0 ] || [ ! -s "$result" ]; then
+            python3 - <<PY
+          import json
+          r={'schema':'KMDSB.M26.PBHEnergyInjectionProviderControl.RuntimeRecovery.v1','child':'${{ matrix.child }}','classification':'M26_${{ matrix.child }}_PROVIDER_EXECUTION_BLOCKED'.upper(),'analysis_return_code':$rc,'K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          open('$result','w').write(json.dumps(r,indent=2,sort_keys=True)+'\n')
+          PY
+          fi
+          python3 - <<PY
+          import json
+          p='$result'; r=json.load(open(p))
+          r['schema']='KMDSB.M26.PBHEnergyInjectionProviderControl.RuntimeRecovery.v1'
+          r['runtime_recovery_preregistration']='protocol/W04_M26_PBH_PROVIDER_RUNTIME_RECOVERY_PREREGISTRATION_v0.1.md'
+          r['original_blocked_run_id']=34549280581
+          r['full_null_semantics']=True
+          r['fresh_darkages_cache_per_case']=True
+          open(p,'w').write(json.dumps(r,indent=2,sort_keys=True)+'\n')
+          PY
+          cat "$result"
+          exit 0
+
+      - name: Upload immutable runtime-recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m26-runtime-recovery-${{ matrix.child }}
+          path: |
+            m26_cases/
+            m26_status.json
+            m26_logs/
+            m26_${{ matrix.child }}_runtime_build.log
+            m26_${{ matrix.child }}_runtime_recovery_result.json
+            exoclass/output/
+          retention-days: 90
+
+  aggregate:
+    name: aggregate-runtime-recovery
+    needs: provider-control
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m26-runtime-recovery-*
+          path: m26_collected
+      - name: Build and persist summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rs=[json.loads(p.read_text()) for p in sorted(Path('m26_collected').glob('m26-runtime-recovery-*/m26_*_runtime_recovery_result.json'))]
+          s={'schema':'KMDSB.M26.PBHEnergyInjectionProviderControls.RuntimeRecoverySummary.v1','runtime_recovery_preregistration':'protocol/W04_M26_PBH_PROVIDER_RUNTIME_RECOVERY_PREREGISTRATION_v0.1.md','children':{r['child']:r['classification'] for r in rs},'n_results':len(rs),'K1_promoted':False,'K4_promoted':False,'physical_falsification':False,'poisson_structure_channel':'NOT_TESTED'}
+          Path('m26_runtime_recovery_summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n')
+          print(Path('m26_runtime_recovery_summary.json').read_text())
+          PY
+          mkdir -p /tmp/m26_results
+          find m26_collected -name 'm26_*_runtime_recovery_result.json' -exec cp {} /tmp/m26_results/ \;
+          cp m26_runtime_recovery_summary.json /tmp/m26_runtime_recovery_summary.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/primordial_black_hole_dark_matter waves/wave_04_dark_matter
+          cp /tmp/m26_runtime_recovery_summary.json models/primordial_black_hole_dark_matter/M26_ENERGY_INJECTION_RUNTIME_RECOVERY_SUMMARY.json
+          cp /tmp/m26_runtime_recovery_summary.json waves/wave_04_dark_matter/M26_ENERGY_INJECTION_RUNTIME_RECOVERY_SUMMARY.json
+          for p in /tmp/m26_results/*.json; do
+            [ -e "$p" ] || continue
+            b=$(basename "$p" | tr '[:lower:]' '[:upper:]')
+            cp "$p" "models/primordial_black_hole_dark_matter/${b}"
+            cp "$p" "waves/wave_04_dark_matter/${b}"
+          done
+          git add models/primordial_black_hole_dark_matter waves/wave_04_dark_matter
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M26 PBH provider runtime recovery'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Upload summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m26-pbh-provider-runtime-recovery-summary
+          path: m26_runtime_recovery_summary.json
+          retention-days: 90
