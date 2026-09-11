@@ -1,0 +1,43 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "children": {
+    "delta=0.5:y=1.0": "M27_DDM_DISTRIBUTED_DECAY_GEOMETRY_PASS_WITH_SCOPE",
+    "delta=0.5:y=2.0": "M27_DDM_DISTRIBUTED_DECAY_GEOMETRY_PASS_WITH_SCOPE",
+    "delta=0.5:y=3.0": "M27_DDM_DISTRIBUTED_DECAY_GEOMETRY_PASS_WITH_SCOPE",
+    "delta=1.0:y=1.0": "M27_DDM_DISTRIBUTED_DECAY_GEOMETRY_PASS_WITH_SCOPE",
+    "delta=1.0:y=2.0": "M27_DDM_DISTRIBUTED_DECAY_GEOMETRY_PASS_WITH_SCOPE",
+    "delta=1.0:y=3.0": "M27_DDM_DISTRIBUTED_DECAY_GEOMETRY_PASS_WITH_SCOPE",
+    "delta=2.0:y=1.0": "M27_DDM_DISTRIBUTED_DECAY_GEOMETRY_PASS_WITH_SCOPE",
+    "delta=2.0:y=2.0": "M27_DDM_DISTRIBUTED_DECAY_GEOMETRY_PASS_WITH_SCOPE",
+    "delta=2.0:y=3.0": "M27_DDM_DISTRIBUTED_DECAY_GEOMETRY_PASS_WITH_SCOPE"
+  },
+  "classification": "M27_DDM_NINE_BENCHMARK_GEOMETRY_PASS_WITH_SCOPE",
+  "lifetime_log10_spans": {
+    "delta=0.5:y=1.0": 0.4748444410914807,
+    "delta=0.5:y=2.0": 0.9496888821829613,
+    "delta=0.5:y=3.0": 1.424533323274442,
+    "delta=1.0:y=1.0": 1.224014811372864,
+    "delta=1.0:y=2.0": 2.448029622745728,
+    "delta=1.0:y=3.0": 3.6720444341185923,
+    "delta=2.0:y=1.0": 2.9970585737274007,
+    "delta=2.0:y=2.0": 5.9941171474548005,
+    "delta=2.0:y=3.0": 8.991175721182202
+  },
+  "n_results": 9,
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M27_DDM_DISTRIBUTED_DECAY_GEOMETRY_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M27.DDMDistributedDecayGeometry.Summary.v1",
+  "single_exponential_relative_L2": {
+    "delta=0.5:y=1.0": 0.22798318428277983,
+    "delta=0.5:y=2.0": 0.35390179824914975,
+    "delta=0.5:y=3.0": 0.3735847897466421,
+    "delta=1.0:y=1.0": 0.30779060345157516,
+    "delta=1.0:y=2.0": 0.25194280486961973,
+    "delta=1.0:y=3.0": 0.18477651135119935,
+    "delta=2.0:y=1.0": 0.1679157046827438,
+    "delta=2.0:y=2.0": 0.10511055364782546,
+    "delta=2.0:y=3.0": 0.08661701942001984
+  },
+  "solver_level_energy_transfer_gate": "OPEN"
+}
