@@ -1,0 +1,170 @@
+name: W04 M28 superfluid background provider audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m28-superfluid-background-provider-audit.yml']
+permissions:
+  contents: write
+jobs:
+  source-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin provider
+        run: |
+          git clone -q https://github.com/azieg/Superfluid-Dark-Matter-Cosmo.git provider
+          cd provider
+          git checkout -q 860818c776bf8f000c08e4f02c1a23c5f48a8f52
+          test "$(git rev-parse HEAD)" = "860818c776bf8f000c08e4f02c1a23c5f48a8f52"
+      - name: Audit source scope
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          nb=json.loads(Path('provider/Superfluid DM Hubble.ipynb').read_text())
+          readme=Path('provider/README.md').read_text(errors='replace')
+          cells='\n'.join(''.join(c.get('source',[])) for c in nb.get('cells',[]))
+          low=(readme+'\n'+cells).lower()
+          equation_present=('def sfdm_h' in cells and 'odeint(sfdm_h' in cells)
+          external_precomputed=('read_csv' in low or 'loadtxt' in low or 'np.load(' in low)
+          explicit_superfluid=('superfluid dark matter' in low)
+          candidate=bool(explicit_superfluid and equation_present and not external_precomputed)
+          closure_terms=['boltzmann','perturbation','einstein equation','metric perturb']
+          perturbation='PRESENT' if any(x in low for x in closure_terms) else 'ABSENT'
+          # No committed model parameter is identified as an interaction/phase/collective coordinate
+          # whose null value maps the same implemented SFDM equation to CDM/LCDM.
+          k1='ABSENT'
+          if candidate:
+            cls='M28_BACKGROUND_PROVIDER_CANDIDATE_WITH_SCOPE'
+          elif explicit_superfluid:
+            cls='M28_PROVENANCE_SOURCE_BLOCKED'
+          else:
+            cls='M28_REPRESENTATIVE_MISMATCH'
+          out={
+            'schema':'KMDSB.M28.SuperfluidBackgroundSourceAudit.v1',
+            'provider':'azieg/Superfluid-Dark-Matter-Cosmo',
+            'commit':'860818c776bf8f000c08e4f02c1a23c5f48a8f52',
+            'preregistration':'protocol/W04_M28_SUPERFLUID_BACKGROUND_PROVIDER_AUDIT_PREREGISTRATION_v0.1.md',
+            'explicit_superfluid_description':explicit_superfluid,
+            'implemented_background_equation_found':equation_present,
+            'external_precomputed_data_dependency_found':external_precomputed,
+            'perturbation_closure':perturbation,
+            'explicit_k1_reference_map':k1,
+            'classification':cls,
+            'K1_promoted':False,'K3_promoted':False,'K5_promoted':False,'physical_falsification':False
+          }
+          Path('source_audit.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(Path('source_audit.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m28-superfluid-source-audit
+          path: source_audit.json
+          retention-days: 90
+
+  provider-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin provider
+        run: |
+          git clone -q https://github.com/azieg/Superfluid-Dark-Matter-Cosmo.git provider
+          cd provider
+          git checkout -q 860818c776bf8f000c08e4f02c1a23c5f48a8f52
+          test "$(git rev-parse HEAD)" = "860818c776bf8f000c08e4f02c1a23c5f48a8f52"
+      - name: Install declared scientific Python stack
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy scipy matplotlib jupyter nbconvert
+      - name: Execute committed background notebook with assertion-only wrapper
+        shell: bash
+        run: |
+          set +e
+          cd provider
+          jupyter nbconvert --to script 'Superfluid DM Hubble.ipynb' --stdout > /tmp/m28_provider.py 2> /tmp/nbconvert.log
+          cv=$?
+          if [ "$cv" -eq 0 ]; then
+            cat >> /tmp/m28_provider.py <<'PY'
+          import json as _json
+          import numpy as _np
+          from pathlib import Path as _Path
+          _arr=_np.asarray(sfdm_sol,dtype=float)
+          _ok=bool(_arr.size>0 and _np.all(_np.isfinite(_arr)))
+          _Path('/tmp/finite_check.json').write_text(_json.dumps({'size':int(_arr.size),'finite':_ok,'min':float(_arr.min()),'max':float(_arr.max())},sort_keys=True)+'\n')
+          if not _ok:
+              raise RuntimeError('nonfinite_or_empty_sfdm_sol')
+          PY
+            MPLBACKEND=Agg python3 /tmp/m28_provider.py > /tmp/execution.log 2>&1
+            ec=$?
+          else
+            ec=125
+          fi
+          set -e
+          python3 - "$cv" "$ec" <<'PY'
+          import json,sys
+          from pathlib import Path
+          cv,ec=map(int,sys.argv[1:])
+          finite=None
+          p=Path('/tmp/finite_check.json')
+          if p.exists(): finite=json.loads(p.read_text())
+          ok=(cv==0 and ec==0 and finite is not None and finite.get('finite') is True and finite.get('size',0)>0)
+          out={'schema':'KMDSB.M28.SuperfluidBackgroundProviderControl.v1','provider':'azieg/Superfluid-Dark-Matter-Cosmo','commit':'860818c776bf8f000c08e4f02c1a23c5f48a8f52','preregistration':'protocol/W04_M28_SUPERFLUID_BACKGROUND_PROVIDER_AUDIT_PREREGISTRATION_v0.1.md','nbconvert_exit_code':cv,'execution_exit_code':ec,'finite_check':finite,'classification':'M28_BACKGROUND_PROVIDER_CONTROL_PASS' if ok else 'M28_BACKGROUND_PROVIDER_CONTROL_BLOCKED','K1_promoted':False,'K3_promoted':False,'K5_promoted':False,'physical_falsification':False}
+          Path('provider_control.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(Path('provider_control.json').read_text())
+          PY
+          cp /tmp/execution.log . 2>/dev/null || true
+          cp /tmp/nbconvert.log . 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m28-superfluid-provider-control
+          path: |
+            provider/provider_control.json
+            provider/execution.log
+            provider/nbconvert.log
+          retention-days: 90
+
+  aggregate:
+    needs: [source-audit, provider-control]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m28-superfluid-*
+          path: collected
+      - name: Classify and persist scoped result
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          sa=list(Path('collected').glob('m28-superfluid-source-audit/source_audit.json'))
+          pc=list(Path('collected').glob('m28-superfluid-provider-control/provider_control.json'))
+          source=json.loads(sa[0].read_text()) if sa else None
+          control=json.loads(pc[0].read_text()) if pc else None
+          sc=source.get('classification') if source else None
+          cc=control.get('classification') if control else None
+          if sc=='M28_BACKGROUND_PROVIDER_CANDIDATE_WITH_SCOPE' and cc=='M28_BACKGROUND_PROVIDER_CONTROL_PASS':
+            cls='M28_BACKGROUND_ONLY_PROVIDER_EXECUTABLE_K1_K3_K5_OPEN'
+          elif sc=='M28_BACKGROUND_PROVIDER_CANDIDATE_WITH_SCOPE':
+            cls='M28_BACKGROUND_PROVIDER_EXECUTION_BLOCKED'
+          elif sc=='M28_REPRESENTATIVE_MISMATCH':
+            cls='M28_REPRESENTATIVE_MISMATCH_NO_PROMOTION'
+          else:
+            cls='M28_PROVIDER_PROVENANCE_BLOCKED'
+          out={'schema':'KMDSB.M28.SuperfluidBackgroundProviderAudit.Summary.v1','provider':'azieg/Superfluid-Dark-Matter-Cosmo','commit':'860818c776bf8f000c08e4f02c1a23c5f48a8f52','preregistration':'protocol/W04_M28_SUPERFLUID_BACKGROUND_PROVIDER_AUDIT_PREREGISTRATION_v0.1.md','source_classification':sc,'control_classification':cc,'perturbation_closure':source.get('perturbation_closure') if source else None,'explicit_k1_reference_map':source.get('explicit_k1_reference_map') if source else None,'classification':cls,'K0_promoted':False,'K1_promoted':False,'K3_promoted':False,'K5_promoted':False,'physical_falsification':False,'continuation':'seek_authoritative_source_complete_superfluid_cosmology_provider_with_explicit_reference_map' if cls.endswith('OPEN') else 'resolve_provider_scope_before_scientific_gates'}
+          Path('/tmp/summary.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(Path('/tmp/summary.json').read_text())
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p models/superfluid_dark_matter waves/wave_04_dark_matter
+          cp /tmp/summary.json models/superfluid_dark_matter/M28_BACKGROUND_PROVIDER_AUDIT_SUMMARY.json
+          cp /tmp/summary.json waves/wave_04_dark_matter/M28_BACKGROUND_PROVIDER_AUDIT_SUMMARY.json
+          git add models/superfluid_dark_matter waves/wave_04_dark_matter
+          git diff --cached --quiet || { git commit -m 'Record M28 superfluid background provider audit'; git pull --rebase origin main; git push origin HEAD:main; }
