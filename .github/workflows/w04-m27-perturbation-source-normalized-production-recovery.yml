@@ -1,0 +1,70 @@
+name: W04 M27 perturbation source normalized production recovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m27-perturbation-source-normalized-production-recovery.yml']
+permissions:
+  contents: write
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        delta: [0.5, 1.0, 2.0]
+        y: [1.0, 2.0, 3.0]
+        g0: [0.03, 0.3, 3.0]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3 scipy==1.16.2
+      - name: Run authorized normalized production + fine verification
+        run: |
+          python3 verification/m27/perturbation_source_normalized_production_recovery.py '${{ matrix.delta }}' '${{ matrix.y }}' '${{ matrix.g0 }}' result.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m27-source-normalized-d${{ matrix.delta }}-y${{ matrix.y }}-g${{ matrix.g0 }}
+          path: result.json
+          retention-days: 90
+  aggregate:
+    needs: production
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m27-source-normalized-d*-y*-g*
+          path: collected
+      - name: Persist normalized 27-way source summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rs=[json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')]
+          rs=sorted(rs,key=lambda r:(r['delta'],r['y'],r['Gamma0_over_Hstar']))
+          target='M27_DDM_PERTURBATION_SOURCE_CLOSURE_PASS_WITH_NORMALIZED_FLUID_SCOPE'
+          good=(len(rs)==27 and all(r.get('classification')==target for r in rs))
+          stab=[]; comp=[]
+          for r in rs:
+              for v in r.get('solver_stability',{}).values(): stab.extend([v.get('dhat_amp_norm_max',float('inf')),v.get('that_amp_norm_max',float('inf'))])
+              for v in r.get('moment_matched_single_comparator',{}).values(): comp.extend([v.get('dhat_normalized_L2',0),v.get('that_normalized_L2',0)])
+          s={'schema':'KMDSB.M27.PerturbationSourceNormalizedProductionRecovery.Summary.v1','preregistration':'protocol/W04_M27_PERTURBATION_SOURCE_NORMALIZED_PRODUCTION_RECOVERY_PREREGISTRATION_v0.1.md','authorization_run_id':34557946030,'original_raw_source_run_id':34557311114,'n_results':len(rs),'n_pass':sum(r.get('classification')==target for r in rs),'children':{f"d={r['delta']}:y={r['y']}:g={r['Gamma0_over_Hstar']}":r.get('classification') for r in rs},'max_component_source_identity_residual':max([r.get('source_identity_amp_norm_max',float('inf')) for r in rs],default=None),'max_ensemble_solver_stability_residual':max(stab) if stab else None,'max_moment_matched_single_response_L2':max(comp) if comp else None,'classification':'M27_DDM_27_BRANCH_PERTURBATION_SOURCE_CLOSURE_PASS_WITH_NORMALIZED_FLUID_SCOPE' if good else 'M27_DDM_NORMALIZED_PERTURBATION_SOURCE_CLOSURE_NOT_ESTABLISHED','K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False,'full_hierarchy_gate':'OPEN'}
+          Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n'); print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/dynamical_dark_matter
+          cp /tmp/summary.json waves/wave_04_dark_matter/M27_PERTURBATION_SOURCE_NORMALIZED_PRODUCTION_SUMMARY.json
+          cp /tmp/summary.json models/dynamical_dark_matter/M27_PERTURBATION_SOURCE_NORMALIZED_PRODUCTION_SUMMARY.json
+          git add waves/wave_04_dark_matter models/dynamical_dark_matter
+          git diff --cached --quiet || { git commit -m 'Record M27 normalized perturbation source production'; git pull --rebase origin main; git push origin HEAD:main; }
