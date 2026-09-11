@@ -1,0 +1,55 @@
+{
+  "K0_promoted": true,
+  "arms": {
+    "ethos_scalar": {
+      "active_response": {
+        "Pk_normalized_L2": 3.7738680989550513e-05,
+        "TT_normalized_L2": 3.585556904151411e-05,
+        "pass": true,
+        "threshold": 1e-06
+      },
+      "cl_rows": 2499,
+      "exact_pin": true,
+      "exit_code": 0,
+      "finite_cl": true,
+      "finite_pk": true,
+      "pk_rows": 579
+    },
+    "ethos_vector": {
+      "active_response": {
+        "Pk_normalized_L2": 3.89132382379379e-05,
+        "TT_normalized_L2": 2.2975939290496757e-05,
+        "pass": true,
+        "threshold": 1e-06
+      },
+      "cl_rows": 2499,
+      "exact_pin": true,
+      "exit_code": 0,
+      "finite_cl": true,
+      "finite_pk": true,
+      "pk_rows": 579
+    },
+    "uncoupled_control": {
+      "cl_rows": 2499,
+      "exact_pin": true,
+      "exit_code": 0,
+      "finite_cl": true,
+      "finite_pk": true,
+      "pk_rows": 535
+    }
+  },
+  "checks": {
+    "all_execute_exact_pin": true,
+    "all_finite_outputs": true,
+    "both_ethos_arms_active": true
+  },
+  "classification": "M24_K0_PASS_WITH_SCOPE_PINNED_NATIVE_CLASS_ETHOS",
+  "physical_falsification": false,
+  "provider_commit": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "provider_repository": "lesgourg/class_public",
+  "parent_run_id": 34638538934,
+  "aggregate_artifact_id": 10279285979,
+  "aggregate_artifact_digest": "sha256:9920f7cc24e56c0b30334605e08ddd621349731bc5cfc3cf340cac818d76a20f",
+  "schema": "m24_k0_ethos_provider_v0.1",
+  "scope": "native CLASS ETHOS-parameterized linear executability and active-response K0 only; no claim of complete ETHOS microphysics/nonlinear coverage and no K1-K9 promotion"
+}
