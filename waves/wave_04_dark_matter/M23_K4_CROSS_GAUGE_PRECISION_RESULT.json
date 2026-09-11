@@ -543,5 +543,6 @@
   "precision_all_pass": false,
   "preregistration": "protocol/W04_M23_DM_DR_DAO_K4_CROSS_GAUGE_PRECISION_PREREGISTRATION_v0.1.md",
   "provider_blocked": true,
+  "reference_profile_repair": "protocol/W04_M23_K4_CLREF_IDR_TRIGGER_REPAIR_v0.1.md",
   "schema": "KMDSB.M23.K4CrossGaugePrecision.v1"
 }
