@@ -1,0 +1,86 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "auto_baseline_Pk_r95": [
+    4.47946747635781e-05,
+    3.3135714306605436e-05,
+    3.076888469743661e-05
+  ],
+  "auto_manual_4000_symmetric_relative_differences": [
+    1.996910374737687,
+    1.9976966852336209,
+    1.9978564621141954
+  ],
+  "auto_manual_fine_agreement": false,
+  "classification": "M25_M0_PK_QUADRATURE_RK_SENSITIVE",
+  "fine_2000_4000_symmetric_relative_differences": [
+    9.909592198744482e-06,
+    3.0539053739596257e-06,
+    1.0696168436109501e-06
+  ],
+  "fine_4000_floor_spread_ratio": 1.009804268967922,
+  "fine_bin_stability": true,
+  "fine_floor_flatness": true,
+  "n_results": 4,
+  "parent_gate": "waves/wave_04_dark_matter/M25_M0_PK_MANUAL_MOMENTUM_QUADRATURE_SUMMARY.json",
+  "physical_falsification": false,
+  "points": [
+    {
+      "H_tail_recovered": true,
+      "Pk_r95": [
+        0.057936136534974154,
+        0.057507440590869006,
+        0.057384964129252716
+      ],
+      "Pk_tail_exponent": 0.004183570799339624,
+      "Pk_tail_recovered": false,
+      "admissible": true,
+      "bins": 500,
+      "classification": "M25_M0_PK_MANUAL_QUADRATURE_POINT_MEASURED"
+    },
+    {
+      "H_tail_recovered": true,
+      "Pk_r95": [
+        0.05794098899760637,
+        0.05750889304475719,
+        0.057385460684614184
+      ],
+      "Pk_tail_exponent": 0.004216440368201191,
+      "Pk_tail_recovered": false,
+      "admissible": true,
+      "bins": 1000,
+      "classification": "M25_M0_PK_MANUAL_QUADRATURE_POINT_MEASURED"
+    },
+    {
+      "H_tail_recovered": true,
+      "Pk_r95": [
+        0.05794829821981223,
+        0.057511084737647655,
+        0.05738618093071796
+      ],
+      "Pk_tail_exponent": 0.0042661512362938475,
+      "Pk_tail_recovered": false,
+      "admissible": true,
+      "bins": 2000,
+      "classification": "M25_M0_PK_MANUAL_QUADRATURE_POINT_MEASURED"
+    },
+    {
+      "H_tail_recovered": true,
+      "Pk_r95": [
+        0.05794887246666148,
+        0.05751126037132658,
+        0.057386242311976504
+      ],
+      "Pk_tail_exponent": 0.004270019957276855,
+      "Pk_tail_recovered": false,
+      "admissible": true,
+      "bins": 4000,
+      "classification": "M25_M0_PK_MANUAL_QUADRATURE_POINT_MEASURED"
+    }
+  ],
+  "preregistration": "protocol/W04_M25_M0_PK_MANUAL_QUADRATURE_RK_RECOVERY_PREREGISTRATION_v0.1.md",
+  "recovery_change": {
+    "evolver": 0
+  },
+  "schema": "KMDSB.M25.M0PkManualMomentumQuadratureRKRecovery.Summary.v1"
+}
