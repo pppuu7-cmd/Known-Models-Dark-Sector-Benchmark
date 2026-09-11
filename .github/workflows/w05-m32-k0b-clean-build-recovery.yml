@@ -1,0 +1,119 @@
+name: W05 M32 DGP K0b clean-build recovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w05-m32-k0b-clean-build-recovery.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      PROVIDER_PIN: 849ddb716041316d0e223ba22badc0d630b72435
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install frozen GNU MPI toolchain
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gfortran openmpi-bin libopenmpi-dev
+      - name: Exact-pin clean serial provider build
+        shell: bash
+        run: |
+          set -u
+          mkdir -p m32k0b
+          git clone -q https://github.com/nat-woodcock/EFT-Ramses.git provider
+          cd provider
+          git checkout -q --detach "$PROVIDER_PIN"
+          ACTUAL=$(git rev-parse HEAD)
+          echo "$ACTUAL" > ../m32k0b/provider_head.txt
+          test "$ACTUAL" = "$PROVIDER_PIN"; echo $? > ../m32k0b/pin_test_exit.txt
+          grep -Eqi 'self-accelerating DGP|normal-branch DGP|DGP braneworld' README.md; echo $? > ../m32k0b/dgp_provenance_exit.txt
+          cd bin
+          find . -maxdepth 1 -type f \( -name '*.o' -o -name '*.mod' \) -printf '%f %s\n' | sort > ../../m32k0b/tracked_build_products_before.txt
+          rm -f -- *.o *.mod
+          find . -maxdepth 1 -type f \( -name '*.o' -o -name '*.mod' \) -printf '%f\n' | sort > ../../m32k0b/build_products_after_clean.txt
+          set +e
+          make \
+            F90='mpif90 -frecord-marker=4 -O3 -ffree-line-length-none -g -fbacktrace' \
+            FFLAGS='-x f95-cpp-input $(DEFINES)' \
+            > ../../m32k0b/build_stdout.log 2> ../../m32k0b/build_stderr.log
+          RC=$?
+          set -e
+          echo "$RC" > ../../m32k0b/build_exit_code.txt
+          test -x ramses3d; echo $? > ../../m32k0b/executable_test_exit.txt
+          find . -maxdepth 1 -type f \( -name '*.o' -o -name '*.mod' -o -name 'ramses3d' \) -printf '%f %s\n' | sort > ../../m32k0b/build_products_after_make.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m32-k0b-clean-build-probe
+          path: m32k0b
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: probe
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m32-k0b-clean-build-probe
+          path: m32k0b
+      - name: Frozen K0b classification
+        run: |
+          python3 - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('m32k0b')
+          def iv(n,d=999):
+              try:return int((p/n).read_text().strip())
+              except:return d
+          pin=(p/'provider_head.txt').read_text().strip() if (p/'provider_head.txt').exists() else None
+          exact=pin=='849ddb716041316d0e223ba22badc0d630b72435'
+          prov=iv('dgp_provenance_exit.txt')==0
+          rc=iv('build_exit_code.txt')
+          exe=iv('executable_test_exit.txt')==0
+          if not exact or not prov:
+              c='M32_K0B_BLOCKED_PROVENANCE'
+          elif rc!=0 or not exe:
+              c='M32_K0B_CLEAN_BUILD_STILL_BLOCKED'
+          else:
+              c='M32_K0B_PROVIDER_BUILD_RECOVERED'
+          out={
+            'schema':'m32_dgp_k0b_clean_build_recovery_v0.1',
+            'provider':'nat-woodcock/EFT-Ramses',
+            'provider_commit':'849ddb716041316d0e223ba22badc0d630b72435',
+            'classification':c,
+            'checks':{'exact_pin':exact,'dgp_provenance':prov,'clean_build_exit_code':rc,'native_executable_exists':exe},
+            'K0_promoted':False,
+            'physical_falsification':False,
+            'scope':'build-only recovery after deleting tracked precompiled .o/.mod artifacts; no physics/source modification; production DGP execution still required before K0 promotion'
+          }
+          q=pathlib.Path('waves/wave_05_modified_gravity/M32_K0B_CLEAN_BUILD_RECOVERY_RESULT.json')
+          q.parent.mkdir(parents=True,exist_ok=True); q.write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m32-k0b-clean-build-aggregate
+          path: |
+            waves/wave_05_modified_gravity/M32_K0B_CLEAN_BUILD_RECOVERY_RESULT.json
+            m32k0b/build_stdout.log
+            m32k0b/build_stderr.log
+            m32k0b/tracked_build_products_before.txt
+            m32k0b/build_products_after_make.txt
+          retention-days: 30
+      - name: Commit machine result
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add waves/wave_05_modified_gravity/M32_K0B_CLEAN_BUILD_RECOVERY_RESULT.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Record M32 DGP K0b clean-build recovery result'
+          git push
