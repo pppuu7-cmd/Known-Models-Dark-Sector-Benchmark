@@ -1,0 +1,228 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "baseline_eta_0p003_p95": {
+    "CMB_EE": 0.0010355871495647032,
+    "CMB_TE": 0.008530794293101742,
+    "CMB_TT": 0.0003134845600976737
+  },
+  "baseline_run_id": 34551925134,
+  "blocks": {
+    "CMB_EE": {
+      "exponent_gt_0p5": false,
+      "monotonic_with_2pct_slack": false,
+      "points": [
+        {
+          "eta": 0.01,
+          "median_abs": 2.5748984237033393e-06,
+          "n": 2499,
+          "p95_abs": 8.153689672535196e-06,
+          "rms": 8.827718449539812e-06
+        },
+        {
+          "eta": 0.003,
+          "median_abs": 2.4698207112203415e-06,
+          "n": 2499,
+          "p95_abs": 7.331675505936009e-06,
+          "rms": 8.895088234483446e-06
+        },
+        {
+          "eta": 0.001,
+          "median_abs": 2.522963647033549e-06,
+          "n": 2499,
+          "p95_abs": 9.237186241228312e-06,
+          "rms": 9.337812117214835e-06
+        }
+      ],
+      "r95": [
+        8.153689672535196e-06,
+        7.331675505936009e-06,
+        9.237186241228312e-06
+      ],
+      "smallest_lower_than_largest": false,
+      "tail_exponent_p": -0.05191499068998844,
+      "tail_scaling_recovered": false
+    },
+    "CMB_TE": {
+      "exponent_gt_0p5": false,
+      "monotonic_with_2pct_slack": false,
+      "points": [
+        {
+          "eta": 0.01,
+          "median_abs": 1.0080201909405507e-05,
+          "n": 2499,
+          "p95_abs": 0.00014489013160198295,
+          "rms": 0.0005941452205274804
+        },
+        {
+          "eta": 0.003,
+          "median_abs": 7.4044597669980496e-06,
+          "n": 2499,
+          "p95_abs": 8.317744459670218e-05,
+          "rms": 0.00029744020177520185
+        },
+        {
+          "eta": 0.001,
+          "median_abs": 9.540832509837858e-06,
+          "n": 2499,
+          "p95_abs": 0.0001391309224005116,
+          "rms": 0.0005161127952479668
+        }
+      ],
+      "r95": [
+        0.00014489013160198295,
+        8.317744459670218e-05,
+        0.0001391309224005116
+      ],
+      "smallest_lower_than_largest": true,
+      "tail_exponent_p": 0.024681958915292686,
+      "tail_scaling_recovered": false
+    },
+    "CMB_TT": {
+      "exponent_gt_0p5": false,
+      "monotonic_with_2pct_slack": false,
+      "points": [
+        {
+          "eta": 0.01,
+          "median_abs": 4.131568169519166e-06,
+          "n": 2499,
+          "p95_abs": 1.694947973833426e-05,
+          "rms": 9.446976047216898e-06
+        },
+        {
+          "eta": 0.003,
+          "median_abs": 2.667963378343011e-06,
+          "n": 2499,
+          "p95_abs": 1.8559910100032774e-05,
+          "rms": 7.5408053311974805e-06
+        },
+        {
+          "eta": 0.001,
+          "median_abs": 2.9482019471635917e-06,
+          "n": 2499,
+          "p95_abs": 1.0067285716509485e-05,
+          "rms": 6.046951719971563e-06
+        }
+      ],
+      "r95": [
+        1.694947973833426e-05,
+        1.8559910100032774e-05,
+        1.0067285716509485e-05
+      ],
+      "smallest_lower_than_largest": true,
+      "tail_exponent_p": 0.2214361569054473,
+      "tail_scaling_recovered": false
+    },
+    "H": {
+      "exponent_gt_0p5": true,
+      "monotonic_with_2pct_slack": true,
+      "points": [
+        {
+          "eta": 0.01,
+          "median_abs": 3.5532468321183778e-09,
+          "n": 40000,
+          "p95_abs": 6.261567702317779e-07,
+          "rms": 4.0159304389126687e-07
+        },
+        {
+          "eta": 0.003,
+          "median_abs": 1.0659722358151314e-09,
+          "n": 40000,
+          "p95_abs": 1.878470993964321e-07,
+          "rms": 1.2047796880989655e-07
+        },
+        {
+          "eta": 0.001,
+          "median_abs": 3.5532715083818483e-10,
+          "n": 40000,
+          "p95_abs": 6.261569777806031e-08,
+          "rms": 4.015932786492161e-08
+        }
+      ],
+      "r95": [
+        6.261567702317779e-07,
+        1.878470993964321e-07,
+        6.261569777806031e-08
+      ],
+      "smallest_lower_than_largest": true,
+      "tail_exponent_p": 0.9999998535257939,
+      "tail_scaling_recovered": true
+    },
+    "Pk": {
+      "exponent_gt_0p5": false,
+      "monotonic_with_2pct_slack": true,
+      "points": [
+        {
+          "eta": 0.01,
+          "median_abs": 6.370375224003415e-06,
+          "n": 536,
+          "p95_abs": 4.47946747635781e-05,
+          "rms": 0.0006435224302962239
+        },
+        {
+          "eta": 0.003,
+          "median_abs": 2.0344268005113455e-06,
+          "n": 535,
+          "p95_abs": 3.3135714306605436e-05,
+          "rms": 0.00012710933372234138
+        },
+        {
+          "eta": 0.001,
+          "median_abs": 1.3787883354791428e-06,
+          "n": 536,
+          "p95_abs": 3.076888469743661e-05,
+          "rms": 6.960736640375357e-05
+        }
+      ],
+      "r95": [
+        4.47946747635781e-05,
+        3.3135714306605436e-05,
+        3.076888469743661e-05
+      ],
+      "smallest_lower_than_largest": true,
+      "tail_exponent_p": 0.1645059369736027,
+      "tail_scaling_recovered": false
+    }
+  },
+  "classification": "M25_M0_L_SAMPLING_CMB_EXCURSION_PARTIALLY_LOCALIZED",
+  "eta_0p003_p95": {
+    "CMB_EE": 7.331675505936009e-06,
+    "CMB_TE": 8.317744459670218e-05,
+    "CMB_TT": 1.8559910100032774e-05
+  },
+  "etas": [
+    0.01,
+    0.003,
+    0.001
+  ],
+  "improvement_factors": {
+    "CMB_EE": 141.2483611319475,
+    "CMB_TE": 102.561389502461,
+    "CMB_TT": 16.89041371472592
+  },
+  "l_linstep": 25,
+  "l_logstep": 1.026,
+  "model": "m0",
+  "original_artifact_id": 10180157389,
+  "original_run_id": 34548988620,
+  "physical_falsification": false,
+  "precision_profile": "pk_ref",
+  "preregistration": "protocol/W04_M25_M0_L_SAMPLING_DIAGNOSTIC_PREREGISTRATION_v0.1.md",
+  "recovered_CMB_blocks": [],
+  "schema": "KMDSB.M25.M0LSamplingDiagnostic.v1",
+  "status": {
+    "build": 0,
+    "e2": 0,
+    "e3": 0,
+    "e4": 0,
+    "ref": 0
+  },
+  "target_blocks": [
+    "Pk",
+    "CMB_TT",
+    "CMB_EE",
+    "CMB_TE"
+  ],
+  "target_blocks_recovered": 0,
+  "target_blocks_total": 4
+}
