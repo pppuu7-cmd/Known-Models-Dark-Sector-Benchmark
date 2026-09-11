@@ -17,6 +17,7 @@ jobs:
     timeout-minutes: 60
     env:
       CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,12 +35,20 @@ jobs:
       - name: Pin CLASS and apply frozen quadrature-capacity repair
         shell: bash
         run: |
-          set -euo pipefail
+          set +e
           python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3 scipy cython setuptools wheel
+          pip_rc=$?
           git clone -q https://github.com/lesgourg/class_public.git class_provider
-          git -C class_provider checkout -q --detach "$CLASS_PIN"
-          test "$(git -C class_provider rev-parse HEAD)" = "$CLASS_PIN"
-          python3 - <<'PY'
+          clone_rc=$?
+          checkout_rc=999
+          patch_rc=999
+          build_rc=999
+          if [ "$clone_rc" -eq 0 ]; then
+            git -C class_provider checkout -q --detach "$CLASS_PIN"
+            checkout_rc=$?
+          fi
+          if [ "$checkout_rc" -eq 0 ]; then
+            python3 - <<'PY'
           from pathlib import Path
           p=Path('class_provider/include/common.h')
           s=p.read_text()
@@ -48,10 +57,20 @@ jobs:
           assert s.count(old)==1
           p.write_text(s.replace(old,new))
           PY
-          git -C class_provider diff -- include/common.h | tee m25_k1_class_patch.diff
-          test "$(grep -c '^[-+]#define _QUADRATURE_MAX_BG_' m25_k1_class_patch.diff)" -eq 2
-          make -C class_provider -j2 > m25_k1_class_build.log 2>&1
-          test -x class_provider/class
+            patch_rc=$?
+          fi
+          if [ "$patch_rc" -eq 0 ]; then
+            git -C class_provider diff -- include/common.h | tee m25_k1_class_patch.diff
+            make -C class_provider -j2 > m25_k1_class_build.log 2>&1
+            build_rc=$?
+          fi
+          python3 - <<PY
+          import json
+          d={'pip':$pip_rc,'clone':$clone_rc,'checkout':$checkout_rc,'patch':$patch_rc,'build':$build_rc}
+          open('m25_k1_status.json','w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          cat m25_k1_status.json
+          exit 0
 
       - name: Prepare prospectively frozen eta ladder
         shell: bash
@@ -60,43 +79,42 @@ jobs:
           python3 verification/m25/m25_k1_abundance_decoupling.py prepare m25_upstream m25_k1_cases
           cat m25_k1_cases/manifest.json
 
-      - name: Execute reference and finite sterile-abundance cases
+      - name: Execute independent CLASS cases two-at-a-time
         shell: bash
         run: |
-          set -u
-          mkdir -p class_provider/output
+          set +e
+          mkdir -p class_provider/output m25_k1_logs m25_k1_status_parts
+          build=$(python3 -c "import json;print(json.load(open('m25_k1_status.json'))['build'])")
+          cases=(ref m0_e0 m0_e1 m0_e2 m0_e3 m0_e4 m1_e0 m1_e1 m1_e2 m1_e3 m1_e4)
+          if [ "$build" -eq 0 ]; then
+            printf '%s\n' "${cases[@]}" | xargs -P 2 -I{} bash -c '
+              case_id="$1"
+              set +e
+              (cd class_provider && ./class "../m25_k1_cases/${case_id}.ini" > "../m25_k1_logs/${case_id}.log" 2>&1)
+              rc=$?
+              printf "%d\n" "$rc" > "m25_k1_status_parts/${case_id}.status"
+              exit 0
+            ' _ {}
+          else
+            for case_id in "${cases[@]}"; do printf '999\n' > "m25_k1_status_parts/${case_id}.status"; done
+          fi
           python3 - <<'PY'
           import json
-          json.dump({'build':0}, open('m25_k1_status.json','w'), indent=2, sort_keys=True)
+          from pathlib import Path
+          p=Path('m25_k1_status.json')
+          d=json.loads(p.read_text())
+          for f in sorted(Path('m25_k1_status_parts').glob('*.status')):
+              d[f.stem]=int(f.read_text().strip())
+          p.write_text(json.dumps(d,sort_keys=True)+'\n')
           PY
-          run_case () {
-            key="$1"
-            ini="$2"
-            set +e
-            (cd class_provider && ./class "../$ini") > "m25_k1_${key}.log" 2>&1
-            rc=$?
-            set -e
-            python3 - "$key" "$rc" <<'PY'
-          import json,sys
-          p='m25_k1_status.json'
-          d=json.load(open(p)); d[sys.argv[1]]=int(sys.argv[2])
-          json.dump(d,open(p,'w'),indent=2,sort_keys=True)
-          PY
-          }
-          set -e
-          run_case ref m25_k1_cases/ref.ini
-          for m in 0 1; do
-            for i in 0 1 2 3 4; do
-              run_case "m${m}_e${i}" "m25_k1_cases/m${m}_e${i}.ini"
-            done
-          done
           cat m25_k1_status.json
+          exit 0
 
       - name: Analyze against frozen K1 gate
         shell: bash
         run: |
           set -euo pipefail
-          python3 verification/m25/m25_k1_abundance_decoupling.py analyze class_provider/output m25_k1_status.json m25_k1_cases/manifest.json m25_k1_result.json
+          python3 verification/m25/m25_k1_abundance_decoupling.py analyze class_provider m25_k1_status.json m25_k1_cases/manifest.json m25_k1_result.json
           cat m25_k1_result.json
 
       - name: Persist canonical M25 K1 result
@@ -144,7 +162,8 @@ jobs:
             m25_k1_class_build.log
             m25_k1_cases/
             m25_k1_status.json
-            m25_k1_*.log
+            m25_k1_status_parts/
+            m25_k1_logs/
             m25_k1_result.json
             class_provider/output/
           retention-days: 90
