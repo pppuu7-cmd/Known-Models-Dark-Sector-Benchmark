@@ -1,0 +1,14 @@
+{
+  "K1_promoted": false,
+  "K3_promoted": false,
+  "K4_promoted": false,
+  "classification": "M27_STOCK_CLASS_PROVIDER_CAPABILITY_AUDIT_BLOCKED",
+  "commit": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "continuation": "repair_infrastructure_only",
+  "control_classification": null,
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M27_STOCK_CLASS_MULTI_DCDM_PROVIDER_CAPABILITY_PREREGISTRATION_v0.1.md",
+  "provider": "lesgourg/class_public",
+  "schema": "KMDSB.M27.StockCLASSMultiDCDMProviderCapability.Summary.v1",
+  "source_classification": "NATIVE_MULTI_DCDM_NOT_EXPOSED"
+}
