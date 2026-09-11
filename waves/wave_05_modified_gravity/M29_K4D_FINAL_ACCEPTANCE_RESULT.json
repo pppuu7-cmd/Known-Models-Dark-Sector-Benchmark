@@ -1,0 +1,63 @@
+{
+  "K3_status": "BLOCKED_PROVIDER_GAUGE_IMPLEMENTATION",
+  "K4_promoted": false,
+  "aggregate_artifact_digest": "sha256:95ec4c07bbe4b17d515e8ac6b2b0e4bcdea4222a7b22237fd84f20dc6d6fb558",
+  "aggregate_artifact_id": 10279503659,
+  "checks": {
+    "15": {
+      "coarse_to_production_nonincrease_20pct": {"background": true, "pk": true, "tt": false},
+      "pass": false,
+      "production_thresholds": {"background": true, "pk": true, "tt": false}
+    },
+    "1e4": {
+      "coarse_to_production_nonincrease_20pct": {"background": true, "pk": true, "tt": true},
+      "pass": true,
+      "production_thresholds": {"background": true, "pk": true, "tt": true}
+    },
+    "all_exit_zero": true,
+    "finite_outputs": true
+  },
+  "classification": "M29_K4D_NOT_ESTABLISHED_NUMERICAL_ROBUSTNESS",
+  "exit_codes": {
+    "15:coarse_localized": 0,
+    "15:production_core": 0,
+    "15:super_ref": 0,
+    "1e4:coarse_localized": 0,
+    "1e4:production_core": 0,
+    "1e4:super_ref": 0
+  },
+  "metrics": {
+    "15": {
+      "coarse_localized": {
+        "background": {"max": 2.048253366727832e-08, "n": 40000, "rms": 1.3362978461718905e-08},
+        "pk": {"max": 0.0007378447913114654, "n": 6235, "rms": 6.483633081613481e-05},
+        "tt": {"max": 0.0018679476840843658, "n": 2499, "rms": 0.000358560334058402}
+      },
+      "production_core": {
+        "background": {"max": 2.048253366727832e-08, "n": 40000, "rms": 1.3362978461718905e-08},
+        "pk": {"max": 0.0005421522865677484, "n": 6235, "rms": 8.448088496169773e-06},
+        "tt": {"max": 0.007081326571659893, "n": 2499, "rms": 0.0037116457261573347}
+      }
+    },
+    "1e4": {
+      "coarse_localized": {
+        "background": {"max": 2.046487957430394e-08, "n": 40000, "rms": 1.327241547833106e-08},
+        "pk": {"max": 0.0007844786169142002, "n": 6507, "rms": 6.993599897101916e-05},
+        "tt": {"max": 0.001045572221538876, "n": 2499, "rms": 0.00025094460756829696}
+      },
+      "production_core": {
+        "background": {"max": 2.046487957430394e-08, "n": 40000, "rms": 1.327241547833106e-08},
+        "pk": {"max": 0.00036852386205714506, "n": 6507, "rms": 5.929125207026591e-06},
+        "tt": {"max": 6.899543955985102e-06, "n": 2499, "rms": 1.46692159609033e-06}
+      }
+    }
+  },
+  "parent_k4": "M29_K4_NOT_ESTABLISHED_NUMERICAL_ROBUSTNESS",
+  "parent_k4b": "M29_K4B_GRID_DOMINATED",
+  "parent_k4c": "M29_K4C_FULL_CORE_REQUIRED",
+  "physical_falsification": false,
+  "provider_commit": "0009f51d89e6465c79e570b496c66fc90058fa77",
+  "schema": "m29_k4d_final_acceptance_v0.1",
+  "scope": "final synchronous-provider numerical acceptance against prospectively tightened super-reference; original K4 thresholds preserved; does not resolve K3 or promote K5-K9",
+  "workflow_run_id": 34638814940
+}
