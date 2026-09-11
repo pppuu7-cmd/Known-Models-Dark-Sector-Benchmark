@@ -1,0 +1,127 @@
+name: W05 M29 K4d final numerical acceptance
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w05-m29-k4d-final-acceptance.yml'
+
+jobs:
+  compute:
+    strategy:
+      fail-fast: false
+      matrix:
+        omega: ['15','1e4']
+        profile: [coarse_localized, production_core, super_ref]
+    runs-on: ubuntu-latest
+    env:
+      HICLASS_PIN: 0009f51d89e6465c79e570b496c66fc90058fa77
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute frozen K4d branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          OM='${{ matrix.omega }}'; PR='${{ matrix.profile }}'
+          BASE="$GITHUB_WORKSPACE/m29k4d/$OM/$PR"
+          mkdir -p "$BASE/output"
+          git clone -q https://github.com/hiclass-code/hi_class_public.git hiclass
+          cd hiclass
+          git checkout -q --detach "$HICLASS_PIN"
+          ACTUAL=$(git rev-parse HEAD)
+          echo "$ACTUAL" > "$BASE/actual_commit.txt"
+          test "$ACTUAL" = "$HICLASS_PIN"
+          make -j2 >/dev/null
+          CFG="$BASE/run.ini"
+          cp gravity_models/brans_dicke.ini "$CFG"
+          BN=40000
+          if [ "$PR" = super_ref ]; then BN=80000; fi
+          python3 - "$CFG" "$OM" "$BASE" "$BN" <<'PY'
+          import re,sys
+          p,om,base,bn=sys.argv[1:]
+          s=open(p).read()
+          s=re.sub(r'^parameters_smg\s*=.*$',f'parameters_smg = 0.7, {om}, 1., 0.',s,flags=re.M)
+          s=re.sub(r'^root\s*=.*$',f'root = {base}/output/bd_',s,flags=re.M)
+          s += f'\nbackground_Nloga = {bn}\n'
+          open(p,'w').write(s)
+          PY
+          GRID="$BASE/grid.pre"
+          SUPER="$BASE/super.pre"
+          MERGED="$BASE/merged.pre"
+          cat > "$GRID" <<'EOF'
+          k_min_tau0=0.002
+          k_max_tau0_over_l_max=3.
+          k_step_sub=0.015
+          k_step_super=0.0001
+          k_step_super_reduction=0.1
+          EOF
+          cat > "$SUPER" <<'EOF'
+          recfast_Nz0=200000
+          tol_thermo_integration=5.e-6
+          k_step_sub=0.0075
+          k_step_super=0.00005
+          tol_perturbations_integration=5.e-7
+          perturbations_sampling_stepsize=0.005
+          EOF
+          python3 - "$PR" "$MERGED" "$GRID" "$SUPER" <<'PY'
+          import re,sys
+          pr,merged,grid,sup=sys.argv[1:]
+          if pr=='coarse_localized': files=['cl_permille.pre',grid]
+          elif pr=='production_core': files=['cl_ref.pre']
+          else: files=['cl_ref.pre',sup]
+          lines=[]; pos={}; key_re=re.compile(r'^\s*([A-Za-z0-9_]+)\s*=')
+          for fn in files:
+              for raw in open(fn):
+                  line=raw.rstrip('\n'); m=key_re.match(line)
+                  if m:
+                      k=m.group(1)
+                      if k in pos: lines[pos[k]]=line
+                      else: pos[k]=len(lines); lines.append(line)
+                  elif fn==files[0]: lines.append(line)
+          open(merged,'w').write('\n'.join(lines)+'\n')
+          PY
+          cp "$MERGED" "$BASE/effective_precision.pre"
+          set +e
+          ./class "$CFG" "$MERGED" > "$BASE/stdout.log" 2> "$BASE/stderr.log"
+          RC=$?
+          set -e
+          echo "$RC" > "$BASE/exit_code.txt"
+          find "$BASE" -maxdepth 2 -type f -printf '%P %s bytes\n' | sort > "$BASE/file_manifest.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m29-k4d-${{ matrix.omega }}-${{ matrix.profile }}
+          path: m29k4d/${{ matrix.omega }}/${{ matrix.profile }}
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: compute
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: 'm29-k4d-*'
+          path: downloaded
+      - name: Reassemble K4d artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p m29k4d
+          for om in 15 1e4; do
+            for pr in coarse_localized production_core super_ref; do
+              mkdir -p "m29k4d/$om/$pr"
+              cp -a "downloaded/m29-k4d-$om-$pr"/. "m29k4d/$om/$pr/"
+            done
+          done
+      - name: Classify frozen K4d acceptance gate
+        run: python3 verification/m29/k4d_final_acceptance.py | tee m29_k4d_stdout.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m29-k4d-aggregate
+          path: |
+            waves/wave_05_modified_gravity/M29_K4D_FINAL_ACCEPTANCE_RESULT.json
+            m29_k4d_stdout.json
+          retention-days: 30
