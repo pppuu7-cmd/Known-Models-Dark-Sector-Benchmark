@@ -352,3 +352,10 @@ Prospectively frozen control classified `M25_M0_PK_CAPACITY_OR_EVOLVER_CONFOUNDE
 
 ### 2026-09-11 — M25 compile-capacity isolation control
 M25 compile-capacity isolation classification M25_M0_PK_STOCK_CAPACITY_PROVIDER_BLOCKED. Matched-evolver quadrature agreement, manual N=2000->4000 convergence, and prior evolver-isolation evidence are preserved. K1/K4 are not promoted and physical falsification is false. Canonical machine result: `models/resonant_sterile_neutrino_wdm/M25_M0_PK_COMPILE_CAPACITY_ISOLATION_CONTROL_RESULT.json`.
+
+## 2026-09-12 W05 autonomous iteration — M37 recovery + provider recon
+- Consumed run 34650851131 and diagnosed output-root harness mismatch: CLASS emitted `reference__cl.dat` / `active__cl.dat` while the analyzer received touched zero-byte single-underscore placeholders.
+- Preregistered recovery at commit 77ab1dc653de2f749a0ff60088b8d67c80391b78; launched corrected workflow at commit 0e38bab4d04a0080239101c7a12715ef4441ee6f.
+- Recovery run 34652066337: exact provider pin/build PASS, reference and active exit 0, all four actual TT/P(k) outputs finite, TT response 0.0114841754 and P(k) response 0.0157569608. Classification `M37_K0_PARTIAL_EXECUTABLE_FT_PROVIDER_PROVENANCE_OPEN`; K0 not promoted because authority/provenance remains open; no physical falsification.
+- Consumed seven-lane provider reconnaissance run 34650903154: M34/M36/M38/M39/M41/M42/M43 each returned `NO_PROVIDER_GRADE_CANDIDATE_FOUND_IN_FROZEN_SEARCH`, candidate_count=0. Aggregate result: `waves/wave_05_modified_gravity/W05_PARALLEL_PROVIDER_RECON_RESULT_v0.1.json`; no physical inference.
+- M32 K0f run 34647841987 attempt 1 failed because the hosted runner received a shutdown signal (exit 143) during corrected stage1, not because of provider/science. Only the failed job/dependents were rerun; scientific criteria unchanged.

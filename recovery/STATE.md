@@ -228,3 +228,8 @@ Prospectively frozen control classified `M25_M0_PK_CAPACITY_OR_EVOLVER_CONFOUNDE
 
 ### 2026-09-11 — M25 compile-capacity isolation control
 M25 compile-capacity isolation classification M25_M0_PK_STOCK_CAPACITY_PROVIDER_BLOCKED. Matched-evolver quadrature agreement, manual N=2000->4000 convergence, and prior evolver-isolation evidence are preserved. K1/K4 are not promoted and physical falsification is false. Canonical machine result: `models/resonant_sterile_neutrino_wdm/M25_M0_PK_COMPILE_CAPACITY_ISOLATION_CONTROL_RESULT.json`.
+
+## 2026-09-12 — W05 M37 f(T) executable provider partial K0 evidence
+Run `34652066337` (artifact `10284291219`, digest `sha256:e885cda93e26c13268f86e58e667aa8596d0cbeff4e26ff8f80a4edece32f4b5`) repaired only the output-root harness path after preregistration `protocol/W05_M37_K0_OUTPUT_ROOT_RECOVERY_v0.1.md`. Exact provider `Speeddemon5050/Modified-CLASS-fT-Exact-@74e6a8679cdc233fb339c67127ed0921ba547894` builds; n_fT=0 and n_fT=0.10 both exit 0 with finite TT/P(k). Active response: TT normalized-L2 `0.011484175401063655`, P(k) `0.015756960779908492` > frozen 1e-6 activity threshold. Analyzer classification: `M37_K0_PARTIAL_EXECUTABLE_FT_PROVIDER_PROVENANCE_OPEN`; K0 remains PARTIAL because publication/author provenance is open. K1-K9 open. No physical falsification.
+
+Seven-lane provider reconnaissance run `34650903154` returned zero provider-grade candidates for M34/M36/M38/M39/M41/M42/M43 in the frozen keyword tranche. This is a provider-search boundary only; no K0 promotion and no physical failure. Do not repeat the same keyword tranche.

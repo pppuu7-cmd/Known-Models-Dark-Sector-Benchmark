@@ -174,3 +174,7 @@ Prospectively frozen control classified `M25_M0_PK_CAPACITY_OR_EVOLVER_CONFOUNDE
 
 ### 2026-09-11 — M25 compile-capacity isolation control
 M25 compile-capacity isolation classification M25_M0_PK_STOCK_CAPACITY_PROVIDER_BLOCKED. Matched-evolver quadrature agreement, manual N=2000->4000 convergence, and prior evolver-isolation evidence are preserved. K1/K4 are not promoted and physical falsification is false. Canonical machine result: `models/resonant_sterile_neutrino_wdm/M25_M0_PK_COMPILE_CAPACITY_ISOLATION_CONTROL_RESULT.json`.
+
+### W05 current provider frontier (2026-09-12)
+- M37 f(T): exact-pin executable provider evidence is positive but K0 is only PARTIAL pending publication/author provenance. Canonical run 34652066337, artifact 10284291219.
+- M34/M36/M38/M39/M41/M42/M43: frozen seven-lane GitHub reconnaissance run 34650903154 found no provider-grade candidate; coverage stays OPEN, not failed. Use literature-linked provider routes or preregistered verification implementations rather than repeating the same search tranche.
