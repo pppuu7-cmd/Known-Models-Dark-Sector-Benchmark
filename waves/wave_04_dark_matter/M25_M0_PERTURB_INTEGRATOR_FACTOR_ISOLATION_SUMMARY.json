@@ -1,0 +1,49 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "children": {
+    "E": "M25_M0_PERTURB_FACTOR_INSENSITIVE",
+    "ES": "M25_M0_PERTURB_FACTOR_INSENSITIVE",
+    "ET": "M25_M0_PERTURB_FACTOR_INSENSITIVE",
+    "S": "M25_M0_PERTURB_FACTOR_INSENSITIVE",
+    "T": "M25_M0_PERTURB_FACTOR_INSENSITIVE",
+    "TS": "M25_M0_PERTURB_FACTOR_INSENSITIVE"
+  },
+  "eta_0p003_p95": {
+    "E": {
+      "CMB_EE": 0.0010393399411969039,
+      "CMB_TE": 0.008486562391390168,
+      "CMB_TT": 0.0003116290515842905
+    },
+    "ES": {
+      "CMB_EE": 0.0010393127387003684,
+      "CMB_TE": 0.008495698399161079,
+      "CMB_TT": 0.0003116100459690514
+    },
+    "ET": {
+      "CMB_EE": 0.0010393388569410538,
+      "CMB_TE": 0.008486548712898223,
+      "CMB_TT": 0.0003116289535622471
+    },
+    "S": {
+      "CMB_EE": 0.001035536206555118,
+      "CMB_TE": 0.008462351839667558,
+      "CMB_TT": 0.00031198594156858116
+    },
+    "T": {
+      "CMB_EE": 0.0010386577317581965,
+      "CMB_TE": 0.008467027396114147,
+      "CMB_TT": 0.00031121284574263933
+    },
+    "TS": {
+      "CMB_EE": 0.001038630595091354,
+      "CMB_TE": 0.008484368739520765,
+      "CMB_TT": 0.0003114462427370214
+    }
+  },
+  "localized_profiles": [],
+  "parent_full_ETS_run_id": 34555169307,
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M25_M0_PERTURB_INTEGRATOR_FACTOR_ISOLATION_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M25.M0PerturbIntegratorFactorIsolation.Summary.v1"
+}
