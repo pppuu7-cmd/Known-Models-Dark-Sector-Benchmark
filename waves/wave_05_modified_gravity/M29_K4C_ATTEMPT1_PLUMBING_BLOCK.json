@@ -1,0 +1,27 @@
+{
+  "schema": "m29_k4c_attempt1_plumbing_block_v0.1",
+  "provider_commit": "0009f51d89e6465c79e570b496c66fc90058fa77",
+  "parent_run_id": 34635419961,
+  "aggregate_artifact_id": 10277985941,
+  "aggregate_artifact_digest": "sha256:ef979d76357a6160848e7a878c1b8f9f324af9fd7d51b789cdcf3502c87c4a23",
+  "classification": "M29_K4C_DIAGNOSTIC_EXECUTION_OR_FINITE_OUTPUT_BLOCK",
+  "K4_promoted": false,
+  "physical_falsification": false,
+  "exit_codes": {
+    "base_grid": 0,
+    "thermo_ref": 0,
+    "projection_ref": 1,
+    "thermo_projection_ref": 1,
+    "full_core_ref": 1,
+    "full_ref": 0
+  },
+  "established_before_repair": {
+    "base_grid_tt_max_vs_full_ref": 0.00714302154624172,
+    "base_grid_tt_rms_vs_full_ref": 0.0037823637657666727,
+    "thermo_ref_tt_max_vs_full_ref": 0.007141158467498396,
+    "thermo_ref_reduction_fraction": 0.00026082502079305403
+  },
+  "plumbing_cause": "projection-containing precision profiles were formed by concatenating cl_permille.pre with cl_ref-derived overrides; hi_class rejects duplicate parameter keys. The first explicit duplicate reported was hyper_flat_approximation_nu, with transfer_neglect_delta_k_S_* and delta_l_max also duplicated.",
+  "repair_boundary": "replace duplicate-key concatenation with deterministic key override/merge only; numerical values, model point, provider pin, profiles, metric and preregistered attribution rule remain unchanged",
+  "scope": "audit record of K4c attempt-1 infrastructure/input-plumbing block; no numerical or physical conclusion for projection-containing profiles"
+}
