@@ -1,0 +1,68 @@
+name: W04 M27 high-L terminal bookkeeping sync
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m27-highl-terminal-sync.yml']
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Sync validated M27 high-L result into authority ledgers
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import csv,io
+          from pathlib import Path
+
+          # Census: preserve non-terminal semantics; only move the working frontier.
+          p=Path('matrices/model_family_census.csv')
+          rows=list(csv.DictReader(p.read_text().splitlines()))
+          f=rows[0].keys()
+          for r in rows:
+            if r['family_id']=='F27':
+              r['status']='HIGH_L_HIERARCHY_PASS_SELF_CONSISTENT_METRIC_OPEN'
+              r['notes']=('Independent M27 verification has distributed-decay geometry/background/source/hierarchy work. '
+                          'Parent L17->L32 hierarchy gate remained NOT_ESTABLISHED, but prospectively frozen L32->L64 refinement passed 27/27 with max amplitude-normalized residual 1.806015929192509e-06. '
+                          'This localizes the earlier failure to insufficient hierarchy depth under prescribed metric forcing; K1/K3/K4 are not globally promoted. Self-consistent Einstein/metric closure and later gates remain open.')
+          with p.open('w',newline='') as h:
+            w=csv.DictWriter(h,fieldnames=f); w.writeheader(); w.writerows(rows)
+
+          # Mandatory matrix: only scoped evidence is recorded.
+          p=Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(p.read_text().splitlines()))
+          f=rows[0].keys()
+          for r in rows:
+            if r['family_id']=='F27':
+              r['K0_provenance']='PASS_WITH_SCOPE_INDEPENDENT_VERIFICATION'
+              r['K1_reference_limit']='NOT_ESTABLISHED'
+              r['K2_physical_geometry']='PASS_WITH_SCOPE_DISTRIBUTED_DECAY_GEOMETRY'
+              r['K3_conservation_gauge_closure']='PARTIAL_PRESCRIBED_METRIC_SOURCE_AND_HIERARCHY_ONLY'
+              r['K4_numerical_robustness']='PASS_WITH_SCOPE_L32_TO_L64_HIERARCHY_TRUNCATION'
+              r['K5_multichannel_rank']='PARTIAL_RESPONSE_GEOMETRY_ONLY'
+              r['K6_nearest_family_manifold']='NOT_TESTED'
+              r['K7_common_observation_space']='NOT_TESTED'
+              r['K8_quotient_novelty']='NOT_TESTED'
+              r['K9_prospective_holdout']='NOT_TESTED'
+              r['coverage_state']='HIGH_L_HIERARCHY_PASS_SELF_CONSISTENT_METRIC_OPEN'
+              r['notes']=('M27 prescribed-metric dark-radiation hierarchy: initial L17->L32 gate failed on 7/27 branches (max 0.004003933161124123), preserved as parent evidence. '
+                          'Prospectively frozen L32->L64 refinement passed all 27 branches; max residual 1.806015929192509e-06. '
+                          'Classification M27_DDM_DR_HIGH_L_HIERARCHY_CONVERGENCE_PASS_WITH_PRESCRIBED_METRIC_SCOPE. No K1/K3/K4 global promotion and no physical falsification; self-consistent Einstein/metric closure remains open.')
+          with p.open('w',newline='') as h:
+            w=csv.DictWriter(h,fieldnames=f); w.writeheader(); w.writerows(rows)
+
+          delta='''\n\n### 2026-09-11 — M27 high-L hierarchy refinement terminal\nActions run `34564218394`, launch commit `100292b4fd7a016642e5f6a35dbdd903ed489625`, result commit `8d8881349b32970bd1dcc750e7879d53f22d0958`. The prospectively frozen L32->L64 refinement passed 27/27 M27 ensemble branches with maximum amplitude-normalized residual `1.806015929192509e-06`. The earlier L17->L32 failure is preserved (`max=0.004003933161124123`), so the result localizes hierarchy-depth error under prescribed metric forcing rather than erasing the parent negative result. Classification: `M27_DDM_DR_HIGH_L_HIERARCHY_CONVERGENCE_PASS_WITH_PRESCRIBED_METRIC_SCOPE`; K1/K3/K4 global promotion remains false; no physical falsification. Exact next layer is a self-consistent Einstein/metric closure route, preceded by provider-capability/provenance audit where appropriate. Strict census count remains 4/46 terminal/represented.\n'''
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+            q=Path(fn); txt=q.read_text()
+            marker='M27 high-L hierarchy refinement terminal'
+            if marker not in txt:
+              q.write_text(txt+delta)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          git diff --cached --quiet || { git commit -m 'Sync M27 high-L terminal into coverage ledgers'; git pull --rebase origin main; git push origin HEAD:main; }
