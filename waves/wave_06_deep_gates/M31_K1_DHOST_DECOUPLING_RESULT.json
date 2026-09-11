@@ -1,0 +1,26 @@
+{
+  "source_run_id": 34656276938,
+  "recovery_run_id": 34656732877,
+  "source_artifact_id": 10285409601,
+  "recovery_artifact_id": 10286575989,
+  "source_artifact_digest": "sha256:b6b02672c94e6059f6dc8381039e8d9a4682d98dfc6746091b4a92f9fbb09fbf",
+  "recovery_artifact_digest": "sha256:be1c74fcb836b7c18273052feda4cdd6d3b4258c0c297b8b08f2684e6878cbbe",
+  "schema": "k1_decoupling_ladder_v0.1",
+  "model_id": "M31",
+  "provider_commit": "0009f51d89e6465c79e570b496c66fc90058fa77",
+  "expected_commit": "0009f51d89e6465c79e570b496c66fc90058fa77",
+  "K1": "PASS_WITH_SCOPE",
+  "K1_scoped_pass": true,
+  "K2_K9": "OPEN",
+  "classification": "M31_K1_PASS_WITH_SCOPE_DECOUPLING_LADDER",
+  "physical_falsification": false,
+  "D_finest_over_D_coarsest": 0.00003746811205101664,
+  "loglog_pearson": 0.9930893049376627,
+  "criteria": {
+    "adjacent_within_20pct_nonincrease": true,
+    "finest_less_than_coarsest": true,
+    "finest_to_coarsest_le_0p25": true,
+    "loglog_correlation_ge_0p90": true
+  },
+  "scope": "pinned hi_class propto_omega family; joint alpha-coefficient scaling to zero with M2_ini=1 and LCDM expansion fixed; parser recovery only from source run 34656276938"
+}
