@@ -1,0 +1,12 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "children": {},
+  "n_results": 0,
+  "n_stable_support_extensions": 0,
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M25_PROVIDER_MOMENTUM_SUPPORT_EXTENSION_PREREGISTRATION_v0.1.md",
+  "provider_pin": "e4486265e8207aa0dd28decc8c8d897266c0a52a",
+  "schema": "KMDSB.M25.ProviderMomentumSupportExtension.Summary.v1",
+  "stock_source_run_id": 34544624039
+}
