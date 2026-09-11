@@ -1,0 +1,282 @@
+name: W04 M25 m0 Pk evolver-isolation control
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m25-m0-pk-evolver-isolation-control.yml'
+permissions:
+  contents: write
+  actions: read
+
+env:
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  OMP_NUM_THREADS: '1'
+
+jobs:
+  sync_parent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Sync terminal matched-evolver result to authoritative ledgers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv, io
+          from pathlib import Path
+
+          mandatory=Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(mandatory.open(newline='')))
+          fields=list(rows[0].keys())
+          for r in rows:
+              if r['family_id']=='F25':
+                  r['K4_numerical_robustness']='NOT_ESTABLISHED_EVOLVER_ASSOCIATED_SHIFT'
+                  r['coverage_state']='K1_K4_NUMERICAL_LOCALIZATION_ACTIVE'
+                  r['notes']=('M25 resonant sterile-neutrino-like WDM: pinned sterile-provider to CLASS density bridge is validated; K1 remains NOT_ESTABLISHED. '
+                              'Manual N=2000->4000 q-grid convergence is durable. Matched-evolver control run 34614012430 / result commit '
+                              '97e56cc6e90b4337ac915198362903582d05ca32 shows automatic versus manual-N4000 agreement at fixed evolver=0 '
+                              '(symmetric differences <=2.262e-4), while automatic-RK versus the older automatic baseline differs by ~1.997. '
+                              'Therefore pure quadrature sensitivity is not supported; numerical localization moves to the evolver/capacity layer. No K1/K4 promotion and no physical falsification.')
+          with mandatory.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows)
+
+          census=Path('matrices/model_family_census.csv')
+          rows=list(csv.DictReader(census.open(newline=''))); fields=list(rows[0].keys())
+          for r in rows:
+              if r['family_id']=='F25':
+                  r['status']='K1_K4_NUMERICAL_LOCALIZATION_ACTIVE'
+                  r['notes']=('Pinned sterile-production provider and CLASS bridge are validated. Manual q-grid N=2000->4000 is converged. '
+                              'Matched-evolver run 34614012430 shows automatic and manual quadrature agree at evolver=0 (max D=2.262e-4), '
+                              'whereas the explicit-RK automatic branch differs strongly from the pre-recovery automatic baseline (~1.997). '
+                              'The earlier apparent quadrature sensitivity is therefore evolver-confounded; evolver/capacity localization remains active. No physical family failure.')
+          with census.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows)
+
+          block='''\n### 2026-09-11 — M25 matched-evolver quadrature control\nValidated run `34614012430`, result commit `97e56cc6e90b4337ac915198362903582d05ca32`, classification `M25_M0_PK_MATCHED_EVOLVER_QUADRATURE_AGREEMENT`. At matched `evolver=0`, automatic quadrature agrees with manual N=4000 with symmetric relative differences `[2.2619695830008982e-4, 6.843414083315417e-5, 2.284619684214263e-5]`, all below the frozen 25% gate. The automatic-RK branch still differs from the immutable older automatic baseline by approximately `[1.99691, 1.99770, 1.99786]`. This localizes the historical discrepancy away from pure quadrature and toward the evolver/compile-capacity numerical layer. K1/K4 are not promoted; physical falsification is false. Next prospectively frozen gate: `protocol/W04_M25_M0_PK_EVOLVER_ISOLATION_CONTROL_PREREGISTRATION_v0.1.md`.\n'''
+          for name in ('recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md'):
+              p=Path(name); s=p.read_text()
+              if 'M25 matched-evolver quadrature control' not in s:
+                  p.write_text(s.rstrip()+'\n'+block)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'Sync M25 matched-evolver localization to ledgers'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+  control:
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [e2, e3, e4]
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: w04-m25-k1-abundance-decoupling
+          path: original
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34548988620
+      - name: Build pinned CLASS with matched raised capacity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class/include/common.h'); s=p.read_text()
+          assert s.count('#define _QUADRATURE_MAX_ 250')==1
+          assert s.count('#define _QUADRATURE_MAX_BG_ 800')==1
+          p.write_text(s.replace('#define _QUADRATURE_MAX_ 250','#define _QUADRATURE_MAX_ 4000').replace('#define _QUADRATURE_MAX_BG_ 800','#define _QUADRATURE_MAX_BG_ 4000'))
+          PY
+          make -C class -j2 > build.log 2>&1
+          mkdir -p class/output
+          cp original/class_provider/output/ref_00_background.dat class/output/ref_00_background.dat
+          cp original/class_provider/output/ref_00_pk.dat class/output/ref_00_pk.dat
+          cp -a original/m25_k1_cases .
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          c=os.environ['CASE']; i={'e2':2,'e3':3,'e4':4}[c]
+          p=Path(f'm25_k1_cases/m0_e{i}.ini')
+          p.write_text(p.read_text().replace('output = tCl,pCl,mPk','output = mPk'))
+          PY
+          cat > auto_default.pre <<'EOF'
+          tol_ncdm_bg = 1e-6
+          tol_ncdm = 1e-6
+          ncdm_fluid_approximation = 3
+          ncdm_quadrature_strategy = 0
+          ncdm_maximum_q = 10.0
+          EOF
+        env:
+          CASE: ${{ matrix.case }}
+      - name: Execute default-evolver case and compute immutable part metric
+        shell: bash
+        run: |
+          set +e
+          i=${CASE#e}
+          (cd class && ./class "../m25_k1_cases/m0_e${i}.ini" ../auto_default.pre > "../${CASE}.log" 2>&1)
+          code=$?
+          set -e
+          printf '%s\n' "$code" > status.txt
+          python3 - <<'PY'
+          import json, os, sys, math
+          from pathlib import Path
+          sys.path.insert(0,'.')
+          from verification.m25.m25_k1_precision_floor_diagnostic import load_table,output,metric
+          c=os.environ['CASE']; i={'e2':2,'e3':3,'e4':4}[c]; eta={'e2':0.01,'e3':0.003,'e4':0.001}[c]
+          code=int(Path('status.txt').read_text())
+          out={'case':c,'eta':eta,'exit_code':code,'class_pin':os.environ['CLASS_PIN']}
+          if code==0:
+              refpk=load_table(output(Path('class'),'ref','pk'))
+              refbg=load_table(output(Path('class'),'ref','background'))[:,[0,3]]
+              pk=load_table(output(Path('class'),f'm0_e{i}','pk'))
+              bg=load_table(output(Path('class'),f'm0_e{i}','background'))[:,[0,3]]
+              out['Pk']=metric(pk,refpk); out['H']=metric(bg,refbg)
+              vals=[out['Pk']['p95_abs'],out['H']['p95_abs']]
+              out['finite']=all(math.isfinite(float(x)) for x in vals)
+          Path(f'part-{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(Path(f'part-{c}.json').read_text())
+          PY
+        env:
+          CASE: ${{ matrix.case }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m25-evolver-default-${{ matrix.case }}
+          path: |
+            part-${{ matrix.case }}.json
+            status.txt
+            ${{ matrix.case }}.log
+            auto_default.pre
+            build.log
+            class/output/*_background.dat
+            class/output/*_pk.dat
+          retention-days: 90
+
+  aggregate:
+    needs: [control]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m25-evolver-default-*
+          path: parts
+          merge-multiple: true
+      - name: Apply prospectively frozen evolver-isolation gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv, json, math
+          from pathlib import Path
+          parent=json.loads(Path('models/resonant_sterile_neutrino_wdm/M25_M0_PK_MATCHED_EVOLVER_QUADRATURE_CONTROL_RESULT.json').read_text())
+          parts=[]
+          for c in ('e2','e3','e4'):
+              p=Path('parts')/f'part-{c}.json'
+              if p.exists(): parts.append(json.loads(p.read_text()))
+          result={
+            'schema':'KMDSB.M25.M0PkEvolverIsolationControl.v1',
+            'preregistration':'protocol/W04_M25_M0_PK_EVOLVER_ISOLATION_CONTROL_PREREGISTRATION_v0.1.md',
+            'class_pin':'e85808324f51fc694d12e3ed7439552a3c3f9540',
+            'parent_matched_evolver_run':34614012430,
+            'parent_matched_evolver_commit':'97e56cc6e90b4337ac915198362903582d05ca32',
+            'parts':parts,
+            'K1_promoted':False,'K4_promoted':False,'physical_falsification':False
+          }
+          admissible=(len(parts)==3 and all(x.get('exit_code')==0 and x.get('finite',False) for x in parts))
+          def sym(a,b): return 2*abs(float(a)-float(b))/(abs(float(a))+abs(float(b))+1e-300)
+          if not admissible:
+              result['classification']='M25_M0_PK_EVOLVER_CONTROL_PROVIDER_BLOCKED'
+          else:
+              parts=sorted(parts,key=lambda x:x['eta'],reverse=True)
+              default=[x['Pk']['p95_abs'] for x in parts]
+              rk=parent['Pk_auto_rk']['r95']
+              old=parent['old_auto_baseline_Pk_r95']
+              primary=[sym(a,b) for a,b in zip(default,rk)]
+              cap=[sym(a,b) for a,b in zip(default,old)]
+              result['default_evolver_Pk_r95']=default
+              result['explicit_RK_Pk_r95']=rk
+              result['old_auto_baseline_Pk_r95']=old
+              result['default_vs_RK_symmetric_relative_differences']=primary
+              result['raisedcap_default_vs_oldauto_symmetric_relative_differences']=cap
+              result['capacity_control_agreement']=all(x<=0.25 for x in cap)
+              result['default_vs_RK_agreement']=all(x<=0.25 for x in primary)
+              if any(x>0.25 for x in cap):
+                  result['classification']='M25_M0_PK_CAPACITY_OR_EVOLVER_CONFOUNDED'
+              elif any(x>0.25 for x in primary):
+                  result['classification']='M25_M0_PK_EVOLVER_SENSITIVITY_CONFIRMED'
+              else:
+                  result['classification']='M25_M0_PK_EVOLVER_SHIFT_NOT_CONFIRMED'
+          Path('result.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          print(Path('result.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m25-m0-pk-evolver-isolation-control
+          path: |
+            result.json
+            parts/
+          retention-days: 90
+      - name: Persist result and synchronize ledgers
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp result.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm
+          cp /tmp/result.json waves/wave_04_dark_matter/M25_M0_PK_EVOLVER_ISOLATION_CONTROL_RESULT.json
+          cp /tmp/result.json models/resonant_sterile_neutrino_wdm/M25_M0_PK_EVOLVER_ISOLATION_CONTROL_RESULT.json
+          python3 - <<'PY'
+          import csv, json
+          from pathlib import Path
+          r=json.loads(Path('/tmp/result.json').read_text()); c=r['classification']
+          k4={
+            'M25_M0_PK_EVOLVER_SENSITIVITY_CONFIRMED':'NOT_ESTABLISHED_EVOLVER_SENSITIVITY',
+            'M25_M0_PK_EVOLVER_SHIFT_NOT_CONFIRMED':'NOT_ESTABLISHED_NUMERICAL_FLOOR',
+            'M25_M0_PK_CAPACITY_OR_EVOLVER_CONFOUNDED':'NOT_ESTABLISHED_CAPACITY_OR_EVOLVER_CONFOUNDED',
+            'M25_M0_PK_EVOLVER_CONTROL_PROVIDER_BLOCKED':'BLOCKED_IMPLEMENTATION_EVOLVER_CONTROL'
+          }[c]
+          summary=f'M25 evolver-isolation classification {c}. '
+          if 'default_vs_RK_symmetric_relative_differences' in r:
+              summary+=f"default-vs-explicit-RK D={r['default_vs_RK_symmetric_relative_differences']}; raised-cap-default-vs-old-auto D={r['raisedcap_default_vs_oldauto_symmetric_relative_differences']}. "
+          summary+='Matched-evolver quadrature agreement and manual N=2000->4000 convergence are preserved. K1/K4 are not promoted and physical falsification is false.'
+          p=Path('matrices/mandatory_properties_matrix.csv'); rows=list(csv.DictReader(p.open(newline=''))); fields=list(rows[0].keys())
+          for x in rows:
+              if x['family_id']=='F25':
+                  x['K4_numerical_robustness']=k4; x['coverage_state']='K1_K4_NUMERICAL_LOCALIZATION_ACTIVE'; x['notes']=summary
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows)
+          p=Path('matrices/model_family_census.csv'); rows=list(csv.DictReader(p.open(newline=''))); fields=list(rows[0].keys())
+          for x in rows:
+              if x['family_id']=='F25': x['status']='K1_K4_NUMERICAL_LOCALIZATION_ACTIVE'; x['notes']=summary
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows)
+          block=f'''\n### 2026-09-11 — M25 evolver-isolation control\nProspectively frozen control classified `{c}`. {summary} Canonical machine result: `models/resonant_sterile_neutrino_wdm/M25_M0_PK_EVOLVER_ISOLATION_CONTROL_RESULT.json`.\n'''
+          for name in ('recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md'):
+              p=Path(name); s=p.read_text()
+              if 'M25 evolver-isolation control' not in s: p.write_text(s.rstrip()+'\n'+block)
+          PY
+          git add waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          git diff --cached --quiet || git commit -m 'Record M25 evolver-isolation control and sync ledgers'
+          git pull --rebase origin main
+          git push origin HEAD:main
