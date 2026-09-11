@@ -1,0 +1,73 @@
+name: Sync W06 M30 M31 M40 K1 state
+
+on:
+  push:
+    paths:
+      - '.github/workflows/sync-w06-m30-m31-m40-k1-state.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply canonical K1 classifications
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import csv
+          from pathlib import Path
+          p=Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(p.open(newline='',encoding='utf-8')))
+          fields=list(rows[0].keys())
+          found=set()
+          for r in rows:
+              mid=r['benchmark_id']
+              if mid=='M30':
+                  found.add(mid)
+                  r['K1_reference_limit']='PASS_WITH_SCOPE'
+                  r['coverage_state']='K0_K1_HICLASS_DECOUPLING_PASS_K2_K9_OPEN'
+                  note='W06 canonical K1 from source run 34656276938 artifact 10286001416 plus parser-only recovery run 34656732877 artifact 10285566618: PASS_WITH_SCOPE, D_finest/D_coarsest=0.0012228125, log-log r=0.9988840. Joint hi_class alpha-coefficient scaling to zero; no physical falsification; K2-K9 open.'
+                  if note not in r['notes']:
+                      r['notes']=(r['notes']+' | '+note).strip(' |')
+              elif mid=='M31':
+                  found.add(mid)
+                  r['K1_reference_limit']='PASS_WITH_SCOPE'
+                  r['coverage_state']='K0_K1_EFFECTIVE_BH_DECOUPLING_PASS_K2_K9_OPEN'
+                  note='W06 canonical K1 from source run 34656276938 artifact 10285409601 plus parser-only recovery run 34656732877 artifact 10286575989: PASS_WITH_SCOPE, D_finest/D_coarsest=3.7468112e-05, log-log r=0.9930893. Effective beyond-Horndeski/DHOST alpha decoupling only; covariant GLPV/DHOST closure remains open; K2-K9 open.'
+                  if note not in r['notes']:
+                      r['notes']=(r['notes']+' | '+note).strip(' |')
+              elif mid=='M40':
+                  found.add(mid)
+                  r['K1_reference_limit']='BLOCKED_IMPLEMENTATION'
+                  r['coverage_state']='K0_PASS_K1_IMPLEMENTATION_BLOCKED_K2_K9_OPEN'
+                  note='W06 K1 source run 34656276938 artifact 10286391289: exact-pin native-zero/GR endpoint did not execute successfully, classification BLOCKED_IMPLEMENTATION; this is a provider/endpoint boundary, not physical Hořava falsification; K2-K9 open.'
+                  if note not in r['notes']:
+                      r['notes']=(r['notes']+' | '+note).strip(' |')
+          missing={'M30','M31','M40'}-found
+          if missing:
+              raise SystemExit(f'missing matrix rows: {sorted(missing)}')
+          with p.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n')
+              w.writeheader(); w.writerows(rows)
+          PY
+      - name: Recompute readiness
+        run: python3 verification/audit_matrix_readiness.py
+      - name: Commit and push atomically
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/mandatory_properties_matrix.csv audits/KMDSB_READINESS_SNAPSHOT.json
+          if git diff --cached --quiet; then
+            echo 'state already synchronized'
+            exit 0
+          fi
+          git commit -m 'Sync M30 M31 M40 K1 classifications and readiness'
+          git pull --rebase origin main
+          git push origin HEAD:main
