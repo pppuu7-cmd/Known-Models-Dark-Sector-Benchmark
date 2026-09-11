@@ -1,0 +1,63 @@
+name: W04 M27 DDM distributed-decay geometry
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m27-ddm-distributed-decay-geometry.yml']
+permissions:
+  contents: write
+jobs:
+  geometry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        delta: [0.5, 1.0, 2.0]
+        y: [1.0, 2.0, 3.0]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+      - name: Evaluate frozen 64-component ensemble
+        run: |
+          python3 verification/m27/ddm_distributed_decay_geometry.py '${{ matrix.delta }}' '${{ matrix.y }}' result.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m27-ddm-d${{ matrix.delta }}-y${{ matrix.y }}
+          path: result.json
+          retention-days: 90
+  aggregate:
+    needs: geometry
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m27-ddm-d*-y*
+          path: collected
+      - name: Persist nine-benchmark summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rs=[json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')]
+          rs=sorted(rs,key=lambda r:(r['delta'],r['y']))
+          good=(len(rs)==9 and all(r['classification']=='M27_DDM_DISTRIBUTED_DECAY_GEOMETRY_PASS_WITH_SCOPE' for r in rs))
+          s={'schema':'KMDSB.M27.DDMDistributedDecayGeometry.Summary.v1','preregistration':'protocol/W04_M27_DDM_DISTRIBUTED_DECAY_GEOMETRY_PREREGISTRATION_v0.1.md','n_results':len(rs),'children':{f"delta={r['delta']}:y={r['y']}":r['classification'] for r in rs},'lifetime_log10_spans':{f"delta={r['delta']}:y={r['y']}":r['lifetime_log10_span'] for r in rs},'single_exponential_relative_L2':{f"delta={r['delta']}:y={r['y']}":r['best_single_exponential']['relative_L2_residual'] for r in rs},'classification':'M27_DDM_NINE_BENCHMARK_GEOMETRY_PASS_WITH_SCOPE' if good else 'M27_DDM_GEOMETRY_NOT_ESTABLISHED','K1_promoted':False,'K4_promoted':False,'physical_falsification':False,'solver_level_energy_transfer_gate':'OPEN'}
+          Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n'); print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/dynamical_dark_matter
+          cp /tmp/summary.json waves/wave_04_dark_matter/M27_DDM_DISTRIBUTED_DECAY_GEOMETRY_SUMMARY.json
+          cp /tmp/summary.json models/dynamical_dark_matter/M27_DDM_DISTRIBUTED_DECAY_GEOMETRY_SUMMARY.json
+          git add waves/wave_04_dark_matter models/dynamical_dark_matter
+          git diff --cached --quiet || { git commit -m 'Record M27 DDM distributed-decay geometry'; git pull --rebase origin main; git push origin HEAD:main; }
