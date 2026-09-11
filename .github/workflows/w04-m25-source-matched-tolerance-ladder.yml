@@ -1,0 +1,91 @@
+name: W04 M25 source-matched tolerance ladder
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m25-source-matched-tolerance-ladder.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  ladder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [m0, m1]
+        profile: [t1e6, t3e7, t1e7]
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: w04-m25-k1-abundance-decoupling
+          path: original
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34548988620
+      - name: Restore frozen cases and make precision profile
+        shell: bash
+        run: |
+          cp -a original/m25_k1_cases m25_k1_cases
+          case '${{ matrix.profile }}' in
+            t1e6) tol=1e-6 ;;
+            t3e7) tol=3e-7 ;;
+            t1e7) tol=1e-7 ;;
+          esac
+          printf 'tol_ncdm_bg = %s\ntol_ncdm = %s\n' "$tol" "$tol" > source_match.pre
+      - name: Build pinned CLASS with capacity-only repair
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class/include/common.h'); s=p.read_text()
+          assert s.count('#define _QUADRATURE_MAX_ 250')==1
+          assert s.count('#define _QUADRATURE_MAX_BG_ 800')==1
+          s=s.replace('#define _QUADRATURE_MAX_ 250','#define _QUADRATURE_MAX_ 4000')
+          s=s.replace('#define _QUADRATURE_MAX_BG_ 800','#define _QUADRATURE_MAX_BG_ 4000')
+          p.write_text(s)
+          PY
+          make -C class -j2 > build.log 2>&1
+      - name: Run four independent cases two-at-a-time
+        shell: bash
+        run: |
+          mkdir -p class/output logs status_parts
+          printf '%s\n' ref e2 e3 e4 | xargs -P 2 -I{} bash -c '
+            short="$1"; model="$2"; id="$short"; [ "$short" = ref ] || id="${model}_${short}"
+            set +e
+            (cd class && ./class "../m25_k1_cases/${id}.ini" ../source_match.pre > "../logs/${id}.log" 2>&1)
+            printf "%d\n" "$?" > "status_parts/${short}.status"
+          ' _ {} '${{ matrix.model }}'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d={'build':0}
+          for p in Path('status_parts').glob('*.status'): d[p.stem]=int(p.read_text())
+          Path('status.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - name: Analyze frozen tail gate
+        shell: bash
+        run: |
+          python3 verification/m25/source_matched_tolerance_ladder.py class '${{ matrix.model }}' '${{ matrix.profile }}' status.json result.json
+          cat status.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m25-source-match-${{ matrix.model }}-${{ matrix.profile }}
+          path: |
+            source_match.pre
+            build.log
+            status.json
+            result.json
+            logs/
+            class/output/
+          retention-days: 90
