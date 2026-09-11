@@ -1,0 +1,149 @@
+name: W04 M25 cl_ref perturbation sub-blocks
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m25-clref-perturbation-subblocks.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  subblock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [m0, m1]
+        block: [perturb_integrator, k_start_tca]
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: w04-m25-k1-abundance-decoupling
+          path: original
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34548988620
+      - name: Build pinned CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -a original/m25_k1_cases m25_k1_cases
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class/include/common.h'); s=p.read_text()
+          assert s.count('#define _QUADRATURE_MAX_ 250')==1 and s.count('#define _QUADRATURE_MAX_BG_ 800')==1
+          p.write_text(s.replace('#define _QUADRATURE_MAX_ 250','#define _QUADRATURE_MAX_ 4000').replace('#define _QUADRATURE_MAX_BG_ 800','#define _QUADRATURE_MAX_BG_ 4000'))
+          PY
+          make -C class -j2 > build.log 2>&1
+      - name: Prepare frozen sub-block profile
+        shell: bash
+        run: |
+          printf 'tol_ncdm_bg = 1e-6\ntol_ncdm = 1e-6\nncdm_fluid_approximation = 3\n' > subblock.pre
+          if [ '${{ matrix.block }}' = 'perturb_integrator' ]; then
+            cat >> subblock.pre <<'EOF'
+          evolver = 0
+          tol_perturbations_integration = 1e-6
+          perturbations_sampling_stepsize = 0.01
+          EOF
+          else
+            cat >> subblock.pre <<'EOF'
+          k_min_tau0 = 0.002
+          k_max_tau0_over_l_max = 3
+          k_step_sub = 0.015
+          k_step_super = 0.0001
+          k_step_super_reduction = 0.1
+          start_small_k_at_tau_c_over_tau_h = 0.0004
+          start_large_k_at_tau_h_over_tau_k = 0.05
+          tight_coupling_trigger_tau_c_over_tau_h = 0.005
+          tight_coupling_trigger_tau_c_over_tau_k = 0.008
+          start_sources_at_tau_c_over_tau_h = 0.006
+          EOF
+          fi
+          cat subblock.pre
+      - name: Execute four cases two-at-a-time
+        shell: bash
+        run: |
+          mkdir -p class/output logs parts
+          printf '%s\n' ref e2 e3 e4 | xargs -P 2 -I{} bash -c '
+            s="$1"; m="$2"; id="$s"; [ "$s" = ref ] || id="${m}_${s}"
+            set +e
+            (cd class && ./class "../m25_k1_cases/${id}.ini" ../subblock.pre > "../logs/${id}.log" 2>&1)
+            printf "%d\n" "$?" > "parts/${s}.status"
+          ' _ {} '${{ matrix.model }}'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d={'build':0}; d.update({p.stem:int(p.read_text()) for p in Path('parts').glob('*.status')})
+          Path('status.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - name: Analyze frozen tail scaling
+        shell: bash
+        env:
+          MODEL: ${{ matrix.model }}
+          BLOCK: ${{ matrix.block }}
+        run: |
+          python3 verification/m25/m25_k1_precision_floor_diagnostic.py class "$MODEL" pk_ref status.json raw.json
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open('raw.json')); targets=['Pk','CMB_TT','CMB_EE','CMB_TE']
+          recovered=[k for k in targets if r.get('blocks',{}).get(k,{}).get('tail_scaling_recovered')]
+          if r.get('classification')=='M25_PRECISION_FLOOR_DIAGNOSTIC_PROVIDER_BLOCKED': cls='M25_CLREF_SUBBLOCK_PROVIDER_BLOCKED'
+          elif len(recovered)==4 and r.get('blocks',{}).get('H',{}).get('tail_scaling_recovered'): cls='M25_CLREF_SUBBLOCK_LOCALIZED'
+          elif recovered: cls='M25_CLREF_SUBBLOCK_PARTIALLY_LOCALIZED'
+          else: cls='M25_CLREF_SUBBLOCK_INSENSITIVE'
+          r.update({'schema':'KMDSB.M25.ClRefPerturbationSubblock.v1','preregistration':'protocol/W04_M25_CLREF_PERTURBATION_SUBBLOCKS_PREREGISTRATION_v0.1.md','model':os.environ['MODEL'],'subblock':os.environ['BLOCK'],'recovered_perturbation_blocks':recovered,'classification':cls,'K1_promoted':False,'K4_promoted':False,'physical_falsification':False})
+          open('result.json','w').write(json.dumps(r,indent=2,sort_keys=True)+'\n')
+          PY
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m25-clref-subblock-${{ matrix.model }}-${{ matrix.block }}
+          path: |
+            subblock.pre
+            build.log
+            status.json
+            result.json
+            logs/
+            class/output/
+          retention-days: 90
+  aggregate:
+    needs: subblock
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m25-clref-subblock-*
+          path: collected
+      - name: Persist sub-block summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rs=[json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')]
+          s={'schema':'KMDSB.M25.ClRefPerturbationSubblocks.Summary.v1','preregistration':'protocol/W04_M25_CLREF_PERTURBATION_SUBBLOCKS_PREREGISTRATION_v0.1.md','children':{f"{r['model']}:{r['subblock']}":r['classification'] for r in rs},'recovered_blocks':{f"{r['model']}:{r['subblock']}":r.get('recovered_perturbation_blocks',[]) for r in rs},'K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n'); print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm
+          cp /tmp/summary.json waves/wave_04_dark_matter/M25_CLREF_PERTURBATION_SUBBLOCKS_SUMMARY.json
+          cp /tmp/summary.json models/resonant_sterile_neutrino_wdm/M25_CLREF_PERTURBATION_SUBBLOCKS_SUMMARY.json
+          git add waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm
+          git diff --cached --quiet || { git commit -m 'Record M25 cl_ref perturbation sub-blocks'; git pull --rebase origin main; git push origin HEAD:main; }
