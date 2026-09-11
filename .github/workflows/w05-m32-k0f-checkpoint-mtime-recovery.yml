@@ -1,0 +1,161 @@
+name: W05 M32 DGP K0f checkpoint mtime recovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w05-m32-k0f-checkpoint-mtime-recovery.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  stage1:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m32-k0e-stage4
+          path: parent_stage4
+          run-id: 34645828172
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+      - name: Intel build corrected checkpoint 1
+        run: bash verification/m32/k0f_intel_checkpoint_mtime_stage.sh 1 "$GITHUB_WORKSPACE/parent_stage4/checkpoint.tar"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m32-k0f-stage1
+          path: m32k0f_stage1
+          if-no-files-found: error
+          retention-days: 30
+
+  stage2:
+    needs: stage1
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m32-k0f-stage1
+          path: prev1
+      - name: Intel build corrected checkpoint 2
+        run: bash verification/m32/k0f_intel_checkpoint_mtime_stage.sh 2 "$GITHUB_WORKSPACE/prev1/checkpoint.tar"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m32-k0f-stage2
+          path: m32k0f_stage2
+          if-no-files-found: error
+          retention-days: 30
+
+  stage3:
+    needs: stage2
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m32-k0f-stage2
+          path: prev2
+      - name: Intel build corrected checkpoint 3
+        run: bash verification/m32/k0f_intel_checkpoint_mtime_stage.sh 3 "$GITHUB_WORKSPACE/prev2/checkpoint.tar"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m32-k0f-stage3
+          path: m32k0f_stage3
+          if-no-files-found: error
+          retention-days: 30
+
+  stage4:
+    needs: stage3
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m32-k0f-stage3
+          path: prev3
+      - name: Intel build corrected checkpoint 4
+        run: bash verification/m32/k0f_intel_checkpoint_mtime_stage.sh 4 "$GITHUB_WORKSPACE/prev3/checkpoint.tar"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m32-k0f-stage4
+          path: m32k0f_stage4
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: stage4
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m32-k0f-stage4
+          path: final_stage
+      - name: Frozen K0f classification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib
+          p=pathlib.Path('final_stage')
+          s=json.loads((p/'stage_result.json').read_text())
+          pin=(p/'provider_head.txt').read_text().strip() if (p/'provider_head.txt').exists() else None
+          exact=pin=='849ddb716041316d0e223ba22badc0d630b72435'
+          rc=int(s['build_exit_code']); exe=bool(s['native_executable_exists']); integ=bool(s.get('checkpoint_bytes_unchanged',False))
+          if not exact:
+              c='M32_K0F_BLOCKED_PROVENANCE'
+          elif not integ:
+              c='M32_K0F_CHECKPOINT_INTEGRITY_FAILURE'
+          elif rc==0 and exe:
+              c='M32_K0F_PROVIDER_INTEL_BUILD_RECOVERED_MTIME_CHECKPOINTED'
+          elif rc in (124,130) and not exe:
+              c='M32_K0F_CHECKPOINT_BUDGET_EXHAUSTED'
+          else:
+              c='M32_K0F_PROVIDER_INTEL_BUILD_STILL_BLOCKED'
+          out={
+            'schema':'m32_dgp_k0f_checkpoint_mtime_recovery_v0.1',
+            'provider':'nat-woodcock/EFT-Ramses',
+            'provider_commit':'849ddb716041316d0e223ba22badc0d630b72435',
+            'parent_run':34645828172,
+            'parent_stage4_artifact_id':10281849079,
+            'classification':c,
+            'checks':{'exact_pin':exact,'checkpoint_bytes_unchanged':integ,'final_stage_build_exit_code':rc,'native_executable_exists':exe},
+            'recovery':'mtime-only normalization of exact-pin restored .o/.mod products after byte-hash equality check',
+            'toolchain':'Intel oneAPI ifx + Intel MPI mpiifx; provider active Intel-style flags preserved',
+            'K0_promoted':False,
+            'physical_falsification':False,
+            'scope':'infrastructure-only correction of K0e checkpoint semantics; native DGP runtime plus reference/control remains mandatory before K0 promotion'
+          }
+          q=pathlib.Path('waves/wave_05_modified_gravity/M32_K0F_CHECKPOINT_MTIME_RECOVERY_RESULT.json')
+          q.parent.mkdir(parents=True,exist_ok=True); q.write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m32-k0f-checkpoint-mtime-aggregate
+          path: |
+            waves/wave_05_modified_gravity/M32_K0F_CHECKPOINT_MTIME_RECOVERY_RESULT.json
+            final_stage/stage_result.json
+            final_stage/build_stdout.log
+            final_stage/build_stderr.log
+            final_stage/ifx_version.txt
+            final_stage/mpiifx_version.txt
+            final_stage/state_before.txt
+            final_stage/state_after.txt
+            final_stage/hashes_before_touch.txt
+            final_stage/hashes_after_touch.txt
+          retention-days: 30
+      - name: Commit machine result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git pull --rebase origin main
+          git add waves/wave_05_modified_gravity/M32_K0F_CHECKPOINT_MTIME_RECOVERY_RESULT.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Record M32 checkpoint mtime recovery result'
+          git push
