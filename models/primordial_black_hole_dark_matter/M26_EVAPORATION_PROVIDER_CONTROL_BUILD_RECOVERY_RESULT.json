@@ -1,0 +1,30 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "build_target": "class",
+  "child": "evaporation",
+  "classification": "M26_EVAPORATION_PROVIDER_EXECUTION_BLOCKED",
+  "failed_status_keys": [
+    "zero",
+    "finite"
+  ],
+  "finite_response_floor_max_abs": 1e-10,
+  "original_blocked_run_id": 34549280581,
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M26_PBH_ENERGY_INJECTION_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md",
+  "provider": "GFAbellan/ExoCLASS",
+  "provider_pin": "7c4b26e50d240f1f45f120b623aab2dba13094fd",
+  "recovery_preregistration": "protocol/W04_M26_PBH_PROVIDER_BUILD_RECOVERY_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M26.PBHEnergyInjectionProviderControl.BuildRecovery.v1",
+  "status": {
+    "baseline": 0,
+    "build": 0,
+    "build_target": "class",
+    "checkout": 0,
+    "clone": 0,
+    "finite": 1,
+    "pip": 0,
+    "zero": 1
+  },
+  "zero_identity_threshold_p95": 1e-08
+}
