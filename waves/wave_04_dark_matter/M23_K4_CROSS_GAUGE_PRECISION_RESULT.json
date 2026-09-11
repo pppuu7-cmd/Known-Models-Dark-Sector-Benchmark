@@ -1,411 +1,411 @@
 {
-  "K3_cross_gauge_classification": "M23_K3_CROSS_GAUGE_NUMERICAL_NOT_ESTABLISHED",
-  "K4_classification": "M23_K4_PROVIDER_OR_PRECISION_EXECUTION_BLOCKED",
+  "K3_cross_gauge_classification": "M23_K3_CROSS_GAUGE_NUMERICAL_PASS_WITH_COMMON_OBSERVABLE_SCOPE",
+  "K4_classification": "M23_K4_NUMERICAL_ROBUSTNESS_NOT_ESTABLISHED",
   "branches": {
     "g0:newtonian": {
       "blocks": {
         "EE": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 6.50128497046519e-05,
+          "R_fine": 0.00036753320373251856,
           "pass": false
         },
         "Pk": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 0.0,
+          "R_fine": 8.424545930258487e-05,
           "pass": false
         },
         "TE": {
-          "R_coarse": null,
-          "R_fine": null,
-          "pass": false
+          "R_coarse": 0.0,
+          "R_fine": 0.0,
+          "pass": true
         },
         "TT": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 7.212517204732378e-05,
+          "R_fine": 0.0002967447749036288,
           "pass": false
         }
       },
       "statuses": {
         "default": 0,
         "permille": 0,
-        "reference": 1
+        "reference": 0
       }
     },
     "g0:synchronous": {
       "blocks": {
         "EE": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 6.501201325140038e-05,
+          "R_fine": 0.00036807799478261253,
           "pass": false
         },
         "Pk": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 0.0,
+          "R_fine": 4.765036846788215e-05,
           "pass": false
         },
         "TE": {
-          "R_coarse": null,
-          "R_fine": null,
-          "pass": false
+          "R_coarse": 0.0,
+          "R_fine": 0.0,
+          "pass": true
         },
         "TT": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 7.211055744670616e-05,
+          "R_fine": 0.00028936280574513884,
           "pass": false
         }
       },
       "statuses": {
         "default": 0,
         "permille": 0,
-        "reference": 1
+        "reference": 0
       }
     },
     "g1:newtonian": {
       "blocks": {
         "EE": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 6.499657347732383e-05,
+          "R_fine": 0.00036790422489181763,
           "pass": false
         },
         "Pk": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 0.0,
+          "R_fine": 8.397186622880395e-05,
           "pass": false
         },
         "TE": {
-          "R_coarse": null,
-          "R_fine": null,
-          "pass": false
+          "R_coarse": 0.0,
+          "R_fine": 0.0,
+          "pass": true
         },
         "TT": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 7.219060722705129e-05,
+          "R_fine": 0.0002960807288673397,
           "pass": false
         }
       },
       "statuses": {
         "default": 0,
         "permille": 0,
-        "reference": 1
+        "reference": 0
       }
     },
     "g1:synchronous": {
       "blocks": {
         "EE": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 6.499561379763901e-05,
+          "R_fine": 0.0003693201726827265,
           "pass": false
         },
         "Pk": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 0.0,
+          "R_fine": 4.7661139120117624e-05,
           "pass": false
         },
         "TE": {
-          "R_coarse": null,
-          "R_fine": null,
-          "pass": false
+          "R_coarse": 0.0,
+          "R_fine": 0.0,
+          "pass": true
         },
         "TT": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 7.217553828466531e-05,
+          "R_fine": 0.0002918152692036399,
           "pass": false
         }
       },
       "statuses": {
         "default": 0,
         "permille": 0,
-        "reference": 1
+        "reference": 0
       }
     },
     "g2:newtonian": {
       "blocks": {
         "EE": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 6.4991656489839e-05,
+          "R_fine": 0.00036835779545820265,
           "pass": false
         },
         "Pk": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 0.0,
+          "R_fine": 8.3905411446373e-05,
           "pass": false
         },
         "TE": {
-          "R_coarse": null,
-          "R_fine": null,
-          "pass": false
+          "R_coarse": 0.0,
+          "R_fine": 0.0,
+          "pass": true
         },
         "TT": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 7.221005363793215e-05,
+          "R_fine": 0.0002966856635609107,
           "pass": false
         }
       },
       "statuses": {
         "default": 0,
         "permille": 0,
-        "reference": 1
+        "reference": 0
       }
     },
     "g2:synchronous": {
       "blocks": {
         "EE": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 6.49905188563675e-05,
+          "R_fine": 0.000368523300463447,
           "pass": false
         },
         "Pk": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 0.0,
+          "R_fine": 4.759680961055389e-05,
           "pass": false
         },
         "TE": {
-          "R_coarse": null,
-          "R_fine": null,
-          "pass": false
+          "R_coarse": 0.0,
+          "R_fine": 0.0,
+          "pass": true
         },
         "TT": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 7.21937269969581e-05,
+          "R_fine": 0.0002908200995260354,
           "pass": false
         }
       },
       "statuses": {
         "default": 0,
         "permille": 0,
-        "reference": 1
+        "reference": 0
       }
     },
     "g3:newtonian": {
       "blocks": {
         "EE": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 6.499001999108865e-05,
+          "R_fine": 0.0003678798915900732,
           "pass": false
         },
         "Pk": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 0.0,
+          "R_fine": 8.388399849145461e-05,
           "pass": false
         },
         "TE": {
-          "R_coarse": null,
-          "R_fine": null,
-          "pass": false
+          "R_coarse": 0.0,
+          "R_fine": 0.0,
+          "pass": true
         },
         "TT": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 7.221688429841459e-05,
+          "R_fine": 0.0002963240244882073,
           "pass": false
         }
       },
       "statuses": {
         "default": 0,
         "permille": 0,
-        "reference": 1
+        "reference": 0
       }
     },
     "g3:synchronous": {
       "blocks": {
         "EE": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 6.498876832167803e-05,
+          "R_fine": 0.00036843695561945513,
           "pass": false
         },
         "Pk": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 0.0,
+          "R_fine": 4.763043541922025e-05,
           "pass": false
         },
         "TE": {
-          "R_coarse": null,
-          "R_fine": null,
-          "pass": false
+          "R_coarse": 0.0,
+          "R_fine": 0.0,
+          "pass": true
         },
         "TT": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 7.220115036757525e-05,
+          "R_fine": 0.00028968082983985537,
           "pass": false
         }
       },
       "statuses": {
         "default": 0,
         "permille": 0,
-        "reference": 1
+        "reference": 0
       }
     },
     "g4:newtonian": {
       "blocks": {
         "EE": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 6.49894080799314e-05,
+          "R_fine": 0.00036784493161548824,
           "pass": false
         },
         "Pk": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 0.0,
+          "R_fine": 8.387352422210625e-05,
           "pass": false
         },
         "TE": {
-          "R_coarse": null,
-          "R_fine": null,
-          "pass": false
+          "R_coarse": 0.0,
+          "R_fine": 0.0,
+          "pass": true
         },
         "TT": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 7.221874804789769e-05,
+          "R_fine": 0.00029619512494712813,
           "pass": false
         }
       },
       "statuses": {
         "default": 0,
         "permille": 0,
-        "reference": 1
+        "reference": 0
       }
     },
     "g4:synchronous": {
       "blocks": {
         "EE": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 6.498852067544628e-05,
+          "R_fine": 0.0003691044319466358,
           "pass": false
         },
         "Pk": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 0.0,
+          "R_fine": 4.7610898031279005e-05,
           "pass": false
         },
         "TE": {
-          "R_coarse": null,
-          "R_fine": null,
-          "pass": false
+          "R_coarse": 0.0,
+          "R_fine": 0.0,
+          "pass": true
         },
         "TT": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 7.220343121908632e-05,
+          "R_fine": 0.0002888049992675236,
           "pass": false
         }
       },
       "statuses": {
         "default": 0,
         "permille": 0,
-        "reference": 1
+        "reference": 0
       }
     },
     "ref:newtonian": {
       "blocks": {
         "EE": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 6.498920004072418e-05,
+          "R_fine": 0.00036570217494926,
           "pass": false
         },
         "Pk": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 0.0,
+          "R_fine": 8.136387717792196e-05,
           "pass": false
         },
         "TE": {
-          "R_coarse": null,
-          "R_fine": null,
-          "pass": false
+          "R_coarse": 0.0,
+          "R_fine": 0.0,
+          "pass": true
         },
         "TT": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 7.221987214669862e-05,
+          "R_fine": 0.0002939624478904002,
           "pass": false
         }
       },
       "statuses": {
         "default": 0,
         "permille": 0,
-        "reference": 1
+        "reference": 0
       }
     },
     "ref:synchronous": {
       "blocks": {
         "EE": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 6.498833522557674e-05,
+          "R_fine": 0.0003695627697741671,
           "pass": false
         },
         "Pk": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 0.0,
+          "R_fine": 4.762422969793721e-05,
           "pass": false
         },
         "TE": {
-          "R_coarse": null,
-          "R_fine": null,
-          "pass": false
+          "R_coarse": 0.0,
+          "R_fine": 0.0,
+          "pass": true
         },
         "TT": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 7.220411967175694e-05,
+          "R_fine": 0.0002891831225922403,
           "pass": false
         }
       },
       "statuses": {
         "default": 0,
         "permille": 0,
-        "reference": 1
+        "reference": 0
       }
     },
     "zero:newtonian": {
       "blocks": {
         "EE": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 6.498920004072418e-05,
+          "R_fine": 0.00036570217494926,
           "pass": false
         },
         "Pk": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 0.0,
+          "R_fine": 8.136387717792196e-05,
           "pass": false
         },
         "TE": {
-          "R_coarse": null,
-          "R_fine": null,
-          "pass": false
+          "R_coarse": 0.0,
+          "R_fine": 0.0,
+          "pass": true
         },
         "TT": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 7.221987214669862e-05,
+          "R_fine": 0.0002939624478904002,
           "pass": false
         }
       },
       "statuses": {
         "default": 0,
         "permille": 0,
-        "reference": 1
+        "reference": 0
       }
     },
     "zero:synchronous": {
       "blocks": {
         "EE": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 6.498833522557674e-05,
+          "R_fine": 0.0003695627697741671,
           "pass": false
         },
         "Pk": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 0.0,
+          "R_fine": 4.762422969793721e-05,
           "pass": false
         },
         "TE": {
-          "R_coarse": null,
-          "R_fine": null,
-          "pass": false
+          "R_coarse": 0.0,
+          "R_fine": 0.0,
+          "pass": true
         },
         "TT": {
-          "R_coarse": null,
-          "R_fine": null,
+          "R_coarse": 7.220411967175694e-05,
+          "R_fine": 0.0002891831225922403,
           "pass": false
         }
       },
       "statuses": {
         "default": 0,
         "permille": 0,
-        "reference": 1
+        "reference": 0
       }
     }
   },
@@ -413,136 +413,136 @@
   "cross_gauge": {
     "g0": {
       "EE": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 1.3086038137808968e-05,
+        "pass": true
       },
       "Pk": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 8.191829404564539e-05,
+        "pass": true
       },
       "TE": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 0.0,
+        "pass": true
       },
       "TT": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 3.4821688694934276e-05,
+        "pass": true
       }
     },
     "g1": {
       "EE": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 1.3077614159139947e-05,
+        "pass": true
       },
       "Pk": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 8.173096211208673e-05,
+        "pass": true
       },
       "TE": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 0.0,
+        "pass": true
       },
       "TT": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 3.481329960272328e-05,
+        "pass": true
       }
     },
     "g2": {
       "EE": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 1.3075143999549565e-05,
+        "pass": true
       },
       "Pk": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 8.167494041680968e-05,
+        "pass": true
       },
       "TE": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 0.0,
+        "pass": true
       },
       "TT": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 3.481101857430299e-05,
+        "pass": true
       }
     },
     "g3": {
       "EE": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 1.3074290630137219e-05,
+        "pass": true
       },
       "Pk": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 8.16550484063884e-05,
+        "pass": true
       },
       "TE": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 0.0,
+        "pass": true
       },
       "TT": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 3.481023549833356e-05,
+        "pass": true
       }
     },
     "g4": {
       "EE": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 1.3074068473202259e-05,
+        "pass": true
       },
       "Pk": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 8.164933715488057e-05,
+        "pass": true
       },
       "TE": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 0.0,
+        "pass": true
       },
       "TT": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 3.481001201573776e-05,
+        "pass": true
       }
     },
     "ref": {
       "EE": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 1.3253835555879616e-05,
+        "pass": true
       },
       "Pk": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 8.176469345943496e-05,
+        "pass": true
       },
       "TE": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 0.0,
+        "pass": true
       },
       "TT": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 3.6804631045157496e-05,
+        "pass": true
       }
     },
     "zero": {
       "EE": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 1.3253835555879616e-05,
+        "pass": true
       },
       "Pk": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 8.176469345943496e-05,
+        "pass": true
       },
       "TE": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 0.0,
+        "pass": true
       },
       "TT": {
-        "R_gauge": null,
-        "pass": false
+        "R_gauge": 3.6804631045157496e-05,
+        "pass": true
       }
     }
   },
-  "cross_gauge_all_pass": false,
+  "cross_gauge_all_pass": true,
   "physical_falsification": false,
   "precision_all_pass": false,
   "preregistration": "protocol/W04_M23_DM_DR_DAO_K4_CROSS_GAUGE_PRECISION_PREREGISTRATION_v0.1.md",
-  "provider_blocked": true,
-  "reference_profile_repair": "protocol/W04_M23_K4_CLREF_IDR_TRIGGER_REPAIR_v0.1.md",
+  "provider_blocked": false,
+  "reference_profile_repair": "protocol/W04_M23_K4_CLREF_IDR_TRIGGER_REPAIR_v0.2.md",
   "schema": "KMDSB.M23.K4CrossGaugePrecision.v1"
 }
