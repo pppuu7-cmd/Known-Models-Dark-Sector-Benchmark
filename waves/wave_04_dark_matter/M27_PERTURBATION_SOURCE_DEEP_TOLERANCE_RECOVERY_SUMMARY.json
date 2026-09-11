@@ -1,0 +1,20 @@
+{
+  "K1_promoted": false,
+  "K3_promoted": false,
+  "K4_promoted": false,
+  "children": {
+    "0.03": "M27_PERTURBATION_SOURCE_DEEP_TOLERANCE_GAMMA_PASS",
+    "0.3": "M27_PERTURBATION_SOURCE_DEEP_TOLERANCE_GAMMA_PASS",
+    "3.0": "M27_PERTURBATION_SOURCE_DEEP_TOLERANCE_GAMMA_PASS"
+  },
+  "classification": "M27_PERTURBATION_SOURCE_DEEP_TOLERANCE_RECOVERY_PASS_WITH_SCOPE",
+  "max_deep_pair_residual": 2.628696869174808e-07,
+  "n_pass": 3,
+  "n_results": 3,
+  "normalized_27way_recovery_authorized": true,
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M27_PERTURBATION_SOURCE_DEEP_TOLERANCE_RECOVERY_PREREGISTRATION_v0.1.md",
+  "production_rtol_if_authorized": 1e-11,
+  "schema": "KMDSB.M27.PerturbationSourceDeepToleranceRecovery.Summary.v1",
+  "support_fraction_if_authorized": 0.0001
+}
