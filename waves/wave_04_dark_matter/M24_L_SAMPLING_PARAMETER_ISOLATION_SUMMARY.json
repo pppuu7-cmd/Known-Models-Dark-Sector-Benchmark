@@ -1,0 +1,25 @@
+{
+  "Emax": {
+    "l_linstep_only": {
+      "control": 62.644974496926224,
+      "parameter": 8.768894177954294
+    },
+    "l_logstep_only": {
+      "control": 62.6449744969262,
+      "parameter": 0.8229530211772723
+    }
+  },
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "children": {
+    "l_linstep_only": "M24_GLOBAL_PRECISION_EXCURSION_STRONGLY_SENSITIVE",
+    "l_logstep_only": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED"
+  },
+  "localized_parameters": [
+    "l_logstep_only"
+  ],
+  "parent_l_sampling_run_id": 34555463958,
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M24_L_SAMPLING_PARAMETER_ISOLATION_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M24.LSamplingParameterIsolation.Summary.v1"
+}
