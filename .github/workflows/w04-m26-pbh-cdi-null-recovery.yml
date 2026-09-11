@@ -1,0 +1,77 @@
+name: W04 M26 PBH CDI provider-null recovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m26-pbh-cdi-null-recovery.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mass: [100, 1000, 10000]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: m26-pbh-cdi-m${{ matrix.mass }}
+          path: data
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34552202481
+      - run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+      - name: Reanalyze immutable finite outputs with provider-valid null semantics
+        run: |
+          python3 verification/m26/pbh_cdi_null_representation_recovery.py data/class data/status.json data/cases/manifest.json result.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m26-pbh-cdi-null-m${{ matrix.mass }}
+          path: result.json
+          retention-days: 90
+  aggregate:
+    needs: analyze
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m26-pbh-cdi-null-m*
+          path: collected
+      - run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+      - name: Aggregate mass scaling and persist
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import numpy as np
+          rs=sorted([json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')],key=lambda r:r['mass_Msun'])
+          masses=np.asarray([r['mass_Msun'] for r in rs],float); fracs=np.asarray(rs[0]['fractions'],float)
+          slopes={}; mok=True
+          for i,f in enumerate(fracs):
+              y=np.asarray([r['plateau_medians'][i] for r in rs],float)
+              if np.any(~np.isfinite(y)) or np.any(y<=0): p=None; mok=False
+              else: p=float(np.polyfit(np.log(masses),np.log(y),1)[0]); mok &= abs(p-1)<=0.05
+              slopes[str(f)]=p
+          child=(len(rs)==3 and all(r['classification']=='M26_PBH_CDI_TRANSFER_PASS_WITH_PROVIDER_NULL_SCOPE' for r in rs))
+          s={'schema':'KMDSB.M26.PBHCDINullRepresentationRecovery.Summary.v1','preregistration':'protocol/W04_M26_PBH_CDI_NULL_REPRESENTATION_RECOVERY_PREREGISTRATION_v0.1.md','source_run_id':34552202481,'children':{str(r['mass_Msun']):r['classification'] for r in rs},'fraction_scaling_exponents':{str(r['mass_Msun']):r.get('fraction_scaling_exponent') for r in rs},'mass_scaling_exponents':slopes,'all_mass_scaling_pass':bool(mok),'classification':'M26_PBH_CDI_TRANSFER_MASS_FRACTION_PASS_WITH_PROVIDER_NULL_SCOPE' if child and mok else 'M26_PBH_CDI_TRANSFER_NOT_ESTABLISHED','K1_promoted':False,'K4_promoted':False,'physical_falsification':False,'observation_space_gate':'OPEN'}
+          Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n'); print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/primordial_black_hole_dark_matter
+          cp /tmp/summary.json waves/wave_04_dark_matter/M26_PBH_CDI_NULL_REPRESENTATION_RECOVERY_SUMMARY.json
+          cp /tmp/summary.json models/primordial_black_hole_dark_matter/M26_PBH_CDI_NULL_REPRESENTATION_RECOVERY_SUMMARY.json
+          git add waves/wave_04_dark_matter models/primordial_black_hole_dark_matter
+          git diff --cached --quiet || { git commit -m 'Record M26 CDI provider-null recovery'; git pull --rebase origin main; git push origin HEAD:main; }
