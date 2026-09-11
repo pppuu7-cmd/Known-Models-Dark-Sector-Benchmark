@@ -1,0 +1,110 @@
+{
+  "H": {
+    "exponent_gt_0p5": true,
+    "monotonic_with_2pct_slack": true,
+    "points": [
+      {
+        "eta": 0.01,
+        "median_abs": 3.5532468321183778e-09,
+        "n": 40000,
+        "p95_abs": 6.261567702317779e-07,
+        "rms": 4.0159304389126687e-07
+      },
+      {
+        "eta": 0.003,
+        "median_abs": 1.0659722358151314e-09,
+        "n": 40000,
+        "p95_abs": 1.878470993964321e-07,
+        "rms": 1.2047796880989655e-07
+      },
+      {
+        "eta": 0.001,
+        "median_abs": 3.5532715083818483e-10,
+        "n": 40000,
+        "p95_abs": 6.261569777806031e-08,
+        "rms": 4.015932786492161e-08
+      }
+    ],
+    "r95": [
+      6.261567702317779e-07,
+      1.878470993964321e-07,
+      6.261569777806031e-08
+    ],
+    "smallest_lower_than_largest": true,
+    "tail_exponent_p": 0.9999998535257939,
+    "tail_scaling_recovered": true
+  },
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "Pk_auto_rk": {
+    "exponent_gt_0p5": false,
+    "monotonic_with_2pct_slack": true,
+    "points": [
+      {
+        "eta": 0.01,
+        "median_abs": 0.00012127255682944894,
+        "n": 124,
+        "p95_abs": 0.057935766090283836,
+        "rms": 0.019403065206877197
+      },
+      {
+        "eta": 0.003,
+        "median_abs": 0.00011814306319043761,
+        "n": 124,
+        "p95_abs": 0.05750732477229951,
+        "rms": 0.018892639870416776
+      },
+      {
+        "eta": 0.001,
+        "median_abs": 0.00012062843044323283,
+        "n": 124,
+        "p95_abs": 0.05738493126956478,
+        "rms": 0.01875021889874057
+      }
+    ],
+    "r95": [
+      0.057935766090283836,
+      0.05750732477229951,
+      0.05738493126956478
+    ],
+    "smallest_lower_than_largest": true,
+    "tail_exponent_p": 0.004181024899533953,
+    "tail_scaling_recovered": false
+  },
+  "auto_rk_old_auto_agreement": false,
+  "auto_rk_vs_old_auto_symmetric_relative_differences": [
+    1.9969096763347909,
+    1.9976965276936345,
+    1.9978564131681915
+  ],
+  "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "classification": "M25_M0_PK_MATCHED_EVOLVER_QUADRATURE_AGREEMENT",
+  "manual_comparator_run": 34601708310,
+  "manual_rk_N4000_Pk_r95": [
+    0.05794887246666148,
+    0.05751126037132658,
+    0.057386242311976504
+  ],
+  "matched_auto_manual_symmetric_relative_differences": [
+    0.00022619695830008982,
+    6.843414083315417e-05,
+    2.284619684214263e-05
+  ],
+  "matched_quadrature_agreement": true,
+  "old_auto_baseline_Pk_r95": [
+    4.47946747635781e-05,
+    3.3135714306605436e-05,
+    3.076888469743661e-05
+  ],
+  "old_auto_baseline_run": 34551925134,
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M25_M0_PK_MATCHED_EVOLVER_QUADRATURE_CONTROL_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M25.M0PkMatchedEvolverQuadratureControl.v1",
+  "status": {
+    "build": 0,
+    "e2": 0,
+    "e3": 0,
+    "e4": 0,
+    "ref": 0
+  }
+}
