@@ -1,0 +1,146 @@
+name: W05 M32 DGP K0e checkpointed Intel build
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w05-m32-k0e-checkpointed-intel-build.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  stage1:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Intel build checkpoint 1
+        run: bash verification/m32/k0e_intel_checkpoint_stage.sh 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m32-k0e-stage1
+          path: m32k0e_stage1
+          if-no-files-found: error
+          retention-days: 30
+
+  stage2:
+    needs: stage1
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m32-k0e-stage1
+          path: prev1
+      - name: Intel build checkpoint 2
+        run: bash verification/m32/k0e_intel_checkpoint_stage.sh 2 "$GITHUB_WORKSPACE/prev1/checkpoint.tar"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m32-k0e-stage2
+          path: m32k0e_stage2
+          if-no-files-found: error
+          retention-days: 30
+
+  stage3:
+    needs: stage2
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m32-k0e-stage2
+          path: prev2
+      - name: Intel build checkpoint 3
+        run: bash verification/m32/k0e_intel_checkpoint_stage.sh 3 "$GITHUB_WORKSPACE/prev2/checkpoint.tar"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m32-k0e-stage3
+          path: m32k0e_stage3
+          if-no-files-found: error
+          retention-days: 30
+
+  stage4:
+    needs: stage3
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m32-k0e-stage3
+          path: prev3
+      - name: Intel build checkpoint 4
+        run: bash verification/m32/k0e_intel_checkpoint_stage.sh 4 "$GITHUB_WORKSPACE/prev3/checkpoint.tar"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m32-k0e-stage4
+          path: m32k0e_stage4
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: stage4
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m32-k0e-stage4
+          path: final_stage
+      - name: Frozen K0e classification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib
+          p=pathlib.Path('final_stage')
+          s=json.loads((p/'stage_result.json').read_text())
+          pin=(p/'provider_head.txt').read_text().strip() if (p/'provider_head.txt').exists() else None
+          exact=pin=='849ddb716041316d0e223ba22badc0d630b72435'
+          rc=int(s['build_exit_code']); exe=bool(s['native_executable_exists'])
+          if not exact:
+              c='M32_K0E_BLOCKED_PROVENANCE'
+          elif rc==0 and exe:
+              c='M32_K0E_PROVIDER_INTEL_BUILD_RECOVERED_CHECKPOINTED'
+          elif rc in (124,130) and not exe:
+              c='M32_K0E_CHECKPOINT_BUDGET_EXHAUSTED'
+          else:
+              c='M32_K0E_PROVIDER_INTEL_BUILD_STILL_BLOCKED'
+          out={
+            'schema':'m32_dgp_k0e_checkpointed_intel_build_v0.1',
+            'provider':'nat-woodcock/EFT-Ramses',
+            'provider_commit':'849ddb716041316d0e223ba22badc0d630b72435',
+            'classification':c,
+            'checks':{'exact_pin':exact,'final_stage_build_exit_code':rc,'native_executable_exists':exe},
+            'checkpoint_policy':'up to four sequential 25-second serial make intervals with exact generated .o/.mod state carry-forward',
+            'toolchain':'Intel oneAPI ifx + Intel MPI mpiifx; provider active Intel-style flags preserved',
+            'K0_promoted':False,
+            'physical_falsification':False,
+            'scope':'infrastructure-only continuation of the provider-intended build; production DGP execution plus reference/control required before K0 promotion'
+          }
+          q=pathlib.Path('waves/wave_05_modified_gravity/M32_K0E_CHECKPOINTED_INTEL_BUILD_RESULT.json')
+          q.parent.mkdir(parents=True,exist_ok=True); q.write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m32-k0e-checkpointed-intel-aggregate
+          path: |
+            waves/wave_05_modified_gravity/M32_K0E_CHECKPOINTED_INTEL_BUILD_RESULT.json
+            final_stage/stage_result.json
+            final_stage/build_stdout.log
+            final_stage/build_stderr.log
+            final_stage/ifx_version.txt
+            final_stage/mpiifx_version.txt
+            final_stage/state_before.txt
+            final_stage/state_after.txt
+          retention-days: 30
+      - name: Commit machine result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add waves/wave_05_modified_gravity/M32_K0E_CHECKPOINTED_INTEL_BUILD_RESULT.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Record M32 checkpointed Intel build recovery result'
+          git push
