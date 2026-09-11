@@ -1,0 +1,228 @@
+name: W04 M25 m0 Pk compile-capacity isolation control
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m25-m0-pk-compile-capacity-isolation-control.yml'
+permissions:
+  contents: write
+  actions: read
+
+env:
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  OMP_NUM_THREADS: '1'
+
+jobs:
+  control:
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [e2, e3, e4]
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: w04-m25-k1-abundance-decoupling
+          path: original
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34548988620
+      - name: Build pinned stock-capacity CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('class/include/common.h').read_text()
+          assert s.count('#define _QUADRATURE_MAX_ 250')==1
+          assert s.count('#define _QUADRATURE_MAX_BG_ 800')==1
+          PY
+          make -C class -j2 > build.log 2>&1
+          mkdir -p class/output
+          cp original/class_provider/output/ref_00_background.dat class/output/ref_00_background.dat
+          cp original/class_provider/output/ref_00_pk.dat class/output/ref_00_pk.dat
+          cp -a original/m25_k1_cases .
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          c=os.environ['CASE']; i={'e2':2,'e3':3,'e4':4}[c]
+          p=Path(f'm25_k1_cases/m0_e{i}.ini')
+          p.write_text(p.read_text().replace('output = tCl,pCl,mPk','output = mPk'))
+          PY
+          cat > auto_stock.pre <<'EOF'
+          tol_ncdm_bg = 1e-6
+          tol_ncdm = 1e-6
+          ncdm_fluid_approximation = 3
+          ncdm_quadrature_strategy = 0
+          ncdm_maximum_q = 10.0
+          EOF
+        env:
+          CASE: ${{ matrix.case }}
+      - name: Execute stock-capacity default-evolver case and compute immutable part metric
+        shell: bash
+        run: |
+          set +e
+          i=${CASE#e}
+          (cd class && ./class "../m25_k1_cases/m0_e${i}.ini" ../auto_stock.pre > "../${CASE}.log" 2>&1)
+          code=$?
+          set -e
+          printf '%s\n' "$code" > status.txt
+          python3 - <<'PY'
+          import json, os, sys, math
+          from pathlib import Path
+          sys.path.insert(0,'.')
+          from verification.m25.m25_k1_precision_floor_diagnostic import load_table,output,metric
+          c=os.environ['CASE']; i={'e2':2,'e3':3,'e4':4}[c]; eta={'e2':0.01,'e3':0.003,'e4':0.001}[c]
+          code=int(Path('status.txt').read_text())
+          out={'case':c,'eta':eta,'exit_code':code,'class_pin':os.environ['CLASS_PIN'],'quadrature_max':250,'quadrature_max_bg':800,'evolver':'provider_default'}
+          if code==0:
+              refpk=load_table(output(Path('class'),'ref','pk'))
+              refbg=load_table(output(Path('class'),'ref','background'))[:,[0,3]]
+              pk=load_table(output(Path('class'),f'm0_e{i}','pk'))
+              bg=load_table(output(Path('class'),f'm0_e{i}','background'))[:,[0,3]]
+              out['Pk']=metric(pk,refpk); out['H']=metric(bg,refbg)
+              vals=[out['Pk']['p95_abs'],out['H']['p95_abs']]
+              out['finite']=all(math.isfinite(float(x)) for x in vals)
+          Path(f'part-{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(Path(f'part-{c}.json').read_text())
+          PY
+        env:
+          CASE: ${{ matrix.case }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m25-stockcap-default-${{ matrix.case }}
+          path: |
+            part-${{ matrix.case }}.json
+            status.txt
+            ${{ matrix.case }}.log
+            auto_stock.pre
+            build.log
+            class/output/*_background.dat
+            class/output/*_pk.dat
+          retention-days: 90
+
+  aggregate:
+    needs: [control]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m25-stockcap-default-*
+          path: parts
+          merge-multiple: true
+      - name: Apply prospectively frozen compile-capacity isolation gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+          parent=json.loads(Path('models/resonant_sterile_neutrino_wdm/M25_M0_PK_EVOLVER_ISOLATION_CONTROL_RESULT.json').read_text())
+          parts=[]
+          for c in ('e2','e3','e4'):
+              p=Path('parts')/f'part-{c}.json'
+              if p.exists(): parts.append(json.loads(p.read_text()))
+          result={
+            'schema':'KMDSB.M25.M0PkCompileCapacityIsolationControl.v1',
+            'preregistration':'protocol/W04_M25_M0_PK_COMPILE_CAPACITY_ISOLATION_CONTROL_PREREGISTRATION_v0.1.md',
+            'class_pin':'e85808324f51fc694d12e3ed7439552a3c3f9540',
+            'parent_evolver_isolation_run':34619973784,
+            'parent_evolver_isolation_commit':'8b80ff824c9ebf9ecb6c479153180c803d6b8c2f',
+            'diagnostic_variable':'compile_time_quadrature_capacity_stock_250_800_vs_raised_4000_4000',
+            'parts':parts,
+            'K1_promoted':False,'K4_promoted':False,'physical_falsification':False
+          }
+          admissible=(len(parts)==3 and all(x.get('exit_code')==0 and x.get('finite',False) for x in parts))
+          def sym(a,b): return 2*abs(float(a)-float(b))/(abs(float(a))+abs(float(b))+1e-300)
+          if not admissible:
+              result['classification']='M25_M0_PK_STOCK_CAPACITY_PROVIDER_BLOCKED'
+          else:
+              parts=sorted(parts,key=lambda x:x['eta'],reverse=True)
+              stock=[x['Pk']['p95_abs'] for x in parts]
+              raised=parent['default_evolver_Pk_r95']
+              old=parent['old_auto_baseline_Pk_r95']
+              cap=[sym(a,b) for a,b in zip(stock,raised)]
+              oldrep=[sym(a,b) for a,b in zip(stock,old)]
+              result['stockcap_default_evolver_Pk_r95']=stock
+              result['raisedcap_default_evolver_Pk_r95']=raised
+              result['old_auto_baseline_Pk_r95']=old
+              result['stock_vs_raised_symmetric_relative_differences']=cap
+              result['stock_vs_oldbaseline_symmetric_relative_differences']=oldrep
+              result['stock_vs_raised_agreement']=all(x<=0.25 for x in cap)
+              result['old_baseline_reproduced']=all(x<=0.25 for x in oldrep)
+              if any(x>0.25 for x in oldrep):
+                  result['classification']='M25_M0_PK_OLD_BASELINE_NOT_REPRODUCED'
+              elif any(x>0.25 for x in cap):
+                  result['classification']='M25_M0_PK_COMPILE_CAPACITY_SENSITIVITY_CONFIRMED'
+              else:
+                  result['classification']='M25_M0_PK_COMPILE_CAPACITY_SHIFT_NOT_CONFIRMED'
+          Path('result.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          print(Path('result.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m25-m0-pk-compile-capacity-isolation-control
+          path: |
+            result.json
+            parts/
+          retention-days: 90
+      - name: Persist result and synchronize ledgers
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp result.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm
+          cp /tmp/result.json waves/wave_04_dark_matter/M25_M0_PK_COMPILE_CAPACITY_ISOLATION_CONTROL_RESULT.json
+          cp /tmp/result.json models/resonant_sterile_neutrino_wdm/M25_M0_PK_COMPILE_CAPACITY_ISOLATION_CONTROL_RESULT.json
+          python3 - <<'PY'
+          import csv, json
+          from pathlib import Path
+          r=json.loads(Path('/tmp/result.json').read_text()); c=r['classification']
+          k4={
+            'M25_M0_PK_COMPILE_CAPACITY_SENSITIVITY_CONFIRMED':'NOT_ESTABLISHED_COMPILE_CAPACITY_SENSITIVITY',
+            'M25_M0_PK_COMPILE_CAPACITY_SHIFT_NOT_CONFIRMED':'NOT_ESTABLISHED_NUMERICAL_FLOOR',
+            'M25_M0_PK_OLD_BASELINE_NOT_REPRODUCED':'NOT_ESTABLISHED_OLD_BASELINE_REPRODUCTION',
+            'M25_M0_PK_STOCK_CAPACITY_PROVIDER_BLOCKED':'BLOCKED_IMPLEMENTATION_STOCK_CAPACITY_CONTROL'
+          }[c]
+          summary=f'M25 compile-capacity isolation classification {c}. '
+          if 'stock_vs_raised_symmetric_relative_differences' in r:
+              summary+=f"stock-vs-raised D={r['stock_vs_raised_symmetric_relative_differences']}; stock-vs-old-baseline D={r['stock_vs_oldbaseline_symmetric_relative_differences']}. "
+          summary+='Matched-evolver quadrature agreement, manual N=2000->4000 convergence, and prior evolver-isolation evidence are preserved. K1/K4 are not promoted and physical falsification is false.'
+          p=Path('matrices/mandatory_properties_matrix.csv'); rows=list(csv.DictReader(p.open(newline=''))); fields=list(rows[0].keys())
+          for x in rows:
+              if x['family_id']=='F25':
+                  x['K4_numerical_robustness']=k4; x['coverage_state']='K1_K4_NUMERICAL_LOCALIZATION_ACTIVE'; x['notes']=summary
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows)
+          p=Path('matrices/model_family_census.csv'); rows=list(csv.DictReader(p.open(newline=''))); fields=list(rows[0].keys())
+          for x in rows:
+              if x['family_id']=='F25': x['status']='K1_K4_NUMERICAL_LOCALIZATION_ACTIVE'; x['notes']=summary
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows)
+          block='\n### 2026-09-11 — M25 compile-capacity isolation control\n'+summary+' Canonical machine result: `models/resonant_sterile_neutrino_wdm/M25_M0_PK_COMPILE_CAPACITY_ISOLATION_CONTROL_RESULT.json`.\n'
+          for name in ('recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md'):
+              p=Path(name); s=p.read_text()
+              if 'M25 compile-capacity isolation control' not in s: p.write_text(s.rstrip()+'\n'+block)
+          PY
+          git add waves/wave_04_dark_matter/M25_M0_PK_COMPILE_CAPACITY_ISOLATION_CONTROL_RESULT.json models/resonant_sterile_neutrino_wdm/M25_M0_PK_COMPILE_CAPACITY_ISOLATION_CONTROL_RESULT.json matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M25 compile-capacity isolation control and sync ledgers'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
