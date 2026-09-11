@@ -1,0 +1,85 @@
+name: W04 M26 SciPy compatibility recovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m26-scipy-compat-recovery.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  finite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        child: [evaporation, spherical, disk]
+    env:
+      PIN: 7c4b26e50d240f1f45f120b623aab2dba13094fd
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m26-runtime-recovery-${{ matrix.child }}
+          path: prior
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34550083757
+      - name: Compatible Python stack
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6 scipy==1.13.1 PyYAML dill future
+          python3 -c "import numpy,scipy; from scipy.integrate import trapz; print(numpy.__version__,scipy.__version__)" | tee versions.txt
+      - name: Build pinned cacheless provider
+        shell: bash
+        run: |
+          git clone -q https://github.com/GFAbellan/ExoCLASS.git exoclass
+          git -C exoclass checkout -q --detach "$PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('exoclass/DarkAgesModule/DarkAges/__init__.py'); s=p.read_text()
+          a="\t\ttransfer_dump(transfer_functions[idx], os.path.join(os.environ['DARKAGES_BASE'],'transfer_functions/transfer_Ch{:d}.obj'.format(idx+1)))"
+          b="\ttransfer_dump(transfer_functions_corr, os.path.join(os.environ['DARKAGES_BASE'],'transfer_functions/transfer_Corr.obj'))"
+          assert s.count(a)==1 and s.count(b)==1
+          p.write_text(s.replace(a,'\t\t# KMDSB: cache disabled').replace(b,'\t# KMDSB: cache disabled'))
+          PY
+          git -C exoclass diff -- DarkAgesModule/DarkAges/__init__.py > provider.patch
+          make -C exoclass -j2 class > build.log 2>&1
+      - name: Restore controls and run finite
+        shell: bash
+        env:
+          PYTHONPATH: ${{ github.workspace }}/exoclass/DarkAgesModule
+        run: |
+          mkdir -p exoclass/output
+          cp -a prior/exoclass/output/. exoclass/output/
+          rm -f exoclass/output/m26_${{ matrix.child }}_finite_*.dat
+          python3 verification/m26/m26_energy_injection_provider_control.py prepare '${{ matrix.child }}' cases
+          rm -f exoclass/DarkAgesModule/transfer_functions/*.obj
+          set +e
+          (cd exoclass && ./class ../cases/finite.ini > ../finite.log 2>&1)
+          rc=$?
+          set -e
+          python3 - <<PY
+          import json
+          q=json.load(open('prior/m26_status.json'))
+          d={'build':0,'baseline':q.get('baseline',999),'zero':q.get('zero',999),'finite':$rc,'scipy':'1.13.1','numpy':'2.2.6','cacheless':True}
+          open('status.json','w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          python3 verification/m26/m26_energy_injection_provider_control.py analyze exoclass status.json cases/manifest.json result.json
+          cat status.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m26-scipy-compat-${{ matrix.child }}
+          path: |
+            versions.txt
+            provider.patch
+            build.log
+            finite.log
+            status.json
+            result.json
+            cases/manifest.json
+            exoclass/output/
+          retention-days: 90
