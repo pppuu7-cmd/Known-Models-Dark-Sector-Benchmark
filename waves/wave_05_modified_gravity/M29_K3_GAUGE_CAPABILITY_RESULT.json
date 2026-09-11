@@ -1,0 +1,17 @@
+{
+  "schema": "m29_k3_gauge_capability_v0.1",
+  "family": "F29",
+  "benchmark": "M29",
+  "provider_repository": "hiclass-code/hi_class_public",
+  "provider_commit": "0009f51d89e6465c79e570b496c66fc90058fa77",
+  "source_path": "gravity_smg/perturbations_smg.c",
+  "source_guard": "class_test(ppt->gauge == newtonian, ..., \"Asked for scalar modified gravity AND Newtonian gauge. Not yet implemented\")",
+  "synchronous_supported": true,
+  "newtonian_scalar_modified_gravity_supported": false,
+  "prescribed_cross_gauge_gate_executable": false,
+  "classification": "M29_K3_BLOCKED_PROVIDER_GAUGE_IMPLEMENTATION",
+  "K3_promoted": false,
+  "physical_falsification": false,
+  "interpretation": "The pinned hi_class implementation cannot execute the required Newtonian-gauge scalar modified-gravity branch. This is a provider capability boundary, not a Brans-Dicke physical failure.",
+  "preregistration": "protocol/W05_M29_K3_GAUGE_CAPABILITY_AUDIT_v0.1.md"
+}
