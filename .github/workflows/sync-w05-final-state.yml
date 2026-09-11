@@ -51,7 +51,7 @@ jobs:
           cp=Path('matrices/model_family_census.csv')
           with cp.open(newline='',encoding='utf-8') as f:
               cr=list(csv.DictReader(f)); cf=list(cr[0].keys())
-          cb={r['benchmark_id']:r for r in cr}
+          cb={r['benchmark_id_or_representation']:r for r in cr}
           updates={
             'M29':('K0_K1_PASS_K3_IMPLEMENTATION_K4_NUMERICAL_NOT_ESTABLISHED','Pinned hi_class K0 and Brans-Dicke GR-limit K1 pass. K3 is provider-gauge implementation blocked. K4b localized P(k) to grid sampling; K4c required full-core precision; final K4d passes omega_BD=1e4 but fails frozen TT robustness thresholds at omega_BD=15. No physical falsification.'),
             'M30':('K0_TWO_PROVIDER_PASS_K1_K9_OPEN','K0 PASS_WITH_SCOPE from pinned hi_class Horndeski execution independently corroborated by pinned EFTCAMB native RPH versus GR control; K1-K9 open.'),
