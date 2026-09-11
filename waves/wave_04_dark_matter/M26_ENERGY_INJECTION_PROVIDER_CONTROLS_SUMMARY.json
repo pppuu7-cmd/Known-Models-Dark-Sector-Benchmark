@@ -1,0 +1,17 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "children": {
+    "disk": "M26_DISK_PROVIDER_EXECUTION_BLOCKED",
+    "evaporation": "M26_EVAPORATION_PROVIDER_EXECUTION_BLOCKED",
+    "spherical": "M26_SPHERICAL_PROVIDER_EXECUTION_BLOCKED"
+  },
+  "classification": "M26_ENERGY_INJECTION_PROVIDER_CONTROLS_COMPLETE",
+  "n_results": 3,
+  "physical_falsification": false,
+  "poisson_structure_channel": "NOT_TESTED",
+  "preregistration": "protocol/W04_M26_PBH_ENERGY_INJECTION_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md",
+  "provider": "GFAbellan/ExoCLASS",
+  "provider_pin": "7c4b26e50d240f1f45f120b623aab2dba13094fd",
+  "schema": "KMDSB.M26.PBHEnergyInjectionProviderControlsSummary.v1"
+}

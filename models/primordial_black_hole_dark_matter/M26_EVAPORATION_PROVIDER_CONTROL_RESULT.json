@@ -1,0 +1,28 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "child": "evaporation",
+  "classification": "M26_EVAPORATION_PROVIDER_EXECUTION_BLOCKED",
+  "failed_status_keys": [
+    "build",
+    "baseline",
+    "zero",
+    "finite"
+  ],
+  "finite_response_floor_max_abs": 1e-10,
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M26_PBH_ENERGY_INJECTION_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md",
+  "provider": "GFAbellan/ExoCLASS",
+  "provider_pin": "7c4b26e50d240f1f45f120b623aab2dba13094fd",
+  "schema": "KMDSB.M26.PBHEnergyInjectionProviderControl.v1",
+  "status": {
+    "baseline": 999,
+    "build": 2,
+    "checkout": 0,
+    "clone": 0,
+    "finite": 999,
+    "pip": 0,
+    "zero": 999
+  },
+  "zero_identity_threshold_p95": 1e-08
+}
