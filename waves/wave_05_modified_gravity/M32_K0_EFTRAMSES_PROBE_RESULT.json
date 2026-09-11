@@ -7,10 +7,10 @@
     "vainshtein_provenance": true
   },
   "classification": "M32_K0_BLOCKED_PROVIDER_BUILD",
-  "parent_run_id": 34642254638,
+  "parent_run_id": 34642361612,
   "physical_falsification": false,
   "provider": "nat-woodcock/EFT-Ramses",
   "provider_commit": "849ddb716041316d0e223ba22badc0d630b72435",
   "schema": "m32_dgp_k0_eftramses_probe_v0.1",
-  "scope": "provider provenance and documented unmodified build only; K1-K9 open"
+  "scope": "provider provenance and provider-native GNU MPI build only; not a DGP production cosmology calculation; K1-K9 open"
 }
