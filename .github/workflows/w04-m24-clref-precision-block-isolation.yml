@@ -1,0 +1,186 @@
+name: W04 M24 cl_ref precision-block isolation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m24-clref-precision-block-isolation.yml']
+permissions:
+  contents: write
+jobs:
+  isolate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        block: [thermo, perturb_integrator, k_start_tca, hierarchy_streaming, sampling_projection, transfer_lensing]
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build pinned CLASS and prepare frozen cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          make -C class -j2 > build.log 2>&1
+          python3 verification/m24/global_numerical_precision_diagnostic.py prepare cases cl_ref
+          printf 'idr_streaming_trigger_tau_over_tau_k = 49\n' > control.pre
+          cp control.pre block.pre
+          case '${{ matrix.block }}' in
+            thermo)
+              cat >> block.pre <<'EOF'
+          recfast_Nz0 = 100000
+          tol_thermo_integration = 1e-5
+          recfast_x_He0_trigger_delta = 0.01
+          recfast_x_H0_trigger_delta = 0.01
+          EOF
+              ;;
+            perturb_integrator)
+              cat >> block.pre <<'EOF'
+          evolver = 0
+          tol_perturbations_integration = 1e-6
+          perturbations_sampling_stepsize = 0.01
+          EOF
+              ;;
+            k_start_tca)
+              cat >> block.pre <<'EOF'
+          k_min_tau0 = 0.002
+          k_max_tau0_over_l_max = 3
+          k_step_sub = 0.015
+          k_step_super = 0.0001
+          k_step_super_reduction = 0.1
+          start_small_k_at_tau_c_over_tau_h = 0.0004
+          start_large_k_at_tau_h_over_tau_k = 0.05
+          tight_coupling_trigger_tau_c_over_tau_h = 0.005
+          tight_coupling_trigger_tau_c_over_tau_k = 0.008
+          start_sources_at_tau_c_over_tau_h = 0.006
+          EOF
+              ;;
+            hierarchy_streaming)
+              cat >> block.pre <<'EOF'
+          l_max_g = 50
+          l_max_pol_g = 25
+          l_max_ur = 50
+          radiation_streaming_approximation = 2
+          radiation_streaming_trigger_tau_over_tau_k = 240
+          radiation_streaming_trigger_tau_c_over_tau = 100
+          ur_fluid_approximation = 2
+          ur_fluid_trigger_tau_over_tau_k = 50
+          EOF
+              ;;
+            sampling_projection)
+              cat >> block.pre <<'EOF'
+          l_logstep = 1.026
+          l_linstep = 25
+          hyper_sampling_flat = 12
+          hyper_sampling_curved_low_nu = 10
+          hyper_sampling_curved_high_nu = 10
+          hyper_nu_sampling_step = 10
+          hyper_phi_min_abs = 1e-10
+          hyper_x_tol = 1e-4
+          hyper_flat_approximation_nu = 1e6
+          q_linstep = 0.20
+          q_logstep_spline = 20
+          q_logstep_trapzd = 0.5
+          q_numstep_transition = 250
+          EOF
+              ;;
+            transfer_lensing)
+              cat >> block.pre <<'EOF'
+          transfer_neglect_delta_k_S_t0 = 100
+          transfer_neglect_delta_k_S_t1 = 100
+          transfer_neglect_delta_k_S_t2 = 100
+          transfer_neglect_delta_k_S_e = 100
+          transfer_neglect_delta_k_V_t1 = 100
+          transfer_neglect_delta_k_V_t2 = 100
+          transfer_neglect_delta_k_V_e = 100
+          transfer_neglect_delta_k_V_b = 100
+          transfer_neglect_delta_k_T_t2 = 100
+          transfer_neglect_delta_k_T_e = 100
+          transfer_neglect_delta_k_T_b = 100
+          neglect_CMB_sources_below_visibility = 1e-30
+          transfer_neglect_late_source = 3000
+          l_switch_limber = 40
+          accurate_lensing = 1
+          num_mu_minus_lmax = 1000
+          delta_l_max = 1000
+          EOF
+              ;;
+          esac
+          cat block.pre
+      - name: Execute ten cases four-at-a-time
+        shell: bash
+        run: |
+          mkdir -p class/output logs parts
+          printf '%s\n' default_ref default_zero default_a18k default_a6k default_a1p8k profile_ref profile_zero profile_a18k profile_a6k profile_a1p8k | xargs -P 4 -I{} bash -c '
+            t="$1"; set +e
+            if [[ "$t" == profile_* ]]; then pre=../block.pre; else pre=../control.pre; fi
+            (cd class && ./class "../cases/${t}.ini" "$pre" > "../logs/${t}.log" 2>&1)
+            printf "%d\n" "$?" > "parts/${t}.status"
+          ' _ {}
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d={p.stem:int(p.read_text()) for p in Path('parts').glob('*.status')}
+          Path('status.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - name: Analyze isolated precision block
+        shell: bash
+        run: |
+          python3 verification/m24/global_numerical_precision_diagnostic.py analyze class/output status.json cl_ref result.json
+          python3 - <<'PY'
+          import json,os
+          p='result.json'; r=json.load(open(p)); r['schema']='KMDSB.M24.ClRefPrecisionBlockIsolation.v1'; r['precision_block']=os.environ['BLOCK']; r['preregistration']='protocol/W04_M24_CLREF_PRECISION_BLOCK_ISOLATION_PREREGISTRATION_v0.1.md'; open(p,'w').write(json.dumps(r,indent=2,sort_keys=True)+'\n')
+          PY
+          cat result.json
+        env:
+          BLOCK: ${{ matrix.block }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m24-clref-block-${{ matrix.block }}
+          path: |
+            control.pre
+            block.pre
+            build.log
+            status.json
+            result.json
+            logs/
+            class/output/
+          retention-days: 90
+  aggregate:
+    needs: isolate
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m24-clref-block-*
+          path: collected
+      - name: Persist block summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rs=[json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')]
+          s={'schema':'KMDSB.M24.ClRefPrecisionBlockIsolation.Summary.v1','preregistration':'protocol/W04_M24_CLREF_PRECISION_BLOCK_ISOLATION_PREREGISTRATION_v0.1.md','children':{r['precision_block']:r['classification'] for r in rs},'Emax':{r['precision_block']:{'control':r.get('default',{}).get('Emax'),'block':r.get('profile',{}).get('Emax')} for r in rs},'localized_blocks':[r['precision_block'] for r in rs if r['classification']=='M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED'],'K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n'); print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/ethos_like_dark_sector
+          cp /tmp/summary.json waves/wave_04_dark_matter/M24_CLREF_PRECISION_BLOCK_ISOLATION_SUMMARY.json
+          cp /tmp/summary.json models/ethos_like_dark_sector/M24_CLREF_PRECISION_BLOCK_ISOLATION_SUMMARY.json
+          git add waves/wave_04_dark_matter models/ethos_like_dark_sector
+          git diff --cached --quiet || { git commit -m 'Record M24 cl_ref precision-block isolation'; git pull --rebase origin main; git push origin HEAD:main; }
