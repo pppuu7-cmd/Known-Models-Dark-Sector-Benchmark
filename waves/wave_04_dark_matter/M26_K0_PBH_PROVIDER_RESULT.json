@@ -1,0 +1,27 @@
+{
+  "K0_promoted": true,
+  "arms": {
+    "accretion_disk": {
+      "active_response": {"TT_normalized_L2": 0.002319877578370459, "pass": true, "threshold": 1e-06},
+      "cl_rows": 2499, "exact_pin": true, "exit_code": 0, "finite_cl": true, "finite_pk": true, "pk_rows": 535
+    },
+    "evaporation": {
+      "active_response": {"TT_normalized_L2": 0.002126985338634717, "pass": true, "threshold": 1e-06},
+      "cl_rows": 2499, "exact_pin": true, "exit_code": 0, "finite_cl": true, "finite_pk": true, "pk_rows": 535
+    },
+    "zero_control": {
+      "cl_rows": 2499, "exact_pin": true, "exit_code": 0, "finite_cl": true, "finite_pk": true, "pk_rows": 535
+    }
+  },
+  "checks": {"all_execute_exact_pin": true, "all_finite_outputs": true, "both_pbh_channels_active": true},
+  "classification": "M26_K0_PASS_WITH_SCOPE_NATIVE_CLASS_PBH_ENERGY_INJECTION",
+  "physical_falsification": false,
+  "provider_commit": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "provider_repository": "lesgourg/class_public",
+  "parent_run_id": 34639697903,
+  "aggregate_artifact_id": 10280145687,
+  "aggregate_artifact_digest": "sha256:35f59c409bff8a493dfccf8b50a6fea68e7e7ded5c1f5319ae46dd805be49599",
+  "parent_attempt": "M26_K0_ATTEMPT1_ACCRETION_STRESS_POINT_REIONIZATION_INCOMPATIBLE",
+  "schema": "m26_k0_pbh_provider_v0.1",
+  "scope": "native CLASS PBH evaporation/accretion energy-injection K0 only; PBH discreteness/Poisson/isocurvature and K1-K9 remain open"
+}
