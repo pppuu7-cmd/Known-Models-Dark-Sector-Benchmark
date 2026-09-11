@@ -1,0 +1,140 @@
+name: W05 M29 Brans-Dicke K1 GR limit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'waves/wave_05_modified_gravity/M29_K0_HICLASS_PROVIDER_RESULT.json'
+
+permissions:
+  contents: write
+
+jobs:
+  authorize:
+    runs-on: ubuntu-latest
+    outputs:
+      authorized: ${{ steps.guard.outputs.authorized }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE=waves/wave_05_modified_gravity/M29_K0_HICLASS_PROVIDER_RESULT.json
+          if [ ! -f "$FILE" ]; then echo 'authorized=false' >> "$GITHUB_OUTPUT"; exit 0; fi
+          AUTH=$(python3 - <<'PY'
+          import json
+          p='waves/wave_05_modified_gravity/M29_K0_HICLASS_PROVIDER_RESULT.json'
+          d=json.load(open(p))
+          ok=(d.get('classification')=='M29_K0_PASS_WITH_SCOPE_PINNED_HICLASS_BRANS_DICKE_PROVIDER' and d.get('all_pass') is True and d.get('physical_falsification') is False)
+          print('true' if ok else 'false')
+          PY
+          )
+          echo "authorized=$AUTH" >> "$GITHUB_OUTPUT"
+
+  compute:
+    needs: authorize
+    if: needs.authorize.outputs.authorized == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        arm: [bd_1e2, bd_1e3, bd_1e4, bd_1e5, lcdm]
+    runs-on: ubuntu-latest
+    env:
+      HICLASS_PIN: 0009f51d89e6465c79e570b496c66fc90058fa77
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pinned provider and execute frozen arm
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARM='${{ matrix.arm }}'
+          mkdir -p "m29k1/$ARM/output"
+          git clone https://github.com/hiclass-code/hi_class_public.git hiclass
+          cd hiclass
+          git checkout --detach "$HICLASS_PIN"
+          test "$(git rev-parse HEAD)" = "$HICLASS_PIN"
+          make -j2
+          CFG="$GITHUB_WORKSPACE/m29k1/$ARM/run.ini"
+          if [[ "$ARM" == bd_* ]]; then
+            cp gravity_models/brans_dicke.ini "$CFG"
+            case "$ARM" in
+              bd_1e2) OM=100.;;
+              bd_1e3) OM=1000.;;
+              bd_1e4) OM=10000.;;
+              bd_1e5) OM=100000.;;
+            esac
+            python3 - "$CFG" "$OM" <<'PY'
+          import re,sys
+          p,om=sys.argv[1],sys.argv[2]
+          s=open(p).read()
+          s=re.sub(r'^parameters_smg\s*=.*$',f'parameters_smg = 0.7, {om}, 1., 0.',s,flags=re.M)
+          s=re.sub(r'^root\s*=.*$',f'root = {p.rsplit("/",1)[0]}/output/bd_',s,flags=re.M)
+          open(p,'w').write(s)
+          PY
+          else
+            cat > "$CFG" <<EOF
+          output = tCl, mPk
+          root = $GITHUB_WORKSPACE/m29k1/$ARM/output/lcdm_
+          overwrite_root = yes
+          write parameters = yes
+          write background = yes
+          input_verbose = 1
+          background_verbose = 1
+          perturbations_verbose = 1
+          transfer_verbose = 1
+          harmonic_verbose = 1
+          fourier_verbose = 1
+          output_verbose = 1
+          EOF
+          fi
+          set +e
+          ./class "$CFG" > "$GITHUB_WORKSPACE/m29k1/$ARM/stdout.log" 2> "$GITHUB_WORKSPACE/m29k1/$ARM/stderr.log"
+          RC=$?
+          set -e
+          echo "$RC" > "$GITHUB_WORKSPACE/m29k1/$ARM/exit_code.txt"
+          find "$GITHUB_WORKSPACE/m29k1/$ARM" -maxdepth 2 -type f -printf '%P %s bytes\n' | sort > "$GITHUB_WORKSPACE/m29k1/$ARM/file_manifest.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m29-k1-${{ matrix.arm }}
+          path: m29k1/${{ matrix.arm }}
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: [authorize, compute]
+    if: needs.authorize.outputs.authorized == 'true' && always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: m29-k1-bd_1e2, path: m29k1/bd_1e2}
+      - uses: actions/download-artifact@v4
+        with: {name: m29-k1-bd_1e3, path: m29k1/bd_1e3}
+      - uses: actions/download-artifact@v4
+        with: {name: m29-k1-bd_1e4, path: m29k1/bd_1e4}
+      - uses: actions/download-artifact@v4
+        with: {name: m29-k1-bd_1e5, path: m29k1/bd_1e5}
+      - uses: actions/download-artifact@v4
+        with: {name: m29-k1-lcdm, path: m29k1/lcdm}
+      - name: Classify frozen GR-limit gate
+        run: python3 verification/m29/k1_brans_dicke_gr_limit.py | tee m29_k1_result_stdout.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m29-k1-aggregate
+          path: |
+            waves/wave_05_modified_gravity/M29_K1_BRANS_DICKE_GR_LIMIT_RESULT.json
+            m29_k1_result_stdout.json
+            m29k1/*/file_manifest.txt
+          retention-days: 30
+      - name: Persist canonical K1 result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add waves/wave_05_modified_gravity/M29_K1_BRANS_DICKE_GR_LIMIT_RESULT.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Record M29 Brans-Dicke GR-limit gate'
+          git push
