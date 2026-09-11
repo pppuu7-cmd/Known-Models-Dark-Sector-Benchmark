@@ -1,0 +1,11 @@
+{
+  "K1_promoted": false,
+  "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "classification": "M25_CLASS_BRIDGE_BLOCKED_CLASS_PROVIDER",
+  "error": "CosmoSevereError(b'input_read_from_file(L:428) :error in input_read_parameters(pfc,ppr,pba,pth,ppt,ptr,ppm,phr,pfo,ple,psd,pop, errmsg);\\n=>input_read_parameters(L:1680) :error in input_read_parameters_species(pfc,ppr,pba,pth,ppt, input_verbose, errmsg);\\n=>input_read_parameters_species(L:2662) :error in background_ncdm_init(ppr,pba);\\n=>background_ncdm_init(L:1462) :error in get_qsampling(pba->q_ncdm_bg[k], pba->w_ncdm_bg[k], &(pba->q_size_ncdm_bg[k]), 800, ppr->tol_ncdm_bg, pbadist.q, pbadist.tablesize, background_ncdm_test_function, background_ncdm_distribution, &pbadist, pba->error_message);\\n=>get_qsampling(L:333) :error; get_qsampling fails to obtain a relative tolerance of 1e-05 as required using atmost 800 points. If the PSD is interpolated from a file, try increasing the resolution and the q-interval (qmin;qmax) if possible, or decrease tol_ncdm/tol_ncdm_bg. As a last resort, increase _QUADRATURE_MAX_/_QUADRATURE_MAX_BG_.')",
+  "models": {},
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M25_NONTHERMAL_PSD_CLASS_BRIDGE_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M25.PSDClassBridge.v1",
+  "sterile_provider_pin": "e4486265e8207aa0dd28decc8c8d897266c0a52a"
+}
