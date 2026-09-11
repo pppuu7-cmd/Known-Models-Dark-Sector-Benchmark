@@ -1,0 +1,259 @@
+name: W04 M26 DarkAges cacheless raw-transfer recovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m26-darkages-cacheless-raw-transfer.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  finite-recovery:
+    name: raw-transfer-${{ matrix.child }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        child: [evaporation, spherical, disk]
+    env:
+      EXOCLASS_PIN: 7c4b26e50d240f1f45f120b623aab2dba13094fd
+      OMP_NUM_THREADS: '1'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download immutable successful baseline and null evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: m26-runtime-recovery-${{ matrix.child }}
+          path: m26_previous
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34550083757
+
+      - name: Pin provider and suppress serialized transfer-object writes
+        shell: bash
+        run: |
+          set +e
+          python3 -m pip install --disable-pip-version-check --no-input numpy scipy PyYAML dill future
+          pip_rc=$?
+          git clone -q https://github.com/GFAbellan/ExoCLASS.git exoclass
+          clone_rc=$?
+          checkout_rc=999
+          patch_rc=999
+          build_rc=999
+          if [ "$clone_rc" -eq 0 ]; then
+            git -C exoclass checkout -q --detach "$EXOCLASS_PIN"
+            checkout_rc=$?
+          fi
+          if [ "$checkout_rc" -eq 0 ]; then
+            test "$(git -C exoclass rev-parse HEAD)" = "$EXOCLASS_PIN"
+            find exoclass/DarkAgesModule/transfer_functions/original -type f -maxdepth 1 -print0 | sort -z | xargs -0 sha256sum > m26_raw_transfer_hashes_before.txt
+            python3 - <<'PY'
+          from pathlib import Path
+          p=Path('exoclass/DarkAgesModule/DarkAges/__init__.py')
+          s=p.read_text()
+          old_ch="\t\ttransfer_dump(transfer_functions[idx], os.path.join(os.environ['DARKAGES_BASE'],'transfer_functions/transfer_Ch{:d}.obj'.format(idx+1)))"
+          old_corr="\ttransfer_dump(transfer_functions_corr, os.path.join(os.environ['DARKAGES_BASE'],'transfer_functions/transfer_Corr.obj'))"
+          assert s.count(old_ch)==1, s.count(old_ch)
+          assert s.count(old_corr)==1, s.count(old_corr)
+          s=s.replace(old_ch,"\t\t# KMDSB cacheless recovery: raw Transfer_Ch*.dat remains authoritative; no dill cache write.")
+          s=s.replace(old_corr,"\t# KMDSB cacheless recovery: raw Transfer_Corr.dat remains authoritative; no dill cache write.")
+          p.write_text(s)
+          PY
+            patch_rc=$?
+            git -C exoclass diff -- DarkAgesModule/DarkAges/__init__.py | tee m26_cacheless_raw_transfer.patch
+          fi
+          if [ "$patch_rc" -eq 0 ]; then
+            make -C exoclass -j2 class > "m26_${{ matrix.child }}_cacheless_build.log" 2>&1
+            build_rc=$?
+          fi
+          python3 - <<PY
+          import json
+          previous=json.load(open('m26_previous/m26_status.json'))
+          d={
+            'pip':$pip_rc,
+            'clone':$clone_rc,
+            'checkout':$checkout_rc,
+            'patch':$patch_rc,
+            'build':$build_rc,
+            'baseline':previous.get('baseline',999),
+            'zero':previous.get('zero',999),
+            'finite':999,
+            'baseline_null_source_run_id':34550083757,
+            'parent_cache_bypass_run_id':34550402384,
+            'build_target':'class',
+            'cacheless_raw_transfer':True,
+          }
+          open('m26_status.json','w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          cat m26_status.json
+          exit 0
+
+      - name: Restore baseline-null outputs and prepare unchanged finite case
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p exoclass/output
+          cp -a m26_previous/exoclass/output/. exoclass/output/
+          rm -f exoclass/output/m26_${{ matrix.child }}_finite_*.dat
+          rm -rf m26_cases
+          python3 verification/m26/m26_energy_injection_provider_control.py prepare '${{ matrix.child }}' m26_cases
+          test -s m26_cases/finite.ini
+
+      - name: Execute finite case from raw transfer tables only
+        shell: bash
+        env:
+          PYTHONPATH: ${{ github.workspace }}/exoclass/DarkAgesModule
+        run: |
+          set +e
+          mkdir -p m26_logs
+          rm -f exoclass/DarkAgesModule/transfer_functions/*.obj
+          find exoclass/DarkAgesModule/transfer_functions -maxdepth 1 -name '*.obj' -print > m26_obj_before.txt
+          build=$(python3 -c "import json;print(json.load(open('m26_status.json'))['build'])")
+          if [ "$build" -eq 0 ]; then
+            (cd exoclass && ./class ../m26_cases/finite.ini > ../m26_logs/finite.log 2>&1)
+            rc=$?
+          else
+            rc=999
+          fi
+          find exoclass/DarkAgesModule/transfer_functions -maxdepth 1 -name '*.obj' -print > m26_obj_after.txt
+          find exoclass/DarkAgesModule/transfer_functions/original -type f -maxdepth 1 -print0 | sort -z | xargs -0 sha256sum > m26_raw_transfer_hashes_after.txt
+          cmp m26_raw_transfer_hashes_before.txt m26_raw_transfer_hashes_after.txt
+          hashes_rc=$?
+          python3 - <<PY
+          import json
+          p='m26_status.json'; d=json.load(open(p)); d['finite']=$rc; d['raw_transfer_hashes_unchanged']=($hashes_rc==0)
+          d['obj_before_count']=sum(1 for _ in open('m26_obj_before.txt'))
+          d['obj_after_count']=sum(1 for _ in open('m26_obj_after.txt'))
+          open(p,'w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          cat m26_status.json
+          exit 0
+
+      - name: Analyze unchanged provider-control gate
+        shell: bash
+        run: |
+          set +e
+          result='m26_${{ matrix.child }}_cacheless_raw_transfer_result.json'
+          python3 verification/m26/m26_energy_injection_provider_control.py analyze exoclass m26_status.json m26_cases/manifest.json "$result"
+          rc=$?
+          if [ "$rc" -ne 0 ] || [ ! -s "$result" ]; then
+            python3 - <<PY
+          import json
+          r={'schema':'KMDSB.M26.PBHEnergyInjectionProviderControl.CachelessRawTransferRecovery.v1','child':'${{ matrix.child }}','classification':'M26_${{ matrix.child }}_PROVIDER_EXECUTION_BLOCKED'.upper(),'analysis_return_code':$rc,'K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          open('$result','w').write(json.dumps(r,indent=2,sort_keys=True)+'\n')
+          PY
+          fi
+          python3 - <<PY
+          import json
+          p='$result'; r=json.load(open(p))
+          r['schema']='KMDSB.M26.PBHEnergyInjectionProviderControl.CachelessRawTransferRecovery.v1'
+          r['cacheless_raw_transfer_preregistration']='protocol/W04_M26_DARKAGES_CACHELESS_RAW_TRANSFER_PREREGISTRATION_v0.1.md'
+          r['baseline_null_source_run_id']=34550083757
+          r['parent_cache_bypass_run_id']=34550402384
+          r['finite_recomputed_only']=True
+          r['serialized_transfer_cache_disabled']=True
+          r['K1_promoted']=False
+          r['K4_promoted']=False
+          r['physical_falsification']=False
+          open(p,'w').write(json.dumps(r,indent=2,sort_keys=True)+'\n')
+          PY
+          cat "$result"
+          exit 0
+
+      - name: Upload immutable child evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m26-cacheless-raw-transfer-${{ matrix.child }}
+          path: |
+            m26_status.json
+            m26_cases/manifest.json
+            m26_logs/
+            m26_cacheless_raw_transfer.patch
+            m26_raw_transfer_hashes_before.txt
+            m26_raw_transfer_hashes_after.txt
+            m26_obj_before.txt
+            m26_obj_after.txt
+            m26_${{ matrix.child }}_cacheless_build.log
+            m26_${{ matrix.child }}_cacheless_raw_transfer_result.json
+            exoclass/output/
+          retention-days: 90
+
+  aggregate:
+    name: aggregate-cacheless-raw-transfer
+    needs: finite-recovery
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m26-cacheless-raw-transfer-*
+          path: m26_collected
+      - name: Build and persist summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          ps=sorted(Path('m26_collected').glob('m26-cacheless-raw-transfer-*/m26_*_cacheless_raw_transfer_result.json'))
+          rs=[json.loads(p.read_text()) for p in ps]
+          children={r['child']:r['classification'] for r in rs}
+          s={
+            'schema':'KMDSB.M26.PBHEnergyInjectionProviderControls.CachelessRawTransferRecoverySummary.v1',
+            'cacheless_raw_transfer_preregistration':'protocol/W04_M26_DARKAGES_CACHELESS_RAW_TRANSFER_PREREGISTRATION_v0.1.md',
+            'baseline_null_source_run_id':34550083757,
+            'parent_cache_bypass_run_id':34550402384,
+            'children':children,
+            'n_results':len(rs),
+            'n_scoped_provider_passes':sum(v.endswith('PROVIDER_REFERENCE_CONTROL_PASS_WITH_SCOPE') for v in children.values()),
+            'K1_promoted':False,
+            'K4_promoted':False,
+            'physical_falsification':False,
+            'poisson_structure_channel':'NOT_TESTED',
+          }
+          Path('m26_cacheless_raw_transfer_summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n')
+          print(Path('m26_cacheless_raw_transfer_summary.json').read_text())
+          PY
+          cp m26_cacheless_raw_transfer_summary.json /tmp/m26_summary.json
+          mkdir -p /tmp/m26_results
+          find m26_collected -name 'm26_*_cacheless_raw_transfer_result.json' -type f -exec cp {} /tmp/m26_results/ \;
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/primordial_black_hole_dark_matter waves/wave_04_dark_matter
+          cp /tmp/m26_summary.json models/primordial_black_hole_dark_matter/M26_DARKAGES_CACHELESS_RAW_TRANSFER_SUMMARY.json
+          cp /tmp/m26_summary.json waves/wave_04_dark_matter/M26_DARKAGES_CACHELESS_RAW_TRANSFER_SUMMARY.json
+          for p in /tmp/m26_results/*.json; do
+            [ -e "$p" ] || continue
+            b=$(basename "$p" | tr '[:lower:]' '[:upper:]')
+            cp "$p" "models/primordial_black_hole_dark_matter/${b}"
+            cp "$p" "waves/wave_04_dark_matter/${b}"
+          done
+          git add models/primordial_black_hole_dark_matter waves/wave_04_dark_matter
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M26 cacheless raw-transfer recovery'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Upload summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m26-darkages-cacheless-raw-transfer-summary
+          path: m26_cacheless_raw_transfer_summary.json
+          retention-days: 90
