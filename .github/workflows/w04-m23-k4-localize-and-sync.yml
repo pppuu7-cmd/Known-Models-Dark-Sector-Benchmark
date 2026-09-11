@@ -1,0 +1,111 @@
+name: W04 M23 K4 localization and ledger sync
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m23-k4-localize-and-sync.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  localize-and-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Localize frozen M23 K4 result and sync ledgers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv, json, math
+          from pathlib import Path
+
+          result_path=Path('waves/wave_04_dark_matter/M23_K4_CROSS_GAUGE_PRECISION_RESULT.json')
+          r=json.loads(result_path.read_text())
+          blocks=['TT','TE','EE','Pk']
+          gauges=['synchronous','newtonian']
+          summary={'schema':'KMDSB.M23.K4PrecisionLadderLocalization.v1','source_result':str(result_path),'source_commit':'605d97039eedee0d779b8a2d518667a92a32250e','source_run':34596841563,'source_artifact':10262840156,'source_artifact_digest':'sha256:d36dc8134fe4d4066a0de635093610263915262c072d67152f335ffc86f7a1b4','blocks':{},'gauges':{},'cross_gauge':{},'physical_falsification':False}
+          global_nonmono=0
+          for b in blocks:
+              vals=[]
+              for key,br in r['branches'].items():
+                  x=br['blocks'][b]
+                  vals.append((key,x.get('R_coarse'),x.get('R_fine'),bool(x.get('pass'))))
+              finite=[x for x in vals if x[1] is not None and x[2] is not None and math.isfinite(x[1]) and math.isfinite(x[2])]
+              nonmono=sum(1 for _,rc,rf,_ in finite if rf>rc)
+              global_nonmono += nonmono
+              abs_only=sum(1 for _,rc,rf,p in finite if rf<=1e-4 and not p)
+              summary['blocks'][b]={
+                  'n':len(vals),'pass':sum(1 for x in vals if x[3]),'fail':sum(1 for x in vals if not x[3]),
+                  'max_R_coarse':max((x[1] for x in finite),default=None),
+                  'max_R_fine':max((x[2] for x in finite),default=None),
+                  'nonmonotone_Rfine_gt_Rcoarse':nonmono,
+                  'absolute_bound_pass_but_contraction_fail':abs_only,
+              }
+          for g in gauges:
+              vals=[]
+              for key,br in r['branches'].items():
+                  if key.endswith(':'+g):
+                      for b in blocks:
+                          x=br['blocks'][b]
+                          vals.append((b,x.get('R_coarse'),x.get('R_fine'),bool(x.get('pass'))))
+              finite=[x for x in vals if x[1] is not None and x[2] is not None and math.isfinite(x[1]) and math.isfinite(x[2])]
+              summary['gauges'][g]={
+                  'entries':len(vals),'pass':sum(1 for x in vals if x[3]),'fail':sum(1 for x in vals if not x[3]),
+                  'max_R_fine':max((x[2] for x in finite),default=None),
+                  'nonmonotone_Rfine_gt_Rcoarse':sum(1 for _,rc,rf,_ in finite if rf>rc),
+              }
+          all_rg=[]
+          for b in blocks:
+              vv=[]
+              for case,d in r['cross_gauge'].items():
+                  x=d[b].get('R_gauge')
+                  if x is not None and math.isfinite(x): vv.append(x); all_rg.append(x)
+              summary['cross_gauge'][b]={'max_R_gauge':max(vv,default=None),'all_pass':all(d[b].get('pass') for d in r['cross_gauge'].values())}
+          summary['cross_gauge']['global_max_R_gauge']=max(all_rg,default=None)
+          if summary['blocks']['TT']['nonmonotone_Rfine_gt_Rcoarse'] or summary['blocks']['EE']['nonmonotone_Rfine_gt_Rcoarse']:
+              summary['classification']='M23_K4_PRECISION_LADDER_NONMONOTONE_IN_CMB_BLOCKS'
+          else:
+              summary['classification']='M23_K4_FAILURE_PATTERN_LOCALIZED_OTHER'
+          Path('waves/wave_04_dark_matter/M23_K4_PRECISION_LADDER_LOCALIZATION_RESULT.json').write_text(json.dumps(summary,indent=2,sort_keys=True)+'\n')
+
+          # mandatory-properties matrix
+          p=Path('matrices/mandatory_properties_matrix.csv')
+          with p.open(newline='') as f:
+              rows=list(csv.DictReader(f)); fields=rows[0].keys()
+          for row in rows:
+              if row['family_id']=='F23':
+                  row['K3_conservation_gauge_closure']='PASS_WITH_SCOPE_NATIVE_IDM_DR_SOURCE_PLUS_COMMON_OBSERVABLE_CROSS_GAUGE'
+                  row['K4_numerical_robustness']='NOT_ESTABLISHED_PRECISION_LADDER_NONMONOTONE'
+                  row['coverage_state']='K1_K3_CROSS_GAUGE_PASS_K4_NUMERICAL_NOT_ESTABLISHED'
+                  row['notes']='M23 native CLASS IDM-DR: K1 decoupling PASS. Paired IDM/DR Euler exchange plus run 34596841563 common-observable synchronous-vs-Newtonian regression PASS within 1e-4. K4 does not pass: all 14 branches execute, but the frozen default->cl_permille->cl_ref ladder is non-monotone in CMB TT/EE and fails the preregistered contraction rule. Canonical result commit 605d97039eedee0d779b8a2d518667a92a32250e; aggregate artifact 10262840156. Numerical robustness remains NOT_ESTABLISHED; no physical falsification.'
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows)
+
+          # census
+          p=Path('matrices/model_family_census.csv')
+          with p.open(newline='') as f:
+              rows=list(csv.DictReader(f)); fields=rows[0].keys()
+          for row in rows:
+              if row['family_id']=='F23':
+                  row['status']='K1_K3_CROSS_GAUGE_PASS_K4_NUMERICAL_NOT_ESTABLISHED'
+                  row['notes']='Pinned native CLASS IDM-DR/NADM branch. K1 fixed-content Gamma_0->0 PASS. Source-level paired Euler exchange is supplemented by a prospectively frozen synchronous-vs-Newtonian common-observable regression that passes for all TT/TE/EE/P(k) cases in run 34596841563. K4 remains NOT_ESTABLISHED because the frozen provider precision ladder is non-monotone in CMB TT/EE; this is numerical/provider evidence, not physical family falsification. M24 ETHOS remains independent.'
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows)
+
+          section='''\n### 2026-09-11 — M23 cross-gauge PASS_WITH_SCOPE; K4 numerical robustness not established\nValidated Actions run `34596841563` (head `5ca2b547a4d5be7bf8f8d8a7be13f00302ab588d`; aggregate job `103256026485`) completed all 14 case×gauge branches after the preregistered IDR precision-key repair. Aggregate artifact `10262840156`, digest `sha256:d36dc8134fe4d4066a0de635093610263915262c072d67152f335ffc86f7a1b4`; canonical result commit `605d97039eedee0d779b8a2d518667a92a32250e`. Classification: `M23_K3_CROSS_GAUGE_NUMERICAL_PASS_WITH_COMMON_OBSERVABLE_SCOPE` and `M23_K4_NUMERICAL_ROBUSTNESS_NOT_ESTABLISHED`. All provider executions succeeded. The frozen precision ladder fails K4 because cl_permille->cl_ref differences are non-monotone, especially TT/EE, relative to default->cl_permille; no threshold or physics is retuned. Analysis-only localization is recorded in `M23_K4_PRECISION_LADDER_LOCALIZATION_RESULT.json`. This is not physical NADM/DM-DR falsification.\n'''
+          marker='### 2026-09-11 — M23 cross-gauge PASS_WITH_SCOPE; K4 numerical robustness not established'
+          for fn in ['logs/research_log.md','recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md']:
+              q=Path(fn); txt=q.read_text()
+              if marker not in txt:
+                  q.write_text(txt.rstrip()+"\n"+section+"\n")
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add waves/wave_04_dark_matter/M23_K4_PRECISION_LADDER_LOCALIZATION_RESULT.json matrices/mandatory_properties_matrix.csv matrices/model_family_census.csv logs/research_log.md recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Localize M23 K4 precision failure and sync ledgers'
+          git push
