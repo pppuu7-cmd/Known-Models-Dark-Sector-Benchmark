@@ -1,0 +1,112 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "abrupt_adjacent_jump": true,
+  "adjacent_jumps": [
+    {
+      "from": 1.1,
+      "ratio": 2.7030496930014296,
+      "to": 1.1025
+    },
+    {
+      "from": 1.1025,
+      "ratio": 1.4726026186923917,
+      "to": 1.105
+    },
+    {
+      "from": 1.105,
+      "ratio": 1.086728709039847,
+      "to": 1.1075
+    },
+    {
+      "from": 1.1075,
+      "ratio": 1.839071075607968,
+      "to": 1.11
+    },
+    {
+      "from": 1.11,
+      "ratio": 1.4122128126049556,
+      "to": 1.1125
+    },
+    {
+      "from": 1.1125,
+      "ratio": 1.1622801283010842,
+      "to": 1.115
+    },
+    {
+      "from": 1.115,
+      "ratio": 1.0341767691397221,
+      "to": 1.1175
+    },
+    {
+      "from": 1.1175,
+      "ratio": 92.04673137653435,
+      "to": 1.12
+    }
+  ],
+  "all_new_exact_identity": true,
+  "classification": "M24_L_LOGSTEP_SHARP_GRID_TRANSITION_LOCALIZED",
+  "physical_falsification": false,
+  "points": [
+    {
+      "Emax": 0.23026690746463432,
+      "classification": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+      "exact_identity_pass": true,
+      "l_logstep": 1.1
+    },
+    {
+      "Emax": 0.6224228935306684,
+      "classification": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+      "exact_identity_pass": true,
+      "l_logstep": 1.1025
+    },
+    {
+      "Emax": 0.9165815829473579,
+      "classification": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+      "exact_identity_pass": true,
+      "l_logstep": 1.105
+    },
+    {
+      "Emax": 0.9960755203660816,
+      "classification": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+      "exact_identity_pass": true,
+      "l_logstep": 1.1075
+    },
+    {
+      "Emax": 0.5416188278839602,
+      "classification": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+      "exact_identity_pass": true,
+      "l_logstep": 1.11
+    },
+    {
+      "Emax": 0.7648810482858068,
+      "classification": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+      "exact_identity_pass": true,
+      "l_logstep": 1.1125
+    },
+    {
+      "Emax": 0.6580866605745387,
+      "classification": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+      "exact_identity_pass": true,
+      "l_logstep": 1.115
+    },
+    {
+      "Emax": 0.6805779364469253,
+      "classification": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+      "exact_identity_pass": true,
+      "l_logstep": 1.1175
+    },
+    {
+      "Emax": 62.6449744969262,
+      "classification": "PROVIDER_DEFAULT_NOT_LOCALIZED",
+      "exact_identity_pass": true,
+      "l_logstep": 1.12
+    }
+  ],
+  "preregistration": "protocol/W04_M24_L_LOGSTEP_TRANSITION_BRACKET_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M24.LLogstepTransitionBracket.Summary.v1",
+  "transition_bracket": [
+    1.1175,
+    1.12
+  ]
+}
