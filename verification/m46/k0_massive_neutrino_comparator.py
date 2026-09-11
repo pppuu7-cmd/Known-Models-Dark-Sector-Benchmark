@@ -41,8 +41,9 @@ for arm in ARMS:
     out['arms'][arm]={'exit_code':rc,'exact_pin':exact,'finite_cl':len(cr)>0,'finite_pk':len(pr)>0,'cl_rows':len(cr),'pk_rows':len(pr)}
 tt=l2_table(paths['massive_nu_006'][0],paths['massless_control'][0]) if finite else None
 pk=l2_table(paths['massive_nu_006'][1],paths['massless_control'][1]) if finite else None
-active=(tt is not None and pk is not None and max(tt,pk)>1e-6)
-out['arms']['massive_nu_006']['active_response']={'TT_normalized_L2':tt,'Pk_normalized_L2':pk,'threshold':1e-6,'pass':active}
+# Preregistration says active response in at least one of TT or P(k).
+active=((tt is not None and tt>1e-6) or (pk is not None and pk>1e-6))
+out['arms']['massive_nu_006']['active_response']={'TT_normalized_L2':tt,'Pk_normalized_L2':pk,'threshold':1e-6,'criterion':'TT OR P(k)','pass':active}
 out['checks']={'both_execute_exact_pin':ok,'finite_outputs':finite,'active_comparator_response':active}
 if ok and finite and active:
     out['classification']='M46_K0_PASS_WITH_SCOPE_PINNED_CLASS_MASSIVE_NEUTRINO_COMPARATOR'; out['K0_promoted']=True
