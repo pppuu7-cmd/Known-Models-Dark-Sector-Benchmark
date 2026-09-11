@@ -1,0 +1,184 @@
+name: W05 M29 K4c duplicate-key recovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w05-m29-k4c-duplicate-key-recovery.yml'
+
+jobs:
+  recover:
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [projection_ref, thermo_projection_ref, full_core_ref]
+    runs-on: ubuntu-latest
+    env:
+      HICLASS_PIN: 0009f51d89e6465c79e570b496c66fc90058fa77
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute frozen K4c arm with duplicate-key canonicalization
+        shell: bash
+        run: |
+          set -euo pipefail
+          PR='${{ matrix.profile }}'
+          BASE="$GITHUB_WORKSPACE/m29k4c/$PR"
+          mkdir -p "$BASE/output"
+          git clone -q https://github.com/hiclass-code/hi_class_public.git hiclass
+          cd hiclass && git checkout -q --detach "$HICLASS_PIN"
+          test "$(git rev-parse HEAD)" = "$HICLASS_PIN"
+          make -j2 >/dev/null
+          CFG="$BASE/run.ini"
+          cp gravity_models/brans_dicke.ini "$CFG"
+          python3 - "$CFG" "$BASE" <<'PY'
+          import re,sys
+          p,base=sys.argv[1:]
+          s=open(p).read()
+          s=re.sub(r'^parameters_smg\s*=.*$','parameters_smg = 0.7, 15, 1., 0.',s,flags=re.M)
+          s=re.sub(r'^root\s*=.*$',f'root = {base}/output/bd_',s,flags=re.M)
+          s += '\nbackground_Nloga = 40000\n'
+          open(p,'w').write(s)
+          PY
+          GRID="$BASE/grid.pre"; TH="$BASE/thermo.pre"; PROJ="$BASE/projection.pre"; EV="$BASE/evolution.pre"; RAW="$BASE/merged.raw.pre"; MERGED="$BASE/merged.pre"
+          cat > "$GRID" <<'EOF'
+          k_min_tau0=0.002
+          k_max_tau0_over_l_max=3.
+          k_step_sub=0.015
+          k_step_super=0.0001
+          k_step_super_reduction=0.1
+          EOF
+          cat > "$TH" <<'EOF'
+          tol_ncdm_bg=1.e-10
+          recfast_Nz0=100000
+          tol_thermo_integration=1.e-5
+          recfast_x_He0_trigger_delta=0.01
+          recfast_x_H0_trigger_delta=0.01
+          EOF
+          cat > "$PROJ" <<'EOF'
+          l_logstep=1.026
+          l_linstep=25
+          hyper_sampling_flat=12.
+          hyper_sampling_curved_low_nu=10.
+          hyper_sampling_curved_high_nu=10.
+          hyper_nu_sampling_step=10.
+          hyper_phi_min_abs=1.e-10
+          hyper_x_tol=1.e-4
+          hyper_flat_approximation_nu=1.e6
+          q_linstep=0.20
+          q_logstep_spline=20.
+          q_logstep_trapzd=0.5
+          q_numstep_transition=250
+          transfer_neglect_delta_k_S_t0=100.
+          transfer_neglect_delta_k_S_t1=100.
+          transfer_neglect_delta_k_S_t2=100.
+          transfer_neglect_delta_k_S_e=100.
+          neglect_CMB_sources_below_visibility=1.e-30
+          transfer_neglect_late_source=3000.
+          l_switch_limber=40.
+          accurate_lensing=1
+          num_mu_minus_lmax=1000.
+          delta_l_max=1000.
+          EOF
+          cat > "$EV" <<'EOF'
+          evolver=0
+          start_small_k_at_tau_c_over_tau_h=0.0004
+          start_large_k_at_tau_h_over_tau_k=0.05
+          tight_coupling_trigger_tau_c_over_tau_h=0.005
+          tight_coupling_trigger_tau_c_over_tau_k=0.008
+          start_sources_at_tau_c_over_tau_h=0.006
+          l_max_g=50
+          l_max_pol_g=25
+          l_max_ur=50
+          l_max_ncdm=50
+          tol_perturbations_integration=1.e-6
+          perturbations_sampling_stepsize=0.01
+          radiation_streaming_approximation=2
+          radiation_streaming_trigger_tau_over_tau_k=240.
+          radiation_streaming_trigger_tau_c_over_tau=100.
+          ur_fluid_approximation=2
+          ur_fluid_trigger_tau_over_tau_k=50.
+          ncdm_fluid_approximation=3
+          ncdm_fluid_trigger_tau_over_tau_k=51.
+          tol_ncdm_synchronous=1.e-10
+          tol_ncdm_newtonian=1.e-10
+          EOF
+          case "$PR" in
+            projection_ref) cat cl_permille.pre "$GRID" "$PROJ" > "$RAW" ;;
+            thermo_projection_ref) cat cl_permille.pre "$GRID" "$TH" "$PROJ" > "$RAW" ;;
+            full_core_ref) cat cl_permille.pre "$GRID" "$TH" "$PROJ" "$EV" > "$RAW" ;;
+          esac
+          python3 - "$RAW" "$MERGED" <<'PY'
+          import re,sys
+          src,dst=sys.argv[1:]
+          lines=open(src).read().splitlines()
+          key=[]
+          last={}
+          pat=re.compile(r'^\s*([A-Za-z0-9_]+)\s*=')
+          for i,line in enumerate(lines):
+              m=pat.match(line)
+              k=m.group(1) if m else None
+              key.append(k)
+              if k is not None:
+                  last[k]=i
+          out=[]
+          for i,line in enumerate(lines):
+              k=key[i]
+              if k is None or last[k]==i:
+                  out.append(line)
+          open(dst,'w').write('\n'.join(out)+'\n')
+          PY
+          set +e
+          ./class "$CFG" "$MERGED" > "$BASE/stdout.log" 2> "$BASE/stderr.log"
+          RC=$?
+          set -e
+          echo "$RC" > "$BASE/exit_code.txt"
+          find "$BASE" -maxdepth 2 -type f -printf '%P %s bytes\n' | sort > "$BASE/file_manifest.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m29-k4c-recovery-${{ matrix.profile }}
+          path: m29k4c/${{ matrix.profile }}
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: recover
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download immutable successful parent arms
+        uses: actions/download-artifact@v4
+        with:
+          pattern: 'm29-k4c-*'
+          path: parent
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 34635419961
+      - name: Download recovered arms
+        uses: actions/download-artifact@v4
+        with:
+          pattern: 'm29-k4c-recovery-*'
+          path: recovered
+      - name: Reassemble six-profile K4c evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p m29k4c
+          for pr in base_grid thermo_ref full_ref; do
+            mkdir -p "m29k4c/$pr"
+            cp -a "parent/m29-k4c-$pr"/. "m29k4c/$pr/"
+          done
+          for pr in projection_ref thermo_projection_ref full_core_ref; do
+            mkdir -p "m29k4c/$pr"
+            cp -a "recovered/m29-k4c-recovery-$pr"/. "m29k4c/$pr/"
+          done
+      - name: Classify frozen K4c diagnostic
+        run: python3 verification/m29/k4c_tt_localization.py | tee m29_k4c_recovery_result_stdout.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m29-k4c-recovery-aggregate
+          path: |
+            waves/wave_05_modified_gravity/M29_K4C_TT_LOCALIZATION_RESULT.json
+            m29_k4c_recovery_result_stdout.json
+          retention-days: 30
