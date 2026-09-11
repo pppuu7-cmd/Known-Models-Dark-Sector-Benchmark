@@ -1,0 +1,61 @@
+name: W04 M27 N1 daughter-support localization
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m27-n1-daughter-support-localization.yml']
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        g0: [0.03, 0.3, 3.0]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3 scipy==1.16.2
+      - name: Localize daughter relative residual by support
+        run: |
+          python3 verification/m27/n1_daughter_support_localization.py '${{ matrix.g0 }}' result.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m27-daughter-support-g${{ matrix.g0 }}
+          path: result.json
+          retention-days: 90
+  aggregate:
+    needs: audit
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m27-daughter-support-g*
+          path: collected
+      - name: Persist support-localization summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rs=sorted([json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')],key=lambda r:r['Gamma0_over_Hstar'])
+          all_early=(len(rs)==3 and all(r['classification']=='M27_N1_DAUGHTER_EARLY_NULL_RELATIVE_METRIC_LOCALIZED' for r in rs))
+          s={'schema':'KMDSB.M27.N1DaughterSupportLocalization.Summary.v1','preregistration':'protocol/W04_M27_N1_DAUGHTER_SUPPORT_LOCALIZATION_PREREGISTRATION_v0.1.md','children':{str(r['Gamma0_over_Hstar']):r['classification'] for r in rs},'slices':{str(r['Gamma0_over_Hstar']):r.get('slices') for r in rs},'amplitude_normalized_abs':{str(r['Gamma0_over_Hstar']):{'rho_dr':r.get('rho_dr_amplitude_normalized_max_abs'),'D':r.get('D_amplitude_normalized_max_abs')} for r in rs},'classification':'M27_N1_DAUGHTER_SUPPORT_EARLY_NULL_LOCALIZED_ALL_GAMMA' if all_early else 'M27_N1_DAUGHTER_SUPPORT_NOT_FULLY_LOCALIZED','K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n'); print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/dynamical_dark_matter
+          cp /tmp/summary.json waves/wave_04_dark_matter/M27_N1_DAUGHTER_SUPPORT_LOCALIZATION_SUMMARY.json
+          cp /tmp/summary.json models/dynamical_dark_matter/M27_N1_DAUGHTER_SUPPORT_LOCALIZATION_SUMMARY.json
+          git add waves/wave_04_dark_matter models/dynamical_dark_matter
+          git diff --cached --quiet || { git commit -m 'Record M27 N1 daughter-support localization'; git pull --rebase origin main; git push origin HEAD:main; }
