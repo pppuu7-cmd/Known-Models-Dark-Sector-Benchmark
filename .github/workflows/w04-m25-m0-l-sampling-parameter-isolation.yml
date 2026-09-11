@@ -1,0 +1,143 @@
+name: W04 M25 m0 l-sampling parameter isolation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m25-m0-l-sampling-parameter-isolation.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  isolate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        parameter: [l_logstep_only, l_linstep_only]
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: w04-m25-k1-abundance-decoupling
+          path: original
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34548988620
+      - uses: actions/download-artifact@v4
+        with:
+          name: m25-ncdm-nofluid-m0
+          path: baseline
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34551925134
+      - name: Build pinned CLASS and frozen isolated profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -a original/m25_k1_cases m25_k1_cases
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class/include/common.h'); s=p.read_text()
+          assert s.count('#define _QUADRATURE_MAX_ 250')==1 and s.count('#define _QUADRATURE_MAX_BG_ 800')==1
+          p.write_text(s.replace('#define _QUADRATURE_MAX_ 250','#define _QUADRATURE_MAX_ 4000').replace('#define _QUADRATURE_MAX_BG_ 800','#define _QUADRATURE_MAX_BG_ 4000'))
+          PY
+          make -C class -j2 > build.log 2>&1
+          cat > isolated.pre <<'EOF'
+          tol_ncdm_bg = 1e-6
+          tol_ncdm = 1e-6
+          ncdm_fluid_approximation = 3
+          EOF
+          if [ '${{ matrix.parameter }}' = 'l_logstep_only' ]; then
+            printf 'l_logstep = 1.026\n' >> isolated.pre
+          else
+            printf 'l_linstep = 25\n' >> isolated.pre
+          fi
+          cat isolated.pre
+      - name: Execute four m0 cases two-at-a-time
+        shell: bash
+        run: |
+          mkdir -p class/output logs parts
+          printf '%s\n' ref e2 e3 e4 | xargs -P 2 -I{} bash -c '
+            s="$1"; id="$s"; [ "$s" = ref ] || id="m0_${s}"
+            set +e
+            (cd class && ./class "../m25_k1_cases/${id}.ini" ../isolated.pre > "../logs/${id}.log" 2>&1)
+            printf "%d\n" "$?" > "parts/${s}.status"
+          ' _ {}
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d={'build':0}; d.update({p.stem:int(p.read_text()) for p in Path('parts').glob('*.status')}); Path('status.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - name: Analyze isolated CMB sampling parameter
+        shell: bash
+        env:
+          PARAMETER: ${{ matrix.parameter }}
+        run: |
+          python3 verification/m25/m25_k1_precision_floor_diagnostic.py class m0 pk_ref status.json raw.json
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open('raw.json')); b=json.load(open('baseline/result.json'))
+          cmb=['CMB_TT','CMB_EE','CMB_TE']
+          new={k:r['blocks'][k]['r95'][1] for k in cmb}; old={k:b['blocks'][k]['r95'][1] for k in cmb}
+          ratios={k:(old[k]/new[k] if new[k]>0 else float('inf')) for k in cmb}
+          recovered=[k for k in cmb if r['blocks'][k]['tail_scaling_recovered']]
+          strong=[k for k in cmb if ratios[k]>=5.0]
+          if r.get('classification')=='M25_PRECISION_FLOOR_DIAGNOSTIC_PROVIDER_BLOCKED': cls='M25_M0_L_SAMPLING_PARAMETER_PROVIDER_BLOCKED'
+          elif len(recovered)==3 and len(strong)==3: cls='M25_M0_L_SAMPLING_PARAMETER_LOCALIZED'
+          elif recovered or strong: cls='M25_M0_L_SAMPLING_PARAMETER_PARTIALLY_LOCALIZED'
+          else: cls='M25_M0_L_SAMPLING_PARAMETER_INSENSITIVE'
+          r.update({'schema':'KMDSB.M25.M0LSamplingParameterIsolation.v1','preregistration':'protocol/W04_M25_M0_L_SAMPLING_PARAMETER_ISOLATION_PREREGISTRATION_v0.1.md','parameter':os.environ['PARAMETER'],'baseline_run_id':34551925134,'eta_0p003_p95':new,'baseline_eta_0p003_p95':old,'improvement_factors':ratios,'strongly_improved_CMB_blocks':strong,'recovered_CMB_blocks':recovered,'classification':cls,'K1_promoted':False,'K4_promoted':False,'physical_falsification':False})
+          open('result.json','w').write(json.dumps(r,indent=2,sort_keys=True)+'\n')
+          PY
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m25-m0-l-sampling-${{ matrix.parameter }}
+          path: |
+            isolated.pre
+            build.log
+            status.json
+            result.json
+            logs/
+            class/output/
+          retention-days: 90
+  aggregate:
+    needs: isolate
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m25-m0-l-sampling-*
+          path: collected
+      - name: Persist parameter attribution summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rs=[json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')]
+          s={'schema':'KMDSB.M25.M0LSamplingParameterIsolation.Summary.v1','preregistration':'protocol/W04_M25_M0_L_SAMPLING_PARAMETER_ISOLATION_PREREGISTRATION_v0.1.md','children':{r['parameter']:r['classification'] for r in rs},'improvement_factors':{r['parameter']:r.get('improvement_factors',{}) for r in rs},'eta_0p003_p95':{r['parameter']:r.get('eta_0p003_p95',{}) for r in rs},'recovered_CMB_blocks':{r['parameter']:r.get('recovered_CMB_blocks',[]) for r in rs},'K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n'); print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm
+          cp /tmp/summary.json waves/wave_04_dark_matter/M25_M0_L_SAMPLING_PARAMETER_ISOLATION_SUMMARY.json
+          cp /tmp/summary.json models/resonant_sterile_neutrino_wdm/M25_M0_L_SAMPLING_PARAMETER_ISOLATION_SUMMARY.json
+          git add waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm
+          git diff --cached --quiet || { git commit -m 'Record M25 m0 l-sampling parameter isolation'; git pull --rebase origin main; git push origin HEAD:main; }
