@@ -1,0 +1,86 @@
+{
+  "K1_promoted": false,
+  "K3_promoted": false,
+  "K4_promoted": false,
+  "children": {
+    "0.03": "M27_PERTURBATION_SOURCE_CONDITIONING_GAMMA_MEASURED",
+    "0.3": "M27_PERTURBATION_SOURCE_CONDITIONING_GAMMA_MEASURED",
+    "3.0": "M27_PERTURBATION_SOURCE_CONDITIONING_GAMMA_MEASURED"
+  },
+  "classification": "M27_PERTURBATION_SOURCE_CONDITIONING_RECOVERY_NOT_ESTABLISHED",
+  "fine_pair_at_selected_support": {
+    "0.03": {
+      "0.1": {
+        "dhat_amp_norm_max": 5.311470665275151e-08,
+        "that_amp_norm_max": 6.560547167678845e-07
+      },
+      "1.0": {
+        "dhat_amp_norm_max": 2.2318483819296536e-08,
+        "that_amp_norm_max": 3.627265101502159e-07
+      },
+      "10.0": {
+        "dhat_amp_norm_max": 3.821202897713085e-08,
+        "that_amp_norm_max": 4.916226954560352e-08
+      }
+    },
+    "0.3": {
+      "0.1": {
+        "dhat_amp_norm_max": 5.835563386497142e-08,
+        "that_amp_norm_max": 1.0136580721006689e-06
+      },
+      "1.0": {
+        "dhat_amp_norm_max": 6.914135883807165e-08,
+        "that_amp_norm_max": 3.7790029663442104e-07
+      },
+      "10.0": {
+        "dhat_amp_norm_max": 5.026685190693185e-08,
+        "that_amp_norm_max": 5.5611012896786397e-08
+      }
+    },
+    "3.0": {
+      "0.1": {
+        "dhat_amp_norm_max": 9.817747574180067e-08,
+        "that_amp_norm_max": 8.864966359715156e-07
+      },
+      "1.0": {
+        "dhat_amp_norm_max": 6.0930726596032e-08,
+        "that_amp_norm_max": 5.56929017363492e-07
+      },
+      "10.0": {
+        "dhat_amp_norm_max": 3.310969097583424e-08,
+        "that_amp_norm_max": 9.928128132286891e-08
+      }
+    }
+  },
+  "fine_solver_pair_pass": false,
+  "finite": true,
+  "first_common_support": "1e-04",
+  "n1_support_pass": {
+    "0.03": {
+      "1e-02": true,
+      "1e-03": true,
+      "1e-04": true,
+      "3e-03": true,
+      "3e-04": true
+    },
+    "0.3": {
+      "1e-02": true,
+      "1e-03": true,
+      "1e-04": true,
+      "3e-03": true,
+      "3e-04": true
+    },
+    "3.0": {
+      "1e-02": true,
+      "1e-03": true,
+      "1e-04": true,
+      "3e-03": true,
+      "3e-04": true
+    }
+  },
+  "n_results": 3,
+  "normalized_27way_recovery_authorized": false,
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M27_PERTURBATION_SOURCE_CONDITIONING_RECOVERY_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M27.PerturbationSourceConditioningAudit.Summary.v1"
+}
