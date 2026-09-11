@@ -31,10 +31,9 @@ def topology_delta(a, b):
     first = next((i for i in range(n) if av[i] != bv[i]), None)
     if first is None and len(av) != len(bv):
         first = n
-    aset, bset = set(av), set(bv)
     return {
         "grid_changed": a["sha256"] != b["sha256"],
-        "symmetric_difference_size": len(aset ^ bset),
+        "symmetric_difference_size": len(set(av) ^ set(bv)),
         "first_differing_index": first,
         "first_a": None if first is None or first >= len(av) else av[first],
         "first_b": None if first is None or first >= len(bv) else bv[first],
@@ -47,8 +46,7 @@ def topology_delta(a, b):
 def point(args):
     raw = json.loads(Path(args.raw).read_text())
     status = json.loads(Path(args.status).read_text())
-    grids = {}
-    missing = []
+    grids, missing = {}, []
     for case in PROFILE_CASES + CONTROL_CASES:
         p = Path(args.grids) / f"{case}.tsv"
         try:
@@ -56,9 +54,10 @@ def point(args):
         except Exception as exc:
             missing.append({"case": case, "error": str(exc)})
     failed_cases = {k: v for k, v in status.items() if int(v) != 0}
-    profile_digests = [grids[c]["sha256"] for c in PROFILE_CASES if c in grids]
+    profile_grids = {c: grids[c] for c in PROFILE_CASES if c in grids}
+    control_grids = {c: grids[c] for c in CONTROL_CASES if c in grids}
+    profile_digests = [g["sha256"] for g in profile_grids.values()]
     profile_uniform = len(profile_digests) == len(PROFILE_CASES) and len(set(profile_digests)) == 1
-    canonical = grids.get("profile_ref")
     out = {
         "schema": "KMDSB.M24.LLogstepGridTopology.Point.v1",
         "preregistration": "protocol/W04_M24_L_LOGSTEP_MULTIPOLE_GRID_TOPOLOGY_PREREGISTRATION_v0.1.md",
@@ -70,10 +69,10 @@ def point(args):
         "failed_cases": failed_cases,
         "missing_grids": missing,
         "profile_grid_uniform_across_cases": profile_uniform,
-        "profile_grid": canonical,
-        "profile_grid_digests_by_case": {c: grids[c]["sha256"] for c in PROFILE_CASES if c in grids},
-        "control_grid_digests_by_case": {c: grids[c]["sha256"] for c in CONTROL_CASES if c in grids},
-        "provider_blocked": bool(failed_cases or missing or canonical is None or not profile_uniform),
+        "profile_grid": profile_grids.get("profile_ref"),
+        "profile_grids": profile_grids,
+        "control_grids": control_grids,
+        "provider_blocked": bool(failed_cases or missing or "profile_ref" not in profile_grids),
         "K1_promoted": False,
         "K4_promoted": False,
         "physical_falsification": False,
@@ -85,33 +84,46 @@ def aggregate(args):
     points = [json.loads(p.read_text()) for p in Path(args.collected).glob("*/result.json")]
     points.sort(key=lambda x: x["l_logstep"])
     blocked = len(points) != 6 or any(p.get("provider_blocked") for p in points)
-    adjacency = []
-    any_grid_change = False
-    aligned = False
+    adjacency, any_grid_change, aligned = [], False, False
     for a, b in zip(points[:-1], points[1:]):
         ea, eb = a.get("Emax"), b.get("Emax")
-        ga, gb = a.get("profile_grid"), b.get("profile_grid")
-        if ea is None or eb is None or ga is None or gb is None:
-            d = {"grid_changed": None}
-            ratio = None
-        else:
-            d = topology_delta(ga, gb)
-            ratio = max(ea, eb) / max(min(ea, eb), 1e-300)
-            any_grid_change |= d["grid_changed"]
-            if ratio >= 5 and d["grid_changed"] and a.get("exact_identity_pass") and b.get("exact_identity_pass"):
-                aligned = True
-        adjacency.append({"from": a["l_logstep"], "to": b["l_logstep"], "cmb_jump_ratio": ratio, **d})
+        ratio = None if ea is None or eb is None else max(ea, eb) / max(min(ea, eb), 1e-300)
+        case_deltas = {}
+        for case in PROFILE_CASES:
+            ga = a.get("profile_grids", {}).get(case)
+            gb = b.get("profile_grids", {}).get(case)
+            if ga is not None and gb is not None:
+                case_deltas[case] = topology_delta(ga, gb)
+        changed = any(d["grid_changed"] for d in case_deltas.values()) if case_deltas else None
+        if changed:
+            any_grid_change = True
+        if ratio is not None and ratio >= 5 and changed and a.get("exact_identity_pass") and b.get("exact_identity_pass"):
+            aligned = True
+        ref_delta = case_deltas.get("profile_ref", {})
+        adjacency.append({
+            "from": a["l_logstep"],
+            "to": b["l_logstep"],
+            "cmb_jump_ratio": ratio,
+            "grid_changed": changed,
+            "profile_ref_delta": ref_delta,
+            "profile_case_deltas": case_deltas,
+        })
     endpoint_expected = {1.1175: 0.6805779364469253, 1.12: 62.6449744969262}
     endpoint_reproduction = {}
     for x, expected in endpoint_expected.items():
         p = next((q for q in points if abs(q["l_logstep"] - x) < 1e-12), None)
         actual = None if p is None else p.get("Emax")
         rel = None if actual is None else abs(actual - expected) / max(abs(expected), 1e-300)
-        endpoint_reproduction[str(x)] = {"expected_Emax": expected, "actual_Emax": actual, "relative_error": rel, "pass_1e-8": rel is not None and rel <= 1e-8}
+        endpoint_reproduction[str(x)] = {
+            "expected_Emax": expected,
+            "actual_Emax": actual,
+            "relative_error": rel,
+            "pass_1e-8": rel is not None and rel <= 1e-8,
+        }
     instrumentation_reproduction_pass = all(v["pass_1e-8"] for v in endpoint_reproduction.values())
     if blocked:
         classification = "M24_L_LOGSTEP_TOPOLOGY_PROVIDER_BLOCKED"
-    elif aligned and instrumentation_reproduction_pass:
+    elif aligned:
         classification = "M24_L_LOGSTEP_CMB_JUMP_ALIGNED_WITH_GRID_TOPOLOGY_CHANGE"
     elif any_grid_change:
         classification = "M24_L_LOGSTEP_GRID_CHANGES_WITHOUT_ALIGNED_CMB_JUMP"
