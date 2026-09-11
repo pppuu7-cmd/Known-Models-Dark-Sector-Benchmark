@@ -1,0 +1,191 @@
+name: W05 parallel M30 M31 M40 K1
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w05-parallel-m30-m31-m40-k1.yml'
+
+jobs:
+  hiclass-k1:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        model: [M30, M31]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      HICLASS_PIN: 0009f51d89e6465c79e570b496c66fc90058fa77
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install and build pinned hi_class
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3-numpy >/dev/null
+          git clone -q https://github.com/hiclass-code/hi_class_public.git provider
+          cd provider
+          git checkout -q --detach "$HICLASS_PIN"
+          test "$(git rev-parse HEAD)" = "$HICLASS_PIN"
+          make -j2 >/dev/null
+          git rev-parse HEAD > ../provider_commit.txt
+      - name: Execute frozen reference-limit ladder
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODEL='${{ matrix.model }}'
+          BASE="$GITHUB_WORKSPACE/k1_${MODEL}"
+          mkdir -p "$BASE"
+          if [ "$MODEL" = M30 ]; then CH=0.0; else CH=0.3; fi
+          python3 - "$MODEL" "$CH" "$BASE" <<'PY'
+          import pathlib,re,sys
+          model,ch,base=sys.argv[1],float(sys.argv[2]),pathlib.Path(sys.argv[3])
+          src=pathlib.Path('provider/gravity_models/propto_omega_bh.ini').read_text()
+          for label,s in [('ref',0.0),('s1',1.0),('s01',0.1),('s001',0.01),('s0001',0.001)]:
+              vals=[1.0*s,0.5*s,0.2*s,0.0,ch*s,1.0]
+              t=re.sub(r'(?m)^parameters_smg\s*=.*$', 'parameters_smg = '+', '.join(f'{v:.12g}' for v in vals), src)
+              t=re.sub(r'(?m)^root\s*=.*$', f'root = {base}/{label}_', t)
+              (base/f'{label}.ini').write_text(t)
+          PY
+          set +e
+          for label in ref s1 s01 s001 s0001; do
+            ./provider/class "$BASE/${label}.ini" > "$BASE/${label}.stdout" 2> "$BASE/${label}.stderr"
+            echo $? > "$BASE/${label}.exit"
+          done
+          set -e
+      - name: Classify frozen hi_class ladder
+        shell: bash
+        run: |
+          MODEL='${{ matrix.model }}'; BASE="$GITHUB_WORKSPACE/k1_${MODEL}"
+          python3 - "$BASE" <<'PY'
+          import json,pathlib,sys
+          b=pathlib.Path(sys.argv[1])
+          arms=[]
+          for label,x in [('s1',1.0),('s01',0.1),('s001',0.01),('s0001',0.001)]:
+              arms.append({'label':label,'x':x,'cl':str(b/f'{label}_cl.dat'),'pk':str(b/f'{label}_pk.dat'),'exit':int((b/f'{label}.exit').read_text())})
+          pathlib.Path('arms.json').write_text(json.dumps(arms))
+          PY
+          python3 verification/k1/decoupling_ladder.py \
+            --model "$MODEL" \
+            --provider-commit "$(cat provider_commit.txt)" --expected-commit "$HICLASS_PIN" \
+            --reference-cl "$BASE/ref_cl.dat" --reference-pk "$BASE/ref_pk.dat" \
+            --arms-json arms.json --out "${MODEL}_k1_result.json" \
+            --scope 'pinned hi_class propto_omega family; joint alpha-coefficient scaling to zero with M2_ini=1 and LCDM expansion fixed'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.model }}-k1-reference-limit
+          path: |
+            ${{ matrix.model }}_k1_result.json
+            provider_commit.txt
+            arms.json
+            k1_${{ matrix.model }}/
+          retention-days: 30
+
+  m40-horava-k1:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      EFTCAMB_PIN: 16d9c4e9f85751e30efd0a53b177941713078904
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install and build pinned EFTCAMB
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y libblas-dev liblapack-dev python3-numpy >/dev/null
+          git clone -q https://github.com/EFTCAMB/EFTCAMB.git provider
+          cd provider
+          git checkout -q --detach "$EFTCAMB_PIN"
+          git submodule update --init --recursive
+          test "$(git rev-parse HEAD)" = "$EFTCAMB_PIN"
+          cd fortran
+          make clean >/dev/null 2>&1 || true
+          make camb >/dev/null
+          cd ../..
+          git -C provider rev-parse HEAD > provider_commit.txt
+      - name: Execute native Hořava ladder and explicit GR control
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="$GITHUB_WORKSPACE/k1_M40"; mkdir -p "$BASE"
+          python3 - "$BASE" <<'PY'
+          import pathlib,re,sys
+          b=pathlib.Path(sys.argv[1]); p=pathlib.Path('provider/fortran/eftcamb_test/parameters')
+          src=(p/'5_Horava_eta_3.ini').read_text()
+          base=(-0.001,0.001,0.021)
+          for label,s in [('ref',0.0),('s1',1.0),('s01',0.1),('s001',0.01),('s0001',0.001)]:
+              t=src
+              for key,val in zip(('Horava_xi','Horava_lambda','Horava_eta'),base):
+                  t=re.sub(rf'(?m)^\s*{key}\s*=.*$', f'{key} = {val*s:.16g}', t)
+              t=re.sub(r'(?m)^\s*output_root\s*=.*$', f'output_root = {b}/{label}_', t)
+              (b/f'{label}.ini').write_text(t)
+          gr=(p/'1_EFT_GR.ini').read_text()
+          gr=re.sub(r'(?m)^\s*output_root\s*=.*$', f'output_root = {b}/gr_', gr)
+          (b/'gr.ini').write_text(gr)
+          PY
+          set +e
+          for label in ref s1 s01 s001 s0001 gr; do
+            (cd provider/fortran && ./camb "$BASE/${label}.ini" > "$BASE/${label}.stdout" 2> "$BASE/${label}.stderr")
+            echo $? > "$BASE/${label}.exit"
+          done
+          set -e
+      - name: Classify Hořava ladder plus endpoint identity
+        shell: bash
+        run: |
+          BASE="$GITHUB_WORKSPACE/k1_M40"
+          python3 - "$BASE" <<'PY'
+          import json,pathlib,sys
+          b=pathlib.Path(sys.argv[1])
+          arms=[]
+          for label,x in [('s1',1.0),('s01',0.1),('s001',0.01),('s0001',0.001)]:
+              arms.append({'label':label,'x':x,'cl':str(b/f'{label}_scalCls.dat'),'pk':str(b/f'{label}_matterpower.dat'),'exit':int((b/f'{label}.exit').read_text())})
+          pathlib.Path('arms.json').write_text(json.dumps(arms))
+          PY
+          python3 verification/k1/decoupling_ladder.py \
+            --model M40 --provider-commit "$(cat provider_commit.txt)" --expected-commit "$EFTCAMB_PIN" \
+            --reference-cl "$BASE/ref_scalCls.dat" --reference-pk "$BASE/ref_matterpower.dat" \
+            --arms-json arms.json --out M40_k1_result.json \
+            --scope 'pinned EFTCAMB native Hořava mapping; joint xi/lambda/eta scaling to native zero; explicit EFT-GR endpoint control'
+          python3 - "$BASE" <<'PY'
+          import json,math,pathlib,sys
+          import numpy as np
+          b=pathlib.Path(sys.argv[1]); out=pathlib.Path('M40_k1_result.json'); r=json.loads(out.read_text())
+          def tab(p):
+              rows=[]
+              for line in pathlib.Path(p).read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  try: rows.append([float(x) for x in s.split()])
+                  except ValueError: pass
+              a=np.asarray(rows,float)
+              if a.ndim!=2 or a.shape[0]<5 or a.shape[1]<2 or not np.isfinite(a).all(): raise RuntimeError(f'bad table {p}')
+              return a
+          def d(a,c):
+              lo=max(a[:,0].min(),c[:,0].min()); hi=min(a[:,0].max(),c[:,0].max()); m=(a[:,0]>=lo)&(a[:,0]<=hi)
+              x=a[m,0]; y=a[m,1]; z=np.interp(x,c[:,0],c[:,1]); sc=np.maximum(np.maximum(abs(y),abs(z)),1e-30)
+              return float(np.sqrt(np.mean(((y-z)/sc)**2)))
+          try:
+              if int((b/'gr.exit').read_text())!=0 or int((b/'ref.exit').read_text())!=0: raise RuntimeError('nonzero native-zero or GR exit')
+              tt=d(tab(b/'ref_scalCls.dat'),tab(b/'gr_scalCls.dat')); pk=d(tab(b/'ref_matterpower.dat'),tab(b/'gr_matterpower.dat')); D=max(tt,pk)
+              r['native_zero_vs_explicit_GR']={'tt_normalized_l2':tt,'pk_normalized_l2':pk,'D':D,'threshold':1e-4,'pass':D<=1e-4}
+              if not (r.get('K1_scoped_pass') and D<=1e-4):
+                  r['K1_scoped_pass']=False; r['K1']='PARTIAL'; r['classification']='M40_K1_NOT_ESTABLISHED_REFERENCE_LIMIT_OR_ENDPOINT_IDENTITY'
+          except Exception as e:
+              r['K1_scoped_pass']=False; r['K1']='BLOCKED_IMPLEMENTATION'; r['classification']='M40_K1_BLOCKED_IMPLEMENTATION_OR_NUMERICAL'; r['endpoint_error']=repr(e)
+          out.write_text(json.dumps(r,indent=2,sort_keys=True)+'\n')
+          print(out.read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: M40-k1-reference-limit
+          path: |
+            M40_k1_result.json
+            provider_commit.txt
+            arms.json
+            k1_M40/
+          retention-days: 30
