@@ -1,0 +1,224 @@
+name: W04 M25 K1 precision capacity recovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m25-k1-precision-capacity-recovery.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  tail:
+    name: capacity-${{ matrix.model }}-${{ matrix.profile }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [m0, m1]
+        profile: [cl_ref, pk_ref]
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download immutable original M25 K1 inputs
+        uses: actions/download-artifact@v4
+        with:
+          name: w04-m25-k1-abundance-decoupling
+          path: m25_original_artifact
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34548988620
+
+      - name: Restore exact frozen case files
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf m25_k1_cases
+          cp -a m25_original_artifact/m25_k1_cases m25_k1_cases
+          test -s m25_k1_cases/${{ matrix.model }}_e2.ini
+          test -s m25_k1_cases/${{ matrix.model }}_e3.ini
+          test -s m25_k1_cases/${{ matrix.model }}_e4.ini
+
+      - name: Pin CLASS and apply capacity-only quadrature repair
+        shell: bash
+        run: |
+          set +e
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          pip_rc=$?
+          git clone -q https://github.com/lesgourg/class_public.git class_provider
+          clone_rc=$?
+          checkout_rc=999
+          patch_rc=999
+          build_rc=999
+          if [ "$clone_rc" -eq 0 ]; then
+            git -C class_provider checkout -q --detach "$CLASS_PIN"
+            checkout_rc=$?
+          fi
+          if [ "$checkout_rc" -eq 0 ]; then
+            python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class_provider/include/common.h')
+          s=p.read_text()
+          old_q='#define _QUADRATURE_MAX_ 250'
+          old_bg='#define _QUADRATURE_MAX_BG_ 800'
+          assert s.count(old_q)==1
+          assert s.count(old_bg)==1
+          s=s.replace(old_q,'#define _QUADRATURE_MAX_ 4000')
+          s=s.replace(old_bg,'#define _QUADRATURE_MAX_BG_ 4000')
+          p.write_text(s)
+          PY
+            patch_rc=$?
+          fi
+          if [ "$patch_rc" -eq 0 ]; then
+            git -C class_provider diff -- include/common.h | tee m25_precision_capacity_patch.diff
+            make -C class_provider -j2 > m25_precision_capacity_build.log 2>&1
+            build_rc=$?
+          fi
+          python3 - <<PY
+          import json
+          d={'pip':$pip_rc,'clone':$clone_rc,'checkout':$checkout_rc,'patch':$patch_rc,'build':$build_rc,'quadrature_max':4000,'quadrature_max_bg':4000}
+          open('m25_precision_status.json','w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          cat m25_precision_status.json
+          exit 0
+
+      - name: Execute reference and tail cases two-at-a-time
+        shell: bash
+        run: |
+          set +e
+          mkdir -p class_provider/output m25_precision_logs m25_precision_status_parts
+          build=$(python3 -c "import json;print(json.load(open('m25_precision_status.json'))['build'])")
+          cases=(ref e2 e3 e4)
+          if [ "$build" -eq 0 ]; then
+            printf '%s\n' "${cases[@]}" | xargs -P 2 -I{} bash -c '
+              short="$1"
+              model="$2"
+              profile="$3"
+              if [ "$short" = ref ]; then case_id=ref; else case_id="${model}_${short}"; fi
+              set +e
+              (cd class_provider && ./class "../m25_k1_cases/${case_id}.ini" "${profile}.pre" > "../m25_precision_logs/${case_id}.log" 2>&1)
+              rc=$?
+              printf "%d\n" "$rc" > "m25_precision_status_parts/${short}.status"
+              exit 0
+            ' _ {} '${{ matrix.model }}' '${{ matrix.profile }}'
+          else
+            for short in "${cases[@]}"; do printf '999\n' > "m25_precision_status_parts/${short}.status"; done
+          fi
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('m25_precision_status.json')
+          d=json.loads(p.read_text())
+          for f in sorted(Path('m25_precision_status_parts').glob('*.status')):
+              d[f.stem]=int(f.read_text().strip())
+          p.write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+          cat m25_precision_status.json
+          exit 0
+
+      - name: Analyze unchanged precision-floor gate
+        shell: bash
+        run: |
+          set +e
+          result='m25_precision_capacity_${{ matrix.model }}_${{ matrix.profile }}.json'
+          python3 verification/m25/m25_k1_precision_floor_diagnostic.py class_provider '${{ matrix.model }}' '${{ matrix.profile }}' m25_precision_status.json "$result"
+          rc=$?
+          if [ "$rc" -ne 0 ] || [ ! -s "$result" ]; then
+            python3 - <<PY
+          import json
+          r={'schema':'KMDSB.M25.K1PrecisionFloorDiagnostic.CapacityRecovery.v1','model':'${{ matrix.model }}','precision_profile':'${{ matrix.profile }}','classification':'M25_PRECISION_FLOOR_DIAGNOSTIC_PROVIDER_BLOCKED','analysis_return_code':$rc,'K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          open('$result','w').write(json.dumps(r,indent=2,sort_keys=True)+'\n')
+          PY
+          fi
+          python3 - <<PY
+          import json
+          p='$result'; r=json.load(open(p))
+          r['schema']='KMDSB.M25.K1PrecisionFloorDiagnostic.CapacityRecovery.v1'
+          r['capacity_recovery_preregistration']='protocol/W04_M25_K1_PRECISION_QUADRATURE_CAPACITY_RECOVERY_PREREGISTRATION_v0.1.md'
+          r['quadrature_max']=4000
+          r['quadrature_max_bg']=4000
+          open(p,'w').write(json.dumps(r,indent=2,sort_keys=True)+'\n')
+          PY
+          cat "$result"
+          exit 0
+
+      - name: Upload immutable recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m25-precision-capacity-${{ matrix.model }}-${{ matrix.profile }}
+          path: |
+            m25_precision_status.json
+            m25_precision_logs/
+            m25_precision_capacity_build.log
+            m25_precision_capacity_patch.diff
+            m25_precision_capacity_${{ matrix.model }}_${{ matrix.profile }}.json
+            class_provider/output/
+          retention-days: 90
+
+  aggregate:
+    name: aggregate-capacity-recovery
+    needs: tail
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m25-precision-capacity-*
+          path: m25_collected
+      - name: Build and persist recovery summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rs=[json.loads(p.read_text()) for p in sorted(Path('m25_collected').glob('m25-precision-capacity-*/m25_precision_capacity_*.json'))]
+          entries={f"{r['model']}:{r['precision_profile']}":r['classification'] for r in rs}
+          pk_ok=all(entries.get(f'{m}:pk_ref')=='M25_PRECISION_FLOOR_TAIL_SCALING_RECOVERED' for m in ('m0','m1'))
+          s={'schema':'KMDSB.M25.K1PrecisionFloorDiagnostic.CapacityRecoverySummary.v1','capacity_recovery_preregistration':'protocol/W04_M25_K1_PRECISION_QUADRATURE_CAPACITY_RECOVERY_PREREGISTRATION_v0.1.md','results':entries,'n_results':len(rs),'quadrature_max':4000,'quadrature_max_bg':4000,'pk_ref_both_models_tail_scaling_recovered':pk_ok,'next_step_authorized':'FULL_FIVE_POINT_PK_REF_K1_CONFIRMATION' if pk_ok else 'NO_FULL_K1_CONFIRMATION_YET','K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          Path('m25_precision_capacity_summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n')
+          print(Path('m25_precision_capacity_summary.json').read_text())
+          PY
+          cp m25_precision_capacity_summary.json /tmp/m25_precision_capacity_summary.json
+          mkdir -p /tmp/m25_results
+          find m25_collected -name 'm25_precision_capacity_*.json' -type f -exec cp {} /tmp/m25_results/ \;
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/resonant_sterile_neutrino_wdm waves/wave_04_dark_matter
+          cp /tmp/m25_precision_capacity_summary.json models/resonant_sterile_neutrino_wdm/M25_K1_PRECISION_CAPACITY_RECOVERY_SUMMARY.json
+          cp /tmp/m25_precision_capacity_summary.json waves/wave_04_dark_matter/M25_K1_PRECISION_CAPACITY_RECOVERY_SUMMARY.json
+          for p in /tmp/m25_results/*.json; do
+            [ -e "$p" ] || continue
+            b=$(basename "$p" | tr '[:lower:]' '[:upper:]')
+            cp "$p" "models/resonant_sterile_neutrino_wdm/${b}"
+            cp "$p" "waves/wave_04_dark_matter/${b}"
+          done
+          git add models/resonant_sterile_neutrino_wdm waves/wave_04_dark_matter
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record M25 high-precision capacity recovery'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Upload summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m25-k1-precision-capacity-recovery-summary
+          path: m25_precision_capacity_summary.json
+          retention-days: 90
