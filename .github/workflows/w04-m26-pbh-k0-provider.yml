@@ -1,0 +1,125 @@
+name: W04 M26 PBH K0 provider
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w04-m26-pbh-k0-provider.yml'
+
+jobs:
+  compute:
+    strategy:
+      fail-fast: false
+      matrix:
+        arm: [zero_control, evaporation, accretion_disk]
+    runs-on: ubuntu-latest
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pinned CLASS and execute PBH arm
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARM='${{ matrix.arm }}'
+          BASE="$GITHUB_WORKSPACE/m26k0/$ARM"
+          mkdir -p "$BASE/output"
+          git clone -q https://github.com/lesgourg/class_public.git class_public
+          cd class_public
+          git checkout -q --detach "$CLASS_PIN"
+          ACTUAL=$(git rev-parse HEAD)
+          echo "$ACTUAL" > "$BASE/actual_commit.txt"
+          test "$ACTUAL" = "$CLASS_PIN"
+          make -j2 >/dev/null
+          CFG="$BASE/run.ini"
+          cat > "$CFG" <<EOF
+          h = 0.675
+          omega_b = 0.0222
+          omega_cdm = 0.1197
+          A_s = 2.196e-9
+          n_s = 0.9655
+          tau_reio = 0.06
+          N_ur = 3.046
+          output = tCl,pCl,mPk
+          lensing = no
+          non linear = none
+          P_k_max_h/Mpc = 10
+          z_pk = 0
+          l_max_scalars = 2500
+          gauge = synchronous
+          PBH_evaporation_fraction = 0
+          PBH_evaporation_mass = 0
+          PBH_accretion_fraction = 0
+          PBH_accretion_mass = 0
+          overwrite_root = yes
+          root = $BASE/output/pbh_
+          EOF
+          if [ "$ARM" = evaporation ]; then
+            cat >> "$CFG" <<'EOF'
+          PBH_evaporation_fraction = 1e-7
+          PBH_evaporation_mass = 1e15
+          EOF
+          elif [ "$ARM" = accretion_disk ]; then
+            cat >> "$CFG" <<'EOF'
+          PBH_accretion_fraction = 1e-2
+          PBH_accretion_mass = 30
+          PBH_accretion_recipe = disk_accretion
+          PBH_accretion_ADAF_delta = 1e-3
+          PBH_accretion_eigenvalue = 0.1
+          EOF
+          fi
+          # Deduplicate PBH keys while preserving the frozen arm override values.
+          python3 - "$CFG" <<'PY'
+          import re,sys
+          p=sys.argv[1]; lines=[]; pos={}; rx=re.compile(r'^\s*([A-Za-z0-9_]+)\s*=')
+          for raw in open(p):
+              line=raw.rstrip('\n'); m=rx.match(line)
+              if m:
+                  k=m.group(1)
+                  if k in pos: lines[pos[k]]=line
+                  else: pos[k]=len(lines); lines.append(line)
+              else: lines.append(line)
+          open(p,'w').write('\n'.join(lines)+'\n')
+          PY
+          set +e
+          ./class "$CFG" > "$BASE/stdout.log" 2> "$BASE/stderr.log"
+          RC=$?
+          set -e
+          echo "$RC" > "$BASE/exit_code.txt"
+          find "$BASE" -maxdepth 2 -type f -printf '%P %s bytes\n' | sort > "$BASE/file_manifest.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m26-k0-${{ matrix.arm }}
+          path: m26k0/${{ matrix.arm }}
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: compute
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: 'm26-k0-*'
+          path: downloaded
+      - name: Reassemble artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p m26k0
+          for arm in zero_control evaporation accretion_disk; do
+            mkdir -p "m26k0/$arm"
+            cp -a "downloaded/m26-k0-$arm"/. "m26k0/$arm/"
+          done
+      - name: Classify frozen M26 K0
+        run: python3 verification/m26/k0_pbh_provider.py | tee m26_k0_stdout.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m26-k0-aggregate
+          path: |
+            waves/wave_04_dark_matter/M26_K0_PBH_PROVIDER_RESULT.json
+            m26_k0_stdout.json
+          retention-days: 30
