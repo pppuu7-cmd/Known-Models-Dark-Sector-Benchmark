@@ -1,0 +1,117 @@
+name: W04 M24 l_logstep multipole-grid topology
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m24-l-logstep-multipole-grid-topology.yml']
+permissions:
+  contents: write
+jobs:
+  topology:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        logstep: ['1.1175','1.1180','1.1185','1.1190','1.1195','1.1200']
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build instrumented pinned CLASS and prepare cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class/source/transfer.c')
+          s=p.read_text()
+          needle='''  if (ptr->l[index_l] != l_max) {\n\n    index_l ++;\n    ptr->l[index_l]= l_max;\n\n  }\n\n  /* for each mode and type, find relevant size of l array,'''
+          insert='''  if (ptr->l[index_l] != l_max) {\n\n    index_l ++;\n    ptr->l[index_l]= l_max;\n\n  }\n\n  /* KMDSB diagnostic-only instrumentation: dump the finalized multipole grid. */\n  {\n    const char *kmdsb_grid_path = getenv("KMDSB_LGRID_PATH");\n    if ((kmdsb_grid_path != NULL) && (kmdsb_grid_path[0] != '\\0')) {\n      FILE *kmdsb_grid = fopen(kmdsb_grid_path,"w");\n      if (kmdsb_grid != NULL) {\n        int kmdsb_i;\n        fprintf(kmdsb_grid,"l_size_max\\t%d\\n",ptr->l_size_max);\n        for (kmdsb_i=0; kmdsb_i<ptr->l_size_max; kmdsb_i++)\n          fprintf(kmdsb_grid,"%d\\t%d\\n",kmdsb_i,ptr->l[kmdsb_i]);\n        fclose(kmdsb_grid);\n      }\n    }\n  }\n\n  /* for each mode and type, find relevant size of l array,'''
+          if s.count(needle) != 1:
+              raise SystemExit(f'expected one instrumentation anchor, got {s.count(needle)}')
+          p.write_text(s.replace(needle,insert,1))
+          PY
+          make -C class -j2 > build.log 2>&1
+          python3 verification/m24/global_numerical_precision_diagnostic.py prepare cases cl_ref
+          printf 'idr_streaming_trigger_tau_over_tau_k = 49\n' > control.pre
+          cp control.pre profile.pre
+          printf 'l_logstep = %s\n' '${{ matrix.logstep }}' >> profile.pre
+      - name: Execute ten cases four-at-a-time with per-case grid dumps
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p class/output logs parts grids
+          printf '%s\n' default_ref default_zero default_a18k default_a6k default_a1p8k profile_ref profile_zero profile_a18k profile_a6k profile_a1p8k | xargs -P 4 -I{} bash -c '
+            t="$1"; set +e
+            if [[ "$t" == profile_* ]]; then pre=../profile.pre; else pre=../control.pre; fi
+            grid="$GITHUB_WORKSPACE/grids/${t}.tsv"
+            (cd class && KMDSB_LGRID_PATH="$grid" ./class "../cases/${t}.ini" "$pre" > "../logs/${t}.log" 2>&1)
+            printf "%d\n" "$?" > "parts/${t}.status"
+          ' _ {}
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          Path('status.json').write_text(json.dumps({p.stem:int(p.read_text()) for p in Path('parts').glob('*.status')},sort_keys=True)+'\n')
+          PY
+      - name: Analyze topology point
+        shell: bash
+        env:
+          LOGSTEP: ${{ matrix.logstep }}
+        run: |
+          set -euo pipefail
+          python3 verification/m24/global_numerical_precision_diagnostic.py analyze class/output status.json cl_ref raw.json
+          python3 verification/m24/l_logstep_grid_topology_diagnostic.py point --raw raw.json --status status.json --grids grids --logstep "$LOGSTEP" --output result.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m24-l-grid-topology-${{ matrix.logstep }}
+          path: |
+            profile.pre
+            control.pre
+            status.json
+            raw.json
+            result.json
+            grids/
+            logs/
+            build.log
+          retention-days: 90
+  aggregate:
+    needs: topology
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m24-l-grid-topology-*
+          path: collected
+      - name: Persist frozen topology summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m24/l_logstep_grid_topology_diagnostic.py aggregate --collected collected --output summary.json
+          cat summary.json
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/ethos_like_dark_sector
+          cp /tmp/summary.json waves/wave_04_dark_matter/M24_L_LOGSTEP_MULTIPOLE_GRID_TOPOLOGY_SUMMARY.json
+          cp /tmp/summary.json models/ethos_like_dark_sector/M24_L_LOGSTEP_MULTIPOLE_GRID_TOPOLOGY_SUMMARY.json
+          git add waves/wave_04_dark_matter/M24_L_LOGSTEP_MULTIPOLE_GRID_TOPOLOGY_SUMMARY.json models/ethos_like_dark_sector/M24_L_LOGSTEP_MULTIPOLE_GRID_TOPOLOGY_SUMMARY.json
+          git diff --cached --quiet || {
+            git commit -m 'Record M24 multipole-grid topology gate'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          }
