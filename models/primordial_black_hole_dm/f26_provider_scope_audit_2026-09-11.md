@@ -8,7 +8,7 @@ Census family: F26 primordial-black-hole dark matter
 
 PBH phenomenology contains several physically and observationally distinct response mechanisms. A single abundance parameter does not define a unique cosmological response unless the PBH mass function and the relevant radiative/gravitational mechanism are fixed.
 
-At minimum the W04 census must distinguish the following scoped representatives:
+At minimum the W04 census must distinguish the following scoped representatives.
 
 ### F26a — evaporating PBH / Hawking-energy-injection response
 
@@ -17,21 +17,28 @@ Public source-bound provider candidate:
 - pinned branch head inspected on 2026-09-11: `42e8f9418e3442d1ea3f26ff84dc9f0e856a0f1d`
 - associated method: Stöcker, Krämer, Lesgourgues & Poulin, *Exotic energy injection with ExoCLASS: Application to the Higgs portal model and evaporating black holes*, JCAP 03 (2018) 018, arXiv:1801.01871.
 
-ExoCLASS couples exotic injection to recombination/CMB transfer through the bundled DarkAges machinery. This route is relevant to evaporating PBHs, especially light PBHs whose Hawking products alter ionization/heating histories.
+The pinned `explanatory.ini` explicitly exposes `PBH_fraction` and `PBH_evaporating_mass` and states that built-in DarkAges can compute PBH evaporation. ExoCLASS couples this exotic injection to recombination/CMB transfer through the bundled DarkAges machinery.
 
-Current classification: `F26A_EXOCLASS_EVAPORATION_PROVIDER_CANDIDATE_PINNED_K0_OPEN_EXECUTION_CONTROL`.
+Current classification: `F26A_EXOCLASS_EVAPORATION_PROVIDER_PINNED_K0_EXECUTION_CONTROL_OPEN`.
 
-No K1 claim is made yet. A provider-control must first establish a modern reproducible execution at the exact pin and identify a stock/reference PBH example or reproduce a paper-bound configuration without inventing parameters.
+No K1 claim is made yet. A provider-control must first establish a modern reproducible execution at the exact pin and identify a source-bound/paper-bound PBH example without inventing an anchor.
 
 ### F26b — accreting massive-PBH CMB response
 
-This is not equivalent to F26a. Massive PBHs accrete baryons and generate high-energy emission. The resulting CMB response depends on the accretion prescription, radiative efficiency, local ionization/heating and possible DM mini-halo feedback. Modern work (Agius et al., arXiv:2403.18895 / JCAP 07 (2024) 003) explicitly shows that local ionization feedback can materially change the accretion/CMB bound.
+This response is not equivalent to F26a, but the same pinned ExoCLASS branch does contain a built-in accretion forward path. Its `explanatory.ini` exposes:
+- `PBH_fraction`
+- `PBH_accreting_mass` in solar masses
+- `PBH_accretion_recipe = spherical_accretion` for the Ali-Haïmoud–Kamionkowski prescription (arXiv:1612.05644), or `disk_accretion` for the Poulin et al. prescription (arXiv:1707.04206).
 
-The public `bradkav/PBHbounds` repository contains tabulated CMB accretion bounds, including the Agius-2024 Park–Ricotti-based result, but it is a bounds/plotting collection rather than a source-complete cosmological forward provider. It therefore cannot by itself close K0-K5 for an accreting-PBH response.
+Thus the earlier provisional statement that no accretion forward provider had been located is superseded. ExoCLASS is a source-complete candidate for these two legacy accretion prescriptions.
 
-Current classification: `F26B_ACCRETION_FORWARD_PROVIDER_PROVENANCE_OPEN`.
+However, modern work such as Agius et al., arXiv:2403.18895 / JCAP 07 (2024) 003, shows that local gas ionization/heating feedback can materially modify PBH accretion and the inferred CMB bound. Therefore a successful ExoCLASS spherical/disk execution would validate those scoped prescriptions, not all modern accreting-PBH physics.
 
-Do not substitute the evaporation ExoCLASS implementation for accretion, and do not infer an accretion transfer function from a published exclusion curve.
+The public `bradkav/PBHbounds` repository contains tabulated CMB accretion bounds, including the Agius-2024 Park–Ricotti-based result, but remains a bounds/plotting collection rather than the underlying forward solver.
+
+Current classification: `F26B_EXOCLASS_LEGACY_ACCRETION_PROVIDER_PINNED_MODERN_FEEDBACK_COVERAGE_OPEN`.
+
+Do not infer equivalence between spherical, disk and modern feedback-aware/Park–Ricotti accretion responses unless a common forward comparison proves it.
 
 ### F26c — discrete/Poisson/gravitational structure response
 
@@ -45,12 +52,12 @@ For census purposes F26 remains one top-level physical family, but terminal cove
 1. shown to be observationally/physically represented by the tested child in the benchmark domain, or
 2. explicitly masked outside the scope of the family claim, with a separately justified census decision.
 
-A future family-level PBH status must therefore record the mass range, mass function, physical mechanism, and observation channel. `PBH DM` without these qualifiers is not a valid benchmark coordinate.
+A future family-level PBH status must therefore record the PBH mass range, mass function, physical mechanism, accretion/evaporation prescription and observation channel. `PBH DM` without these qualifiers is not a valid benchmark coordinate.
 
 ## 3. Immediate allowed steps
 
-1. F26a: inspect the pinned ExoCLASS/DarkAges tree for an author-supplied evaporating-PBH model/example and exact input contract. If an author configuration is present, preregister a provider-control before execution. If the public branch lacks a paper-bound runnable PBH example or requires unavailable legacy assets, record the blocker rather than fabricating a configuration.
-2. F26b: continue provenance search for a public source-complete accretion forward model associated with a published CMB calculation. `PBHbounds` is useful for literature/census provenance but not sufficient as a forward solver.
+1. F26a: inspect pinned ExoCLASS/DarkAges for the exact author/paper evaporation anchor and preregister a provider-control only after the input contract is source-bound.
+2. F26b: separately inspect the built-in spherical and disk accretion paths; do not merge them. Then search for a public modern feedback-aware/Park–Ricotti forward implementation and determine whether it adds a response-distinct child or supersedes an old prescription in the benchmark domain.
 3. F26c: locate a source-bound linear/structure implementation for the PBH Poisson/isocurvature term; keep it independent of radiative-injection validation.
 
 ## 4. Guardrails
@@ -58,5 +65,6 @@ A future family-level PBH status must therefore record the mass range, mass func
 - No physical PBH falsification from provider, code-age or provenance blockers.
 - No family-level PASS/FAIL from one mass point or one radiative mechanism.
 - Do not treat an exclusion-curve repository as a substitute for the underlying forward model.
+- Do not treat successful ExoCLASS legacy accretion as validation of later feedback-aware prescriptions without a response-equivalence test.
 - Do not use thermal-WDM or smooth-CDM transfer functions as PBH surrogates merely for implementation convenience.
 - Keep `NEW_MODEL: DESIGN_AUTHORIZED / NOT_YET_REQUIRED`; F26 coverage cannot by itself decide new-model necessity.
