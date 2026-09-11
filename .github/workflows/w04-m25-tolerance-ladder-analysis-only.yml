@@ -1,0 +1,75 @@
+name: W04 M25 tolerance ladder analysis-only
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m25-tolerance-ladder-analysis-only.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [m0, m1]
+        profile: [t1e6, t3e7, t1e7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m25-source-match-${{ matrix.model }}-${{ matrix.profile }}
+          path: data
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34551435626
+      - run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+      - name: Analyze existing outputs only
+        run: |
+          python3 verification/m25/source_matched_tolerance_ladder.py data/class '${{ matrix.model }}' '${{ matrix.profile }}' data/status.json result.json
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m25-source-match-analysis-${{ matrix.model }}-${{ matrix.profile }}
+          path: result.json
+          retention-days: 90
+  aggregate:
+    needs: analyze
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m25-source-match-analysis-*
+          path: collected
+      - name: Summarize and persist
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rs=[json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')]
+          rows={f"{r['model']}:{r['tolerance_profile']}":r['classification'] for r in rs}
+          src=all(rows.get(f'{m}:t1e6')=='M25_PRECISION_FLOOR_TAIL_SCALING_RECOVERED' for m in ('m0','m1'))
+          s={'schema':'KMDSB.M25.SourceMatchedToleranceLadder.Summary.v1','preregistration':'protocol/W04_M25_SOURCE_MATCHED_TOLERANCE_LADDER_PREREGISTRATION_v0.1.md','source_run_id':34551435626,'results':rows,'n_results':len(rs),'source_matched_both_models_recovered':src,'K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n')
+          print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          mkdir -p /tmp/results
+          find collected -name result.json -type f | while read p; do d=$(basename "$(dirname "$p")" | tr '[:lower:]-' '[:upper:]_'); cp "$p" "/tmp/results/${d}.json"; done
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm
+          cp /tmp/summary.json waves/wave_04_dark_matter/M25_SOURCE_MATCHED_TOLERANCE_LADDER_SUMMARY.json
+          cp /tmp/summary.json models/resonant_sterile_neutrino_wdm/M25_SOURCE_MATCHED_TOLERANCE_LADDER_SUMMARY.json
+          cp /tmp/results/*.json waves/wave_04_dark_matter/
+          cp /tmp/results/*.json models/resonant_sterile_neutrino_wdm/
+          git add waves/wave_04_dark_matter models/resonant_sterile_neutrino_wdm
+          git diff --cached --quiet || { git commit -m 'Record M25 source-matched tolerance ladder'; git pull --rebase origin main; git push origin HEAD:main; }
