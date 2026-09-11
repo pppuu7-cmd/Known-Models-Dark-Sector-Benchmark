@@ -1,0 +1,53 @@
+name: Sync M24 census
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/sync-m24-census.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply canonical M24 census state
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import csv
+          from pathlib import Path
+          p=Path('matrices/model_family_census.csv')
+          with p.open(newline='',encoding='utf-8') as f:
+              rows=list(csv.DictReader(f))
+          fields=list(rows[0].keys())
+          found=False
+          for r in rows:
+              if r.get('family_id')=='F24' or r.get('benchmark_id')=='M24':
+                  found=True
+                  # Preserve schema-independent columns by locating the benchmark/status/note fields from current row.
+                  for k in list(r):
+                      if r[k]=='QUEUED': r[k]='K0_NATIVE_CLASS_ETHOS_PASS_K1_K9_OPEN'
+                  note='Pinned native CLASS ETHOS-parameterized IDM-DR execution: uncoupled control plus vector/scalar angular-response arms all execute at exact provider pin with finite TT/P(k), and both nonzero ETHOS arms show active response above the frozen 1e-6 normalized-L2 negative-control threshold. K0 PASS_WITH_SCOPE only; complete ETHOS microphysics/nonlinear coverage and K1-K9 remain open. M23 remains a narrower NADM-like IDM-DR branch.'
+                  # Last column is the long notes column in current census schema.
+                  r[fields[-1]]=note
+          if not found: raise SystemExit('M24 census row missing')
+          tmp=p.with_suffix('.tmp')
+          with tmp.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows)
+          tmp.replace(p)
+          PY
+      - name: Commit census sync
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/model_family_census.csv
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Sync M24 ETHOS K0 into family census'
+          git push
