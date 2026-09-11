@@ -1,0 +1,70 @@
+name: W05 M35 CLASS_LVDM K0
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w05-m35-class-lvdm-k0.yml'
+      - 'verification/m35/k0_class_lvdm_provider.py'
+      - 'protocol/W05_M35_EINSTEIN_AETHER_CLASS_LVDM_K0_PREREGISTRATION_v0.1.md'
+  workflow_dispatch:
+
+jobs:
+  provider:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential gfortran python3-numpy
+      - name: Clone exact provider
+        run: |
+          git clone --branch LVDM https://github.com/Michalychforever/CLASS_LVDM.git provider
+          cd provider
+          git checkout d9a20bd0c7b7a6c8957410fd245ed06b30b915c1
+          test "$(git rev-parse HEAD)" = "d9a20bd0c7b7a6c8957410fd245ed06b30b915c1"
+          git rev-parse HEAD > ../provider_commit.txt
+      - name: Build exact provider without source modification
+        run: |
+          cd provider
+          make -j2 class
+      - name: Prepare frozen arms
+        run: |
+          cd provider
+          cp lcdm.ini control.ini
+          cp Misha.ini active.ini
+          sed -i 's|^[[:space:]]*root[[:space:]]*=.*|root = output/control_|' control.ini
+          sed -i 's|^[[:space:]]*root[[:space:]]*=.*|root = output/active_|' active.ini
+          mkdir -p output
+          grep -E '^(alpha|beta|lambda|Y_dm|root)[[:space:]]*=' control.ini active.ini
+      - name: Execute weak-gravity control
+        run: |
+          cd provider
+          ./class control.ini > ../control.stdout 2> ../control.stderr
+      - name: Execute active aether-gravity arm
+        run: |
+          cd provider
+          ./class active.ini > ../active.stdout 2> ../active.stderr
+      - name: Collect canonical observables
+        run: |
+          mkdir -p m35out
+          cp provider/output/control_cl.dat m35out/control_cl.dat
+          cp provider/output/control_pk.dat m35out/control_pk.dat
+          cp provider/output/active_cl.dat m35out/active_cl.dat
+          cp provider/output/active_pk.dat m35out/active_pk.dat
+      - name: Analyze frozen K0 gate
+        run: |
+          python3 verification/m35/k0_class_lvdm_provider.py m35out "$(cat provider_commit.txt)" | tee m35_k0_stdout.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m35-class-lvdm-k0
+          path: |
+            m35_k0_result.json
+            m35_k0_stdout.json
+            provider_commit.txt
+            control.stdout
+            control.stderr
+            active.stdout
+            active.stderr
+            m35out/
