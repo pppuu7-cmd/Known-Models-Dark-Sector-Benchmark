@@ -1,0 +1,26 @@
+{
+  "schema": "m26_k0_attempt1_accretion_stress_block_v0.1",
+  "provider_repository": "lesgourg/class_public",
+  "provider_commit": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "parent_run_id": 34639250201,
+  "aggregate_artifact_id": 10279222360,
+  "aggregate_artifact_digest": "sha256:f3a1beb7012e0896c5a229938b98cccd6fc3ed762c2561c3a857b2531839c6e4",
+  "classification": "M26_K0_ATTEMPT1_ACCRETION_STRESS_POINT_REIONIZATION_INCOMPATIBLE",
+  "K0_promoted": false,
+  "physical_falsification": false,
+  "arms": {
+    "zero_control": {"exit_code": 0, "finite_cl": true, "finite_pk": true},
+    "evaporation": {"exit_code": 0, "finite_cl": true, "finite_pk": true, "TT_normalized_L2_vs_control": 0.002126985338634717, "active_threshold": 1e-6, "active_pass": true},
+    "accretion_disk": {"exit_code": 1, "finite_cl": false, "finite_pk": false}
+  },
+  "accretion_failure": {
+    "frozen_fraction": 0.01,
+    "mass_Msun": 30,
+    "recipe": "disk_accretion",
+    "fixed_tau_reio": 0.06,
+    "provider_reported_minimum_tau_reio": 0.079154013316,
+    "cause": "the frozen accretion stress point produces sufficiently strong extra ionization that the fixed tau_reio=0.06 cannot be reached even at z_reio=0; this is a parameter/cosmology incompatibility, not missing provider implementation"
+  },
+  "next_step_boundary": "new prospectively registered K0b may lower only the accretion fraction by one decade to 1e-3; provider pin, PBH mass, recipe, cosmology, evaporation arm and K0 criteria remain unchanged",
+  "scope": "audit record; no physical falsification and no K0 promotion"
+}
