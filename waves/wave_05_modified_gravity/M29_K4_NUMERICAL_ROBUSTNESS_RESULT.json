@@ -1,0 +1,40 @@
+{
+  "K3_status": "BLOCKED_PROVIDER_GAUGE_IMPLEMENTATION",
+  "K4_promoted": false,
+  "all_pass": false,
+  "checks": {
+    "15": {
+      "dense_to_permille_nonincrease_20pct": {"background": true, "pk": true, "tt": true},
+      "pass": false,
+      "permille_thresholds": {"background": true, "pk": false, "tt": false}
+    },
+    "1e4": {
+      "dense_to_permille_nonincrease_20pct": {"background": true, "pk": true, "tt": true},
+      "pass": false,
+      "permille_thresholds": {"background": true, "pk": false, "tt": true}
+    },
+    "all_exit_zero": true,
+    "finite_outputs": true
+  },
+  "classification": "M29_K4_NOT_ESTABLISHED_NUMERICAL_ROBUSTNESS",
+  "exit_codes": {"15:default": 0, "15:dense_bg": 0, "15:permille": 0, "15:ref": 0, "1e4:default": 0, "1e4:dense_bg": 0, "1e4:permille": 0, "1e4:ref": 0},
+  "metrics": {
+    "15": {
+      "default": {"background": {"max": 8.284599297232034e-08, "n": 3000, "rms": 5.068454760117061e-08}, "pk": {"max": 0.034865243813883263, "n": 499, "rms": 0.001872874373241981}, "tt": {"max": 0.007926057559193867, "n": 2499, "rms": 0.004175984937346841}},
+      "dense_bg": {"background": {"max": 0.0, "n": 40000, "rms": 0.0}, "pk": {"max": 0.034861135666150476, "n": 499, "rms": 0.0018729108157859366}, "tt": {"max": 0.007973547244874342, "n": 2499, "rms": 0.004178562308765853}},
+      "permille": {"background": {"max": 0.0, "n": 40000, "rms": 0.0}, "pk": {"max": 0.034861135666150476, "n": 499, "rms": 0.0018729108157859366}, "tt": {"max": 0.007151063420038044, "n": 2499, "rms": 0.0038057692545844894}}
+    },
+    "1e4": {
+      "default": {"background": {"max": 8.284535064057424e-08, "n": 3000, "rms": 5.029066581668796e-08}, "pk": {"max": 0.020758669551452395, "n": 525, "rms": 0.00112827131258447}, "tt": {"max": 0.001190689252929982, "n": 2499, "rms": 0.0003842048324186414}},
+      "dense_bg": {"background": {"max": 0.0, "n": 40000, "rms": 0.0}, "pk": {"max": 0.020760655416789713, "n": 525, "rms": 0.001128398316909003}, "tt": {"max": 0.0011739792612640786, "n": 2499, "rms": 0.00039199706193731416}},
+      "permille": {"background": {"max": 0.0, "n": 40000, "rms": 0.0}, "pk": {"max": 0.020760655416789713, "n": 525, "rms": 0.001128398316909003}, "tt": {"max": 0.001051435673016801, "n": 2499, "rms": 0.0003062631661325025}}
+    }
+  },
+  "parent_run_id": 34630500438,
+  "aggregate_artifact_id": 10276412052,
+  "aggregate_artifact_digest": "sha256:5a34aade532bfeae494a914e376b0beed6696a179afcc018267c498956d247d0",
+  "physical_falsification": false,
+  "provider_commit": "0009f51d89e6465c79e570b496c66fc90058fa77",
+  "schema": "m29_k4_numerical_robustness_v0.1",
+  "scope": "synchronous-provider numerical robustness only; does not resolve K3 gauge-provider block or K5-K9"
+}
