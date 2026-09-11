@@ -1,0 +1,44 @@
+{
+  "Emax": {
+    "hierarchy_streaming": {
+      "block": 43.53722841041919,
+      "control": 62.6449744969262
+    },
+    "k_start_tca": {
+      "block": 89.69961250602383,
+      "control": 62.6449744969262
+    },
+    "perturb_integrator": {
+      "block": 579.5586591684178,
+      "control": 62.644974496926224
+    },
+    "sampling_projection": {
+      "block": 0.7718120977521403,
+      "control": 62.644974496926224
+    },
+    "thermo": {
+      "block": 46.5714569960872,
+      "control": 62.644974496926224
+    },
+    "transfer_lensing": {
+      "block": 62.60704191442927,
+      "control": 62.6449744969262
+    }
+  },
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "children": {
+    "hierarchy_streaming": "M24_GLOBAL_PRECISION_EXCURSION_INSENSITIVE",
+    "k_start_tca": "M24_GLOBAL_PRECISION_EXCURSION_INSENSITIVE",
+    "perturb_integrator": "M24_GLOBAL_PRECISION_EXCURSION_STRONGLY_SENSITIVE",
+    "sampling_projection": "M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED",
+    "thermo": "M24_GLOBAL_PRECISION_EXCURSION_INSENSITIVE",
+    "transfer_lensing": "M24_GLOBAL_PRECISION_EXCURSION_INSENSITIVE"
+  },
+  "localized_blocks": [
+    "sampling_projection"
+  ],
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M24_CLREF_PRECISION_BLOCK_ISOLATION_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M24.ClRefPrecisionBlockIsolation.Summary.v1"
+}
