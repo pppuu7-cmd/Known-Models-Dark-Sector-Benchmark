@@ -17,6 +17,11 @@ jobs:
       EFTCAMB_PIN: 16d9c4e9f85751e30efd0a53b177941713078904
     steps:
       - uses: actions/checkout@v4
+      - name: Install EFTCAMB link dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libblas-dev liblapack-dev
       - name: Build pinned EFTCAMB and execute native test arm
         shell: bash
         run: |
