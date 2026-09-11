@@ -1,0 +1,142 @@
+name: W04 M26 PBH K1 dual channel
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/w04-m26-pbh-k1-dual-channel.yml'
+
+jobs:
+  channel:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        channel: [evaporation, accretion_disk]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pinned CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3-numpy >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          cd provider
+          git checkout -q --detach "$CLASS_PIN"
+          test "$(git rev-parse HEAD)" = "$CLASS_PIN"
+          make -j2 >/dev/null
+          git rev-parse HEAD > ../provider_commit.txt
+      - name: Execute frozen fraction ladder
+        shell: bash
+        run: |
+          set -euo pipefail
+          CH='${{ matrix.channel }}'; BASE="$GITHUB_WORKSPACE/k1_M26_$CH"; mkdir -p "$BASE"
+          if [ "$CH" = evaporation ]; then ANCHOR=1e-7; MASS=1e15; else ANCHOR=1e-3; MASS=30; fi
+          python3 - "$CH" "$ANCHOR" "$MASS" "$BASE" <<'PY'
+          import pathlib,sys
+          ch=sys.argv[1]; anchor=float(sys.argv[2]); mass=sys.argv[3]; b=pathlib.Path(sys.argv[4])
+          common='''h = 0.675
+omega_b = 0.0222
+omega_cdm = 0.1197
+A_s = 2.196e-9
+n_s = 0.9655
+tau_reio = 0.06
+N_ur = 3.046
+output = tCl,pCl,mPk
+lensing = no
+non linear = none
+P_k_max_h/Mpc = 10
+z_pk = 0
+l_max_scalars = 2500
+gauge = synchronous
+PBH_evaporation_fraction = 0
+PBH_evaporation_mass = 0
+PBH_accretion_fraction = 0
+PBH_accretion_mass = 0
+overwrite_root = yes
+'''
+          for label,s in [('ref',0.0),('s1',1.0),('s01',0.1),('s001',0.01),('s0001',0.001)]:
+              f=anchor*s; t=common+f'root = {b}/{label}_\n'
+              if ch=='evaporation' and s>0:
+                  t+=f'PBH_evaporation_fraction = {f:.16g}\nPBH_evaporation_mass = {mass}\n'
+              elif ch=='accretion_disk' and s>0:
+                  t+=f'PBH_accretion_fraction = {f:.16g}\nPBH_accretion_mass = {mass}\nPBH_accretion_recipe = disk_accretion\nPBH_accretion_ADAF_delta = 1e-3\nPBH_accretion_eigenvalue = 0.1\n'
+              # keep only last assignment to each key, matching the K0 harness rule
+              pos={}; lines=[]
+              for raw in t.splitlines():
+                  if '=' in raw:
+                      k=raw.split('=',1)[0].strip()
+                      if k in pos: lines[pos[k]]=raw
+                      else: pos[k]=len(lines); lines.append(raw)
+                  else: lines.append(raw)
+              (b/f'{label}.ini').write_text('\n'.join(lines)+'\n')
+          PY
+          set +e
+          for label in ref s1 s01 s001 s0001; do
+            ./provider/class "$BASE/${label}.ini" > "$BASE/${label}.stdout" 2> "$BASE/${label}.stderr"
+            echo $? > "$BASE/${label}.exit"
+          done
+          set -e
+      - name: Classify channel
+        shell: bash
+        run: |
+          CH='${{ matrix.channel }}'; BASE="$GITHUB_WORKSPACE/k1_M26_$CH"
+          python3 - "$BASE" <<'PY'
+          import json,pathlib,sys
+          b=pathlib.Path(sys.argv[1]); arms=[]
+          for label,x in [('s1',1.0),('s01',0.1),('s001',0.01),('s0001',0.001)]:
+              arms.append({'label':label,'x':x,'cl':str(b/f'{label}_cl.dat'),'pk':str(b/f'{label}_pk.dat'),'exit':int((b/f'{label}.exit').read_text())})
+          pathlib.Path('arms.json').write_text(json.dumps(arms))
+          PY
+          python3 verification/k1/decoupling_ladder.py \
+            --model "M26_${CH}" --provider-commit "$(cat provider_commit.txt)" --expected-commit "$CLASS_PIN" \
+            --reference-cl "$BASE/ref_cl.dat" --reference-pk "$BASE/ref_pk.dat" \
+            --arms-json arms.json --out "M26_${CH}_k1_result.json" \
+            --scope "native CLASS PBH ${CH} energy-injection fraction-to-zero limit only"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: M26-${{ matrix.channel }}-k1
+          path: |
+            M26_${{ matrix.channel }}_k1_result.json
+            provider_commit.txt
+            arms.json
+            k1_M26_${{ matrix.channel }}/
+          retention-days: 30
+
+  aggregate:
+    needs: channel
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: M26-*-k1
+          path: downloaded
+      - name: Aggregate frozen dual-channel decision
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import glob,json,pathlib
+          files=glob.glob('downloaded/**/M26_*_k1_result.json',recursive=True)
+          rows=[json.load(open(f)) for f in files]
+          by={r['model_id'].replace('M26_',''):r for r in rows}
+          need={'evaporation','accretion_disk'}
+          ok=need.issubset(by) and all(bool(by[k].get('K1_scoped_pass')) for k in need)
+          out={'schema':'m26_pbh_k1_dual_channel_v0.1','physical_falsification':False,'channels':by,
+               'K1':'PASS_WITH_SCOPE' if ok else 'PARTIAL',
+               'classification':'M26_K1_PASS_WITH_SCOPE_NATIVE_PBH_ENERGY_INJECTION_DUAL_CHANNEL' if ok else 'M26_K1_NOT_ESTABLISHED_DUAL_CHANNEL',
+               'scope':'native CLASS PBH evaporation/accretion energy-injection fraction-to-zero response only; no discreteness/Poisson/isocurvature claim','K2_K9':'OPEN'}
+          pathlib.Path('M26_K1_DUAL_CHANNEL_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: M26-k1-dual-channel-aggregate
+          path: M26_K1_DUAL_CHANNEL_RESULT.json
+          retention-days: 30
