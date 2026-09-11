@@ -1,0 +1,38 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "baseline_null_source_run_id": 34550083757,
+  "cacheless_raw_transfer_preregistration": "protocol/W04_M26_DARKAGES_CACHELESS_RAW_TRANSFER_PREREGISTRATION_v0.1.md",
+  "child": "evaporation",
+  "classification": "M26_EVAPORATION_PROVIDER_EXECUTION_BLOCKED",
+  "failed_status_keys": [
+    "finite"
+  ],
+  "finite_recomputed_only": true,
+  "finite_response_floor_max_abs": 1e-10,
+  "parent_cache_bypass_run_id": 34550402384,
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M26_PBH_ENERGY_INJECTION_PROVIDER_CONTROL_PREREGISTRATION_v0.1.md",
+  "provider": "GFAbellan/ExoCLASS",
+  "provider_pin": "7c4b26e50d240f1f45f120b623aab2dba13094fd",
+  "schema": "KMDSB.M26.PBHEnergyInjectionProviderControl.CachelessRawTransferRecovery.v1",
+  "serialized_transfer_cache_disabled": true,
+  "status": {
+    "baseline": 0,
+    "baseline_null_source_run_id": 34550083757,
+    "build": 0,
+    "build_target": "class",
+    "cacheless_raw_transfer": true,
+    "checkout": 0,
+    "clone": 0,
+    "finite": 1,
+    "obj_after_count": 0,
+    "obj_before_count": 0,
+    "parent_cache_bypass_run_id": 34550402384,
+    "patch": 0,
+    "pip": 0,
+    "raw_transfer_hashes_unchanged": true,
+    "zero": 0
+  },
+  "zero_identity_threshold_p95": 1e-08
+}
