@@ -1,0 +1,35 @@
+{
+  "schema": "m40_k0_eftcamb_horava_provider_v0.1",
+  "family": "F40",
+  "benchmark": "M40",
+  "provider_repository": "EFTCAMB/EFTCAMB",
+  "provider_commit": "16d9c4e9f85751e30efd0a53b177941713078904",
+  "parent_run_id": 34633241985,
+  "parent_head_sha": "a673d1c9a2db9cf57d5147369860b21a5fc87123",
+  "arms": {
+    "horava_native": {
+      "config": "eftcamb_test/parameters/5_Horava_eta_3.ini",
+      "exit_code": 0,
+      "stderr_empty": true,
+      "finite_output_bundle_present": true,
+      "artifact_id": 10277037389,
+      "artifact_digest": "sha256:ab9002a20e6479fe7a53f7058a5e03225ee56b19ff0813874aebb84b2c04cb42"
+    },
+    "eft_gr_control": {
+      "config": "eftcamb_test/parameters/1_EFT_GR.ini",
+      "exit_code": 0,
+      "stderr_empty": true,
+      "finite_output_bundle_present": true,
+      "artifact_id": 10277207213,
+      "artifact_digest": "sha256:6dc7c5e036dffc7fa766ab55138e9933c42acf1b88441fd38e66f988a24fa8d9"
+    }
+  },
+  "all_arms_executed": true,
+  "pin_exact": true,
+  "classification": "M40_K0_PASS_WITH_SCOPE_PINNED_EFTCAMB_HORAVA_PROVIDER",
+  "K0_promoted": true,
+  "K1_promoted": false,
+  "physical_falsification": false,
+  "scope": "pinned-provider provenance/executability of the native EFTCAMB Horava example against the provider EFT-GR control only; no K1-K9 promotion and no observational conclusion",
+  "note": "The earlier runner link failure was infrastructure-only (missing BLAS/LAPACK development libraries). The successful rerun changed only system link dependencies; provider pin, native configs, model arms and scientific criteria were unchanged."
+}
