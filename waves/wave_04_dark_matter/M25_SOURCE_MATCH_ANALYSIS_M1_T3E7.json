@@ -1,0 +1,213 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "blocks": {
+    "CMB_EE": {
+      "exponent_gt_0p5": false,
+      "monotonic_with_2pct_slack": false,
+      "points": [
+        {
+          "eta": 0.01,
+          "median_abs": 2.7303910584730193e-06,
+          "n": 2499,
+          "p95_abs": 1.346372522030804e-05,
+          "rms": 1.067459472766579e-05
+        },
+        {
+          "eta": 0.003,
+          "median_abs": 1.981490587697043e-06,
+          "n": 2499,
+          "p95_abs": 9.081886762099246e-06,
+          "rms": 9.368392132440682e-06
+        },
+        {
+          "eta": 0.001,
+          "median_abs": 1.2787580972463647e-06,
+          "n": 2499,
+          "p95_abs": 1.0621703079971659e-05,
+          "rms": 9.465385111189778e-06
+        }
+      ],
+      "r95": [
+        1.346372522030804e-05,
+        9.081886762099246e-06,
+        1.0621703079971659e-05
+      ],
+      "smallest_lower_than_largest": true,
+      "tail_exponent_p": 0.10654218219633195,
+      "tail_scaling_recovered": false
+    },
+    "CMB_TE": {
+      "exponent_gt_0p5": false,
+      "monotonic_with_2pct_slack": true,
+      "points": [
+        {
+          "eta": 0.01,
+          "median_abs": 1.1785660760450681e-05,
+          "n": 2499,
+          "p95_abs": 0.00020744640519911752,
+          "rms": 0.0007170244867114275
+        },
+        {
+          "eta": 0.003,
+          "median_abs": 9.855288495596356e-06,
+          "n": 2499,
+          "p95_abs": 0.00015657213862971492,
+          "rms": 0.0006595658205722042
+        },
+        {
+          "eta": 0.001,
+          "median_abs": 1.2256822238786317e-05,
+          "n": 2499,
+          "p95_abs": 0.00014860334074086033,
+          "rms": 0.0006892872524458018
+        }
+      ],
+      "r95": [
+        0.00020744640519911752,
+        0.00015657213862971492,
+        0.00014860334074086033
+      ],
+      "smallest_lower_than_largest": true,
+      "tail_exponent_p": 0.14629294797196063,
+      "tail_scaling_recovered": false
+    },
+    "CMB_TT": {
+      "exponent_gt_0p5": false,
+      "monotonic_with_2pct_slack": false,
+      "points": [
+        {
+          "eta": 0.01,
+          "median_abs": 3.660538315475446e-06,
+          "n": 2499,
+          "p95_abs": 1.651875144016375e-05,
+          "rms": 1.745641235230716e-05
+        },
+        {
+          "eta": 0.003,
+          "median_abs": 2.3030116103793033e-06,
+          "n": 2499,
+          "p95_abs": 1.6874279539593385e-05,
+          "rms": 8.264242503136413e-06
+        },
+        {
+          "eta": 0.001,
+          "median_abs": 2.6140837423307077e-06,
+          "n": 2499,
+          "p95_abs": 1.0722456034979997e-05,
+          "rms": 6.742463432250415e-06
+        }
+      ],
+      "r95": [
+        1.651875144016375e-05,
+        1.6874279539593385e-05,
+        1.0722456034979997e-05
+      ],
+      "smallest_lower_than_largest": true,
+      "tail_exponent_p": 0.18440949747775212,
+      "tail_scaling_recovered": false
+    },
+    "H": {
+      "exponent_gt_0p5": true,
+      "monotonic_with_2pct_slack": true,
+      "points": [
+        {
+          "eta": 0.01,
+          "median_abs": 6.073014503994349e-09,
+          "n": 40000,
+          "p95_abs": 8.782343671959265e-07,
+          "rms": 5.653299798417581e-07
+        },
+        {
+          "eta": 0.003,
+          "median_abs": 1.8219163573971374e-09,
+          "n": 40000,
+          "p95_abs": 2.634705868342166e-07,
+          "rms": 1.695991856698993e-07
+        },
+        {
+          "eta": 0.001,
+          "median_abs": 6.073146451158019e-10,
+          "n": 40000,
+          "p95_abs": 8.78236161671913e-08,
+          "rms": 5.6533122933109706e-08
+        }
+      ],
+      "r95": [
+        8.782343671959265e-07,
+        2.634705868342166e-07,
+        8.78236161671913e-08
+      ],
+      "smallest_lower_than_largest": true,
+      "tail_exponent_p": 0.999999112858845,
+      "tail_scaling_recovered": true
+    },
+    "Pk": {
+      "exponent_gt_0p5": false,
+      "monotonic_with_2pct_slack": true,
+      "points": [
+        {
+          "eta": 0.01,
+          "median_abs": 2.2139068298540234e-05,
+          "n": 536,
+          "p95_abs": 6.507826103857196e-05,
+          "rms": 0.0010228807292939801
+        },
+        {
+          "eta": 0.003,
+          "median_abs": 1.7529399936002197e-05,
+          "n": 536,
+          "p95_abs": 5.24508105343279e-05,
+          "rms": 0.00029107765492820145
+        },
+        {
+          "eta": 0.001,
+          "median_abs": 1.6086035907139893e-05,
+          "n": 536,
+          "p95_abs": 4.85500306162624e-05,
+          "rms": 0.0001423374528942709
+        }
+      ],
+      "r95": [
+        6.507826103857196e-05,
+        5.24508105343279e-05,
+        4.85500306162624e-05
+      ],
+      "smallest_lower_than_largest": true,
+      "tail_exponent_p": 0.1280740425397281,
+      "tail_scaling_recovered": false
+    }
+  },
+  "classification": "M25_PRECISION_FLOOR_TAIL_SCALING_NOT_RECOVERED",
+  "etas": [
+    0.01,
+    0.003,
+    0.001
+  ],
+  "model": "m1",
+  "original_artifact_id": 10180157389,
+  "original_run_id": 34548988620,
+  "physical_falsification": false,
+  "precision_profile": "pk_ref",
+  "preregistration": "protocol/W04_M25_SOURCE_MATCHED_TOLERANCE_LADDER_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M25.SourceMatchedToleranceLadder.v1",
+  "source_matched": false,
+  "status": {
+    "build": 0,
+    "e2": 0,
+    "e3": 0,
+    "e4": 0,
+    "ref": 0
+  },
+  "target_blocks": [
+    "Pk",
+    "CMB_TT",
+    "CMB_EE",
+    "CMB_TE"
+  ],
+  "target_blocks_recovered": 0,
+  "target_blocks_total": 4,
+  "tol_ncdm": 3e-07,
+  "tol_ncdm_bg": 3e-07,
+  "tolerance_profile": "t3e7"
+}

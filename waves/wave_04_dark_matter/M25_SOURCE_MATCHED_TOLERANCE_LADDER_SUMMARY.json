@@ -1,0 +1,18 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "n_results": 6,
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M25_SOURCE_MATCHED_TOLERANCE_LADDER_PREREGISTRATION_v0.1.md",
+  "results": {
+    "m0:t1e6": "M25_PRECISION_FLOOR_TAIL_SCALING_NOT_RECOVERED",
+    "m0:t1e7": "M25_PRECISION_FLOOR_TAIL_SCALING_NOT_RECOVERED",
+    "m0:t3e7": "M25_PRECISION_FLOOR_TAIL_SCALING_NOT_RECOVERED",
+    "m1:t1e6": "M25_PRECISION_FLOOR_TAIL_SCALING_NOT_RECOVERED",
+    "m1:t1e7": "M25_PRECISION_FLOOR_TAIL_SCALING_PARTIAL",
+    "m1:t3e7": "M25_PRECISION_FLOOR_TAIL_SCALING_NOT_RECOVERED"
+  },
+  "schema": "KMDSB.M25.SourceMatchedToleranceLadder.Summary.v1",
+  "source_matched_both_models_recovered": false,
+  "source_run_id": 34551435626
+}
