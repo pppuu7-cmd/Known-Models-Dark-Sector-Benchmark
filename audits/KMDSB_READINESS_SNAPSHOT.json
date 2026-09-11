@@ -1,25 +1,25 @@
 {
   "all_rows_including_M00_control": {
-    "K0_assessed": 34,
-    "K0_positive": 31,
-    "assessed_cells": 209,
-    "assessed_fraction": 0.44468085106382976,
+    "K0_assessed": 35,
+    "K0_positive": 32,
+    "assessed_cells": 210,
+    "assessed_fraction": 0.44680851063829785,
     "families": 47,
     "gate_cells": 470,
-    "positive_cells": 116,
-    "positive_fraction": 0.24680851063829787
+    "positive_cells": 117,
+    "positive_fraction": 0.24893617021276596
   },
   "definition_assessed": "status is not exact OPEN, NOT_TESTED, QUEUED, or PENDING; blocked/partial/not-established outcomes count as investigated, not as positive",
   "definition_positive": "status begins PASS or SUPPORTED only",
   "mechanism_rows_excluding_M00_control": {
-    "K0_assessed": 33,
-    "K0_positive": 30,
-    "assessed_cells": 199,
-    "assessed_fraction": 0.4326086956521739,
+    "K0_assessed": 34,
+    "K0_positive": 31,
+    "assessed_cells": 200,
+    "assessed_fraction": 0.43478260869565216,
     "families": 46,
     "gate_cells": 460,
-    "positive_cells": 111,
-    "positive_fraction": 0.24130434782608695
+    "positive_cells": 112,
+    "positive_fraction": 0.24347826086956523
   },
   "schema": "kmdsb_readiness_snapshot_v0.1"
 }
