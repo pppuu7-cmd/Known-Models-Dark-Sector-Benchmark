@@ -1,0 +1,31 @@
+{
+  "source_run_id": 34656476133,
+  "aggregate_artifact_id": 10285776102,
+  "aggregate_artifact_digest": "sha256:cfbe02369792a34ed81c0248b428bf3b431c00e1954d950387a4c8ea887dbba1",
+  "evaporation_artifact_id": 10285666232,
+  "evaporation_artifact_digest": "sha256:bcdfddfc0d696d6eaa1e40790a997b02f7cfa93a8585bde86a29d9acf4f7d646",
+  "accretion_artifact_id": 10286020933,
+  "accretion_artifact_digest": "sha256:9547fd053a071787ce50039e41ca994a9a1e93d69c145040f935934e75cb8775",
+  "schema": "m26_pbh_k1_dual_channel_v0.1",
+  "K1": "PARTIAL",
+  "K2_K9": "OPEN",
+  "classification": "M26_K1_NOT_ESTABLISHED_DUAL_CHANNEL",
+  "physical_falsification": false,
+  "channels": {
+    "evaporation": {
+      "K1": "BLOCKED_IMPLEMENTATION",
+      "classification": "M26_evaporation_K1_BLOCKED_IMPLEMENTATION_OR_NUMERICAL",
+      "provider_commit": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+      "physical_falsification": false,
+      "scope": "native CLASS PBH evaporation energy-injection fraction-to-zero limit only"
+    },
+    "accretion_disk": {
+      "K1": "BLOCKED_IMPLEMENTATION",
+      "classification": "M26_accretion_disk_K1_BLOCKED_IMPLEMENTATION_OR_NUMERICAL",
+      "provider_commit": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+      "physical_falsification": false,
+      "scope": "native CLASS PBH accretion_disk energy-injection fraction-to-zero limit only"
+    }
+  },
+  "scope": "native CLASS PBH evaporation/accretion energy-injection fraction-to-zero response only; no discreteness/Poisson/isocurvature claim"
+}
