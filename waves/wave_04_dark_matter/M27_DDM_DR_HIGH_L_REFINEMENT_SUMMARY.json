@@ -1,0 +1,15 @@
+{
+  "K1_promoted": false,
+  "K3_promoted": false,
+  "K4_promoted": false,
+  "classification": "M27_DDM_DR_HIGH_L_HIERARCHY_CONVERGENCE_PASS_WITH_PRESCRIBED_METRIC_SCOPE",
+  "max_L17_vs_L32_amp_norm_residual": 0.004003933161124123,
+  "max_L32_vs_L64_amp_norm_residual": 1.806015929192509e-06,
+  "n_pass": 27,
+  "n_results": 27,
+  "parent_L17_failure_preserved": true,
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M27_DDM_DR_HIGH_L_REFINEMENT_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M27.DDMDRHighLRefinement.Summary.v1",
+  "self_consistent_metric_gate": "OPEN"
+}
