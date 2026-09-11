@@ -1,0 +1,132 @@
+name: W05 sync canonical matrix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w05-sync-canonical-matrix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply W05 canonical gate states
+        shell: bash
+        run: |
+          python - <<'PY'
+          import csv
+          from pathlib import Path
+
+          path = Path('matrices/mandatory_properties_matrix.csv')
+          with path.open(newline='', encoding='utf-8') as f:
+              rows = list(csv.DictReader(f))
+          fields = list(rows[0].keys())
+
+          updates = {
+              'M29': {
+                  'K0_provenance': 'PASS_WITH_SCOPE',
+                  'K1_reference_limit': 'PASS_WITH_SCOPE',
+                  'K2_physical_geometry': 'OPEN',
+                  'K3_conservation_gauge_closure': 'BLOCKED_IMPLEMENTATION',
+                  'K4_numerical_robustness': 'BLOCKED_NUMERICAL',
+                  'K5_multichannel_rank': 'OPEN',
+                  'K6_nearest_family_manifold': 'OPEN',
+                  'K7_common_observation_space': 'OPEN',
+                  'K8_quotient_novelty': 'OPEN',
+                  'K9_prospective_holdout': 'OPEN',
+                  'coverage_state': 'K0_K1_PASS_K3_IMPLEMENTATION_K4_NUMERICAL_BLOCKED',
+                  'notes': 'Brans-Dicke: pinned hi_class K0 provider/provenance PASS_WITH_SCOPE and same-provider omega_BD ladder K1 PASS_WITH_SCOPE. K3 required Newtonian-gauge scalar-MG branch is unavailable in the pinned provider, so BLOCKED_IMPLEMENTATION. K4 synchronous-provider precision ladder executes but P(k)/TT do not meet frozen robustness thresholds, so BLOCKED_NUMERICAL. No physical falsification; K2/K5-K9 remain open.'
+              },
+              'M30': {
+                  'K0_provenance': 'PASS_WITH_SCOPE',
+                  'K1_reference_limit': 'OPEN',
+                  'K2_physical_geometry': 'OPEN',
+                  'K3_conservation_gauge_closure': 'OPEN',
+                  'K4_numerical_robustness': 'OPEN',
+                  'K5_multichannel_rank': 'OPEN',
+                  'K6_nearest_family_manifold': 'OPEN',
+                  'K7_common_observation_space': 'OPEN',
+                  'K8_quotient_novelty': 'OPEN',
+                  'K9_prospective_holdout': 'OPEN',
+                  'coverage_state': 'K0_TWO_PROVIDER_PASS_K1_K9_OPEN',
+                  'notes': 'Horndeski/EFT-DE: K0 PASS_WITH_SCOPE from pinned hi_class effective-alpha execution, independently corroborated by pinned EFTCAMB native RPH vs EFT-GR control. Both providers execute finite background/CMB/P(k) output bundles. No K1-K9 promotion.'
+              },
+              'M31': {
+                  'K0_provenance': 'PASS_WITH_SCOPE',
+                  'K1_reference_limit': 'OPEN',
+                  'K2_physical_geometry': 'OPEN',
+                  'K3_conservation_gauge_closure': 'OPEN',
+                  'K4_numerical_robustness': 'OPEN',
+                  'K5_multichannel_rank': 'OPEN',
+                  'K6_nearest_family_manifold': 'OPEN',
+                  'K7_common_observation_space': 'OPEN',
+                  'K8_quotient_novelty': 'OPEN',
+                  'K9_prospective_holdout': 'OPEN',
+                  'coverage_state': 'K0_EFFECTIVE_BH_PASS_COVARIANT_GLPV_OPEN',
+                  'notes': 'Beyond-Horndeski/DHOST: pinned hi_class effective beyond-Horndeski alpha arm executes with finite background/CMB/P(k) outputs, so K0 PASS_WITH_SCOPE. This does not establish a self-consistent covariant GLPV/DHOST closure; K1-K9 remain open.'
+              },
+              'M33': {
+                  'K0_provenance': 'PASS_WITH_SCOPE',
+                  'K1_reference_limit': 'OPEN',
+                  'K2_physical_geometry': 'OPEN',
+                  'K3_conservation_gauge_closure': 'OPEN',
+                  'K4_numerical_robustness': 'OPEN',
+                  'K5_multichannel_rank': 'OPEN',
+                  'K6_nearest_family_manifold': 'OPEN',
+                  'K7_common_observation_space': 'OPEN',
+                  'K8_quotient_novelty': 'OPEN',
+                  'K9_prospective_holdout': 'OPEN',
+                  'coverage_state': 'K0_COVARIANT_GALILEON_PROVIDER_PASS_K1_K9_OPEN',
+                  'notes': 'Covariant/cubic Galileon: pinned hi_class native galileon arm executes with finite background/CMB/P(k) outputs and active response, so K0 PASS_WITH_SCOPE. K1-K9 remain open.'
+              },
+              'M40': {
+                  'K0_provenance': 'PASS_WITH_SCOPE',
+                  'K1_reference_limit': 'OPEN',
+                  'K2_physical_geometry': 'OPEN',
+                  'K3_conservation_gauge_closure': 'OPEN',
+                  'K4_numerical_robustness': 'OPEN',
+                  'K5_multichannel_rank': 'OPEN',
+                  'K6_nearest_family_manifold': 'OPEN',
+                  'K7_common_observation_space': 'OPEN',
+                  'K8_quotient_novelty': 'OPEN',
+                  'K9_prospective_holdout': 'OPEN',
+                  'coverage_state': 'K0_HORAVA_EFTCAMB_PROVIDER_PASS_K1_K9_OPEN',
+                  'notes': 'Horava-Lifshitz: pinned EFTCAMB native Horava example and EFT-GR control both execute with exit 0, empty stderr, and finite spectra/background/transfer bundles. K0 PASS_WITH_SCOPE only; K1-K9 remain open. Earlier BLAS/LAPACK link failure was infrastructure-only and is preserved as such.'
+              }
+          }
+
+          seen = set()
+          for row in rows:
+              bid = row['benchmark_id']
+              if bid in updates:
+                  row.update(updates[bid])
+                  seen.add(bid)
+          missing = set(updates) - seen
+          if missing:
+              raise SystemExit(f'missing benchmark rows: {sorted(missing)}')
+
+          tmp = path.with_suffix('.csv.tmp')
+          with tmp.open('w', newline='', encoding='utf-8') as f:
+              w = csv.DictWriter(f, fieldnames=fields, lineterminator='\n')
+              w.writeheader()
+              w.writerows(rows)
+          tmp.replace(path)
+          PY
+      - name: Commit synchronized matrix
+        shell: bash
+        run: |
+          if git diff --quiet -- matrices/mandatory_properties_matrix.csv; then
+            echo 'matrix already synchronized'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/mandatory_properties_matrix.csv
+          git commit -m 'Sync W05 canonical gate states into mandatory matrix'
+          git push
