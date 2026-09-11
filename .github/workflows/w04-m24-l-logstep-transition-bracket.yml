@@ -1,0 +1,113 @@
+name: W04 M24 l_logstep transition bracket
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m24-l-logstep-transition-bracket.yml']
+permissions:
+  contents: write
+jobs:
+  bracket:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        logstep: ['1.1025','1.1050','1.1075','1.1100','1.1125','1.1150','1.1175']
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build pinned CLASS and prepare cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          make -C class -j2 > build.log 2>&1
+          python3 verification/m24/global_numerical_precision_diagnostic.py prepare cases cl_ref
+          printf 'idr_streaming_trigger_tau_over_tau_k = 49\n' > control.pre
+          cp control.pre profile.pre
+          printf 'l_logstep = %s\n' '${{ matrix.logstep }}' >> profile.pre
+      - name: Execute ten cases four-at-a-time
+        shell: bash
+        run: |
+          mkdir -p class/output logs parts
+          printf '%s\n' default_ref default_zero default_a18k default_a6k default_a1p8k profile_ref profile_zero profile_a18k profile_a6k profile_a1p8k | xargs -P 4 -I{} bash -c '
+            t="$1"; set +e
+            if [[ "$t" == profile_* ]]; then pre=../profile.pre; else pre=../control.pre; fi
+            (cd class && ./class "../cases/${t}.ini" "$pre" > "../logs/${t}.log" 2>&1)
+            printf "%d\n" "$?" > "parts/${t}.status"
+          ' _ {}
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          Path('status.json').write_text(json.dumps({p.stem:int(p.read_text()) for p in Path('parts').glob('*.status')},sort_keys=True)+'\n')
+          PY
+      - name: Analyze bracket point
+        shell: bash
+        env:
+          LOGSTEP: ${{ matrix.logstep }}
+        run: |
+          python3 verification/m24/global_numerical_precision_diagnostic.py analyze class/output status.json cl_ref raw.json
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open('raw.json')); r.update({'schema':'KMDSB.M24.LLogstepTransitionBracketPoint.v1','preregistration':'protocol/W04_M24_L_LOGSTEP_TRANSITION_BRACKET_PREREGISTRATION_v0.1.md','l_logstep':float(os.environ['LOGSTEP']),'parent_ladder_run_id':34557086120,'K1_promoted':False,'K4_promoted':False,'physical_falsification':False}); open('result.json','w').write(json.dumps(r,indent=2,sort_keys=True)+'\n')
+          PY
+          cat result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m24-logstep-bracket-${{ matrix.logstep }}
+          path: |
+            profile.pre
+            status.json
+            result.json
+            logs/
+          retention-days: 90
+  aggregate:
+    needs: bracket
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m24-logstep-bracket-*
+          path: collected
+      - name: Persist transition bracket summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rs=[json.loads(p.read_text()) for p in Path('collected').glob('*/result.json')]
+          pts=[{'l_logstep':1.10,'Emax':0.23026690746463432,'classification':'M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED','exact_identity_pass':True}]
+          for r in rs: pts.append({'l_logstep':r['l_logstep'],'Emax':r.get('profile',{}).get('Emax'),'classification':r.get('classification'),'exact_identity_pass':r.get('profile',{}).get('exact_identity_pass',False)})
+          pts.append({'l_logstep':1.12,'Emax':62.6449744969262,'classification':'PROVIDER_DEFAULT_NOT_LOCALIZED','exact_identity_pass':True})
+          pts=sorted(pts,key=lambda p:p['l_logstep'])
+          bracket=None
+          for a,b in zip(pts[:-1],pts[1:]):
+              if a['classification']=='M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED' and b['classification']!='M24_GLOBAL_PRECISION_EXCURSION_LOCALIZED': bracket=[a['l_logstep'],b['l_logstep']]
+          jumps=[]
+          for a,b in zip(pts[:-1],pts[1:]):
+              ea,eb=a['Emax'],b['Emax']; ratio=max(ea,eb)/max(min(ea,eb),1e-300); jumps.append({'from':a['l_logstep'],'to':b['l_logstep'],'ratio':ratio})
+          abrupt=any(j['ratio']>=5 for j in jumps); exact=all(p['exact_identity_pass'] for p in pts[1:-1]); blocked=any(p['Emax'] is None for p in pts[1:-1])
+          cls='M24_L_LOGSTEP_TRANSITION_PROVIDER_BLOCKED' if blocked else ('M24_L_LOGSTEP_SHARP_GRID_TRANSITION_LOCALIZED' if bracket and abrupt and exact else 'M24_L_LOGSTEP_TRANSITION_SMOOTH_OR_UNRESOLVED')
+          s={'schema':'KMDSB.M24.LLogstepTransitionBracket.Summary.v1','preregistration':'protocol/W04_M24_L_LOGSTEP_TRANSITION_BRACKET_PREREGISTRATION_v0.1.md','points':pts,'transition_bracket':bracket,'adjacent_jumps':jumps,'abrupt_adjacent_jump':abrupt,'all_new_exact_identity':exact,'classification':cls,'K1_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          Path('summary.json').write_text(json.dumps(s,indent=2,sort_keys=True)+'\n'); print(Path('summary.json').read_text())
+          PY
+          cp summary.json /tmp/summary.json
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main && git reset --hard origin/main
+          mkdir -p waves/wave_04_dark_matter models/ethos_like_dark_sector
+          cp /tmp/summary.json waves/wave_04_dark_matter/M24_L_LOGSTEP_TRANSITION_BRACKET_SUMMARY.json
+          cp /tmp/summary.json models/ethos_like_dark_sector/M24_L_LOGSTEP_TRANSITION_BRACKET_SUMMARY.json
+          git add waves/wave_04_dark_matter models/ethos_like_dark_sector
+          git diff --cached --quiet || { git commit -m 'Record M24 l_logstep transition bracket'; git pull --rebase origin main; git push origin HEAD:main; }
