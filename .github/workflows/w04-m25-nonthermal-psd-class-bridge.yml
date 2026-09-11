@@ -1,0 +1,78 @@
+name: W04 M25 nonthermal PSD CLASS bridge
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m25-nonthermal-psd-class-bridge.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download immutable upstream M25 provider artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: w04-m25-resonant-sterile-dm-provider-control
+          path: m25_upstream
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34544624039
+      - name: Pin and install CLASS Python wrapper
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3 scipy cython setuptools wheel
+          git clone -q https://github.com/lesgourg/class_public.git class_provider
+          git -C class_provider checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class_provider rev-parse HEAD)" = "$CLASS_PIN"
+          python3 -m pip install --disable-pip-version-check --no-input ./class_provider > m25_class_install.log 2>&1
+      - name: Execute frozen density bridge
+        run: |
+          python3 verification/m25/m25_class_bridge.py m25_upstream m25_bridge_work m25_class_bridge_result.json
+          cat m25_class_bridge_result.json
+      - name: Persist canonical bridge result
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m25_class_bridge_result.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/resonant_sterile_neutrino_wdm waves/wave_04_dark_matter
+          cp /tmp/result.json models/resonant_sterile_neutrino_wdm/M25_NONTHERMAL_PSD_CLASS_BRIDGE_RESULT.json
+          cp /tmp/result.json waves/wave_04_dark_matter/M25_NONTHERMAL_PSD_CLASS_BRIDGE_RESULT.json
+          git add models/resonant_sterile_neutrino_wdm/M25_NONTHERMAL_PSD_CLASS_BRIDGE_RESULT.json waves/wave_04_dark_matter/M25_NONTHERMAL_PSD_CLASS_BRIDGE_RESULT.json
+          git diff --cached --quiet || { git commit -m 'Record M25 nonthermal PSD CLASS bridge'; git pull --rebase origin main; git push origin HEAD:main; }
+      - name: Enforce bridge-only semantics
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/result.json'))
+          allowed={'M25_CLASS_BRIDGE_BLOCKED_UPSTREAM_ARTIFACT','M25_CLASS_BRIDGE_BLOCKED_CLASS_PROVIDER','M25_CLASS_BRIDGE_TRANSFORM_INVALID','M25_CLASS_BRIDGE_DENSITY_NOT_VALIDATED','M25_CLASS_BRIDGE_DENSITY_VALIDATED'}
+          assert r['classification'] in allowed
+          assert r['K1_promoted'] is False
+          assert r['physical_falsification'] is False
+          PY
+      - name: Upload bridge evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m25-nonthermal-psd-class-bridge
+          path: |
+            m25_class_install.log
+            m25_bridge_work/
+            m25_class_bridge_result.json
+          retention-days: 90
