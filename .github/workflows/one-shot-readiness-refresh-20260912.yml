@@ -1,0 +1,33 @@
+name: One-shot KMDSB readiness refresh 20260912
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-readiness-refresh-20260912.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Recompute current mandatory-matrix readiness
+        run: python3 verification/audit_matrix_readiness.py
+      - name: Commit refreshed snapshot if changed
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audits/KMDSB_READINESS_SNAPSHOT.json
+          if git diff --cached --quiet; then
+            echo 'snapshot already current'
+            exit 0
+          fi
+          git commit -m 'Refresh KMDSB readiness after W05 ledger sync'
+          git pull --rebase origin main
+          git push origin HEAD:main
