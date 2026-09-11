@@ -1,0 +1,106 @@
+name: W04 M24 IDR hierarchy-depth diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m24-idr-hierarchy-depth-diagnostic.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install analysis dependency and pin provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+          make -C class -j2 > m24_idr_hierarchy_build.log 2>&1
+      - name: Prepare frozen physical cases and hierarchy profiles
+        run: python3 verification/m24/idr_hierarchy_depth_diagnostic.py prepare m24_idr_hierarchy_cases m24_idr_hierarchy_profiles
+      - name: Execute all frozen profiles
+        shell: bash
+        run: |
+          set +e
+          : > m24_idr_hierarchy_status.tsv
+          mkdir -p m24_idr_hierarchy_results
+          for profile in D_L17 L35 L70; do
+            rm -rf class/output; mkdir -p class/output
+            for case in ref zero a18k a6k a1p8k; do
+              if [ "$profile" = D_L17 ]; then
+                (cd class && ./class ../m24_idr_hierarchy_cases/${case}.ini > ../m24_idr_${profile}_${case}.log 2>&1)
+              else
+                (cd class && ./class ../m24_idr_hierarchy_cases/${case}.ini ../m24_idr_hierarchy_profiles/${profile}.pre > ../m24_idr_${profile}_${case}.log 2>&1)
+              fi
+              rc=$?
+              printf '%s__%s\t%d\n' "$profile" "$case" "$rc" >> m24_idr_hierarchy_status.tsv
+            done
+            rm -rf m24_idr_hierarchy_results/$profile
+            cp -a class/output m24_idr_hierarchy_results/$profile
+          done
+          python3 - <<'PY'
+          import json
+          d={}
+          for line in open('m24_idr_hierarchy_status.tsv'):
+              k,v=line.rstrip().split('\t'); d[k]=int(v)
+          open('m24_idr_hierarchy_status.json','w').write(json.dumps(d,indent=2,sort_keys=True)+'\n')
+          PY
+          cat m24_idr_hierarchy_status.json
+          exit 0
+      - name: Analyze frozen diagnostic
+        run: |
+          python3 verification/m24/idr_hierarchy_depth_diagnostic.py analyze m24_idr_hierarchy_results m24_idr_hierarchy_status.json m24_idr_hierarchy_result.json
+          cat m24_idr_hierarchy_result.json
+      - name: Persist canonical diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp m24_idr_hierarchy_result.json /tmp/result.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p models/ethos_like_dark_sector waves/wave_04_dark_matter
+          cp /tmp/result.json models/ethos_like_dark_sector/M24_IDR_HIERARCHY_DEPTH_DIAGNOSTIC_RESULT.json
+          cp /tmp/result.json waves/wave_04_dark_matter/M24_IDR_HIERARCHY_DEPTH_DIAGNOSTIC_RESULT.json
+          git add models/ethos_like_dark_sector/M24_IDR_HIERARCHY_DEPTH_DIAGNOSTIC_RESULT.json waves/wave_04_dark_matter/M24_IDR_HIERARCHY_DEPTH_DIAGNOSTIC_RESULT.json
+          git diff --cached --quiet || { git commit -m 'Record M24 IDR hierarchy-depth diagnostic'; git pull --rebase origin main; git push origin HEAD:main; }
+      - name: Enforce diagnostic-only semantics
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/result.json'))
+          allowed={'M24_IDR_HIERARCHY_DIAGNOSTIC_PROVIDER_BLOCKED','M24_IDR_HIERARCHY_EXCURSION_LOCALIZED','M24_IDR_HIERARCHY_EXCURSION_STRONGLY_SENSITIVE','M24_IDR_HIERARCHY_EXCURSION_INSENSITIVE'}
+          assert r['classification'] in allowed
+          assert r['K1_promoted'] is False
+          assert r['physical_falsification'] is False
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w04-m24-idr-hierarchy-depth-diagnostic
+          path: |
+            m24_idr_hierarchy_build.log
+            m24_idr_hierarchy_cases/
+            m24_idr_hierarchy_profiles/
+            m24_idr_hierarchy_status.json
+            m24_idr_hierarchy_status.tsv
+            m24_idr_hierarchy_result.json
+            m24_idr_*.log
+            m24_idr_hierarchy_results/
+          retention-days: 90
