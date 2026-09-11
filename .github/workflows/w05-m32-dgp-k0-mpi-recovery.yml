@@ -1,4 +1,4 @@
-name: W05 M32 DGP K0 MPI toolchain recovery
+name: W05 M32 DGP K0 provider GNU MPI recovery
 
 on:
   workflow_dispatch:
@@ -16,13 +16,13 @@ jobs:
       PROVIDER_PIN: 849ddb716041316d0e223ba22badc0d630b72435
     steps:
       - uses: actions/checkout@v4
-      - name: Install preregistered toolchain
+      - name: Install preregistered GNU MPI toolchain
         run: |
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y -qq gfortran openmpi-bin libopenmpi-dev
           command -v mpif90
-      - name: Exact-pin build probe
+      - name: Exact-pin provider-native GNU build probe
         shell: bash
         run: |
           set -u
@@ -42,14 +42,17 @@ jobs:
           find . -maxdepth 3 -type f -printf '%P\n' | sort > ../m32k0/provider_manifest.txt
           set +e
           cd bin
-          make > ../../m32k0/build_stdout.log 2> ../../m32k0/build_stderr.log
+          make \
+            F90='mpif90 -frecord-marker=4 -O3 -ffree-line-length-none -g -fbacktrace' \
+            FFLAGS='-x f95-cpp-input $(DEFINES)' \
+            > ../../m32k0/build_stdout.log 2> ../../m32k0/build_stderr.log
           RC=$?
           set -e
           echo "$RC" > ../../m32k0/build_exit_code.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: m32-k0-mpi-recovery-probe
+          name: m32-k0-gnu-recovery-probe
           path: m32k0
           if-no-files-found: error
           retention-days: 30
@@ -62,7 +65,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: m32-k0-mpi-recovery-probe
+          name: m32-k0-gnu-recovery-probe
           path: m32k0
       - name: Frozen classification
         run: |
@@ -76,17 +79,18 @@ jobs:
           if not(pin and dgp and vain): c='M32_K0_BLOCKED_PROVENANCE'
           elif rc!=0: c='M32_K0_BLOCKED_PROVIDER_BUILD'
           else: c='M32_K0_PROVIDER_PROBE_PASS_WITH_SCOPE'
-          out={'schema':'m32_dgp_k0_eftramses_probe_v0.1','provider':'nat-woodcock/EFT-Ramses','provider_commit':'849ddb716041316d0e223ba22badc0d630b72435','parent_run_id':34642254638,'classification':c,'checks':{'exact_pin':bool(pin),'dgp_provenance':bool(dgp),'vainshtein_provenance':bool(vain),'build_exit_code':rc},'K0_promoted':c=='M32_K0_PROVIDER_PROBE_PASS_WITH_SCOPE','physical_falsification':False,'scope':'provider provenance and documented unmodified build only; K1-K9 open'}
+          out={'schema':'m32_dgp_k0_eftramses_probe_v0.1','provider':'nat-woodcock/EFT-Ramses','provider_commit':'849ddb716041316d0e223ba22badc0d630b72435','parent_run_id':34642361612,'classification':c,'checks':{'exact_pin':bool(pin),'dgp_provenance':bool(dgp),'vainshtein_provenance':bool(vain),'build_exit_code':rc},'K0_promoted':c=='M32_K0_PROVIDER_PROBE_PASS_WITH_SCOPE','physical_falsification':False,'scope':'provider provenance and provider-native GNU MPI build only; not a DGP production cosmology calculation; K1-K9 open'}
           q=pathlib.Path('waves/wave_05_modified_gravity/M32_K0_EFTRAMSES_PROBE_RESULT.json');q.parent.mkdir(parents=True,exist_ok=True);q.write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
           print(json.dumps(out,indent=2,sort_keys=True))
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: m32-k0-mpi-recovery-aggregate
+          name: m32-k0-gnu-recovery-aggregate
           path: |
             waves/wave_05_modified_gravity/M32_K0_EFTRAMSES_PROBE_RESULT.json
             m32k0/build_stdout.log
             m32k0/build_stderr.log
+            m32k0/provider_head.txt
           retention-days: 30
       - name: Commit machine result
         run: |
@@ -95,5 +99,5 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add waves/wave_05_modified_gravity/M32_K0_EFTRAMSES_PROBE_RESULT.json
           git diff --cached --quiet && exit 0
-          git commit -m 'Record M32 DGP K0 MPI recovery result'
+          git commit -m 'Record M32 DGP K0 GNU MPI recovery result'
           git push
