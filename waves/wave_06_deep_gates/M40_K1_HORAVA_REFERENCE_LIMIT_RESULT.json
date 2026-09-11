@@ -1,0 +1,17 @@
+{
+  "source_run_id": 34656276938,
+  "source_artifact_id": 10286391289,
+  "source_artifact_digest": "sha256:b0c7861eb47f017ac6536569fe1e66545eb3e280c81167dfb4c76826d8647f41",
+  "schema": "k1_decoupling_ladder_v0.1",
+  "model_id": "M40",
+  "provider_commit": "16d9c4e9f85751e30efd0a53b177941713078904",
+  "expected_commit": "16d9c4e9f85751e30efd0a53b177941713078904",
+  "K1": "BLOCKED_IMPLEMENTATION",
+  "K1_scoped_pass": false,
+  "K2_K9": "OPEN",
+  "classification": "M40_K1_BLOCKED_IMPLEMENTATION_OR_NUMERICAL",
+  "physical_falsification": false,
+  "endpoint_error": "RuntimeError('nonzero native-zero or GR exit')",
+  "error": "FileNotFoundError(2, 'No such file or directory')",
+  "scope": "pinned EFTCAMB native Horava mapping; joint xi/lambda/eta scaling to native zero; explicit EFT-GR endpoint control"
+}
