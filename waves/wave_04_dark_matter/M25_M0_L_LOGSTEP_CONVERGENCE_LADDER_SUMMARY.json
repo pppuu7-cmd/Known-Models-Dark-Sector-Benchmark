@@ -1,0 +1,170 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "Pk_gate": "OPEN_SEPARATE",
+  "classification": "M25_M0_L_LOGSTEP_STABLE_NUMERICAL_FLOOR_LOCALIZED",
+  "fine_pair_stability": true,
+  "fine_pair_symmetric_relative_differences": {
+    "CMB_EE": [
+      0.055494941290576465,
+      0.005662373691350164,
+      0.08799200045581126
+    ],
+    "CMB_TE": [
+      0.027249563702727977,
+      0.12742482810674438,
+      0.05823092451158512
+    ],
+    "CMB_TT": [
+      0.0738860733887648,
+      0.0036883911704792185,
+      0.010686421811127375
+    ]
+  },
+  "physical_falsification": false,
+  "points": [
+    {
+      "eta_0p003_p95": {
+        "CMB_EE": 7.233897127586015e-06,
+        "CMB_TE": 8.250136787131199e-05,
+        "CMB_TT": 1.8777990967665247e-05
+      },
+      "excursion_collapse": true,
+      "floor_flatness": true,
+      "floor_spread_ratios": {
+        "CMB_EE": 1.2154911842700389,
+        "CMB_TE": 1.8119966683107012,
+        "CMB_TT": 1.8715157212169347
+      },
+      "improvement_factors": {
+        "CMB_EE": 143.157572094239,
+        "CMB_TE": 103.40185275968177,
+        "CMB_TT": 16.694254493863497
+      },
+      "l_logstep": 1.1
+    },
+    {
+      "eta_0p003_p95": {
+        "CMB_EE": 6.649580794588211e-06,
+        "CMB_TE": 7.432502878377967e-05,
+        "CMB_TT": 2.1192932302404758e-05
+      },
+      "excursion_collapse": true,
+      "floor_flatness": false,
+      "floor_spread_ratios": {
+        "CMB_EE": 1.3540122380748638,
+        "CMB_TE": 2.0818197470595994,
+        "CMB_TT": 2.0159532019334465
+      },
+      "improvement_factors": {
+        "CMB_EE": 155.73720833763235,
+        "CMB_TE": 114.77687170386217,
+        "CMB_TT": 14.791938917395715
+      },
+      "l_logstep": 1.08
+    },
+    {
+      "eta_0p003_p95": {
+        "CMB_EE": 6.868787523031233e-06,
+        "CMB_TE": 8.056301357659256e-05,
+        "CMB_TT": 1.873877756728137e-05
+      },
+      "excursion_collapse": true,
+      "floor_flatness": true,
+      "floor_spread_ratios": {
+        "CMB_EE": 1.3782156309642912,
+        "CMB_TE": 1.9180712662203492,
+        "CMB_TT": 1.8238186347734606
+      },
+      "improvement_factors": {
+        "CMB_EE": 150.76709624403887,
+        "CMB_TE": 105.88971184638442,
+        "CMB_TT": 16.72918945604167
+      },
+      "l_logstep": 1.06
+    },
+    {
+      "eta_0p003_p95": {
+        "CMB_EE": 6.624791434899198e-06,
+        "CMB_TE": 8.518777744103333e-05,
+        "CMB_TT": 1.9207909586992075e-05
+      },
+      "excursion_collapse": true,
+      "floor_flatness": true,
+      "floor_spread_ratios": {
+        "CMB_EE": 1.3998836886783947,
+        "CMB_TE": 1.7329527022037174,
+        "CMB_TT": 1.8352464202537813
+      },
+      "improvement_factors": {
+        "CMB_EE": 156.31996263448565,
+        "CMB_TE": 100.14105954350936,
+        "CMB_TT": 16.320597443355876
+      },
+      "l_logstep": 1.04
+    },
+    {
+      "eta_0p003_p95": {
+        "CMB_EE": 6.821902901264062e-06,
+        "CMB_TE": 8.159905869058972e-05,
+        "CMB_TT": 1.9265565191252045e-05
+      },
+      "excursion_collapse": true,
+      "floor_flatness": true,
+      "floor_spread_ratios": {
+        "CMB_EE": 1.355140334655969,
+        "CMB_TE": 1.7597697265608,
+        "CMB_TT": 1.8963484475549046
+      },
+      "improvement_factors": {
+        "CMB_EE": 151.80326729259286,
+        "CMB_TE": 104.54525370751051,
+        "CMB_TT": 16.27175517487638
+      },
+      "l_logstep": 1.03
+    },
+    {
+      "eta_0p003_p95": {
+        "CMB_EE": 7.163299956888408e-06,
+        "CMB_TE": 7.984747335245205e-05,
+        "CMB_TT": 1.8560122801681847e-05
+      },
+      "excursion_collapse": true,
+      "floor_flatness": true,
+      "floor_spread_ratios": {
+        "CMB_EE": 1.3265724486500516,
+        "CMB_TE": 1.8189179408277145,
+        "CMB_TT": 1.843607667876015
+      },
+      "improvement_factors": {
+        "CMB_EE": 144.56844691654393,
+        "CMB_TE": 106.83862538074622,
+        "CMB_TT": 16.890220148180642
+      },
+      "l_logstep": 1.026
+    },
+    {
+      "eta_0p003_p95": {
+        "CMB_EE": 7.203976400720248e-06,
+        "CMB_TE": 9.071438082768803e-05,
+        "CMB_TT": 1.86287062760873e-05
+      },
+      "excursion_collapse": true,
+      "floor_flatness": true,
+      "floor_spread_ratios": {
+        "CMB_EE": 1.207904790202562,
+        "CMB_TE": 1.5556994793374632,
+        "CMB_TT": 1.8307509042501844
+      },
+      "improvement_factors": {
+        "CMB_EE": 143.75215741422556,
+        "CMB_TE": 94.04015344938513,
+        "CMB_TT": 16.828037087045466
+      },
+      "l_logstep": 1.02
+    }
+  ],
+  "preregistration": "protocol/W04_M25_M0_L_LOGSTEP_CONVERGENCE_LADDER_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.M25.M0LLogstepConvergenceLadder.Summary.v1",
+  "stable_floor_localization": true
+}
