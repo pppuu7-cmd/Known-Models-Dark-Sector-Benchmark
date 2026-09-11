@@ -322,3 +322,7 @@ Consumed Actions run `34490297354` / job `102914977778` / artifact `10157548938`
 - These two cases add two methodology constraints to the funnel: K1 continuity must not impose universal differentiability, and comparison metrics must canonicalize coordinate orientation plus respect localized response support.
 - Strict terminal/represented census remains 4/46. Operational polygon readiness estimate is approximately 53%; this is not a strict census metric.
 - `NEW_MODEL: DESIGN_AUTHORIZED / NOT_YET_REQUIRED` remains unchanged.
+
+
+### 2026-09-11 — M27 high-L hierarchy refinement terminal
+Actions run `34564218394`, launch commit `100292b4fd7a016642e5f6a35dbdd903ed489625`, result commit `8d8881349b32970bd1dcc750e7879d53f22d0958`. The prospectively frozen L32->L64 refinement passed 27/27 M27 ensemble branches with maximum amplitude-normalized residual `1.806015929192509e-06`. The earlier L17->L32 failure is preserved (`max=0.004003933161124123`), so the result localizes hierarchy-depth error under prescribed metric forcing rather than erasing the parent negative result. Classification: `M27_DDM_DR_HIGH_L_HIERARCHY_CONVERGENCE_PASS_WITH_PRESCRIBED_METRIC_SCOPE`; K1/K3/K4 global promotion remains false; no physical falsification. Exact next layer is a self-consistent Einstein/metric closure route, preceded by provider-capability/provenance audit where appropriate. Strict census count remains 4/46 terminal/represented.
