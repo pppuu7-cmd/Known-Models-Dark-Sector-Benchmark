@@ -1,0 +1,30 @@
+{
+  "K1_promoted": false,
+  "K4_promoted": false,
+  "children": {
+    "0.03": "M27_N1_COMOVING_REFERENCE_NOT_ESTABLISHED",
+    "0.3": "M27_N1_COMOVING_REFERENCE_NOT_ESTABLISHED",
+    "3.0": "M27_N1_COMOVING_REFERENCE_NOT_ESTABLISHED"
+  },
+  "classification": "M27_N1_COMOVING_REFERENCE_CONDITIONING_NOT_ESTABLISHED",
+  "physical_falsification": false,
+  "preregistration": "protocol/W04_M27_N1_REFERENCE_CONDITIONING_AUDIT_PREREGISTRATION_v0.1.md",
+  "residuals": {
+    "0.03": {
+      "H_p95": 3.032675649590664e-13,
+      "daughter_p95": 4.457838493912383e-05,
+      "parent_p95": 2.360846243369141e-13
+    },
+    "0.3": {
+      "H_p95": 2.6811809314649507e-12,
+      "daughter_p95": 4.4579588914681054e-05,
+      "parent_p95": 3.6627776661663784e-12
+    },
+    "3.0": {
+      "H_p95": 1.56457122821874e-11,
+      "daughter_p95": 4.419281116540066e-05,
+      "parent_p95": 5.962101618224584e-11
+    }
+  },
+  "schema": "KMDSB.M27.N1ReferenceConditioningAudit.Summary.v1"
+}
