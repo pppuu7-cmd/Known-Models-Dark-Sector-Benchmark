@@ -1,0 +1,33 @@
+{
+  "K0_promoted": true,
+  "arms": {
+    "aether_gravity_active": {
+      "cl_rows": 3799,
+      "finite": true,
+      "pk_rows": 579
+    },
+    "weak_gravity_control": {
+      "cl_rows": 3799,
+      "finite": true,
+      "pk_rows": 579
+    }
+  },
+  "artifact": {
+    "digest": "sha256:54d1c3d6fc231f1270e249925c27b1035bb5bf6a8cdeeec400381cea505295ef",
+    "id": 10283386831,
+    "name": "m35-class-lvdm-k0"
+  },
+  "classification": "M35_K0_PASS_WITH_SCOPE_PINNED_CLASS_LVDM_AETHER_GRAVITY",
+  "expected_commit": "d9a20bd0c7b7a6c8957410fd245ed06b30b915c1",
+  "physical_falsification": false,
+  "provider": "Michalychforever/CLASS_LVDM",
+  "provider_commit": "d9a20bd0c7b7a6c8957410fd245ed06b30b915c1",
+  "response": {
+    "pk_normalized_l2": 0.3983713397395851,
+    "threshold": 1e-06,
+    "tt_normalized_l2": 0.3987045616634278
+  },
+  "schema": "m35_k0_class_lvdm_provider_v0.1",
+  "scope": "pinned CLASS_LVDM preferred-frame/LV-gravity provider; K0 only; K1-K9 open; no complete Einstein-Aether SVT claim",
+  "workflow_run_id": 34649109961
+}
