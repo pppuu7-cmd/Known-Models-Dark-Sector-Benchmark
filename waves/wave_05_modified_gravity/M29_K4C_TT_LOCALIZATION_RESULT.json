@@ -1,0 +1,43 @@
+{
+  "schema": "m29_k4c_tt_localization_v0.1",
+  "provider_commit": "0009f51d89e6465c79e570b496c66fc90058fa77",
+  "parent_run_id": 34637944738,
+  "aggregate_artifact_id": 10278388838,
+  "aggregate_artifact_digest": "sha256:346cbae55e9d3514e382a38a7032449a9c28635ffe3e3ccf8728055be521c122",
+  "omega_BD": 15,
+  "classification": "M29_K4C_FULL_CORE_REQUIRED",
+  "K4_promoted": false,
+  "physical_falsification": false,
+  "checks": {
+    "all_exit_zero": true,
+    "finite_outputs": true,
+    "sufficient_80pct": {
+      "thermo_ref": false,
+      "projection_ref": false,
+      "thermo_projection_ref": false,
+      "full_core_ref": true
+    }
+  },
+  "exit_codes": {
+    "base_grid": 0,
+    "thermo_ref": 0,
+    "projection_ref": 0,
+    "thermo_projection_ref": 0,
+    "full_core_ref": 0,
+    "full_ref": 0
+  },
+  "reductions": {
+    "thermo_ref": 0.00026082502079305403,
+    "projection_ref": -23.92675806919057,
+    "thermo_projection_ref": -23.93307533862288,
+    "full_core_ref": 1.0
+  },
+  "metrics": {
+    "base_grid": {"n":2499,"max":0.00714302154624172,"rms":0.0037823637657666727,"median":0.0028201118777578375,"p95":0.006379286491324177,"p99":0.0070151549291967655,"max_ell":1543.0},
+    "thermo_ref": {"n":2499,"max":0.007141158467498396,"rms":0.003781459925328038,"median":0.0028190590189736803,"p95":0.006380327031769274,"p99":0.007012668563159761,"max_ell":1543.0},
+    "projection_ref": {"n":2499,"max":0.17805236996618287,"rms":0.09772781449544032,"median":0.07995661687147884,"p95":0.16632993880467098,"p99":0.1774639124737558,"max_ell":2318.0},
+    "thermo_projection_ref": {"n":2499,"max":0.1780974943578513,"rms":0.0977202312212711,"median":0.07994161157700078,"p95":0.1662774545615895,"p99":0.1775115647144288,"max_ell":2319.0},
+    "full_core_ref": {"n":2499,"max":0.0,"rms":0.0,"median":0.0,"p95":0.0,"p99":0.0,"max_ell":2500.0}
+  },
+  "scope": "omega_BD=15 TT precision attribution only; full cl_ref-aligned numerical core is required under the frozen >=80% rule; no K4 promotion, no K3 resolution, no physical falsification"
+}
