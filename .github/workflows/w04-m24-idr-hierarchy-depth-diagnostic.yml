@@ -1,3 +1,4 @@
+# Rerun after infrastructure-only import-path repair 2026-09-11
 name: W04 M24 IDR hierarchy-depth diagnostic
 
 on:
