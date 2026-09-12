@@ -1,0 +1,92 @@
+name: W07 M30 K2 evidence synthesis
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m30-k2-evidence-synthesis.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  synthesize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch immutable prerequisite artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p inputs/geometry inputs/jac
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10289448682/zip" > /tmp/geometry.zip
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10297689056/zip" > /tmp/jac.zip
+          unzip -q /tmp/geometry.zip -d inputs/geometry
+          unzip -q /tmp/jac.zip -d inputs/jac
+          sha256sum /tmp/geometry.zip /tmp/jac.zip > inputs/artifact_zip_sha256.txt
+      - name: Apply frozen M30 K2 synthesis rule
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python3 - <<'PY'
+          import json,pathlib
+          pin='0009f51d89e6465c79e570b496c66fc90058fa77'
+          def one(root,name):
+              hits=list(pathlib.Path(root).rglob(name))
+              if len(hits)!=1: raise RuntimeError(f'{name}: expected one, got {len(hits)}')
+              return json.loads(hits[0].read_text())
+          try:
+              geo=one('inputs/geometry','M30_M31_K2_GEOMETRY_SUFFICIENCY_AUDIT.json')
+              jac=one('inputs/jac','M30_CENTRAL_LOCAL_JACOBIAN.json')
+              m30=geo.get('models',{}).get('M30',{})
+              integrity=(geo.get('provider_commit')==pin and jac.get('provider_commit')==pin and bool(m30.get('integrity_ok')))
+              geo_ok=(m30.get('classification')=='M30_K2_NOT_CLOSED_BY_ONE_DIMENSIONAL_K1_PATH' and
+                      m30.get('frozen_path_rank_in_five_alpha_coefficients')==1 and
+                      bool(m30.get('strictly_radial_K1_path')) and
+                      'c_T' in m30.get('frozen_zero_direction_coordinates',[]))
+              jac_ok=(jac.get('classification')=='M30_CENTRAL_LOCAL_2D_RESPONSE_RANK_EVIDENCE' and
+                      bool(jac.get('radial_derivative_converged')) and bool(jac.get('cT_derivative_converged')) and
+                      bool(jac.get('cross_direction_separated')) and not bool(jac.get('K2_promoted')) and
+                      not bool(jac.get('physical_falsification')))
+              if not integrity:
+                  cls='M30_K2_SYNTHESIS_INTEGRITY_BLOCKED'; status='OPEN'
+              elif geo_ok and jac_ok:
+                  cls='M30_K2_PARTIAL_LOCAL_RESPONSE_RANK2_SOURCE_QUOTIENT_OPEN'; status='PARTIAL'
+              else:
+                  cls='M30_K2_OPEN_LOCAL_RANK_NOT_ESTABLISHED'; status='OPEN'
+              out={
+                'schema':'m30_k2_evidence_synthesis_v0.1','model_id':'M30','family_id':'F30',
+                'protocol':'protocol/W07_M30_K2_EVIDENCE_SYNTHESIS_v0.1.md','provider_commit':pin,
+                'inputs':{
+                  'geometry':{'run':34667418003,'artifact':10289448682,'classification':m30.get('classification')},
+                  'jacobian':{'run':34694420359,'artifact':10297689056,'classification':jac.get('classification')}
+                },
+                'checks':{'integrity':integrity,'original_path_rank1':geo_ok,'local_rank2_response':jac_ok},
+                'radial_convergence':jac.get('radial_central_convergence'),
+                'cT_convergence':jac.get('cT_central_convergence'),
+                'cross_direction_geometry':jac.get('fine_cross_direction_geometry'),
+                'recommended_K2_status':status,'classification':cls,
+                'K2_pass':False,'physical_falsification':False,'complete_Horndeski_family_claim':False,
+                'remaining_K2_blocker':'complete source/covariant Horndeski-EFT parameter geometry, degeneracy quotient and global admissible-domain closure',
+                'interpretation':'PARTIAL, when assigned, is limited to reproducible local rank>=2 response evidence in the pinned hi_class scalar representation. It is not K2 PASS.'
+              }
+          except Exception as e:
+              out={'schema':'m30_k2_evidence_synthesis_v0.1','model_id':'M30','classification':'M30_K2_SYNTHESIS_INTEGRITY_BLOCKED','recommended_K2_status':'OPEN','K2_pass':False,'physical_falsification':False,'error':repr(e)}
+          pathlib.Path('out/M30_K2_EVIDENCE_SYNTHESIS.json').write_text(json.dumps(out,indent=2)+'\n')
+          with open('out/M30_K2_EVIDENCE_SYNTHESIS.md','w') as f:
+              f.write('# M30 K2 immutable evidence synthesis\n\n')
+              f.write(f"Classification: `{out['classification']}`  \n")
+              f.write(f"Recommended K2 status: `{out['recommended_K2_status']}`  \n")
+              if out.get('cross_direction_geometry'):
+                  f.write(f"Local cross-direction angle: {out['cross_direction_geometry'].get('principal_angle_deg')} deg  \n")
+              f.write('\nK2 PASS is not authorized. Complete covariant/source quotient closure remains open.\n')
+          print(pathlib.Path('out/M30_K2_EVIDENCE_SYNTHESIS.json').read_text())
+          PY
+          cp inputs/artifact_zip_sha256.txt out/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m30-k2-evidence-synthesis
+          path: out/
