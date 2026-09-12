@@ -1,0 +1,98 @@
+name: W07 sync M35 M40 canonical state
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-sync-m35-m40-canonical-state.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch and verify immutable evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/m35 evidence/m40
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10297912967/zip" > /tmp/m35.zip
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10298366664/zip" > /tmp/m40.zip
+          unzip -q /tmp/m35.zip -d evidence/m35
+          unzip -q /tmp/m40.zip -d evidence/m40
+          sha256sum /tmp/m35.zip /tmp/m40.zip > evidence/artifact_zip_sha256.txt
+          python3 - <<'PY'
+          import json,pathlib
+          m35=json.loads(next(pathlib.Path('evidence/m35').rglob('M35_K2_EVIDENCE_SYNTHESIS.json')).read_text())
+          m40=json.loads(next(pathlib.Path('evidence/m40').rglob('M40_K1_INCLUDE_RECOVERY_RESULT.json')).read_text())
+          assert m35['classification']=='M35_K2_PARTIAL_LOCAL_RESPONSE_RANK2_SOURCE_QUOTIENT_OPEN'
+          assert m35['recommended_K2_status']=='PARTIAL' and not m35['K2_pass'] and not m35['physical_falsification']
+          assert m40['classification']=='M40_K1_PASS_WITH_SCOPE_AFTER_HARNESS_RECOVERY'
+          assert m40['K1']=='PASS_WITH_SCOPE' and m40['K1_scoped_pass'] and not m40['physical_falsification']
+          assert m40['native_zero_vs_explicit_GR']['pass'] and m40['native_zero_vs_explicit_GR']['D'] <= 1e-4
+          print('immutable evidence verified')
+          PY
+      - name: Update canonical matrix and family census
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv,pathlib
+          matrix=pathlib.Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(matrix.open(newline=''))); fields=list(rows[0].keys())
+          hit35=hit40=0
+          for r in rows:
+              if r['family_id']=='F35' and r['benchmark_id']=='M35':
+                  hit35+=1
+                  r['K2_physical_geometry']='PARTIAL'
+                  r['coverage_state']='K0_K1_PASS_K2_PARTIAL_LOCAL_RANK2_SOURCE_QUOTIENT_OPEN_K3_K9_OPEN'
+                  r['notes']=('Einstein-Aether/vector-tensor scoped representative. Pinned CLASS_LVDM exact provider has K0/K1 PASS_WITH_SCOPE. '
+                              'W07 immutable K2 synthesis run 34693883792 artifact 10297912967 verifies original gravity ladder is narrow/radial, '
+                              'an independent Y_dm direction executes and contracts, and preregistered local 2D Jacobian run 34668120323 artifact 10290165068 '
+                              'has converged gravity and Y_dm derivatives separated by 38.171364 deg (sin=0.618016). Therefore K2 is PARTIAL local response-rank>=2 evidence only. '
+                              'Complete covariant scalar/vector/tensor parameter geometry and quotient/equivalence closure remain open; K2 is not PASS; K3-K9 open; physical_falsification=false.')
+              if r['family_id']=='F40' and r['benchmark_id']=='M40':
+                  hit40+=1
+                  r['K1_reference_limit']='PASS_WITH_SCOPE'
+                  r['coverage_state']='K0_K1_PASS_WITH_SCOPE_K2_K9_OPEN'
+                  r['notes']=('Horava-Lifshitz: pinned EFTCAMB native provider K0 PASS_WITH_SCOPE. W07 harness recovery run 34693761809 artifact 10298366664 '
+                              'changes only include/output-root path handling: ref, four ladder arms and explicit EFT-GR all exit 0. K1 PASS_WITH_SCOPE with '
+                              'D_finest/D_coarsest=0.00104972176 and log-log r=0.999991711; native-zero vs explicit EFT-GR endpoint D=0 <=1e-4. '
+                              'Earlier run 34656276938 remains preserved as harness-blocked evidence rather than physics. K2-K9 open; physical_falsification=false.')
+          assert (hit35,hit40)==(1,1),(hit35,hit40)
+          with matrix.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          census=pathlib.Path('matrices/model_family_census.csv')
+          cr=list(csv.DictReader(census.open(newline=''))); cf=list(cr[0].keys()); c35=c40=0
+          for r in cr:
+              if r['family_id']=='F35':
+                  c35+=1; r['status']='K0_K1_PASS_K2_PARTIAL_LOCAL_RANK2_SOURCE_QUOTIENT_OPEN_K3_K9_OPEN'
+                  r['notes']=('Pinned CLASS_LVDM route: K0/K1 PASS_WITH_SCOPE. W07 K2 synthesis run 34693883792 artifact 10297912967 recommends K2 PARTIAL after '
+                              'immutable confirmation of an executable contracting Y_dm direction and converged 2D local response-rank evidence (cross angle 38.171364 deg). '
+                              'This is scalar-representation local geometry only; complete Einstein-Aether SVT covariant quotient remains open; no physical falsification.')
+              if r['family_id']=='F40':
+                  c40+=1; r['status']='K0_K1_PASS_WITH_SCOPE_K2_K9_OPEN'
+                  r['notes']=('Pinned EFTCAMB native Horava: K0 PASS_WITH_SCOPE and W07 K1 recovery run 34693761809 artifact 10298366664 PASS_WITH_SCOPE. '
+                              'The previous K1 blocker was a harness include/output-name defect; repaired run gives a strongly contracting xi/lambda/eta ladder and exact native-zero/EFT-GR endpoint identity D=0. '
+                              'K2-K9 remain open; no physical falsification.')
+          assert (c35,c40)==(1,1),(c35,c40)
+          with census.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=cf); w.writeheader(); w.writerows(cr)
+          PY
+          git diff -- matrices/mandatory_properties_matrix.csv matrices/model_family_census.csv
+      - name: Commit verified canonical state
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add matrices/mandatory_properties_matrix.csv matrices/model_family_census.csv
+          git diff --cached --quiet && exit 0
+          git commit -m 'W07: canonicalize M35 K2 partial and M40 K1 pass'
+          git push
