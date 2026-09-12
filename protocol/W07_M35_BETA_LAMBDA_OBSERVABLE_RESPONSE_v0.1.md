@@ -19,8 +19,15 @@ For lambda, hold alpha/beta/Y fixed and use:
 These relative step fractions are frozen before execution. No post-hoc shrinking is authorized.
 
 ## Frozen criteria
-Each axis derivative must satisfy coarse/fine principal angle <=5 degrees and relative norm mismatch <=0.25 on the same concatenated CMB+P(k) response definition used by the earlier M35 local Jacobian. Only a converged axis may be compared for independence. Independence separator is >=10 degrees relative to each immutable established direction (gravity ray and Y_dm) reconstructed from run `34668120323`, artifact `10290165068`.
+Each axis derivative must satisfy coarse/fine principal angle <=5 degrees and relative norm mismatch <=0.25 on the same concatenated CMB+P(k) response definition used by the earlier M35 local Jacobian. Only a converged axis may be compared for independence.
 
-A converged axis separated from both established directions is local additional-rank evidence only. It does not establish full covariant scalar/vector/tensor geometry, quotient/equivalence closure, or K2 PASS.
+Reconstruct the immutable fine gravity-ray and Y_dm derivatives from run `34668120323`, artifact `10290165068`. The established two-direction response subspace is their numerical span. A candidate beta/lambda direction counts as local third-direction evidence only when:
+1. its own coarse/fine derivative converges;
+2. the established gravity/Y span has numerical rank 2;
+3. the candidate fine derivative has principal angle >=10 degrees to that entire 2D span, computed from its orthogonal projection residual.
+
+Pairwise angles to gravity and Y may be reported diagnostically but do not substitute for the span criterion.
+
+A converged axis outside the established 2D span is local additional-rank evidence only. It does not establish full covariant scalar/vector/tensor geometry, quotient/equivalence closure, or K2 PASS.
 
 Always set `K2_promoted=false`, `canonical_K2_remains=PARTIAL`, `physical_falsification=false`, `full_Einstein_Aether_SVT_claim=false`.
