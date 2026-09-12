@@ -1,0 +1,153 @@
+name: W07 M31 fine central localization
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m31-fine-central-localization.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  HICLASS_PIN: '0009f51d89e6465c79e570b496c66fc90058fa77'
+
+jobs:
+  fine-central-localization:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact pinned provider
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3-numpy >/dev/null
+          git clone -q https://github.com/hiclass-code/hi_class_public.git provider
+          git -C provider checkout -q --detach "$HICLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$HICLASS_PIN"
+          make -C provider -j2 >/dev/null
+          git -C provider rev-parse HEAD > provider_commit.txt
+      - name: Generate prospectively frozen finer symmetric stencil
+        run: |
+          set -euo pipefail
+          BASE="$GITHUB_WORKSPACE/m31_fine"; mkdir -p "$BASE"
+          python3 - "$BASE" <<'PY'
+          import pathlib,re,sys
+          b=pathlib.Path(sys.argv[1]); src=pathlib.Path('provider/gravity_models/propto_omega_bh.ini').read_text()
+          specs={
+            'base':(0.10000,0.00000),
+            'rp2':(0.10050,0.00000),'rm2':(0.09950,0.00000),
+            'rp1':(0.10025,0.00000),'rm1':(0.09975,0.00000),
+            'tp2':(0.10000,0.00050),'tm2':(0.10000,-0.00050),
+            'tp1':(0.10000,0.00025),'tm1':(0.10000,-0.00025),
+          }
+          for tag,(q,ct) in specs.items():
+              vals=[q,0.5*q,0.2*q,ct,0.3*q,1.0]
+              t=re.sub(r'(?m)^parameters_smg\s*=.*$', 'parameters_smg = '+', '.join(f'{v:.16g}' for v in vals), src)
+              t=re.sub(r'(?m)^root\s*=.*$', f'root = {b}/{tag}_', t)
+              (b/f'{tag}.ini').write_text(t)
+          (b/'FROZEN_STENCIL.txt').write_text('Prior 0.002/0.001 nonconvergence is retained. This recovery uses only 0.0005/0.00025 central steps with unchanged angle<=5 deg, mismatch<=0.25 and cross-angle>=10 deg thresholds.\n')
+          PY
+          grep -H -E '^(gravity_model|parameters_smg|root|expansion_model|Omega_smg|background_Nloga|kineticity_safe_smg)' "$BASE"/*.ini | tee "$BASE/frozen_parameters.txt"
+      - name: Execute all finer symmetric arms
+        run: |
+          set -euo pipefail
+          BASE="$GITHUB_WORKSPACE/m31_fine"
+          for tag in base rp2 rm2 rp1 rm1 tp2 tm2 tp1 tm1; do
+            set +e
+            ./provider/class "$BASE/${tag}.ini" > "$BASE/${tag}.stdout" 2> "$BASE/${tag}.stderr"
+            rc=$?
+            set -e
+            echo "$rc" > "$BASE/${tag}.exit"
+          done
+      - name: Analyze unchanged central-difference criteria
+        run: |
+          set -euo pipefail
+          BASE="$GITHUB_WORKSPACE/m31_fine"
+          python3 - "$BASE" <<'PY'
+          import json,math,pathlib,sys
+          import numpy as np
+          b=pathlib.Path(sys.argv[1]); expected='0009f51d89e6465c79e570b496c66fc90058fa77'; pin=pathlib.Path('provider_commit.txt').read_text().strip()
+          tags=['base','rp2','rm2','rp1','rm1','tp2','tm2','tp1','tm1']; exits={t:int((b/f'{t}.exit').read_text()) for t in tags}
+          out={'schema':'m31_fine_central_localization_v0.1','model_id':'M31','family_id':'F31',
+               'protocol':'protocol/W07_M31_FINE_CENTRAL_LOCALIZATION_PREREGISTRATION_v0.1.md','provider_commit':pin,'expected_commit':expected,
+               'base_q':0.1,'coarse_h':0.0005,'fine_h':0.00025,'prior_run':34694420359,
+               'prior_classification':'M31_CENTRAL_LOCAL_DERIVATIVE_NOT_CONVERGED','exits':exits,
+               'K2_promoted':False,'physical_falsification':False,'complete_covariant_family_claim':False}
+          if pin!=expected or exits['base']!=0:
+              out['classification']='M31_FINE_CENTRAL_LOCAL_CONTROL_BLOCKED'
+          elif any(exits[t]!=0 for t in tags[1:]):
+              out['classification']='M31_FINE_CENTRAL_LOCAL_PROVIDER_BLOCKED'; out['failed_arms']=[t for t in tags[1:] if exits[t]!=0]
+          else:
+              def load(path):
+                  rows=[]
+                  for line in pathlib.Path(path).read_text(errors='replace').splitlines():
+                      s=line.strip()
+                      if not s or s.startswith('#'): continue
+                      try: rows.append([float(x) for x in s.split()])
+                      except ValueError: pass
+                  a=np.asarray(rows,float)
+                  if a.ndim!=2 or len(a)<5 or a.shape[1]<2: raise RuntimeError(f'bad table {path}')
+                  return a
+              cls={t:load(b/f'{t}_00_cl.dat') for t in tags}; pks={t:load(b/f'{t}_00_pk.dat') for t in tags}
+              maps={t:{int(r[0]):np.asarray(r[1:],float) for r in cls[t] if np.isfinite(r[0])} for t in tags}
+              common_ell=sorted(set.intersection(*(set(maps[t]) for t in tags)))
+              cmb={t:[] for t in tags}
+              for ell in common_ell:
+                  n=min(len(maps[t][ell]) for t in tags)
+                  for j in range(n):
+                      vals=[maps[t][ell][j] for t in tags]
+                      if all(np.isfinite(v) for v in vals):
+                          for t,v in zip(tags,vals): cmb[t].append(v)
+              cmb={t:np.asarray(cmb[t],float) for t in tags}
+              if len(cmb['base'])<5 or any(len(cmb[t])!=len(cmb['base']) for t in tags): raise RuntimeError('global CMB support invalid')
+              cnorm=float(np.linalg.norm(cmb['base']))
+              lo=max(float(np.nanmin(pks[t][:,0])) for t in tags); hi=min(float(np.nanmax(pks[t][:,0])) for t in tags)
+              bp=pks['base']; mask=(bp[:,0]>=lo)&(bp[:,0]<=hi)&np.isfinite(bp[:,0])&np.isfinite(bp[:,1]); x=bp[mask,0]
+              pk={t:(bp[mask,1] if t=='base' else np.interp(x,pks[t][:,0],pks[t][:,1])) for t in tags}
+              pmask=np.ones(len(x),dtype=bool)
+              for t in tags: pmask &= np.isfinite(pk[t])
+              x=x[pmask]; pk={t:np.asarray(pk[t][pmask],float) for t in tags}; pnorm=float(np.linalg.norm(pk['base']))
+              if cnorm==0 or pnorm==0 or len(x)<5: raise RuntimeError('global support invalid')
+              out['global_support']={'cmb_values':int(len(cmb['base'])),'pk_values':int(len(x)),'ell_count':int(len(common_ell)),'pk_k_min':float(x.min()),'pk_k_max':float(x.max())}
+              def central(plus,minus,h):
+                  c=(cmb[plus]-cmb[minus])/(2*h*cnorm); p=(pk[plus]-pk[minus])/(2*h*pnorm)
+                  return np.concatenate([c,p]),{'cmb_block_norm':float(np.linalg.norm(c)),'pk_block_norm':float(np.linalg.norm(p))}
+              rc,rcm=central('rp2','rm2',0.0005); rf,rfm=central('rp1','rm1',0.00025)
+              tc,tcm=central('tp2','tm2',0.0005); tf,tfm=central('tp1','tm1',0.00025)
+              def geom(a,c):
+                  na=float(np.linalg.norm(a)); nb=float(np.linalg.norm(c))
+                  if na==0 or nb==0: raise RuntimeError('zero derivative norm')
+                  co=float(np.dot(a,c)/(na*nb)); co=max(-1.0,min(1.0,co)); ang=float(math.degrees(math.acos(abs(co))))
+                  return {'cosine':co,'absolute_cosine':abs(co),'principal_angle_deg':ang,'relative_norm_mismatch':abs(na-nb)/max(na,nb),'norm_a':na,'norm_b':nb}
+              rg=geom(rc,rf); tg=geom(tc,tf); cross=geom(rf,tf); cross['sin_principal_angle']=float(math.sin(math.radians(cross['principal_angle_deg'])))
+              rp=rg['principal_angle_deg']<=5.0 and rg['relative_norm_mismatch']<=0.25
+              tp=tg['principal_angle_deg']<=5.0 and tg['relative_norm_mismatch']<=0.25
+              sep=cross['principal_angle_deg']>=10.0
+              out.update({'radial_central_convergence':rg,'cT_central_convergence':tg,'fine_cross_direction_geometry':cross,
+                          'radial_coarse_meta':rcm,'radial_fine_meta':rfm,'cT_coarse_meta':tcm,'cT_fine_meta':tfm,
+                          'radial_derivative_converged':rp,'cT_derivative_converged':tp,'cross_direction_separated':sep})
+              if not (rp and tp): out['classification']='M31_FINE_CENTRAL_LOCAL_DERIVATIVE_NOT_CONVERGED'
+              elif not sep: out['classification']='M31_FINE_CENTRAL_LOCAL_2D_RESPONSE_NEAR_COLLINEAR'
+              else: out['classification']='M31_FINE_CENTRAL_LOCAL_2D_RESPONSE_RANK_EVIDENCE'
+          pathlib.Path('M31_FINE_CENTRAL_LOCALIZATION.json').write_text(json.dumps(out,indent=2)+'\n')
+          with open('M31_FINE_CENTRAL_LOCALIZATION.md','w') as f:
+              f.write('# M31 finer central localization\n\n')
+              f.write(f"Classification: `{out['classification']}`  \n")
+              if out.get('radial_central_convergence'):
+                  f.write(f"Radial coarse/fine: angle={out['radial_central_convergence']['principal_angle_deg']:.6g} deg, mismatch={out['radial_central_convergence']['relative_norm_mismatch']:.6g}  \n")
+                  f.write(f"c_T coarse/fine: angle={out['cT_central_convergence']['principal_angle_deg']:.6g} deg, mismatch={out['cT_central_convergence']['relative_norm_mismatch']:.6g}  \n")
+                  f.write(f"Fine radial-vs-c_T angle: {out['fine_cross_direction_geometry']['principal_angle_deg']:.6g} deg  \n")
+              f.write('\nThe earlier larger-step nonconvergence remains part of the scientific record. No K2 promotion is authorized.\n')
+          print(pathlib.Path('M31_FINE_CENTRAL_LOCALIZATION.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m31-fine-central-localization
+          path: |
+            M31_FINE_CENTRAL_LOCALIZATION.json
+            M31_FINE_CENTRAL_LOCALIZATION.md
+            provider_commit.txt
+            m31_fine/
