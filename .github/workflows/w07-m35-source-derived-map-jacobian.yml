@@ -1,0 +1,66 @@
+name: W07 M35 source-derived map Jacobian
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m35-source-derived-map-jacobian.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  jacobian:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install numpy
+        run: sudo apt-get update -qq && sudo apt-get install -y python3-numpy >/dev/null
+      - name: Fetch immutable M35 source audit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p input out
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10301010746/zip" > /tmp/src.zip
+          unzip -q /tmp/src.zip -d input
+          sha256sum /tmp/src.zip > out/source_audit_zip_sha256.txt
+      - name: Compute frozen analytic source-map Jacobian
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib,numpy as np
+          pin='d9a20bd0c7b7a6c8957410fd245ed06b30b915c1'
+          hits=list(pathlib.Path('input').rglob('M35_PINNED_SOURCE_QUOTIENT_GEOMETRY.json'))
+          out={'schema':'m35_source_derived_map_jacobian_v0.1','model_id':'M35','family_id':'F35','protocol':'protocol/W07_M35_SOURCE_DERIVED_MAP_JACOBIAN_v0.1.md','provider_commit':pin,'base':{'alpha':.005,'beta':.025,'lambda':-.01,'Y_dm':0.0},'K2_promoted':False,'canonical_K2_remains':'PARTIAL','physical_falsification':False,'full_Einstein_Aether_SVT_claim':False}
+          try:
+              if len(hits)!=1: raise RuntimeError(f'source audit hits={len(hits)}')
+              src=json.loads(hits[0].read_text())
+              if src.get('provider_commit')!=pin or src.get('classification')!='M35_SOURCE_FOUR_INPUTS_DERIVED_COMBINATIONS_QUOTIENT_NOT_CLOSED': raise RuntimeError('immutable source audit mismatch')
+              a=.005;b=.025;l=-.01;y=0.;D=1+b/2+1.5*l;G=1/D;C=(b+l)/a;B=(b+3*l)/a;H=a**-.5
+              # rows G,C,B,H,K; cols alpha,beta,lambda,Y. K=Y*D/[a(1-Y)].
+              J=np.array([
+                [0.,-.5*G*G,-1.5*G*G,0.],
+                [-C/a,1/a,1/a,0.],
+                [-B/a,1/a,3/a,0.],
+                [-0.5*a**-1.5,0.,0.,0.],
+                [0.,0.,0.,D/a],
+              ],float)
+              sv=np.linalg.svd(J,compute_uv=False);tol=max(J.shape)*np.finfo(float).eps*sv[0];rank=int(np.sum(sv>tol))
+              out['derived_map_values']={'G':G,'c_sq_chi':C,'B':B,'H_over_H0':H,'K_proportional':0.0}
+              out['jacobian_rows']=['G','c_sq_chi','B','H_over_H0','K_proportional'];out['jacobian_columns']=['alpha','beta','lambda','Y_dm'];out['jacobian']=J.tolist();out['singular_values']=sv.tolist();out['rank_tolerance']=float(tol);out['local_rank']=rank
+              out['classification']='M35_SOURCE_DERIVED_MAP_LOCAL_RANK4_OBSERVABLE_QUOTIENT_STILL_OPEN' if rank==4 else 'M35_SOURCE_DERIVED_MAP_RANK_DEFICIENT_AT_FROZEN_BASE'
+              out['interpretation']='Source-derived local rank is not observable response rank and does not close field-redefinition/covariant SVT quotient geometry.'
+          except Exception as e:
+              out['classification']='M35_SOURCE_DERIVED_MAP_JACOBIAN_INTEGRITY_BLOCKED';out['error']=repr(e)
+          pathlib.Path('out/M35_SOURCE_DERIVED_MAP_JACOBIAN.json').write_text(json.dumps(out,indent=2)+'\n')
+          pathlib.Path('out/M35_SOURCE_DERIVED_MAP_JACOBIAN.md').write_text('# M35 source-derived map Jacobian\n\nClassification: `'+out['classification']+'`  \nLocal rank: `'+str(out.get('local_rank'))+'`  \n\nCanonical K2 remains PARTIAL.\n')
+          print(pathlib.Path('out/M35_SOURCE_DERIVED_MAP_JACOBIAN.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m35-source-derived-map-jacobian
+          path: out/
