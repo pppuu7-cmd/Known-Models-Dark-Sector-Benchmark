@@ -1,0 +1,43 @@
+name: W07 M31 immutable block localization recovery
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m31-immutable-block-localization-recovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analysis dependency only
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-numpy >/dev/null
+      - name: Fetch exact immutable M31 artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p inputs/parent inputs/fine out
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10298453048/zip" > /tmp/parent.zip
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10298900445/zip" > /tmp/fine.zip
+          unzip -q /tmp/parent.zip -d inputs/parent
+          unzip -q /tmp/fine.zip -d inputs/fine
+          sha256sum /tmp/parent.zip /tmp/fine.zip > out/artifact_zip_sha256.txt
+      - name: Run unchanged frozen block-localization analysis
+        run: |
+          set -euo pipefail
+          python3 verification/w07/m31_immutable_block_localization.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m31-immutable-block-localization-recovery
+          path: out/
