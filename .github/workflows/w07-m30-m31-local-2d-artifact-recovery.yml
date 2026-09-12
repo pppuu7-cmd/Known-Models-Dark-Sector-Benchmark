@@ -36,7 +36,7 @@ jobs:
           gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${{ matrix.artifact }}/zip" > input.zip
           unzip -q input.zip -d input
           sha256sum input.zip > input_zip_sha256.txt
-      - name: Apply unchanged preregistered response-Jacobian rule
+      - name: Apply unchanged preregistered response-Jacobian rule on one common support
         shell: bash
         run: |
           set -euo pipefail
@@ -47,12 +47,13 @@ jobs:
           model=sys.argv[1]; artifact=int(sys.argv[2]); root=pathlib.Path('input'); b=root/f'jac_{model}'
           expected='0009f51d89e6465c79e570b496c66fc90058fa77'
           pin=(root/'provider_commit.txt').read_text().strip()
-          tags=['base','rcoarse','rfine','tcoarse','tfine']; exits={t:int((b/f'{t}.exit').read_text()) for t in tags}
+          tags=['base','rcoarse','rfine','tcoarse','tfine']
+          exits={t:int((b/f'{t}.exit').read_text()) for t in tags}
           out={'schema':'m30_m31_local_2d_response_jacobian_v0.1','model_id':model,'family_id':'F30' if model=='M30' else 'F31',
                'protocol':'protocol/W07_M30_M31_LOCAL_2D_RESPONSE_JACOBIAN_PREREGISTRATION_v0.1.md','source_run':34693814820,'source_artifact':artifact,
                'provider_commit':pin,'expected_commit':expected,'base':{'q':0.1,'c_T':0.0,'c_H':0.0 if model=='M30' else 0.03},
                'steps':{'radial_coarse_dq':0.002,'radial_fine_dq':0.001,'cT_coarse':0.002,'cT_fine':0.001},'exits':exits,
-               'analysis_recovery':'immutable parent spectra; corrected hi_class output discovery *_00_cl.dat/*_00_pk.dat only',
+               'analysis_recovery':'immutable parent spectra; corrected hi_class *_00 output discovery and one global five-arm finite common support; no model rerun or threshold change',
                'K2_promoted':False,'physical_falsification':False,'complete_covariant_family_claim':False}
           if pin!=expected or exits['base']!=0:
               out['classification']=f'{model}_LOCAL_2D_RESPONSE_CONTROL_BLOCKED'
@@ -67,32 +68,52 @@ jobs:
                       try: rows.append([float(x) for x in s.split()])
                       except ValueError: pass
                   a=np.asarray(rows,float)
-                  if a.ndim!=2 or len(a)<5 or a.shape[1]<2 or not np.isfinite(a).all(): raise RuntimeError(f'bad table {path}')
+                  if a.ndim!=2 or len(a)<5 or a.shape[1]<2: raise RuntimeError(f'bad table shape {path}')
                   return a
-              bcl=load(b/'base_00_cl.dat'); bpk=load(b/'base_00_pk.dat')
+              cls={t:load(b/f'{t}_00_cl.dat') for t in tags}
+              pks={t:load(b/f'{t}_00_pk.dat') for t in tags}
+              # Global CMB support across base and every frozen perturbation arm.
+              maps={t:{int(r[0]):np.asarray(r[1:],float) for r in cls[t] if np.isfinite(r[0])} for t in tags}
+              common_ell=sorted(set.intersection(*(set(maps[t]) for t in tags)))
+              cmb={t:[] for t in tags}
+              for ell in common_ell:
+                  n=min(len(maps[t][ell]) for t in tags)
+                  for j in range(n):
+                      vals=[maps[t][ell][j] for t in tags]
+                      if all(np.isfinite(v) for v in vals):
+                          for t,v in zip(tags,vals): cmb[t].append(v)
+              cmb={t:np.asarray(cmb[t],float) for t in tags}
+              if len(cmb['base'])<5 or any(len(cmb[t])!=len(cmb['base']) for t in tags): raise RuntimeError('global CMB support invalid')
+              cnorm=float(np.linalg.norm(cmb['base']))
+              if cnorm==0: raise RuntimeError('zero CMB base norm')
+              # Global P(k) overlap; all arms interpolated onto the same retained base grid.
+              lo=max(float(np.nanmin(pks[t][:,0])) for t in tags); hi=min(float(np.nanmax(pks[t][:,0])) for t in tags)
+              basepk=pks['base']; keep=(basepk[:,0]>=lo)&(basepk[:,0]<=hi)&np.isfinite(basepk[:,0])&np.isfinite(basepk[:,1])
+              x=basepk[keep,0]; basep=basepk[keep,1]
+              interp={'base':basep}
+              for t in tags[1:]: interp[t]=np.interp(x,pks[t][:,0],pks[t][:,1])
+              pmask=np.ones(len(x),dtype=bool)
+              for t in tags: pmask &= np.isfinite(interp[t])
+              x=x[pmask]; interp={t:np.asarray(interp[t][pmask],float) for t in tags}
+              if len(x)<5 or any(len(interp[t])!=len(x) for t in tags): raise RuntimeError('global P(k) support invalid')
+              pnorm=float(np.linalg.norm(interp['base']))
+              if pnorm==0: raise RuntimeError('zero P(k) base norm')
+              out['global_support']={'cmb_values':int(len(cmb['base'])),'pk_values':int(len(x)),'ell_count':int(len(common_ell)),'pk_k_min':float(x.min()),'pk_k_max':float(x.max())}
               def response(tag,step):
-                  acl=load(b/f'{tag}_00_cl.dat'); apk=load(b/f'{tag}_00_pk.dat')
-                  bi={int(r[0]):r[1:] for r in bcl}; ai={int(r[0]):r[1:] for r in acl}; common=sorted(set(bi).intersection(ai)); bc=[]; ac=[]
-                  for ell in common:
-                      n=min(len(bi[ell]),len(ai[ell])); bc.extend(bi[ell][:n]); ac.extend(ai[ell][:n])
-                  bc=np.asarray(bc); ac=np.asarray(ac); mask=np.isfinite(bc)&np.isfinite(ac); bc=bc[mask]; ac=ac[mask]
-                  cnorm=np.linalg.norm(bc)
-                  if cnorm==0: raise RuntimeError('zero CMB base norm')
-                  cvec=(ac-bc)/(step*cnorm)
-                  lo=max(bpk[:,0].min(),apk[:,0].min()); hi=min(bpk[:,0].max(),apk[:,0].max()); br=bpk[(bpk[:,0]>=lo)&(bpk[:,0]<=hi)]
-                  x=br[:,0]; bp=br[:,1]; ap=np.interp(x,apk[:,0],apk[:,1]); pmask=np.isfinite(bp)&np.isfinite(ap); bp=bp[pmask]; ap=ap[pmask]
-                  pnorm=np.linalg.norm(bp)
-                  if pnorm==0: raise RuntimeError('zero P(k) base norm')
-                  pvec=(ap-bp)/(step*pnorm)
+                  cvec=(cmb[tag]-cmb['base'])/(step*cnorm)
+                  pvec=(interp[tag]-interp['base'])/(step*pnorm)
                   return np.concatenate([cvec,pvec]), {'cmb_values':int(len(cvec)),'pk_values':int(len(pvec)),'cmb_block_norm':float(np.linalg.norm(cvec)),'pk_block_norm':float(np.linalg.norm(pvec))}
               rc,rcm=response('rcoarse',0.002); rf,rfm=response('rfine',0.001); tc,tcm=response('tcoarse',0.002); tf,tfm=response('tfine',0.001)
               def geom(a,b):
+                  if a.shape!=b.shape: raise RuntimeError(f'response shapes differ: {a.shape} vs {b.shape}')
                   na=np.linalg.norm(a); nb=np.linalg.norm(b)
                   if na==0 or nb==0: raise RuntimeError('zero response derivative')
                   c=float(np.dot(a,b)/(na*nb)); c=max(-1.0,min(1.0,c)); ang=float(math.degrees(math.acos(abs(c))))
                   return {'cosine':c,'absolute_cosine':abs(c),'principal_angle_deg':ang,'relative_norm_mismatch':float(abs(na-nb)/max(na,nb)),'norm_a':float(na),'norm_b':float(nb)}
               rconv=geom(rc,rf); tconv=geom(tc,tf); cross=geom(rf,tf); cross['sin_principal_angle']=float(math.sin(math.radians(cross['principal_angle_deg'])))
-              rpass=rconv['principal_angle_deg']<=5.0 and rconv['relative_norm_mismatch']<=0.25; tpass=tconv['principal_angle_deg']<=5.0 and tconv['relative_norm_mismatch']<=0.25; separated=cross['principal_angle_deg']>=10.0
+              rpass=rconv['principal_angle_deg']<=5.0 and rconv['relative_norm_mismatch']<=0.25
+              tpass=tconv['principal_angle_deg']<=5.0 and tconv['relative_norm_mismatch']<=0.25
+              separated=cross['principal_angle_deg']>=10.0
               out.update({'radial_derivative_convergence':rconv,'cT_derivative_convergence':tconv,'fine_cross_direction_geometry':cross,
                           'radial_coarse_meta':rcm,'radial_fine_meta':rfm,'cT_coarse_meta':tcm,'cT_fine_meta':tfm,
                           'radial_derivative_converged':rpass,'cT_derivative_converged':tpass,'cross_direction_separated':separated})
@@ -103,9 +124,9 @@ jobs:
           with open(f'{model}_LOCAL_2D_RESPONSE_JACOBIAN.md','w') as f:
               f.write(f'# {model} immutable local 2D response-Jacobian recovery\n\nClassification: `{out["classification"]}`  \n')
               if 'fine_cross_direction_geometry' in out:
-                  f.write(f"Radial convergence angle: {out['radial_derivative_convergence']['principal_angle_deg']:.6g} deg  \n")
-                  f.write(f"c_T convergence angle: {out['cT_derivative_convergence']['principal_angle_deg']:.6g} deg  \n")
-                  f.write(f"Fine cross-direction angle: {out['fine_cross_direction_geometry']['principal_angle_deg']:.6g} deg  \n")
+                  f.write(f"Radial coarse/fine: angle={out['radial_derivative_convergence']['principal_angle_deg']:.6g} deg, norm mismatch={out['radial_derivative_convergence']['relative_norm_mismatch']:.6g}  \n")
+                  f.write(f"c_T coarse/fine: angle={out['cT_derivative_convergence']['principal_angle_deg']:.6g} deg, norm mismatch={out['cT_derivative_convergence']['relative_norm_mismatch']:.6g}  \n")
+                  f.write(f"Fine radial-vs-c_T angle: {out['fine_cross_direction_geometry']['principal_angle_deg']:.6g} deg  \n")
               f.write('\nNo K2 promotion or physical-family claim is assigned.\n')
           print(pathlib.Path(f'{model}_LOCAL_2D_RESPONSE_JACOBIAN.json').read_text())
           PY
