@@ -1,0 +1,77 @@
+name: W07 M33 cubic tracker source geometry audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m33-cubic-tracker-source-geometry-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      HICLASS_PIN: '0009f51d89e6465c79e570b496c66fc90058fa77'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch exact pinned provider source
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/hiclass-code/hi_class_public.git provider
+          git -C provider checkout -q --detach "$HICLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$HICLASS_PIN"
+          git -C provider rev-parse HEAD > provider_commit.txt
+      - name: Apply frozen source-geometry checks
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib,re
+          root=pathlib.Path('provider')
+          ini=(root/'gravity_models/galileon_3.ini').read_text(errors='replace')
+          src=(root/'gravity_smg/gravity_models_smg.c').read_text(errors='replace')
+          inp=(root/'gravity_smg/input_smg.c').read_text(errors='replace')
+          active=[]
+          for line in ini.splitlines():
+              s=line.strip()
+              if not s or s.startswith('#'): continue
+              if '=' in s: active.append(s)
+          active_parameters_smg=[s for s in active if re.match(r'^parameters_smg\s*=',s)]
+          checks={
+            'documented_model_and_cubic': bool(re.search(r'(?m)^\s*gravity_model\s*=\s*galileon\s*$',ini)) and bool(re.search(r'(?m)^\s*gravity_submodel\s*=\s*cubic\s*$',ini)),
+            'documented_all_fixed_by_omega_tracker': 'all model parameters are fixed by Omega_smg and the tracker condition' in ini,
+            'documented_no_extra_parameters': ('parameters_smg -> no extra parameters in cubic model' in ini) and len(active_parameters_smg)==0,
+            'rogue_mode_separate': ('rogue mode: user sets all' in src) and ('Omega_smg_debug' in src) and ('NO attractor_ic_smg' in src),
+            'cubic_attractor_branch_present': ('cubic Galileon in the attractor' in src) and bool(re.search(r'if\s*\(strcmp\(string2,"cubic"\)\s*==\s*0\)',src)),
+            'default_attractor_true': bool(re.search(r'pba->attractor_ic_smg\s*=\s*_TRUE_',inp)),
+          }
+          # Extract short immutable source snippets only for machine audit/provenance.
+          def context(text,needle,n=240):
+              i=text.find(needle)
+              return text[max(0,i-n):i+len(needle)+n] if i>=0 else ''
+          passed=all(checks.values())
+          out={'schema':'m33_cubic_tracker_source_geometry_audit_v0.1','model_id':'M33','family_id':'F33',
+               'protocol':'protocol/W07_M33_CUBIC_TRACKER_SOURCE_GEOMETRY_AUDIT_v0.1.md',
+               'provider_commit':pathlib.Path('provider_commit.txt').read_text().strip(),'expected_commit':'0009f51d89e6465c79e570b496c66fc90058fa77',
+               'checks':checks,'all_checks_pass':passed,'active_parameters_smg_lines':active_parameters_smg,
+               'snippets':{
+                 'ini_tracker':context(ini,'all model parameters are fixed by Omega_smg and the tracker condition'),
+                 'source_rogue':context(src,'rogue mode: user sets all'),
+                 'source_cubic':context(src,'cubic Galileon in the attractor'),
+                 'default_attractor':context(inp,'pba->attractor_ic_smg = _TRUE_')},
+               'classification':'M33_DOCUMENTED_CUBIC_TRACKER_SOURCE_MANIFOLD_1D_WITH_DEBUG_ROGUE_ROUTE_EXCLUDED_FROM_PRODUCTION_SCOPE' if passed else 'M33_CUBIC_TRACKER_SOURCE_GEOMETRY_NOT_CLOSED',
+               'K2_promoted':False,'canonical_K2':'OPEN','physical_falsification':False,'all_Galileon_variants_claim':False}
+          pathlib.Path('M33_CUBIC_TRACKER_SOURCE_GEOMETRY_AUDIT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          pathlib.Path('M33_CUBIC_TRACKER_SOURCE_GEOMETRY_AUDIT.md').write_text('# M33 cubic-tracker source geometry audit\n\nClassification: `'+out['classification']+'`  \n\nAll checks pass: '+str(passed)+'  \n\nK2 remains OPEN; no family-wide Galileon claim.\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m33-cubic-tracker-source-geometry-audit
+          path: |
+            M33_CUBIC_TRACKER_SOURCE_GEOMETRY_AUDIT.json
+            M33_CUBIC_TRACKER_SOURCE_GEOMETRY_AUDIT.md
+            provider_commit.txt
