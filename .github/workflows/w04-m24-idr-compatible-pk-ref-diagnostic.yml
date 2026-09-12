@@ -1,0 +1,106 @@
+name: W04 M24 IDM-DR compatible pk_ref diagnostic
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m24-idr-compatible-pk-ref-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  OMP_NUM_THREADS: '1'
+
+jobs:
+  compatible-profile:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependency and build exact CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-numpy >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+          make -C class -j2 > build.log 2>&1
+      - name: Build source-justified compatible precision profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp class/pk_ref.pre class/pk_ref_idr_compat.pre
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class/pk_ref_idr_compat.pre'); s=p.read_text()
+          old='ur_fluid_trigger_tau_over_tau_k = 50.'
+          new='ur_fluid_trigger_tau_over_tau_k = 30.'
+          if s.count(old)!=1: raise SystemExit(f'expected one provider pk_ref UR trigger, got {s.count(old)}')
+          p.write_text(s.replace(old,new))
+          PY
+          diff -u class/pk_ref.pre class/pk_ref_idr_compat.pre > precision_profile.diff || true
+          test "$(grep -c '^[-+]ur_fluid_trigger_tau_over_tau_k' precision_profile.diff)" -eq 2
+      - name: Prepare unchanged ETHOS-1 cases
+        run: python3 verification/m24/ethos1_k1_reference.py prepare m24_cases
+      - name: Execute frozen four cases
+        shell: bash
+        run: |
+          set +e
+          mkdir -p class/output evidence
+          for tag in ref zero a0 a4; do
+            (cd class && ./class "../m24_cases/${tag}.ini" pk_ref_idr_compat.pre > "../compat_${tag}.log" 2>&1)
+            rc=$?
+            echo "$rc" > "evidence/${tag}.exit"
+          done
+          cp class/output/ref_pk.dat evidence/ref_pk.dat 2>/dev/null || true
+          cp class/output/zero_pk.dat evidence/zero_pk.dat 2>/dev/null || true
+          cp class/output/a0_pk.dat evidence/top_pk.dat 2>/dev/null || true
+          cp class/output/a4_pk.dat evidence/tail_pk.dat 2>/dev/null || true
+          exit 0
+      - name: Analyze frozen compatible profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,math,pathlib,numpy as np
+          b=pathlib.Path('evidence')
+          out={'schema':'m24_idr_compatible_pk_ref_profile_v0.1','model_id':'M24','provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','profile':'pk_ref_idr_compat_ur30','K1_promoted':False,'physical_falsification':False}
+          try:
+              exits={t:int((b/f'{t}.exit').read_text()) for t in ['ref','zero','a0','a4']}; out['exits']=exits
+              if any(v!=0 for v in exits.values()): raise RuntimeError(f'provider exits {exits}')
+              def load(p):
+                  rows=[]
+                  for line in pathlib.Path(p).read_text(errors='replace').splitlines():
+                      s=line.strip()
+                      if not s or s.startswith('#'): continue
+                      try:r=[float(x.replace('D','E').replace('d','e')) for x in s.split()]
+                      except ValueError:continue
+                      if len(r)>=2 and r[0]>0 and all(math.isfinite(x) for x in r[:2]): rows.append(r[:2])
+                  a=np.asarray(rows,float)
+                  if a.ndim!=2 or len(a)<5: raise RuntimeError(f'bad table {p}')
+                  return a
+              def nl2(a,r):
+                  lo=max(a[:,0].min(),r[:,0].min()); hi=min(a[:,0].max(),r[:,0].max()); m=(a[:,0]>=lo)&(a[:,0]<=hi); x=a[m,0]; y=a[m,1]; rr=np.interp(np.log(x),np.log(r[:,0]),r[:,1]); return float(np.linalg.norm(y-rr)/max(np.linalg.norm(rr),1e-300))
+              ref=load(b/'ref_pk.dat'); zero=load(b/'zero_pk.dat'); top=load(b/'top_pk.dat'); tail=load(b/'tail_pk.dat')
+              zid=nl2(zero,ref); rt=nl2(top,zero); rl=nl2(tail,zero); ratio=rl/rt if rt>0 else float('inf')
+              ok=zid<=1e-12 and rt>1e-6
+              out.update({'zero_identity_R2':zid,'zero_identity_pass':bool(zid<=1e-12),'top_R2':rt,'tail_R2':rl,'tail_over_top':ratio,'top_response_gt_1e6':bool(rt>1e-6),'classification':'M24_IDR_COMPATIBLE_PK_REF_PROFILE_EXECUTED' if ok else 'M24_IDR_COMPATIBLE_PK_REF_PROFILE_BLOCKED'})
+          except Exception as e:
+              out['classification']='M24_IDR_COMPATIBLE_PK_REF_PROFILE_BLOCKED'; out['error']=repr(e)
+          pathlib.Path('M24_IDR_COMPATIBLE_PK_REF_PROFILE.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m24-idr-compatible-pk-ref-profile
+          path: |
+            M24_IDR_COMPATIBLE_PK_REF_PROFILE.json
+            precision_profile.diff
+            evidence/
+            compat_*.log
+            build.log
+          retention-days: 30
