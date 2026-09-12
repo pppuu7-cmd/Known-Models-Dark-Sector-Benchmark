@@ -1,0 +1,119 @@
+name: W05 M32 DGP K0g umuscl micro-checkpoint
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w05-m32-k0g-umuscl-microcheckpoint.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  umuscl:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch immutable K0f stage1 checkpoint
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p parent
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10283774354/zip" > parent.zip
+          unzip -q parent.zip -d parent
+          test -s parent/checkpoint.tar
+          sha256sum parent.zip parent/checkpoint.tar > parent_checkpoint_sha256.txt
+          if tar -tf parent/checkpoint.tar | grep -Eq '(^|/)umuscl\.o$'; then
+            echo 'unexpected parent umuscl.o' >&2; exit 2
+          fi
+      - name: Install frozen Intel toolchain
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gpg-agent wget ca-certificates
+          k=$(mktemp)
+          wget -qO "$k" https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+          gpg --dearmor <"$k" | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg >/dev/null
+          rm -f "$k"
+          echo 'deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main' | sudo tee /etc/apt/sources.list.d/oneAPI.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq intel-oneapi-compiler-fortran intel-oneapi-mpi-devel > intel_install_stdout.log 2> intel_install_stderr.log
+      - name: Restore exact provider and compile only umuscl.o
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +u
+          source /opt/intel/oneapi/setvars.sh --force >/dev/null 2>&1
+          set -u
+          ifx --version > ifx_version.txt 2>&1
+          mpiifx -v > mpiifx_version.txt 2>&1 || true
+          PIN=849ddb716041316d0e223ba22badc0d630b72435
+          git clone -q https://github.com/nat-woodcock/EFT-Ramses.git provider
+          git -C provider checkout -q --detach "$PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$PIN"
+          git -C provider rev-parse HEAD > provider_head.txt
+          cd provider/bin
+          rm -f -- *.o *.mod ramses3d
+          tar -xf "$GITHUB_WORKSPACE/parent/checkpoint.tar" -C .
+          test ! -e umuscl.o
+          find . -maxdepth 1 -type f \( -name '*.o' -o -name '*.mod' \) -print0 | sort -z | xargs -0 sha256sum > "$GITHUB_WORKSPACE/hashes_before_touch.txt"
+          find . -maxdepth 1 -type f \( -name '*.o' -o -name '*.mod' \) -exec touch {} +
+          find . -maxdepth 1 -type f \( -name '*.o' -o -name '*.mod' \) -print0 | sort -z | xargs -0 sha256sum > "$GITHUB_WORKSPACE/hashes_after_touch.txt"
+          cmp "$GITHUB_WORKSPACE/hashes_before_touch.txt" "$GITHUB_WORKSPACE/hashes_after_touch.txt"
+          make -n umuscl.o F90='mpiifx' FFLAGS='-O3 -g -mcmodel=large -traceback -fpe0 -ftrapuv -cpp $(DEFINES)' > "$GITHUB_WORKSPACE/make_dry_run.txt"
+          set +e
+          /usr/bin/time -v make umuscl.o F90='mpiifx' FFLAGS='-O3 -g -mcmodel=large -traceback -fpe0 -ftrapuv -cpp $(DEFINES)' > "$GITHUB_WORKSPACE/build_stdout.log" 2> "$GITHUB_WORKSPACE/build_stderr.log"
+          rc=$?
+          set -e
+          echo "$rc" > "$GITHUB_WORKSPACE/build_exit_code.txt"
+          if test -s umuscl.o; then echo true > "$GITHUB_WORKSPACE/umuscl_object_exists.txt"; else echo false > "$GITHUB_WORKSPACE/umuscl_object_exists.txt"; fi
+          tar -cf "$GITHUB_WORKSPACE/checkpoint_after_umuscl.tar" -- *.o *.mod
+      - name: Classify infrastructure probe
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json,pathlib
+          def text(p,default=''):
+              q=pathlib.Path(p); return q.read_text(errors='replace').strip() if q.exists() else default
+          pin=text('provider_head.txt'); rc=int(text('build_exit_code.txt','999')); obj=text('umuscl_object_exists.txt')=='true'
+          hb=text('hashes_before_touch.txt'); ha=text('hashes_after_touch.txt'); integ=bool(hb) and hb==ha
+          exact=pin=='849ddb716041316d0e223ba22badc0d630b72435'
+          if not exact: c='M32_K0G_BLOCKED_PROVENANCE'
+          elif not integ: c='M32_K0G_CHECKPOINT_INTEGRITY_FAILURE'
+          elif rc==0 and obj: c='M32_K0G_UMUSCL_MICROTARGET_RECOVERED'
+          else: c='M32_K0G_UMUSCL_MICROTARGET_COMPILER_BLOCKED'
+          out={'schema':'m32_dgp_k0g_umuscl_microcheckpoint_v0.1','model_id':'M32','family_id':'F32',
+               'protocol':'protocol/W05_M32_K0G_UMUSCL_MICROCHECKPOINT_PREREGISTRATION_v0.1.md',
+               'provider':'nat-woodcock/EFT-Ramses','provider_commit':pin,'expected_commit':'849ddb716041316d0e223ba22badc0d630b72435',
+               'parent_run':34647841987,'parent_artifact':10283774354,'target':'umuscl.o','build_exit_code':rc,
+               'object_exists':obj,'checkpoint_bytes_unchanged_by_mtime_normalization':integ,'classification':c,
+               'K0_promoted':False,'physical_falsification':False,
+               'scope':'single provider-native Intel micro-target infrastructure recovery; no DGP runtime or physics conclusion'}
+          pathlib.Path('M32_K0G_UMUSCL_MICROCHECKPOINT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          pathlib.Path('M32_K0G_UMUSCL_MICROCHECKPOINT.md').write_text('# M32 K0g umuscl micro-checkpoint\n\nClassification: `'+c+'`  \n\nNo K0 promotion or physical claim.\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m32-k0g-umuscl-microcheckpoint
+          path: |
+            M32_K0G_UMUSCL_MICROCHECKPOINT.json
+            M32_K0G_UMUSCL_MICROCHECKPOINT.md
+            checkpoint_after_umuscl.tar
+            parent_checkpoint_sha256.txt
+            hashes_before_touch.txt
+            hashes_after_touch.txt
+            provider_head.txt
+            ifx_version.txt
+            mpiifx_version.txt
+            make_dry_run.txt
+            build_exit_code.txt
+            umuscl_object_exists.txt
+            build_stdout.log
+            build_stderr.log
+            intel_install_stdout.log
+            intel_install_stderr.log
