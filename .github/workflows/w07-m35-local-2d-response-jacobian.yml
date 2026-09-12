@@ -1,0 +1,165 @@
+name: W07 M35 local 2D response Jacobian
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m35-local-2d-response-jacobian.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PROVIDER_REPO: 'https://github.com/Michalychforever/CLASS_LVDM.git'
+  PROVIDER_COMMIT: 'd9a20bd0c7b7a6c8957410fd245ed06b30b915c1'
+
+jobs:
+  jacobian:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install and build exact provider
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential gfortran python3-numpy >/dev/null
+          git clone -q --branch LVDM "$PROVIDER_REPO" provider
+          git -C provider checkout -q "$PROVIDER_COMMIT"
+          test "$(git -C provider rev-parse HEAD)" = "$PROVIDER_COMMIT"
+          git -C provider rev-parse HEAD > provider_commit.txt
+          make -C provider -j2 class
+      - name: Freeze base and two-coordinate finite differences
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd provider
+          mkdir -p output ../m35jacout
+          python3 - <<'PY'
+          import pathlib,re
+          src=pathlib.Path('Misha.ini').read_text()
+          specs={
+            'base':(0.100,0.000),
+            'gcoarse':(0.102,0.000),
+            'gfine':(0.101,0.000),
+            'ycoarse':(0.100,0.002),
+            'yfine':(0.100,0.001),
+          }
+          for tag,(q,y) in specs.items():
+              t=src
+              vals={'alpha':0.05*q,'beta':0.25*q,'lambda':-0.10*q,'Y_dm':y}
+              for key,val in vals.items():
+                  t=re.sub(rf'(?m)^\s*{re.escape(key)}\s*=.*$',f'{key} = {val:.16g}',t)
+              t=re.sub(r'(?m)^\s*root\s*=.*$',f'root = output/{tag}_',t)
+              pathlib.Path(f'{tag}.ini').write_text(t)
+          PY
+          grep -H -E '^(alpha|beta|lambda|Y_dm|root)[[:space:]]*=' base.ini gcoarse.ini gfine.ini ycoarse.ini yfine.ini | tee ../frozen_jacobian_parameters.txt
+      - name: Execute frozen arms
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd provider
+          for tag in base gcoarse gfine ycoarse yfine; do
+            set +e
+            ./class ${tag}.ini > ../${tag}.stdout 2> ../${tag}.stderr
+            rc=$?
+            set -e
+            echo "$rc" > ../${tag}.exit
+            if [ "$rc" -eq 0 ]; then
+              cp output/${tag}_cl.dat ../m35jacout/${tag}_cl.dat
+              cp output/${tag}_pk.dat ../m35jacout/${tag}_pk.dat
+            fi
+          done
+      - name: Compute preregistered local response geometry
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,math,pathlib
+          import numpy as np
+          pin=pathlib.Path('provider_commit.txt').read_text().strip()
+          expected='d9a20bd0c7b7a6c8957410fd245ed06b30b915c1'
+          tags=['base','gcoarse','gfine','ycoarse','yfine']
+          exits={t:int(pathlib.Path(f'{t}.exit').read_text()) for t in tags}
+          out={
+            'schema':'m35_local_2d_response_jacobian_v0.1','model_id':'M35','family_id':'F35',
+            'protocol':'protocol/W07_M35_LOCAL_2D_RESPONSE_JACOBIAN_PREREGISTRATION_v0.1.md',
+            'provider_commit':pin,'expected_commit':expected,'base':{'q':0.1,'Y_dm':0.0},
+            'steps':{'gravity_coarse_dq':0.002,'gravity_fine_dq':0.001,'Y_coarse':0.002,'Y_fine':0.001},
+            'exits':exits,'K2_promoted':False,'physical_falsification':False,'full_Einstein_Aether_SVT_claim':False
+          }
+          if pin!=expected or exits['base']!=0:
+              out['classification']='M35_LOCAL_2D_RESPONSE_CONTROL_BLOCKED'
+          elif any(exits[t]!=0 for t in tags[1:]):
+              out['classification']='M35_LOCAL_2D_RESPONSE_PROVIDER_BLOCKED'
+              out['failed_arms']=[t for t in tags[1:] if exits[t]!=0]
+          else:
+              def load(path):
+                  rows=[]
+                  for line in pathlib.Path(path).read_text(errors='replace').splitlines():
+                      s=line.strip()
+                      if not s or s.startswith('#'): continue
+                      try: rows.append([float(x) for x in s.split()])
+                      except ValueError: pass
+                  a=np.asarray(rows,float)
+                  if a.ndim!=2 or len(a)<5 or a.shape[1]<2 or not np.isfinite(a).all(): raise RuntimeError(f'bad table {path}')
+                  return a
+              bcl=load('m35jacout/base_cl.dat'); bpk=load('m35jacout/base_pk.dat')
+              def response(tag,step):
+                  acl=load(f'm35jacout/{tag}_cl.dat'); apk=load(f'm35jacout/{tag}_pk.dat')
+                  bi={int(r[0]):r[1:] for r in bcl}; ai={int(r[0]):r[1:] for r in acl}
+                  common=sorted(set(bi).intersection(ai))
+                  bc=[]; ac=[]
+                  for ell in common:
+                      n=min(len(bi[ell]),len(ai[ell])); bc.extend(bi[ell][:n]); ac.extend(ai[ell][:n])
+                  bc=np.asarray(bc); ac=np.asarray(ac); mask=np.isfinite(bc)&np.isfinite(ac); bc=bc[mask]; ac=ac[mask]
+                  cnorm=np.linalg.norm(bc)
+                  if cnorm==0: raise RuntimeError('zero CMB base norm')
+                  cvec=(ac-bc)/(step*cnorm)
+                  lo=max(bpk[:,0].min(),apk[:,0].min()); hi=min(bpk[:,0].max(),apk[:,0].max())
+                  br=bpk[(bpk[:,0]>=lo)&(bpk[:,0]<=hi)]; x=br[:,0]; bp=br[:,1]; ap=np.interp(x,apk[:,0],apk[:,1])
+                  pmask=np.isfinite(bp)&np.isfinite(ap); bp=bp[pmask]; ap=ap[pmask]
+                  pnorm=np.linalg.norm(bp)
+                  if pnorm==0: raise RuntimeError('zero P(k) base norm')
+                  pvec=(ap-bp)/(step*pnorm)
+                  return np.concatenate([cvec,pvec]), {'cmb_values':int(len(cvec)),'pk_values':int(len(pvec)),'cmb_block_norm':float(np.linalg.norm(cvec)),'pk_block_norm':float(np.linalg.norm(pvec))}
+              gc,gcmeta=response('gcoarse',0.002); gf,gfmeta=response('gfine',0.001)
+              yc,ycmeta=response('ycoarse',0.002); yf,yfmeta=response('yfine',0.001)
+              def geom(a,b):
+                  na=np.linalg.norm(a); nb=np.linalg.norm(b)
+                  if na==0 or nb==0: raise RuntimeError('zero response derivative')
+                  cos=float(np.dot(a,b)/(na*nb)); cos=max(-1.0,min(1.0,cos))
+                  return {'cosine':cos,'absolute_cosine':abs(cos),'principal_angle_deg':float(math.degrees(math.acos(abs(cos)))),'relative_norm_mismatch':float(abs(na-nb)/max(na,nb)),'norm_a':float(na),'norm_b':float(nb)}
+              gconv=geom(gc,gf); yconv=geom(yc,yf); cross=geom(gf,yf)
+              cross['sin_principal_angle']=float(math.sin(math.radians(cross['principal_angle_deg'])))
+              gpass=(gconv['principal_angle_deg']<=5.0 and gconv['relative_norm_mismatch']<=0.25)
+              ypass=(yconv['principal_angle_deg']<=5.0 and yconv['relative_norm_mismatch']<=0.25)
+              separated=(cross['principal_angle_deg']>=10.0)
+              out.update({'gravity_derivative_convergence':gconv,'Y_derivative_convergence':yconv,'fine_cross_direction_geometry':cross,
+                          'gravity_coarse_meta':gcmeta,'gravity_fine_meta':gfmeta,'Y_coarse_meta':ycmeta,'Y_fine_meta':yfmeta,
+                          'gravity_derivative_converged':gpass,'Y_derivative_converged':ypass,'cross_direction_separated':separated})
+              if not (gpass and ypass): out['classification']='M35_LOCAL_2D_RESPONSE_DERIVATIVE_NOT_CONVERGED'
+              elif not separated: out['classification']='M35_LOCAL_2D_RESPONSE_NEAR_COLLINEAR'
+              else: out['classification']='M35_LOCAL_2D_RESPONSE_RANK_EVIDENCE'
+          json.dump(out,open('M35_LOCAL_2D_RESPONSE_JACOBIAN.json','w'),indent=2)
+          with open('M35_LOCAL_2D_RESPONSE_JACOBIAN.md','w') as f:
+              f.write('# M35 local 2D response-Jacobian audit\n\n')
+              f.write(f"Classification: `{out['classification']}`  \n")
+              if 'gravity_derivative_convergence' in out:
+                  f.write(f"Gravity coarse/fine angle: {out['gravity_derivative_convergence']['principal_angle_deg']:.6g} deg; norm mismatch: {out['gravity_derivative_convergence']['relative_norm_mismatch']:.6g}  \n")
+                  f.write(f"Y coarse/fine angle: {out['Y_derivative_convergence']['principal_angle_deg']:.6g} deg; norm mismatch: {out['Y_derivative_convergence']['relative_norm_mismatch']:.6g}  \n")
+                  f.write(f"Fine cross-direction angle: {out['fine_cross_direction_geometry']['principal_angle_deg']:.6g} deg; sin(angle): {out['fine_cross_direction_geometry']['sin_principal_angle']:.6g}  \n")
+              f.write('\nNo K2 promotion, physical falsification, or full Einstein–Aether SVT claim is assigned.\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m35-local-2d-response-jacobian
+          path: |
+            M35_LOCAL_2D_RESPONSE_JACOBIAN.json
+            M35_LOCAL_2D_RESPONSE_JACOBIAN.md
+            frozen_jacobian_parameters.txt
+            provider_commit.txt
+            *.exit
+            *.stdout
+            *.stderr
+            m35jacout/
