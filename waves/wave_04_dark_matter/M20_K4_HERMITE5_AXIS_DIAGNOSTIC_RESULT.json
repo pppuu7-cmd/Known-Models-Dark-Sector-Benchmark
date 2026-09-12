@@ -1,0 +1,32 @@
+{
+  "schema": "m20_k4_hermite5_axis_diagnostic_result_v0.1",
+  "model_id": "M20",
+  "family_id": "F20",
+  "date": "2026-09-12",
+  "protocol": "protocol/W04_M20_K4_NUMERICAL_AXIS_LOCALIZATION_PREREGISTRATION_v0.1.md",
+  "run_id": 34717549823,
+  "job_id": 103617375682,
+  "head_commit": "def7d6a45e5ab7de1f6cbd858ab6ad8d38d54798",
+  "artifact_id": 10305295761,
+  "artifact_sha256": "fdf9ea9a348fa53206d27f7b2525fc325dc7ce0730b7e1ef0fbb79ef3c2995e7",
+  "provider_commit": "e17d3664dac677b604fd4ff02fb2af105a6937fa",
+  "baseline": {"N_herm": 3, "dz": 0.2},
+  "diagnostic": {"N_herm": 5, "dz": 0.2},
+  "baseline_exact_zero_identity_max": 0.0,
+  "diagnostic_exact_zero_identity_max": 0.0,
+  "max_symmetric_relative_discrepancy": 0.8842068464159993,
+  "median_symmetric_relative_discrepancy": 0.37251299304632857,
+  "largest_cell": {
+    "sigma0_m": 1.0,
+    "observable": "rmax_z0",
+    "baseline": 2.179184338860776e-05,
+    "diagnostic": 5.6329601678915494e-05,
+    "symmetric_relative_discrepancy": 0.8842068464159993
+  },
+  "classification": "M20_K4_AXIS_STRONG_SENSITIVITY_DIAGNOSTIC",
+  "inference": "The scoped SIDM response is strongly sensitive to Hermite quadrature order between N_herm=3 and 5 at fixed physics and dz=0.2. N_herm=3 is therefore not numerically closure-ready for K4. A higher-order prospective convergence ladder is required before canonical K4 adjudication.",
+  "diagnostic_only": true,
+  "K4_promoted": false,
+  "physical_falsification": false,
+  "scientific_fail": false
+}
