@@ -1,0 +1,141 @@
+name: W07 M40 immutable multi-direction decomposition
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m40-immutable-multidirection-decomposition.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  decompose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analysis dependency
+        run: sudo apt-get update -qq && sudo apt-get install -y python3-numpy >/dev/null
+      - name: Fetch immutable M40 artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p inputs/re inputs/xi inputs/la inputs/src out
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10298444789/zip" > /tmp/re.zip
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10298324085/zip" > /tmp/xi.zip
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10298572066/zip" > /tmp/la.zip
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10298124024/zip" > /tmp/src.zip
+          unzip -q /tmp/re.zip -d inputs/re
+          unzip -q /tmp/xi.zip -d inputs/xi
+          unzip -q /tmp/la.zip -d inputs/la
+          unzip -q /tmp/src.zip -d inputs/src
+          sha256sum /tmp/re.zip /tmp/xi.zip /tmp/la.zip /tmp/src.zip > out/artifact_zip_sha256.txt
+      - name: Apply frozen decomposition rule
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,math,pathlib
+          import numpy as np
+          pin='16d9c4e9f85751e30efd0a53b177941713078904'
+          R=pathlib.Path('inputs/re'); X=pathlib.Path('inputs/xi'); L=pathlib.Path('inputs/la'); S=pathlib.Path('inputs/src')
+          def one(root,name):
+              hits=list(root.rglob(name))
+              if len(hits)!=1: raise RuntimeError(f'{root}/{name}: expected one, got {len(hits)}')
+              return hits[0]
+          def js(root,name): return json.loads(one(root,name).read_text())
+          def table(path):
+              rows=[]
+              for line in path.read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  try: rows.append([float(x) for x in s.split()])
+                  except ValueError: pass
+              a=np.asarray(rows,float)
+              if a.ndim!=2 or len(a)<5 or a.shape[1]<2: raise RuntimeError(f'bad table {path}')
+              return a
+          out={'schema':'m40_immutable_multidirection_decomposition_v0.1','model_id':'M40','family_id':'F40',
+               'protocol':'protocol/W07_M40_IMMUTABLE_MULTI_DIRECTION_DECOMPOSITION_v0.1.md',
+               'inputs':{'radial_eta':{'run':34695408204,'artifact':10298444789},'xi':{'run':34695841353,'artifact':10298324085},'lambda':{'run':34695841353,'artifact':10298572066},'source':{'run':34695971559,'artifact':10298124024}},
+               'provider_commit':pin,'K2_promoted':False,'physical_falsification':False,'complete_Horava_family_claim':False}
+          try:
+              re=js(R,'M40_LOCAL_2D_RESPONSE.json'); xi=js(X,'M40_XI_COORDINATE_RESPONSE.json'); la=js(L,'M40_LAMBDA_COORDINATE_RESPONSE.json'); src=js(S,'M40_PINNED_SOURCE_GEOMETRY_AUDIT.json')
+              if any(x.get('provider_commit')!=pin for x in [re,xi,la,src]): raise RuntimeError('provider pin mismatch')
+              source_ok=src.get('classification')=='M40_SOURCE_THREE_INPUT_COORDINATES_OPTIONAL_SOLAR_REDUCTION'
+              elig={'radial':bool(re.get('radial_derivative_converged')),'eta':bool(re.get('eta_derivative_converged')),'xi':bool(xi.get('coordinate_derivative_converged')),'lambda':bool(la.get('coordinate_derivative_converged'))}
+              out['source_geometry_verified']=source_ok; out['direction_eligibility']=elig
+              specs={
+                'radial':(R,'rp1','rm1',.001),
+                'eta':(R,'ep1','em1',2.1e-5),
+                'xi':(X,'ap1','am1',1e-6),
+                'lambda':(L,'ap1','am1',1e-6),
+              }
+              # Common CMB ell support across base plus all fine arms.
+              raw={}
+              for d,(root,p,m,h) in specs.items():
+                  raw[d]={'pcl':table(one(root,f'{p}__scalCls.dat')),'mcl':table(one(root,f'{m}__scalCls.dat')),'ppk':table(one(root,f'{p}__matterpower.dat')),'mpk':table(one(root,f'{m}__matterpower.dat')),'h':h}
+              basecl=table(one(R,'base__scalCls.dat')); basepk=table(one(R,'base__matterpower.dat'))
+              maps={d:{'p':{int(r[0]):r[1:] for r in q['pcl']},'m':{int(r[0]):r[1:] for r in q['mcl']}} for d,q in raw.items()}
+              bmap={int(r[0]):r[1:] for r in basecl}
+              common=sorted(set(bmap).intersection(*(set(maps[d]['p']).intersection(maps[d]['m']) for d in maps)))
+              if len(common)<100: raise RuntimeError('insufficient common ell')
+              ncol=min([len(bmap[l]) for l in common]+[len(maps[d][s][l]) for d in maps for s in ['p','m'] for l in common])
+              bvec=np.asarray([bmap[l][j] for l in common for j in range(ncol)],float); cn=float(np.linalg.norm(bvec))
+              # Common P(k) interval; evaluate on radial/base grid.
+              allpk=[basepk]+[raw[d][s] for d in raw for s in ['ppk','mpk']]
+              lo=max(float(np.nanmin(a[:,0])) for a in allpk); hi=min(float(np.nanmax(a[:,0])) for a in allpk)
+              bm=(basepk[:,0]>=lo)&(basepk[:,0]<=hi)&np.isfinite(basepk[:,0])&np.isfinite(basepk[:,1]); k=basepk[bm,0]; bp=basepk[bm,1]; pn=float(np.linalg.norm(bp))
+              if cn==0 or pn==0 or len(k)<20: raise RuntimeError('invalid base norm/support')
+              deriv={}; blocks={}
+              for d,q in raw.items():
+                  cp=np.asarray([maps[d]['p'][l][j] for l in common for j in range(ncol)],float); cm=np.asarray([maps[d]['m'][l][j] for l in common for j in range(ncol)],float)
+                  cv=(cp-cm)/(2*q['h']*cn)
+                  pp=np.interp(k,q['ppk'][:,0],q['ppk'][:,1]); pm=np.interp(k,q['mpk'][:,0],q['mpk'][:,1]); pv=(pp-pm)/(2*q['h']*pn)
+                  blocks[d]={'cmb':cv,'pk':pv}; deriv[d]=np.concatenate([cv,pv])
+              def geom(a,b):
+                  na=float(np.linalg.norm(a)); nb=float(np.linalg.norm(b))
+                  if na==0 or nb==0: return {'principal_angle_deg':None,'relative_norm_mismatch':None}
+                  c=float(np.dot(a,b)/(na*nb)); c=max(-1.,min(1.,c)); ang=float(math.degrees(math.acos(abs(c))))
+                  return {'principal_angle_deg':ang,'relative_norm_mismatch':abs(na-nb)/max(na,nb),'absolute_cosine':abs(c),'separated_10deg':bool(ang>=10.)}
+              dirs=['radial','eta','xi','lambda']; pairs={}
+              for i,a in enumerate(dirs):
+                  for b in dirs[i+1:]:
+                      pairs[f'{a}__{b}']={'combined':geom(deriv[a],deriv[b]),'cmb':geom(blocks[a]['cmb'],blocks[b]['cmb']),'pk':geom(blocks[a]['pk'],blocks[b]['pk'])}
+              out['global_support']={'ell_count':len(common),'cmb_values':len(bvec),'pk_values':len(k),'pk_k_min':float(k.min()),'pk_k_max':float(k.max())}
+              out['pairwise_geometry']=pairs
+              eligible=[d for d in dirs if elig[d]]
+              out['eligible_directions']=eligible
+              eligible_separated=[]
+              for i,a in enumerate(eligible):
+                  for b in eligible[i+1:]:
+                      if pairs[f'{a}__{b}']['combined']['separated_10deg']: eligible_separated.append([a,b])
+              out['eligible_separated_pairs']=eligible_separated
+              if not source_ok:
+                  cls='M40_MULTIDIRECTION_SYNTHESIS_INTEGRITY_BLOCKED'
+              elif eligible_separated:
+                  cls='M40_ELIGIBLE_LOCAL_RESPONSE_RANK2_EVIDENCE_BUT_K2_NOT_CLOSED'
+              elif (not elig['xi']) or (not elig['lambda']):
+                  cls='M40_SOURCE_3D_INPUT_LOCAL_RANK2_NOT_ESTABLISHED_NUMERICAL_CONVERGENCE_OPEN'
+              else:
+                  cls='M40_ELIGIBLE_LOCAL_RESPONSE_REMAINS_RANK1_WITH_SCOPE'
+              out['classification']=cls
+              out['interpretation']='Only individually converged directions are eligible for rank evidence. Nonconverged xi/lambda geometry is descriptive only. K2 remains unpromoted.'
+          except Exception as e:
+              out['classification']='M40_MULTIDIRECTION_SYNTHESIS_INTEGRITY_BLOCKED'; out['error']=repr(e)
+          # strip arrays before JSON
+          pathlib.Path('out/M40_IMMUTABLE_MULTIDIRECTION_DECOMPOSITION.json').write_text(json.dumps(out,indent=2)+'\n')
+          with open('out/M40_IMMUTABLE_MULTIDIRECTION_DECOMPOSITION.md','w') as f:
+              f.write('# M40 immutable multi-direction decomposition\n\n')
+              f.write(f"Classification: `{out['classification']}`  \n")
+              f.write(f"Eligible directions: `{out.get('eligible_directions')}`  \n")
+              f.write(f"Eligible separated pairs: `{out.get('eligible_separated_pairs')}`  \n\n")
+              f.write('K2 is not promoted by this analysis.\n')
+          print(pathlib.Path('out/M40_IMMUTABLE_MULTIDIRECTION_DECOMPOSITION.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m40-immutable-multidirection-decomposition
+          path: out/
