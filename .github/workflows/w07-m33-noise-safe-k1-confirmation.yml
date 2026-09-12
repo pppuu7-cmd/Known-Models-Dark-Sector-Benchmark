@@ -1,0 +1,187 @@
+name: W07 M33 noise-safe K1 confirmation
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m33-noise-safe-k1-confirmation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  HICLASS_PIN: '0009f51d89e6465c79e570b496c66fc90058fa77'
+
+jobs:
+  confirm:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact pinned hi_class
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3-numpy >/dev/null
+          git clone -q https://github.com/hiclass-code/hi_class_public.git provider
+          git -C provider checkout -q --detach "$HICLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$HICLASS_PIN"
+          make -C provider -j2 >/dev/null
+          git -C provider rev-parse HEAD > provider_commit.txt
+      - name: Generate frozen strict safe ladder and GR control
+        run: |
+          set -euo pipefail
+          mkdir -p m33k1
+          python3 - <<'PY'
+          import pathlib,re
+          src=pathlib.Path('provider/gravity_models/galileon_3.ini').read_text()
+          out=pathlib.Path('m33k1').resolve()
+          def drop(t,key):
+              return re.sub(rf'(?m)^\s*{re.escape(key)}\s*=.*\n?','',t)
+          def setkey(t,key,val):
+              pat=rf'(?m)^\s*{re.escape(key)}\s*=.*$'
+              if re.search(pat,t): return re.sub(pat,f'{key} = {val}',t)
+              return t+f'\n{key} = {val}\n'
+          specs=[('strict_001',0.01,'0'),('safe_001',0.01,'1e-100'),('safe_0005',0.005,'1e-100'),('safe_0002',0.002,'1e-100'),('safe_0001',0.001,'1e-100')]
+          for tag,om,dsafe in specs:
+              t=src
+              t=setkey(t,'Omega_smg',f'{om:.16g}')
+              t=drop(drop(t,'Omega_Lambda'),'Omega_fld')
+              t=setkey(t,'D_safe_smg',dsafe)
+              t=setkey(t,'a_min_stability_test_smg','0')
+              t=setkey(t,'root',f'{out}/{tag}_')
+              (out/f'{tag}.ini').write_text(t)
+          t=src
+          for key in ['Omega_smg','Omega_Lambda','Omega_fld','gravity_model','gravity_submodel']:
+              t=drop(t,key)
+          t=setkey(t,'root',f'{out}/gr_')
+          (out/'gr.ini').write_text(t)
+          (out/'arms.txt').write_text('\n'.join([x[0] for x in specs]+['gr'])+'\n')
+          PY
+          grep -H -E '^(Omega_smg|D_safe_smg|a_min_stability_test_smg|gravity_model|gravity_submodel|root)[[:space:]]*=' m33k1/*.ini | tee frozen_m33_k1_parameters.txt
+      - name: Execute all frozen arms
+        run: |
+          set -euo pipefail
+          while read tag; do
+            set +e
+            ./provider/class "m33k1/${tag}.ini" >"m33k1/${tag}.stdout" 2>"m33k1/${tag}.stderr"
+            rc=$?
+            set -e
+            echo "$rc" >"m33k1/${tag}.exit"
+          done < m33k1/arms.txt
+      - name: Apply strict-safe control and unchanged repository K1 ladder
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib,numpy as np
+          b=pathlib.Path('m33k1')
+          tags=['strict_001','safe_001','safe_0005','safe_0002','safe_0001','gr']
+          exits={t:int((b/f'{t}.exit').read_text()) for t in tags}
+          def one(tag,kind):
+              hits=sorted(b.glob(f'{tag}_*{kind}.dat'))
+              if len(hits)!=1: raise RuntimeError(f'{tag} {kind} files={len(hits)}')
+              rows=[]
+              for line in hits[0].read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  try: rows.append([float(x) for x in s.split()])
+                  except ValueError: pass
+              a=np.asarray(rows,float)
+              if a.ndim!=2 or len(a)<5 or a.shape[1]<2: raise RuntimeError(f'bad {tag} {kind}')
+              return hits[0],a
+          out={'schema':'m33_noise_safe_k1_confirmation_v0.1','model_id':'M33','family_id':'F33',
+               'protocol':'protocol/W07_M33_NOISE_SAFE_K1_CONFIRMATION_v0.1.md',
+               'implementation_lock':'protocol/W07_M33_NOISE_SAFE_K1_CONFIRMATION_IMPLEMENTATION_LOCK_v0.1.md',
+               'provider_commit':pathlib.Path('provider_commit.txt').read_text().strip(),
+               'expected_commit':'0009f51d89e6465c79e570b496c66fc90058fa77','exits':exits,
+               'D_safe_smg':1e-100,'a_min_stability_test_smg':0.0,
+               'K1_promoted':False,'physical_falsification':False,'family_wide_stability_claim':False}
+          control=False
+          try:
+              if out['provider_commit']!=out['expected_commit']: raise RuntimeError('provider pin mismatch')
+              if exits['strict_001']!=0 or exits['safe_001']!=0: raise RuntimeError('strict/safe control nonzero exit')
+              scp,sc=one('strict_001','cl'); sap,sa=one('safe_001','cl')
+              sm={int(r[0]):r[1:] for r in sc}; am={int(r[0]):r[1:] for r in sa}; common=sorted(set(sm)&set(am))
+              sv=[]; av=[]
+              for ell in common:
+                  n=min(len(sm[ell]),len(am[ell])); x=sm[ell][:n]; y=am[ell][:n]
+                  mask=np.isfinite(x)&np.isfinite(y); sv.extend(x[mask]); av.extend(y[mask])
+              sv=np.asarray(sv,float); av=np.asarray(av,float)
+              if len(sv)<5 or np.linalg.norm(sv)==0: raise RuntimeError('CMB control support invalid')
+              cmb=float(np.linalg.norm(av-sv)/np.linalg.norm(sv))
+              spp,sp=one('strict_001','pk'); app,ap=one('safe_001','pk')
+              lo=max(float(np.nanmin(sp[:,0])),float(np.nanmin(ap[:,0]))); hi=min(float(np.nanmax(sp[:,0])),float(np.nanmax(ap[:,0])))
+              mask=(sp[:,0]>=lo)&(sp[:,0]<=hi)&np.isfinite(sp[:,0])&np.isfinite(sp[:,1]); x=sp[mask,0]; ys=sp[mask,1]; ya=np.interp(x,ap[:,0],ap[:,1])
+              mask2=np.isfinite(ys)&np.isfinite(ya); ys=ys[mask2]; ya=ya[mask2]
+              if len(ys)<5 or np.linalg.norm(ys)==0: raise RuntimeError('Pk control support invalid')
+              pk=float(np.linalg.norm(ya-ys)/np.linalg.norm(ys))
+              control=(cmb<=1e-12 and pk<=1e-12)
+              out['strict_vs_safe_control']={'cmb_normalized_l2':cmb,'pk_normalized_l2':pk,'threshold_each':1e-12,'pass':control,
+                                             'cmb_common_values':int(len(sv)),'pk_common_values':int(len(ys))}
+              if control:
+                  gp,ga=one('gr','cl'); gpp,gpa=one('gr','pk')
+                  arms=[]
+                  for tag,xv in [('safe_001',0.01),('safe_0005',0.005),('safe_0002',0.002),('safe_0001',0.001)]:
+                      cp,_=one(tag,'cl'); pp,_=one(tag,'pk')
+                      arms.append({'label':tag,'x':xv,'cl':str(cp),'pk':str(pp),'exit':exits[tag]})
+                  pathlib.Path('m33_arms.json').write_text(json.dumps(arms,indent=2)+'\n')
+                  pathlib.Path('m33_ref_cl.txt').write_text(str(gp)+'\n'); pathlib.Path('m33_ref_pk.txt').write_text(str(gpp)+'\n')
+              else:
+                  out['classification']='M33_NOISE_SAFE_K1_CONTROL_FAILED'
+          except Exception as e:
+              out['classification']='M33_NOISE_SAFE_K1_CONTROL_BLOCKED'; out['control_error']=repr(e)
+          pathlib.Path('M33_NOISE_SAFE_K1_PRECHECK.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          if control: pathlib.Path('CONTROL_PASS').write_text('true\n')
+          PY
+          if test -f CONTROL_PASS; then
+            python3 verification/k1/decoupling_ladder.py \
+              --model M33 \
+              --provider-commit "$(cat provider_commit.txt)" \
+              --expected-commit "$HICLASS_PIN" \
+              --reference-cl "$(cat m33_ref_cl.txt)" \
+              --reference-pk "$(cat m33_ref_pk.txt)" \
+              --arms-json m33_arms.json \
+              --out M33_NOISE_SAFE_K1_LADDER.json \
+              --scope 'Pinned cubic Galileon provider-documented D_safe=1e-100 numerical-noise-safe reference path only; not family-wide physical stability'
+          fi
+      - name: Synthesize frozen execution classification
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json,pathlib
+          pre=json.loads(pathlib.Path('M33_NOISE_SAFE_K1_PRECHECK.json').read_text()) if pathlib.Path('M33_NOISE_SAFE_K1_PRECHECK.json').exists() else {}
+          out={'schema':'m33_noise_safe_k1_confirmation_synthesis_v0.1','model_id':'M33','family_id':'F33',
+               'protocol':'protocol/W07_M33_NOISE_SAFE_K1_CONFIRMATION_v0.1.md','precheck':pre,
+               'K1_promoted':False,'physical_falsification':False,'family_wide_stability_claim':False}
+          lp=pathlib.Path('M33_NOISE_SAFE_K1_LADDER.json')
+          if pre.get('strict_vs_safe_control',{}).get('pass') and lp.exists():
+              lad=json.loads(lp.read_text()); out['ladder']=lad
+              if lad.get('K1_scoped_pass'):
+                  out['recommended_K1_status']='PASS_WITH_SCOPE_NUMERICAL_NOISE_SAFE_PROFILE'
+                  out['classification']='M33_NOISE_SAFE_K1_CONFIRMATION_PASS_RECOMMENDS_SCOPED_K1'
+              else:
+                  out['recommended_K1_status']='OPEN'
+                  out['classification']='M33_NOISE_SAFE_K1_CONFIRMATION_LADDER_NOT_ESTABLISHED'
+          else:
+              out['recommended_K1_status']='OPEN'; out['classification']=pre.get('classification','M33_NOISE_SAFE_K1_CONFIRMATION_BLOCKED')
+          pathlib.Path('M33_NOISE_SAFE_K1_CONFIRMATION.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          with open('M33_NOISE_SAFE_K1_CONFIRMATION.md','w') as f:
+              f.write('# M33 noise-safe K1 confirmation\n\n')
+              f.write(f"Classification: `{out['classification']}`  \n")
+              f.write(f"Recommended K1: `{out['recommended_K1_status']}`  \n")
+              f.write('\nNo canonical promotion is performed by this workflow.\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m33-noise-safe-k1-confirmation
+          path: |
+            M33_NOISE_SAFE_K1_PRECHECK.json
+            M33_NOISE_SAFE_K1_LADDER.json
+            M33_NOISE_SAFE_K1_CONFIRMATION.json
+            M33_NOISE_SAFE_K1_CONFIRMATION.md
+            provider_commit.txt
+            frozen_m33_k1_parameters.txt
+            m33k1/
