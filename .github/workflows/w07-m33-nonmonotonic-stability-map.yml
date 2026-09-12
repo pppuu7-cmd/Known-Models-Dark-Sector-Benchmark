@@ -1,0 +1,111 @@
+name: W07 M33 nonmonotonic stability map
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m33-nonmonotonic-stability-map.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  HICLASS_PIN: '0009f51d89e6465c79e570b496c66fc90058fa77'
+
+jobs:
+  map:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact pinned hi_class
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3-numpy >/dev/null
+          git clone -q https://github.com/hiclass-code/hi_class_public.git provider
+          git -C provider checkout -q --detach "$HICLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$HICLASS_PIN"
+          make -C provider -j2 >/dev/null
+          git -C provider rev-parse HEAD > provider_commit.txt
+      - name: Generate frozen parser-compliant map
+        run: |
+          set -euo pipefail
+          mkdir -p m33map
+          python3 - <<'PY'
+          import pathlib,re
+          src=pathlib.Path('provider/gravity_models/galileon_3.ini').read_text(); out=pathlib.Path('m33map').resolve()
+          vals=[.0011,.0012,.0013,.0014,.0035,.00375,.004,.00425,.0045,.005]
+          def drop(t,key): return re.sub(rf'(?m)^{re.escape(key)}\s*=.*\n?','',t)
+          rows=[]
+          for v in vals:
+              tag='om_'+str(v).replace('.','p')
+              t=re.sub(r'(?m)^Omega_smg\s*=.*$',f'Omega_smg = {v}',src)
+              t=drop(drop(t,'Omega_Lambda'),'Omega_fld')
+              t=re.sub(r'(?m)^root\s*=.*$',f'root = {out}/{tag}_',t)
+              (out/f'{tag}.ini').write_text(t); rows.append((tag,v))
+          (out/'grid.tsv').write_text('\n'.join(f'{t}\t{v}' for t,v in rows)+'\n')
+          PY
+      - name: Execute frozen points
+        run: |
+          set +e
+          while IFS=$'\t' read -r tag val; do
+            ./provider/class "m33map/${tag}.ini" > "m33map/${tag}.stdout" 2> "m33map/${tag}.stderr"
+            echo $? > "m33map/${tag}.exit"
+          done < m33map/grid.tsv
+          exit 0
+      - name: Classify frozen tested map
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib,re,numpy as np
+          b=pathlib.Path('m33map'); expected='0009f51d89e6465c79e570b496c66fc90058fa77'; pin=pathlib.Path('provider_commit.txt').read_text().strip()
+          out={'schema':'m33_nonmonotonic_stability_map_v0.1','model_id':'M33','family_id':'F33','protocol':'protocol/W07_M33_NONMONOTONIC_STABILITY_MAP_v0.1.md','provider_commit':pin,'expected_commit':expected,'K1_promoted':False,'physical_falsification':False,'family_wide_stability_claim':False}
+          def finite(pat):
+              h=sorted(b.glob(pat))
+              if not h:return False
+              rr=[]
+              for line in h[0].read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  try: rr.append([float(x) for x in s.split()])
+                  except ValueError: pass
+              try:a=np.asarray(rr,float);return bool(a.ndim==2 and len(a)>=5 and np.isfinite(a).all())
+              except:return False
+          try:
+              if pin!=expected: raise RuntimeError('provider pin mismatch')
+              pts=[]
+              for line in (b/'grid.tsv').read_text().splitlines():
+                  tag,sv=line.split('\t');v=float(sv);ex=int((b/f'{tag}.exit').read_text());txt=(b/f'{tag}.stdout').read_text(errors='replace')+'\n'+(b/f'{tag}.stderr').read_text(errors='replace')
+                  ok=ex==0 and finite(f'{tag}_*cl.dat') and finite(f'{tag}_*pk.dat'); ghost='ghost instability' in txt.lower(); m=re.search(r'minimum\s+D\s*=\s*([+\-0-9.eE]+)\s+at\s+a\s*=\s*([+\-0-9.eE]+)',txt,re.I)
+                  cls='valid' if ok else 'provider_stability_veto' if ex!=0 and ghost else 'provider_or_harness_failure'
+                  pts.append({'Omega_smg':v,'exit':ex,'classification':cls,'minimum_D':float(m.group(1)) if m else None,'minimum_D_a':float(m.group(2)) if m else None})
+              out['points']=pts; out['repeat_0p004_matches_parent_veto']=next(p['classification'] for p in pts if abs(p['Omega_smg']-.004)<1e-12)=='provider_stability_veto'
+              if any(p['classification']=='provider_or_harness_failure' for p in pts):
+                  out['classification']='M33_NONMONOTONIC_MAP_PROVIDER_OR_HARNESS_FAILURE'
+              else:
+                  seg=[]; cur=[]; typ=None
+                  for p in pts:
+                      if p['classification']!=typ:
+                          if cur: seg.append({'classification':typ,'Omega_smg':[x['Omega_smg'] for x in cur]})
+                          cur=[p];typ=p['classification']
+                      else: cur.append(p)
+                  if cur: seg.append({'classification':typ,'Omega_smg':[x['Omega_smg'] for x in cur]})
+                  out['tested_segments']=seg
+                  out['classification']='M33_PINNED_NONMONOTONIC_STABILITY_PATTERN_REPRODUCED' if out['repeat_0p004_matches_parent_veto'] else 'M33_PINNED_0P004_VETO_NOT_REPRODUCED'
+              out['interpretation']='Discrete pinned-provider/config stability pattern only; no interpolation to universal critical values and no family falsification.'
+          except Exception as e:
+              out['classification']='M33_NONMONOTONIC_MAP_INTEGRITY_BLOCKED';out['error']=repr(e)
+          pathlib.Path('M33_NONMONOTONIC_STABILITY_MAP.json').write_text(json.dumps(out,indent=2)+'\n')
+          pathlib.Path('M33_NONMONOTONIC_STABILITY_MAP.md').write_text('# M33 nonmonotonic stability map\n\nClassification: `'+out['classification']+'`  \n0.004 veto reproduced: `'+str(out.get('repeat_0p004_matches_parent_veto'))+'`  \n\nNo family-wide stability or physical falsification claim.\n')
+          print(pathlib.Path('M33_NONMONOTONIC_STABILITY_MAP.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m33-nonmonotonic-stability-map
+          path: |
+            M33_NONMONOTONIC_STABILITY_MAP.json
+            M33_NONMONOTONIC_STABILITY_MAP.md
+            provider_commit.txt
+            m33map/
