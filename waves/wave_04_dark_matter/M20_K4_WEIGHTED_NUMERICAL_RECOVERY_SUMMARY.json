@@ -1,0 +1,51 @@
+{
+  "schema": "KMDSB.M20.K4WeightedNumericalRecoverySummary.v1",
+  "family_id": "F20",
+  "model_id": "M20",
+  "provider": "shinichiroando/sashimi-si",
+  "provider_commit": "e17d3664dac677b604fd4ff02fb2af105a6937fa",
+  "K4_promoted": false,
+  "scientific_fail": false,
+  "physical_falsification": false,
+  "parent_unweighted_asymptotic": {
+    "run_id": 34717891994,
+    "job_id": 103618297914,
+    "artifact_id": 10305575797,
+    "artifact_sha256": "668d9d289b2877cfc0bd8de211434e4a0c2abd46451cd5cab7c77351960cf41c",
+    "orders": [13, 17, 21],
+    "D_13to17_max": 0.9671171247950625,
+    "D_13to17_median": 0.24206092001832505,
+    "D_17to21_max": 0.8916774732400928,
+    "D_17to21_median": 0.23079420221058172,
+    "classification": "M20_K4_HERMITE_ASYMPTOTIC_IMPROVING_NOT_CONVERGED_DIAGNOSTIC"
+  },
+  "weighted_support_recovery": {
+    "preregistration": "protocol/W04_M20_K4_WEIGHTED_HERMITE_SUPPORT_RECOVERY_PREREGISTRATION_v0.1.md",
+    "run_id": 34718995720,
+    "job_id": 103621243622,
+    "artifact_id": 10305443316,
+    "artifact_sha256": "b415963ea033c9c4b7dced8e1fcc95cd39df48cef3eccc88ff1ca1414001033d",
+    "orders": [13, 17, 21],
+    "weighted_D_13to17_max": 0.014529410998643114,
+    "weighted_D_13to17_median": 0.0029044619006991968,
+    "weighted_D_17to21_max": 0.019693948085558,
+    "weighted_D_17to21_median": 0.008527350172774246,
+    "unweighted_control_D_17to21_max": 0.8916774732400928,
+    "unweighted_control_D_17to21_median": 0.23079420221058172,
+    "classification": "M20_K4_WEIGHTING_REDUCES_SENSITIVITY_NOT_CONVERGED_DIAGNOSTIC"
+  },
+  "weighted_high_order_confirmation": {
+    "preregistration": "protocol/W04_M20_K4_WEIGHTED_HERMITE_HIGH_ORDER_CONFIRMATION_PREREGISTRATION_v0.1.md",
+    "run_id": 34719071192,
+    "job_id": 103621453342,
+    "artifact_id": 10305148808,
+    "artifact_sha256": "ddd886038e813ecd9cb16b691fe11359a210115f9b03c6c25a092245c7f42d99",
+    "orders": [21, 25, 29],
+    "weighted_D_21to25_max": 0.015358563421115096,
+    "weighted_D_21to25_median": 0.006701994198081674,
+    "weighted_D_25to29_max": 0.013049208459761123,
+    "weighted_D_25to29_median": 0.004326501555973304,
+    "classification": "M20_K4_WEIGHTED_HIGH_ORDER_CONFIRMATION_PASS_DIAGNOSTIC"
+  },
+  "interpretation": "The earlier O(1) Hermite sensitivity was dominated by an unweighted changing-node-set diagnostic. Provider-population-weighted high-order response summaries are O(1e-2) and prospectively confirm across two new equal-order increments. This is strong numerical-recovery evidence but is not by itself a canonical K4 promotion; independent mass-grid and redshift-grid axes remain required."
+}
