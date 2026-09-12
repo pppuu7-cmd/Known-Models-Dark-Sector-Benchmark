@@ -1,0 +1,15 @@
+{
+  "schema": "m33_k1_reference_map_discovery_v0.1",
+  "model_id": "M33",
+  "provider_commit": "0009f51d89e6465c79e570b496c66fc90058fa77",
+  "run_id": 34657647905,
+  "job_id": 103453403141,
+  "artifact_id": 10286258353,
+  "artifact_digest": "sha256:4b1e9028ba4fb896d722056f55278da4190cb4565e259b56934d2e346dd5e7fd",
+  "classification": "REFERENCE_MAP_BLOCKED_IMPLEMENTATION_CONFIGURATION",
+  "K1_promoted": false,
+  "physical_falsification": false,
+  "valid_arms": [],
+  "causal_failure": "All ten discovery arms exited at input parsing. For non-negative Omega_smg the pinned hi_class parser requires Omega_Lambda and Omega_fld to be left unspecified; the discovery harness retained explicit Omega_Lambda/Omega_fld entries. The plain-GR endpoint also retained an invalid explicit closure assignment. This is a configuration/reference-map construction block, not Galileon physics evidence.",
+  "next_gate": "Prospectively preregister a parser-compliant closure-map recovery using the same provider pin and cosmological anchor, removing only closure parameters that the provider parser requires to be unspecified. Discovery-only; no K1 promotion without a separate frozen continuity gate."
+}
