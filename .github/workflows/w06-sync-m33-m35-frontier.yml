@@ -1,0 +1,36 @@
+name: W06 sync M33 M35 frontier
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w06-sync-m33-m35-frontier.yml'
+      - 'scripts/sync_w06_m33_m35_frontier.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply deterministic frontier sync
+        run: python3 scripts/sync_w06_m33_m35_frontier.py
+      - name: Commit if changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo 'No ledger changes'
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv audits/KMDSB_READINESS_SNAPSHOT.json recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          git commit -m 'sync W06 M33 M35 frontier and census'
+          git pull --rebase origin main
+          git push origin HEAD:main
