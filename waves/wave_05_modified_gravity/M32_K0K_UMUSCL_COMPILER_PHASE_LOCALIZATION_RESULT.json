@@ -1,0 +1,47 @@
+{
+  "schema": "m32_k0k_umuscl_compiler_phase_localization_result_v0.1",
+  "model_id": "M32",
+  "family_id": "F32",
+  "date": "2026-09-12",
+  "protocol": "protocol/W05_M32_K0K_UMUSCL_COMPILER_PHASE_LOCALIZATION_v0.1.md",
+  "run_id": 34716897688,
+  "workflow_commit": "6b9471faaba3308c2596b1e95934194d0fd22847",
+  "provider": "nat-woodcock/EFT-Ramses",
+  "provider_commit": "849ddb716041316d0e223ba22badc0d630b72435",
+  "parent_checkpoint_artifact": 10283774354,
+  "preprocess": {
+    "job_id": 103615679269,
+    "runner_image": "ubuntu-24.04",
+    "exit_code": 0,
+    "preprocessed_nonempty": true,
+    "explicit_diagnostics": [],
+    "classification": "M32_K0K_PREPROCESS_PASS",
+    "artifact_id": 10305640272,
+    "artifact_sha256": "2cb254b70e6881a1d649f8ef5d896f81d82f441f8fef451fac38cff543b6dc25"
+  },
+  "o0_compile": {
+    "job_id": 103615678974,
+    "runner_image": "ubuntu-24.04",
+    "optimization": "O0",
+    "compiler_family": "Intel oneAPI ifx/mpiifx",
+    "target": "umuscl.o",
+    "observed_compiler_heartbeats_utc": [
+      "2026-09-12T20:23:53Z",
+      "2026-09-12T20:23:58Z",
+      "2026-09-12T20:24:03Z",
+      "2026-09-12T20:24:08Z"
+    ],
+    "runner_shutdown_utc": "2026-09-12T20:24:10Z",
+    "exit_code": 143,
+    "target_object_exists": false,
+    "explicit_compiler_or_source_diagnostic_before_shutdown": false,
+    "runner_level_message": "The runner has received a shutdown signal.",
+    "classification": "M32_K0K_O0_HOSTED_INFRASTRUCTURE_BLOCKED"
+  },
+  "synthesis_classification": "M32_K0K_COMPILE_STAGE_HOSTED_BLOCKER_PERSISTS_BELOW_O3",
+  "inference": "Intel preprocessing of the exact provider source and frozen macro set succeeds, while object compilation of the same UMUSCL translation unit is externally terminated on the hosted runner even at O0. This localizes the blocker after preprocessing and weakens an O3-optimizer-specific explanation.",
+  "diagnostic_only": true,
+  "K0_promoted": false,
+  "physical_falsification": false,
+  "scientific_fail": false
+}
