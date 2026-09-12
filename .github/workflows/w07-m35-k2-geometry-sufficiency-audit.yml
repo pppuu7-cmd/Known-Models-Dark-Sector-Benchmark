@@ -44,29 +44,27 @@ jobs:
           d=json.load(open(result_files[0]))
           expected='d9a20bd0c7b7a6c8957410fd245ed06b30b915c1'
           integrity=(d.get('provider_commit')==expected and d.get('K1_promoted') is True)
-          param_files={p.name:p for p in root.rglob('*.ini')}
-          # Parent artifact also contains frozen_parameters.txt; use it as the authoritative frozen-coordinate ledger.
           frozen=list(root.rglob('frozen_parameters.txt'))
           if len(frozen)!=1: raise SystemExit('frozen_parameters.txt missing/ambiguous')
           text=frozen[0].read_text()
           blocks={}
-          current=None
+          # Actual immutable ledger format: s01.ini:alpha = 0.005
+          pat=re.compile(r'^\s*([^:]+)\.ini:([^=]+?)\s*=\s*(.*?)\s*$')
           for raw in text.splitlines():
-              s=raw.strip()
-              if not s: continue
-              if s.endswith(':'):
-                  current=s[:-1]; blocks[current]={}; continue
-              if current and '=' in s:
-                  k,v=[x.strip() for x in s.split('=',1)]
-                  try: blocks[current][k]=float(v)
-                  except ValueError: pass
-          order=['s1','s01','s001','s0001']
-          control=blocks.get('control',{})
+              m=pat.match(raw)
+              if not m: continue
+              arm,key,val=m.group(1),m.group(2).strip(),m.group(3).strip()
+              blocks.setdefault(arm,{})
+              try: blocks[arm][key]=float(val)
+              except ValueError: blocks[arm][key]=val
+          required=['control','s1','s01','s001','s0001']
           coords=['alpha','beta','lambda','Y_dm']
-          disp=[]
-          for a in order:
-              row=[blocks[a][c]-control[c] for c in coords]
-              disp.append(row)
+          if not all(a in blocks and all(c in blocks[a] for c in coords) for a in required):
+              raise SystemExit(f'parsed ledger incomplete: {blocks}')
+          order=['s1','s01','s001','s0001']
+          control={c:float(blocks['control'][c]) for c in coords}
+          arm_vectors=[[float(blocks[a][c]) for c in coords] for a in order]
+          disp=[[float(blocks[a][c])-control[c] for c in coords] for a in order]
           def rank(a,tol=1e-12):
               a=[r[:] for r in a]; m=len(a); n=len(a[0]); rr=0
               for c in range(n):
@@ -82,18 +80,21 @@ jobs:
                       if abs(f)>tol: a[i]=[x-f*y for x,y in zip(a[i],a[rr])]
                   rr+=1
               return rr
-          r=rank(disp)
-          base=disp[0]
-          radial=True
-          for row in disp[1:]:
-              rat=[]
-              for a,b in zip(row,base):
-                  if abs(b)>1e-12: rat.append(a/b)
-                  elif abs(a)>1e-12: radial=False
-              if rat and max(rat)-min(rat)>1e-10: radial=False
-          active=[coords[i] for i in range(len(coords)) if any(abs(row[i])>1e-12 for row in disp)]
-          fixed=[c for c in coords if c not in active]
-          # Search pinned provider for coordinate definitions and algebraic/stability relations.
+          def radial(rows,tol=1e-10):
+              base=rows[0]
+              for row in rows[1:]:
+                  ratios=[]
+                  for a,b in zip(row,base):
+                      if abs(b)>1e-12: ratios.append(a/b)
+                      elif abs(a)>1e-12: return False
+                  if ratios and max(ratios)-min(ratios)>tol: return False
+              return True
+          raw_rank=rank(arm_vectors)
+          raw_radial=radial(arm_vectors)
+          control_rank=rank(disp)
+          control_radial=radial(disp)
+          active_raw=[coords[i] for i in range(len(coords)) if any(abs(row[i])>1e-12 for row in arm_vectors)]
+          fixed_raw=[c for c in coords if c not in active_raw]
           markers=[]
           for p in pathlib.Path('provider').rglob('*'):
               if not p.is_file() or '.git' in p.parts: continue
@@ -102,23 +103,32 @@ jobs:
               for n,line in enumerate(t.splitlines(),1):
                   if re.search(r'\b(alpha|beta|lambda|Y_dm)\b|Einstein.?[Aa]ether|Lorentz',line):
                       markers.append(f'{p}:{n}:{line}')
-          cls='M35_K2_NOT_CLOSED_BY_ONE_DIMENSIONAL_GRAVITY_ONLY_K1_PATH' if integrity and r==1 and radial else 'M35_K2_GEOMETRY_AUDIT_INTEGRITY_OR_RANK_REVIEW'
+          geometry_limited=(integrity and raw_rank==1 and raw_radial and control_rank<=2)
+          cls='M35_K2_NOT_CLOSED_BY_NEAR_RADIAL_GRAVITY_ONLY_K1_LADDER' if geometry_limited else 'M35_K2_GEOMETRY_AUDIT_INTEGRITY_OR_RANK_REVIEW'
           out={
-            'schema':'m35_k2_geometry_sufficiency_audit_v0.1','model_id':'M35','family_id':'F35',
+            'schema':'m35_k2_geometry_sufficiency_audit_v0.2','model_id':'M35','family_id':'F35',
             'parent_run':34657362639,'parent_artifact':10286581994,'provider_commit':expected,
-            'integrity_ok':integrity,'coordinates_from_frozen_protocol':coords,'control':control,'arms':{a:blocks[a] for a in order},
-            'displacements_from_control':disp,'k1_path_rank_in_four_provider_coordinates':r,'strictly_radial_k1_path':radial,
-            'active_direction_coordinates':active,'fixed_coordinates':fixed,
+            'integrity_ok':integrity,'coordinates_from_frozen_protocol':coords,'control':control,
+            'arms':{a:{c:float(blocks[a][c]) for c in coords} for a in order},
+            'raw_active_arm_vectors_from_zero_origin':arm_vectors,
+            'raw_active_arm_rank':raw_rank,'raw_active_arms_strictly_radial_from_zero_origin':raw_radial,
+            'displacements_from_numerical_control':disp,
+            'affine_displacement_rank_about_numerical_control':control_rank,
+            'strictly_radial_about_numerical_control':control_radial,
+            'control_offset_explanation':'alpha=1e-5 numerical weak-coupling control is not the exact zero-coupling origin, so subtracting it can raise affine displacement rank even when active arms themselves lie on a one-dimensional ray.',
+            'active_raw_direction_coordinates':active_raw,'fixed_raw_coordinates':fixed_raw,
             'provider_marker_line_count':len(markers),'classification':cls,
             'K2_promoted':False,'physical_falsification':False,'full_Einstein_Aether_SVT_claim':False,
-            'interpretation':'The successful K1 weak-coupling ladder establishes continuity only along its frozen gravity-only radial direction. It does not establish the full physical geometry, exact quotient/equivalences, or complete scalar/vector/tensor parameter space required by K2.'
+            'interpretation':'The K1 ladder samples one gravity-only ray in the active-arm coordinates (alpha,beta,lambda scaled together; Y_dm fixed). The small nonzero-alpha numerical control offsets that ray, so affine displacements about the control can have rank two. Neither construction closes the full physical geometry, exact quotient/equivalences, or complete scalar/vector/tensor parameter space required by K2.'
           }
           out['artifact_zip_sha256']=hashlib.sha256(open('parent/m35.zip','rb').read()).hexdigest()
           json.dump(out,open('out/M35_K2_GEOMETRY_SUFFICIENCY_AUDIT.json','w'),indent=2)
           pathlib.Path('out/M35_PROVIDER_GEOMETRY_MARKERS.txt').write_text('\n'.join(markers)+'\n')
           with open('out/M35_K2_GEOMETRY_SUFFICIENCY_AUDIT.md','w') as f:
               f.write('# M35 K2 geometry-sufficiency audit\n\n')
-              f.write(f'- K1 path rank: {r}\n- radial: {radial}\n- active coordinates: {active}\n- fixed coordinates: {fixed}\n')
+              f.write(f'- active-arm rank from zero origin: {raw_rank}\n- active arms radial from zero: {raw_radial}\n')
+              f.write(f'- affine displacement rank about numerical control: {control_rank}\n- radial about numerical control: {control_radial}\n')
+              f.write(f'- active coordinates: {active_raw}\n- fixed coordinates: {fixed_raw}\n')
               f.write(f'- classification: `{cls}`\n\nK2 is not promoted; no physical falsification or full Einstein–Aether SVT claim is made.\n')
           PY
       - uses: actions/upload-artifact@v4
