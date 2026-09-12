@@ -1,0 +1,105 @@
+name: W07 M33 K1 noise-safe evidence synthesis
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m33-k1-noise-safe-evidence-synthesis.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  synthesize:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch immutable M33 confirmation artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10301813578/zip" > evidence.zip
+          unzip -q evidence.zip -d evidence
+          sha256sum evidence.zip > evidence_zip_sha256.txt
+          git pull --rebase origin main
+      - name: Verify frozen requirements and update canonical M33 state
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv,json,pathlib
+          hits=list(pathlib.Path('evidence').rglob('M33_NOISE_SAFE_K1_CONFIRMATION.json'))
+          if len(hits)!=1: raise SystemExit(f'expected one confirmation json, got {len(hits)}')
+          ev=json.loads(hits[0].read_text())
+          pre=ev.get('precheck',{}); ctrl=pre.get('strict_vs_safe_control',{}); lad=ev.get('ladder',{}); crit=lad.get('criteria',{})
+          req={
+            'classification':ev.get('classification')=='M33_NOISE_SAFE_K1_CONFIRMATION_PASS_RECOMMENDS_SCOPED_K1',
+            'recommended_status':ev.get('recommended_K1_status')=='PASS_WITH_SCOPE_NUMERICAL_NOISE_SAFE_PROFILE',
+            'provider_pin':pre.get('provider_commit')=='0009f51d89e6465c79e570b496c66fc90058fa77',
+            'control_pass':ctrl.get('pass') is True,
+            'control_cmb_le_1e12':float(ctrl.get('cmb_normalized_l2',1))<=1e-12,
+            'control_pk_le_1e12':float(ctrl.get('pk_normalized_l2',1))<=1e-12,
+            'ladder_scoped_pass':lad.get('K1_scoped_pass') is True,
+            'all_four_ladder_criteria':len(crit)==4 and all(v is True for v in crit.values()),
+            'reduction_le_0p25':float(lad.get('D_finest_over_D_coarsest',1))<=0.25,
+            'loglog_ge_0p90':float(lad.get('loglog_pearson',-1))>=0.90,
+            'no_execution_promotion':ev.get('K1_promoted') is False,
+            'no_physical_falsification':ev.get('physical_falsification') is False,
+            'no_family_stability_claim':ev.get('family_wide_stability_claim') is False,
+          }
+          passed=all(req.values())
+          out={'schema':'m33_k1_noise_safe_evidence_synthesis_v0.1','model_id':'M33','family_id':'F33',
+               'protocol':'protocol/W07_M33_K1_NOISE_SAFE_EVIDENCE_SYNTHESIS_v0.1.md',
+               'source_run':34708072066,'source_artifact':10301813578,'requirements':req,'all_requirements_pass':passed,
+               'source_control':ctrl,'source_ladder_reduction':lad.get('D_finest_over_D_coarsest'),'source_loglog_pearson':lad.get('loglog_pearson'),
+               'physical_falsification':False,'family_wide_stability_claim':False,'K2_K9':'OPEN'}
+          if not passed:
+              out['classification']='M33_K1_NOISE_SAFE_SYNTHESIS_NOT_PROMOTABLE'
+              pathlib.Path('waves/wave_07_deep_gates').mkdir(parents=True,exist_ok=True)
+              pathlib.Path('waves/wave_07_deep_gates/M33_K1_NOISE_SAFE_EVIDENCE_SYNTHESIS.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+              raise SystemExit('frozen promotion requirements not met')
+          new_k1='PASS_WITH_SCOPE_NUMERICAL_NOISE_SAFE_PROFILE'
+          new_state='K0_K1_PASS_WITH_SCOPE_NOISE_SAFE_PROFILE_K2_K9_OPEN'
+          note=('Pinned hi_class cubic Galileon K0 PASS_WITH_SCOPE. K1 promoted with scope by immutable synthesis of run 34708072066 artifact 10301813578: '
+                'provider-documented D_safe_smg=1e-100 leaves the Omega_smg=0.01 spectra exactly unchanged relative to strict D_safe=0 (CMB/P(k) normalized-L2 both 0), '
+                'and the frozen Omega_smg={0.01,0.005,0.002,0.001}->GR ladder passes the repository K1 rule with finest/coarsest=0.2087548710 and log-log Pearson=0.9248706315. '
+                'Earlier strict tiny-negative-D vetoes remain recorded as threshold-sensitive numerical/stability evidence; this is not a family-wide physical stability claim. K2-K9 remain OPEN.')
+          mp=pathlib.Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(mp.open(newline=''))); fields=list(rows[0].keys()); found=0
+          for r in rows:
+              if r['family_id']=='F33':
+                  found+=1; r['K1_reference_limit']=new_k1; r['coverage_state']=new_state; r['notes']=note
+          if found!=1: raise SystemExit(f'mandatory F33 rows={found}')
+          with mp.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+          cp=pathlib.Path('matrices/model_family_census.csv')
+          rows=list(csv.DictReader(cp.open(newline=''))); fields=list(rows[0].keys()); found=0
+          for r in rows:
+              if r['family_id']=='F33': found+=1; r['status']=new_state; r['notes']=note
+          if found!=1: raise SystemExit(f'census F33 rows={found}')
+          with cp.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+          out.update({'classification':'M33_K1_PROMOTED_WITH_SCOPE_NOISE_SAFE_PROFILE','canonical_K1':new_k1,'canonical_coverage_state':new_state})
+          pathlib.Path('waves/wave_07_deep_gates').mkdir(parents=True,exist_ok=True)
+          pathlib.Path('waves/wave_07_deep_gates/M33_K1_NOISE_SAFE_EVIDENCE_SYNTHESIS.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - name: Commit canonical synthesis
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add matrices/mandatory_properties_matrix.csv matrices/model_family_census.csv waves/wave_07_deep_gates/M33_K1_NOISE_SAFE_EVIDENCE_SYNTHESIS.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Promote M33 scoped K1 after immutable noise-safe synthesis'
+          git push
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m33-k1-noise-safe-evidence-synthesis
+          path: |
+            waves/wave_07_deep_gates/M33_K1_NOISE_SAFE_EVIDENCE_SYNTHESIS.json
+            evidence_zip_sha256.txt
