@@ -1,0 +1,27 @@
+{
+  "schema": "KMDSB.M24.K1SmallA4TailDiagnostic.v1",
+  "model_id": "M24",
+  "family_id": "F24",
+  "diagnostic_only": true,
+  "physical_falsification": false,
+  "K1_promoted": false,
+  "run_id": 34712620163,
+  "job_id": 103604016263,
+  "artifact_id": 10304820222,
+  "artifact_sha256": "fb4e9d2fbec93dc3ced8f174f83c908d076bac31e88b469b3c5ec81e18188ad9",
+  "head_commit": "a12042642038343927a8997bb0059d30bd25d9b5",
+  "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "precision_profile": "provider pk_ref.pre with ur_fluid_trigger_tau_over_tau_k changed prospectively to 30 for IDM-DR compatibility",
+  "a4_Mpc^-1": [600.0, 200.0, 60.0, 20.0],
+  "Pk_R2": [
+    2.0393132033774542e-06,
+    2.0355838471472935e-06,
+    2.0312929269389156e-06,
+    2.030108969932068e-06
+  ],
+  "loglog_slope_all4": 0.0013770723401537077,
+  "tail_floor_ratio_20_over_600": 0.9954866013567006,
+  "monotonic_with_2pct_slack": true,
+  "classification": "M24_SMALL_A4_TAIL_EXECUTED",
+  "interpretation": "The small-a4 P(k) residual is nearly flat from a4=600 down to 20 Mpc^-1 under the compatible reference-precision profile. This materially localizes the persistence of the response but is diagnostic-only: it neither promotes K1 nor physically falsifies M24."
+}
