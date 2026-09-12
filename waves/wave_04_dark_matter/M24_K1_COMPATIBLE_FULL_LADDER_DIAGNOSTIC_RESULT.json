@@ -1,0 +1,51 @@
+{
+  "schema": "m24_k1_compatible_full_ladder_diagnostic_result_v0.1",
+  "model_id": "M24",
+  "family_id": "F24",
+  "date": "2026-09-12",
+  "run_id": 34716044903,
+  "job_id": 103613350956,
+  "head_commit": "d0696195da093e942cc579c43bdd7daeb39224ae",
+  "artifact_id": 10305155772,
+  "artifact_sha256": "2c5b9e4be3acdad6ca391be39c349e868039d97df1560580bbfa0dbd188b40d2",
+  "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "precision_profile_control": "pk_ref.pre with only ur_fluid_trigger_tau_over_tau_k changed 50 -> 30",
+  "a4_Mpc^-1": [60000.0, 18000.0, 6000.0, 1800.0, 600.0],
+  "status": {
+    "build": 0,
+    "ref": 0,
+    "zero": 0,
+    "a0": 0,
+    "a1": 0,
+    "a2": 0,
+    "a3": 0,
+    "a4": 0
+  },
+  "exact_zero_identity_pass": true,
+  "exact_zero_R2": {
+    "TT": 0.0,
+    "EE": 0.0,
+    "TE": 0.0,
+    "Pk": 0.0
+  },
+  "Pk_R2_sequence": [
+    2.582285897613336e-06,
+    2.208878685483948e-06,
+    2.091672623349137e-06,
+    2.048524252564187e-06,
+    2.0393132033775004e-06
+  ],
+  "Pk_tail_over_top": 0.7897317664408595,
+  "Pk_tail_loglog_slope_smallest3": 0.011110250072532211,
+  "Pk_monotonic_with_2pct_slack": true,
+  "Pk_smallest_le_quarter_largest": false,
+  "Pk_frozen_gate_pass": false,
+  "CMB_diagnostic_failing_blocks": ["TT", "EE", "TE"],
+  "analyzer_classification": "M24_ETHOS1_K1_DECOUPLING_NOT_ESTABLISHED",
+  "K1_reference_limit": "NOT_PROMOTED",
+  "diagnostic_only": true,
+  "canonical_promotion_authorized": false,
+  "physical_falsification": false,
+  "scientific_fail": false,
+  "interpretation": "After process-only build-status repair, all provider cases execute and exact zero-vs-omitted identity passes, while the P(k) response contracts only to 0.7897317664 of its largest-ladder response with a near-zero tail slope. This confirms the residual plateau as a numerical/response diagnostic. The run remains nonpromotable because the earlier prospectively frozen authorization condition for a full compatible-profile confirmation was not satisfied."
+}
