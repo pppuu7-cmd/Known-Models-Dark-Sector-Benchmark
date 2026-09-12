@@ -1,0 +1,66 @@
+name: W05 M32 K0g hosted termination audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w05-m32-k0g-hosted-termination-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch immutable run and logs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/34708140820" > run.json
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/34708140820/jobs" > jobs.json
+          gh run view 34708140820 --repo "$GITHUB_REPOSITORY" --log > run.log || true
+          sha256sum run.json jobs.json run.log > immutable_log_sha256.txt
+      - name: Apply frozen infrastructure classification
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,re
+          run=json.loads(pathlib.Path('run.json').read_text()); jobs=json.loads(pathlib.Path('jobs.json').read_text()); log=pathlib.Path('run.log').read_text(errors='replace')
+          expected_sha='70c7f89bbc2ed27b7f7f71ab5e7770d3422e4815'
+          expected_path='.github/workflows/w05-m32-k0g-umuscl-microcheckpoint.yml'
+          job=next((j for j in jobs.get('jobs',[]) if j.get('name')=='umuscl'),None)
+          steps={s.get('name'):(s.get('status'),s.get('conclusion')) for s in (job or {}).get('steps',[])}
+          sig={
+            'head_sha_exact':run.get('head_sha')==expected_sha,
+            'workflow_path_exact':run.get('path')==expected_path,
+            'checkpoint_fetch_success':steps.get('Fetch immutable K0f stage1 checkpoint')==('completed','success'),
+            'intel_install_success':steps.get('Install frozen Intel toolchain')==('completed','success'),
+            'compile_step_failed':steps.get('Restore exact provider and compile only umuscl.o')==('completed','failure'),
+            'shutdown_signal_present':'The runner has received a shutdown signal' in log,
+            'exit_143_present':'exit code 143' in log,
+            'ifx_orphan_terminated':bool(re.search(r'Terminate orphan process:.*\(ifx\)',log)),
+            'compile_command_present':'make umuscl.o' in log,
+          }
+          passed=all(sig.values())
+          out={'schema':'m32_k0g_hosted_termination_audit_v0.1','model_id':'M32','family_id':'F32',
+               'protocol':'protocol/W05_M32_K0G_HOSTED_TERMINATION_AUDIT_v0.1.md','source_run':34708140820,
+               'source_head_sha':run.get('head_sha'),'signatures':sig,'all_signatures_pass':passed,
+               'classification':'M32_K0G_HOSTED_RUNNER_TERMINATED_DURING_IFX' if passed else 'M32_K0G_TERMINATION_AUDIT_INTEGRITY_BLOCKED',
+               'K0_promoted':False,'physical_falsification':False,
+               'interpretation':'Hosted execution infrastructure blocker; no completed compiler diagnostic supports a source/compiler/physics failure.'}
+          pathlib.Path('M32_K0G_HOSTED_TERMINATION_AUDIT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          pathlib.Path('M32_K0G_HOSTED_TERMINATION_AUDIT.md').write_text('# M32 K0g hosted termination audit\n\nClassification: `'+out['classification']+'`  \n\nNo K0 promotion or physical falsification.\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m32-k0g-hosted-termination-audit
+          path: |
+            M32_K0G_HOSTED_TERMINATION_AUDIT.json
+            M32_K0G_HOSTED_TERMINATION_AUDIT.md
+            immutable_log_sha256.txt
