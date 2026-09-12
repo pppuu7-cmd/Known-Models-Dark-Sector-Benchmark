@@ -1,0 +1,155 @@
+name: W07 M35 beta lambda observable response
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m35-beta-lambda-observable-response.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PROVIDER_COMMIT: 'd9a20bd0c7b7a6c8957410fd245ed06b30b915c1'
+
+jobs:
+  response:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install and build exact provider
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential gfortran python3-numpy >/dev/null
+          git clone -q --branch LVDM https://github.com/Michalychforever/CLASS_LVDM.git provider
+          git -C provider checkout -q "$PROVIDER_COMMIT"
+          test "$(git -C provider rev-parse HEAD)" = "$PROVIDER_COMMIT"
+          git -C provider rev-parse HEAD > provider_commit.txt
+          make -C provider -j2 class
+      - name: Fetch immutable established gravity-Y response artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p immutable
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10290165068/zip" > /tmp/immutable.zip
+          unzip -q /tmp/immutable.zip -d immutable
+          sha256sum /tmp/immutable.zip > immutable_zip_sha256.txt
+      - name: Generate frozen beta and lambda central stencils
+        run: |
+          set -euo pipefail
+          cd provider
+          mkdir -p output ../m35bl
+          python3 - <<'PY'
+          import pathlib,re
+          src=pathlib.Path('Misha.ini').read_text()
+          base={'alpha':.005,'beta':.025,'lambda':-.01,'Y_dm':0.}
+          specs={
+            'base':base,
+            'bp2':{**base,'beta':.0255},'bm2':{**base,'beta':.0245},
+            'bp1':{**base,'beta':.02525},'bm1':{**base,'beta':.02475},
+            'lp2':{**base,'lambda':-.0098},'lm2':{**base,'lambda':-.0102},
+            'lp1':{**base,'lambda':-.0099},'lm1':{**base,'lambda':-.0101},
+          }
+          for tag,vals in specs.items():
+              t=src
+              for k,v in vals.items(): t=re.sub(rf'(?m)^\s*{re.escape(k)}\s*=.*$',f'{k} = {v:.16g}',t)
+              t=re.sub(r'(?m)^\s*root\s*=.*$',f'root = output/{tag}_',t)
+              pathlib.Path(f'{tag}.ini').write_text(t)
+          PY
+          grep -H -E '^(alpha|beta|lambda|Y_dm|root)[[:space:]]*=' base.ini bp2.ini bm2.ini bp1.ini bm1.ini lp2.ini lm2.ini lp1.ini lm1.ini | tee ../m35bl/frozen_parameters.txt
+      - name: Execute frozen arms
+        run: |
+          set -euo pipefail
+          cd provider
+          for tag in base bp2 bm2 bp1 bm1 lp2 lm2 lp1 lm1; do
+            set +e
+            ./class "$tag.ini" > "../m35bl/$tag.stdout" 2> "../m35bl/$tag.stderr"
+            rc=$?
+            set -e
+            echo "$rc" > "../m35bl/$tag.exit"
+            if [ "$rc" -eq 0 ]; then
+              cp "output/${tag}_cl.dat" "../m35bl/${tag}_cl.dat"
+              cp "output/${tag}_pk.dat" "../m35bl/${tag}_pk.dat"
+            fi
+          done
+      - name: Analyze convergence and angle to immutable gravity-Y span
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,math,pathlib
+          import numpy as np
+          pin='d9a20bd0c7b7a6c8957410fd245ed06b30b915c1'; b=pathlib.Path('m35bl'); imm=pathlib.Path('immutable')
+          tags=['base','bp2','bm2','bp1','bm1','lp2','lm2','lp1','lm1']; exits={t:int((b/f'{t}.exit').read_text()) for t in tags}
+          out={'schema':'m35_beta_lambda_observable_response_v0.1','model_id':'M35','family_id':'F35','protocol':'protocol/W07_M35_BETA_LAMBDA_OBSERVABLE_RESPONSE_v0.1.md','provider_commit':pathlib.Path('provider_commit.txt').read_text().strip(),'expected_commit':pin,'exits':exits,'steps':{'beta_coarse':.0005,'beta_fine':.00025,'lambda_coarse':.0002,'lambda_fine':.0001},'K2_promoted':False,'canonical_K2_remains':'PARTIAL','physical_falsification':False,'full_Einstein_Aether_SVT_claim':False}
+          def one(root,name):
+              h=list(root.rglob(name))
+              if len(h)!=1: raise RuntimeError(f'{name}: {len(h)} hits')
+              return h[0]
+          def tab(path):
+              rows=[]
+              for line in path.read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  try:rows.append([float(x) for x in s.split()])
+                  except ValueError:pass
+              a=np.asarray(rows,float)
+              if a.ndim!=2 or len(a)<5 or a.shape[1]<2: raise RuntimeError(f'bad table {path}')
+              return a
+          def geom(a,c):
+              na=float(np.linalg.norm(a)); nb=float(np.linalg.norm(c)); co=float(np.dot(a,c)/(na*nb));co=max(-1.,min(1.,co));ang=float(math.degrees(math.acos(abs(co))));mm=abs(na-nb)/max(na,nb)
+              return {'principal_angle_deg':ang,'relative_norm_mismatch':mm,'absolute_cosine':abs(co),'passes_5deg_025':bool(ang<=5 and mm<=.25)}
+          try:
+              if out['provider_commit']!=pin or exits['base']!=0: raise RuntimeError('provider/base blocked')
+              if any(exits[t]!=0 for t in tags[1:]):
+                  out['classification']='M35_BETA_LAMBDA_PROVIDER_BLOCKED';out['failed_arms']=[t for t in tags[1:] if exits[t]!=0]
+              else:
+                  old_json=json.loads(one(imm,'M35_LOCAL_2D_RESPONSE_JACOBIAN.json').read_text())
+                  if old_json.get('provider_commit')!=pin or old_json.get('classification')!='M35_LOCAL_2D_RESPONSE_RANK_EVIDENCE': raise RuntimeError('immutable gravity/Y prerequisite mismatch')
+                  # Current and immutable files used together on one common response support.
+                  newcl={t:tab(b/f'{t}_cl.dat') for t in tags}; newpk={t:tab(b/f'{t}_pk.dat') for t in tags}
+                  oldcl={t:tab(one(imm,f'{t}_cl.dat')) for t in ['base','gfine','yfine']}; oldpk={t:tab(one(imm,f'{t}_pk.dat')) for t in ['base','gfine','yfine']}
+                  maps={('n',t):{int(r[0]):r[1:] for r in a} for t,a in newcl.items()}; maps.update({('o',t):{int(r[0]):r[1:] for r in a} for t,a in oldcl.items()})
+                  common=sorted(set.intersection(*(set(x) for x in maps.values()))); nc=min(len(maps[k][l]) for k in maps for l in common)
+                  def cv(key): return np.asarray([maps[key][l][j] for l in common for j in range(nc)],float)
+                  nb=cv(('n','base')); ob=cv(('o','base')); cn=float(np.linalg.norm(nb)); base_c=float(np.linalg.norm(nb-ob)/max(np.linalg.norm(ob),1e-30))
+                  allpk=list(newpk.values())+list(oldpk.values());lo=max(a[:,0].min() for a in allpk);hi=min(a[:,0].max() for a in allpk);m=(newpk['base'][:,0]>=lo)&(newpk['base'][:,0]<=hi);k=newpk['base'][m,0];nbp=newpk['base'][m,1];obp=np.interp(k,oldpk['base'][:,0],oldpk['base'][:,1]);pn=float(np.linalg.norm(nbp));base_p=float(np.linalg.norm(nbp-obp)/max(np.linalg.norm(obp),1e-30))
+                  out['immutable_base_identity']={'cmb_normalized_l2':base_c,'pk_normalized_l2':base_p,'threshold':1e-8,'passed':bool(max(base_c,base_p)<=1e-8)}
+                  if not out['immutable_base_identity']['passed']: raise RuntimeError('base identity failed')
+                  def current(plus,minus,h):
+                      c=(cv(('n',plus))-cv(('n',minus)))/(2*h*cn);p=(np.interp(k,newpk[plus][:,0],newpk[plus][:,1])-np.interp(k,newpk[minus][:,0],newpk[minus][:,1]))/(2*h*pn);return np.concatenate([c,p])
+                  def old(tag,h):
+                      c=(cv(('o',tag))-ob)/(h*cn);p=(np.interp(k,oldpk[tag][:,0],oldpk[tag][:,1])-obp)/(h*pn);return np.concatenate([c,p])
+                  bc=current('bp2','bm2',.0005);bf=current('bp1','bm1',.00025);lc=current('lp2','lm2',.0002);lf=current('lp1','lm1',.0001);g=old('gfine',.001);y=old('yfine',.001)
+                  bconv=geom(bc,bf);lconv=geom(lc,lf)
+                  A=np.column_stack([g,y]);u,s,v=np.linalg.svd(A,full_matrices=False);tol=max(A.shape)*np.finfo(float).eps*s[0];rank=int(np.sum(s>tol));Q=u[:,:rank]
+                  def span_angle(v):
+                      nv=float(np.linalg.norm(v));res=v-Q@(Q.T@v);nr=float(np.linalg.norm(res));ratio=max(0.,min(1.,nr/nv));return {'principal_angle_to_span_deg':float(math.degrees(math.asin(ratio))),'orthogonal_fraction':ratio,'separated_10deg':bool(math.degrees(math.asin(ratio))>=10.)}
+                  out['established_span']={'rank':rank,'singular_values':s.tolist(),'rank_tolerance':float(tol),'gravity_Y_angle_deg':geom(g,y)['principal_angle_deg']}
+                  out['beta']={'convergence':bconv,'fine_vs_gravity':geom(bf,g),'fine_vs_Y':geom(bf,y),'fine_vs_established_span':span_angle(bf)}
+                  out['lambda']={'convergence':lconv,'fine_vs_gravity':geom(lf,g),'fine_vs_Y':geom(lf,y),'fine_vs_established_span':span_angle(lf)}
+                  be=bconv['passes_5deg_025'] and rank==2 and out['beta']['fine_vs_established_span']['separated_10deg'];le=lconv['passes_5deg_025'] and rank==2 and out['lambda']['fine_vs_established_span']['separated_10deg']
+                  out['beta_additional_rank_evidence']=bool(be);out['lambda_additional_rank_evidence']=bool(le)
+                  if be or le: out['classification']='M35_ADDITIONAL_LOCAL_OBSERVABLE_DIRECTION_EVIDENCE_SOURCE_QUOTIENT_STILL_OPEN'
+                  elif not bconv['passes_5deg_025'] or not lconv['passes_5deg_025']: out['classification']='M35_BETA_LAMBDA_OBSERVABLE_DERIVATIVE_CONVERGENCE_OPEN'
+                  else: out['classification']='M35_BETA_LAMBDA_CONVERGED_WITHIN_ESTABLISHED_RESPONSE_SPAN'
+                  out['interpretation']='Additional local response rank, if present, does not close full Einstein-Aether SVT quotient geometry and cannot promote K2 to PASS.'
+          except Exception as e:
+              out['classification']='M35_BETA_LAMBDA_RESPONSE_INTEGRITY_BLOCKED';out['error']=repr(e)
+          pathlib.Path('M35_BETA_LAMBDA_OBSERVABLE_RESPONSE.json').write_text(json.dumps(out,indent=2)+'\n')
+          pathlib.Path('M35_BETA_LAMBDA_OBSERVABLE_RESPONSE.md').write_text('# M35 beta/lambda observable response\n\nClassification: `'+out['classification']+'`  \nBeta additional rank: `'+str(out.get('beta_additional_rank_evidence'))+'`  \nLambda additional rank: `'+str(out.get('lambda_additional_rank_evidence'))+'`  \n\nCanonical K2 remains PARTIAL.\n')
+          print(pathlib.Path('M35_BETA_LAMBDA_OBSERVABLE_RESPONSE.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m35-beta-lambda-observable-response
+          path: |
+            M35_BETA_LAMBDA_OBSERVABLE_RESPONSE.json
+            M35_BETA_LAMBDA_OBSERVABLE_RESPONSE.md
+            provider_commit.txt
+            immutable_zip_sha256.txt
+            m35bl/
