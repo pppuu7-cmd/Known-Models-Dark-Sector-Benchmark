@@ -1,0 +1,181 @@
+name: W07 M40 xi lambda coordinate response
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m40-xi-lambda-coordinate-response.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  EFTCAMB_PIN: '16d9c4e9f85751e30efd0a53b177941713078904'
+  RADIAL_ARTIFACT: '10298444789'
+
+jobs:
+  coordinate-response:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        axis: [xi, lambda]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch immutable radial authority
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p immutable_radial
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${RADIAL_ARTIFACT}/zip" > /tmp/radial.zip
+          unzip -q /tmp/radial.zip -d immutable_radial
+          sha256sum /tmp/radial.zip > immutable_radial_zip_sha256.txt
+      - name: Install and build exact pinned EFTCAMB
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y libblas-dev liblapack-dev python3-numpy >/dev/null
+          git clone -q https://github.com/EFTCAMB/EFTCAMB.git provider
+          git -C provider checkout -q --detach "$EFTCAMB_PIN"
+          git -C provider submodule update --init --recursive
+          test "$(git -C provider rev-parse HEAD)" = "$EFTCAMB_PIN"
+          (cd provider/fortran && make clean >/dev/null 2>&1 || true; make camb >/dev/null)
+          git -C provider rev-parse HEAD > provider_commit.txt
+      - name: Generate frozen coordinate stencil
+        run: |
+          set -euo pipefail
+          AXIS='${{ matrix.axis }}'; BASE="$GITHUB_WORKSPACE/m40_${AXIS}"; mkdir -p "$BASE"
+          python3 - "$AXIS" "$BASE" <<'PY'
+          import pathlib,re,sys
+          axis=sys.argv[1]; b=pathlib.Path(sys.argv[2]); p=pathlib.Path('provider/fortran/eftcamb_test/parameters').resolve()
+          src=(p/'5_Horava_eta_3.ini').read_text(); include=str((p/'base_params.ini').resolve())
+          src=re.sub(r'(?m)^\s*DEFAULT\(base_params\.ini\)\s*$', f'DEFAULT({include})', src)
+          base={'Horava_xi':-1.0e-4,'Horava_lambda':1.0e-4,'Horava_eta':2.1e-3}
+          key={'xi':'Horava_xi','lambda':'Horava_lambda'}[axis]
+          specs={'base':0.0,'ap2':2.0e-6,'am2':-2.0e-6,'ap1':1.0e-6,'am1':-1.0e-6}
+          for tag,d in specs.items():
+              vals=dict(base); vals[key]+=d
+              t=src
+              for k,v in vals.items(): t=re.sub(rf'(?m)^\s*{k}\s*=.*$', f'{k} = {v:.16g}', t)
+              t=re.sub(r'(?m)^\s*output_root\s*=.*$', f'output_root = {b}/{tag}_', t)
+              (b/f'{tag}.ini').write_text(t)
+          (b/'FROZEN_STENCIL.txt').write_text(f'axis={axis}; base xi=-1e-4 lambda=+1e-4 eta=2.1e-3; coarse delta=2e-6; fine delta=1e-6; derivative angle<=5deg; norm mismatch<=0.25; radial separation>=10deg; immutable-base D<=1e-8.\n')
+          PY
+          grep -H -E '^(Horava_xi|Horava_lambda|Horava_eta|output_root|DEFAULT)' "$BASE"/*.ini | tee "$BASE/frozen_config_extract.txt"
+      - name: Execute base and coordinate arms
+        run: |
+          set -euo pipefail
+          AXIS='${{ matrix.axis }}'; BASE="$GITHUB_WORKSPACE/m40_${AXIS}"
+          set +e
+          for tag in base ap2 am2 ap1 am1; do
+            (cd provider/fortran && ./camb "$BASE/${tag}.ini" > "$BASE/${tag}.stdout" 2> "$BASE/${tag}.stderr")
+            echo $? > "$BASE/${tag}.exit"
+          done
+          set -e
+      - name: Compare coordinate derivative with immutable radial response
+        run: |
+          set -euo pipefail
+          AXIS='${{ matrix.axis }}'; BASE="$GITHUB_WORKSPACE/m40_${AXIS}"
+          python3 - "$AXIS" "$BASE" <<'PY'
+          import json,math,pathlib,sys
+          import numpy as np
+          axis=sys.argv[1]; b=pathlib.Path(sys.argv[2]); pin=pathlib.Path('provider_commit.txt').read_text().strip(); expected='16d9c4e9f85751e30efd0a53b177941713078904'
+          imm=pathlib.Path('immutable_radial')
+          def one(root,pattern):
+              hits=list(root.rglob(pattern))
+              if len(hits)!=1: raise RuntimeError(f'{pattern}: expected 1 hit, got {len(hits)}')
+              return hits[0]
+          def load(path):
+              rows=[]
+              for line in path.read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  try: rows.append([float(x) for x in s.split()])
+                  except ValueError: pass
+              a=np.asarray(rows,float)
+              if a.ndim!=2 or len(a)<5 or a.shape[1]<2 or not np.isfinite(a).all(): raise RuntimeError(f'bad table {path}')
+              return a
+          exits={t:int((b/f'{t}.exit').read_text()) for t in ['base','ap2','am2','ap1','am1']}
+          out={'schema':'m40_xi_lambda_coordinate_response_v0.1','model_id':'M40','family_id':'F40','axis':axis,
+               'protocol':'protocol/W07_M40_XI_LAMBDA_COORDINATE_RESPONSE_PREREGISTRATION_v0.1.md','provider_commit':pin,'expected_commit':expected,
+               'immutable_radial_run':34695408204,'immutable_radial_artifact':10298444789,
+               'coarse_delta':2e-6,'fine_delta':1e-6,'exits':exits,'K2_promoted':False,'physical_falsification':False,'complete_Horava_family_claim':False}
+          try:
+              imm_commit=one(imm,'provider_commit.txt').read_text().strip()
+              if pin!=expected or imm_commit!=expected: raise RuntimeError('provider pin mismatch')
+              if exits['base']!=0: raise RuntimeError('new base failed')
+              if any(exits[t]!=0 for t in ['ap2','am2','ap1','am1']):
+                  out['classification']=f'M40_{axis.upper()}_LOCAL_RESPONSE_PROVIDER_BLOCKED'; out['failed_arms']=[t for t,v in exits.items() if v!=0]
+              else:
+                  # Tables: immutable radial uses base,rp1,rm1. New coordinate uses base/ap*/am*.
+                  icl={t:load(one(imm,f'{t}__scalCls.dat')) for t in ['base','rp1','rm1']}
+                  ipk={t:load(one(imm,f'{t}__matterpower.dat')) for t in ['base','rp1','rm1']}
+                  ncl={t:load(b/f'{t}__scalCls.dat') for t in ['base','ap2','am2','ap1','am1']}
+                  npk={t:load(b/f'{t}__matterpower.dat') for t in ['base','ap2','am2','ap1','am1']}
+                  maps={}
+                  for prefix,d in [('i',icl),('n',ncl)]: maps[prefix]={t:{int(r[0]):np.asarray(r[1:],float) for r in a} for t,a in d.items()}
+                  allsets=[set(maps[p][t]) for p in maps for t in maps[p]]; common_ell=sorted(set.intersection(*allsets))
+                  cmb={p:{t:[] for t in maps[p]} for p in maps}
+                  for ell in common_ell:
+                      n=min(len(maps[p][t][ell]) for p in maps for t in maps[p])
+                      for j in range(n):
+                          vals={(p,t):maps[p][t][ell][j] for p in maps for t in maps[p]}
+                          if all(np.isfinite(v) for v in vals.values()):
+                              for (p,t),v in vals.items(): cmb[p][t].append(v)
+                  cmb={p:{t:np.asarray(v,float) for t,v in d.items()} for p,d in cmb.items()}
+                  allpk=list(ipk.values())+list(npk.values()); lo=max(float(a[:,0].min()) for a in allpk); hi=min(float(a[:,0].max()) for a in allpk)
+                  base=npk['base']; m=(base[:,0]>=lo)&(base[:,0]<=hi); x=base[m,0]
+                  pk={'i':{},'n':{}}
+                  for t,a in ipk.items(): pk['i'][t]=np.interp(x,a[:,0],a[:,1])
+                  for t,a in npk.items(): pk['n'][t]=np.interp(x,a[:,0],a[:,1])
+                  good=np.ones(len(x),dtype=bool)
+                  for p in pk:
+                      for t in pk[p]: good &= np.isfinite(pk[p][t])
+                  x=x[good]; pk={p:{t:v[good] for t,v in d.items()} for p,d in pk.items()}
+                  def relD(a,c): return float(np.linalg.norm(a-c)/max(np.linalg.norm(a),np.linalg.norm(c),1e-30))
+                  baseD={'cmb':relD(cmb['i']['base'],cmb['n']['base']),'pk':relD(pk['i']['base'],pk['n']['base'])}
+                  out['immutable_base_identity']=dict(baseD,threshold=1e-8,passed=bool(max(baseD.values())<=1e-8))
+                  out['global_support']={'cmb_values':int(len(cmb['n']['base'])),'ell_count':int(len(common_ell)),'pk_values':int(len(x)),'pk_k_min':float(x.min()),'pk_k_max':float(x.max())}
+                  if not out['immutable_base_identity']['passed']:
+                      out['classification']=f'M40_{axis.upper()}_LOCAL_RESPONSE_CONTROL_BLOCKED'
+                  else:
+                      cnorm=float(np.linalg.norm(cmb['n']['base'])); pnorm=float(np.linalg.norm(pk['n']['base']))
+                      def vec(prefix,plus,minus,h):
+                          c=(cmb[prefix][plus]-cmb[prefix][minus])/(2*h*cnorm); p=(pk[prefix][plus]-pk[prefix][minus])/(2*h*pnorm)
+                          return np.concatenate([c,p])
+                      radial=vec('i','rp1','rm1',0.001)
+                      coarse=vec('n','ap2','am2',2e-6); fine=vec('n','ap1','am1',1e-6)
+                      def geom(a,c):
+                          na=float(np.linalg.norm(a)); nb=float(np.linalg.norm(c)); co=float(np.dot(a,c)/(na*nb)); co=max(-1.0,min(1.0,co)); ang=float(math.degrees(math.acos(abs(co))))
+                          return {'principal_angle_deg':ang,'relative_norm_mismatch':abs(na-nb)/max(na,nb),'absolute_cosine':abs(co),'norm_a':na,'norm_b':nb}
+                      conv=geom(coarse,fine); cross=geom(radial,fine); conv_pass=conv['principal_angle_deg']<=5 and conv['relative_norm_mismatch']<=0.25; sep=cross['principal_angle_deg']>=10
+                      out['coordinate_derivative_convergence']=conv; out['radial_vs_coordinate_fine']=cross; out['coordinate_derivative_converged']=conv_pass; out['cross_direction_separated']=sep
+                      if not conv_pass: cls=f'M40_{axis.upper()}_LOCAL_RESPONSE_DERIVATIVE_NOT_CONVERGED'
+                      elif sep: cls=f'M40_{axis.upper()}_LOCAL_RESPONSE_DISTINCT_EVIDENCE'
+                      else: cls=f'M40_{axis.upper()}_LOCAL_RESPONSE_NEAR_COLLINEAR'
+                      out['classification']=cls
+          except Exception as e:
+              out['classification']=f'M40_{axis.upper()}_LOCAL_RESPONSE_CONTROL_BLOCKED'; out['error']=repr(e)
+          pathlib.Path(f'M40_{axis.upper()}_COORDINATE_RESPONSE.json').write_text(json.dumps(out,indent=2)+'\n')
+          with open(f'M40_{axis.upper()}_COORDINATE_RESPONSE.md','w') as f:
+              f.write(f'# M40 {axis} coordinate response\n\nClassification: `{out["classification"]}`  \n')
+              if out.get('coordinate_derivative_convergence'):
+                  f.write(f"Derivative convergence: {out['coordinate_derivative_convergence']}  \n")
+                  f.write(f"Radial-vs-axis geometry: {out['radial_vs_coordinate_fine']}  \n")
+              f.write('\nNo K2 promotion or physical-family exclusion is authorized.\n')
+          print(pathlib.Path(f'M40_{axis.upper()}_COORDINATE_RESPONSE.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m40-${{ matrix.axis }}-coordinate-response
+          path: |
+            M40_*_COORDINATE_RESPONSE.json
+            M40_*_COORDINATE_RESPONSE.md
+            provider_commit.txt
+            immutable_radial_zip_sha256.txt
+            m40_${{ matrix.axis }}/
