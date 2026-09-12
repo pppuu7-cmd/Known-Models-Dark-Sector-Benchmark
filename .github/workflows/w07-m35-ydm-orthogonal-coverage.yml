@@ -1,0 +1,143 @@
+name: W07 M35 Ydm orthogonal coverage
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m35-ydm-orthogonal-coverage.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PROVIDER_REPO: 'https://github.com/Michalychforever/CLASS_LVDM.git'
+  PROVIDER_COMMIT: 'd9a20bd0c7b7a6c8957410fd245ed06b30b915c1'
+
+jobs:
+  ydm-coverage:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install provider dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential gfortran python3-numpy
+      - name: Clone and build exact provider
+        run: |
+          set -euo pipefail
+          git clone -q --branch LVDM "$PROVIDER_REPO" provider
+          git -C provider checkout -q "$PROVIDER_COMMIT"
+          test "$(git -C provider rev-parse HEAD)" = "$PROVIDER_COMMIT"
+          git -C provider rev-parse HEAD > provider_commit.txt
+          make -C provider -j2 class
+      - name: Prepare frozen orthogonal Y_dm ladder
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd provider
+          mkdir -p output ../m35ydmout
+          declare -A Y=( [ref]=0.0 [y020]=0.020 [y010]=0.010 [y005]=0.005 [y001]=0.001 )
+          for tag in ref y020 y010 y005 y001; do
+            cp Misha.ini ${tag}.ini
+            sed -i -E 's|^[[:space:]]*alpha[[:space:]]*=.*|alpha = 0.005|' ${tag}.ini
+            sed -i -E 's|^[[:space:]]*beta[[:space:]]*=.*|beta = 0.025|' ${tag}.ini
+            sed -i -E 's|^[[:space:]]*lambda[[:space:]]*=.*|lambda = -0.010|' ${tag}.ini
+            sed -i -E "s|^[[:space:]]*Y_dm[[:space:]]*=.*|Y_dm = ${Y[$tag]}|" ${tag}.ini
+            sed -i "s|^[[:space:]]*root[[:space:]]*=.*|root = output/${tag}_|" ${tag}.ini
+          done
+          grep -E '^(alpha|beta|lambda|Y_dm|root)[[:space:]]*=' ref.ini y020.ini y010.ini y005.ini y001.ini | tee ../frozen_ydm_parameters.txt
+      - name: Execute reference and frozen Y_dm arms
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd provider
+          for tag in ref y020 y010 y005 y001; do
+            set +e
+            ./class ${tag}.ini > ../${tag}.stdout 2> ../${tag}.stderr
+            rc=$?
+            set -e
+            echo "$rc" > ../${tag}.exit
+            if [ "$rc" -eq 0 ]; then
+              cp output/${tag}_cl.dat ../m35ydmout/${tag}_cl.dat
+              cp output/${tag}_pk.dat ../m35ydmout/${tag}_pk.dat
+            fi
+          done
+      - name: Analyze frozen coverage gate
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,math,pathlib
+          import numpy as np
+          expected='d9a20bd0c7b7a6c8957410fd245ed06b30b915c1'
+          pin=pathlib.Path('provider_commit.txt').read_text().strip()
+          tags=['y020','y010','y005','y001']; ys=[0.020,0.010,0.005,0.001]
+          exits={t:int(pathlib.Path(f'{t}.exit').read_text()) for t in ['ref']+tags}
+          def load(path):
+              rows=[]
+              with open(path,errors='replace') as f:
+                  for line in f:
+                      s=line.strip()
+                      if not s or s.startswith('#'): continue
+                      try: rows.append([float(x) for x in s.split()])
+                      except ValueError: pass
+              a=np.asarray(rows,float)
+              if a.ndim!=2 or a.shape[0]<5 or a.shape[1]<2 or not np.isfinite(a).all():
+                  raise RuntimeError(f'bad/nonfinite table {path}')
+              return a
+          def rel_l2(ref,arm):
+              lo=max(ref[:,0].min(),arm[:,0].min()); hi=min(ref[:,0].max(),arm[:,0].max())
+              rr=ref[(ref[:,0]>=lo)&(ref[:,0]<=hi)]
+              x=rr[:,0]; a=rr[:,1]; b=np.interp(x,arm[:,0],arm[:,1])
+              scale=np.maximum(np.maximum(np.abs(a),np.abs(b)),1e-30)
+              return float(np.sqrt(np.mean(((a-b)/scale)**2)))
+          out={
+            'schema':'m35_ydm_orthogonal_coverage_v0.1','model_id':'M35','family_id':'F35',
+            'protocol':'protocol/W07_M35_YDM_ORTHOGONAL_COVERAGE_PREREGISTRATION_v0.1.md',
+            'provider_commit':pin,'expected_commit':expected,
+            'gravity_coordinates_fixed':{'alpha':0.005,'beta':0.025,'lambda':-0.010},
+            'Y_dm_reference':0.0,'Y_dm_arms':ys,'exits':exits,
+            'K2_promoted':False,'physical_falsification':False,'full_Einstein_Aether_SVT_claim':False
+          }
+          if exits['ref']!=0 or pin!=expected:
+              out['classification']='M35_YDM_DIRECTION_CONTROL_BLOCKED'
+          elif any(exits[t]!=0 for t in tags):
+              out['classification']='M35_YDM_DIRECTION_PROVIDER_DOMAIN_BLOCKED'
+              out['failed_arms']=[{'tag':t,'Y_dm':y,'exit':exits[t]} for t,y in zip(tags,ys) if exits[t]!=0]
+          else:
+              rcl=load('m35ydmout/ref_cl.dat'); rpk=load('m35ydmout/ref_pk.dat')
+              metrics=[]
+              for t,y in zip(tags,ys):
+                  cl=load(f'm35ydmout/{t}_cl.dat'); pk=load(f'm35ydmout/{t}_pk.dat')
+                  metrics.append({'tag':t,'Y_dm':y,'tt_normalized_l2':rel_l2(rcl,cl),'pk_normalized_l2':rel_l2(rpk,pk),'cl_rows':len(cl),'pk_rows':len(pk)})
+              tt=[m['tt_normalized_l2'] for m in metrics]; pk=[m['pk_normalized_l2'] for m in metrics]
+              contract_tt=all(tt[i+1] < tt[i] for i in range(len(tt)-1))
+              contract_pk=all(pk[i+1] < pk[i] for i in range(len(pk)-1))
+              def slope(vals):
+                  x=np.log(np.asarray(ys)); z=np.log(np.asarray(vals))
+                  return float(np.polyfit(x,z,1)[0])
+              out.update({'metrics':metrics,'strict_contraction_tt':contract_tt,'strict_contraction_pk':contract_pk,
+                          'loglog_slope_tt':slope(tt) if all(v>0 for v in tt) else None,
+                          'loglog_slope_pk':slope(pk) if all(v>0 for v in pk) else None})
+              out['classification']='M35_YDM_DIRECTION_EXECUTABLE_CONTRACTING' if contract_tt and contract_pk else 'M35_YDM_DIRECTION_EXECUTABLE_NONCONTRACTING'
+          json.dump(out,open('M35_YDM_ORTHOGONAL_COVERAGE.json','w'),indent=2)
+          with open('M35_YDM_ORTHOGONAL_COVERAGE.md','w') as f:
+              f.write('# M35 orthogonal Y_dm coverage probe\n\n')
+              f.write(f"Classification: `{out['classification']}`  \n")
+              if 'metrics' in out:
+                  for m in out['metrics']:
+                      f.write(f"- Y_dm={m['Y_dm']}: TT L2={m['tt_normalized_l2']:.12g}, P(k) L2={m['pk_normalized_l2']:.12g}\n")
+              f.write('\nK2 is not promoted. This is an independent-coordinate coverage probe only; no family-wide physical falsification or full SVT claim is made.\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m35-ydm-orthogonal-coverage
+          path: |
+            M35_YDM_ORTHOGONAL_COVERAGE.json
+            M35_YDM_ORTHOGONAL_COVERAGE.md
+            frozen_ydm_parameters.txt
+            provider_commit.txt
+            *.exit
+            *.stdout
+            *.stderr
+            m35ydmout/
