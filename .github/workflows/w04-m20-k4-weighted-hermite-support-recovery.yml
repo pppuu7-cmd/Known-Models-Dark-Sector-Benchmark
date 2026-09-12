@@ -1,0 +1,52 @@
+name: W04 M20 SIDM K4 weighted Hermite support recovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m20-k4-weighted-hermite-support-recovery.yml'
+      - 'verification/m20/k4_weighted_hermite_support_recovery.py'
+      - 'protocol/W04_M20_K4_WEIGHTED_HERMITE_SUPPORT_RECOVERY_PREREGISTRATION_v0.1.md'
+
+permissions:
+  contents: read
+
+jobs:
+  weighted-hermite-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PROVIDER_PIN: e17d3664dac677b604fd4ff02fb2af105a6937fa
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin validated provider environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/shinichiroando/sashimi-si.git sashimi
+          git -C sashimi checkout -q --detach "$PROVIDER_PIN"
+          test "$(git -C sashimi rev-parse HEAD)" = "$PROVIDER_PIN"
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3 scipy==1.16.1 numexpr==2.11.0 tqdm==4.67.1
+      - name: Run preregistered weighted-support recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m20/k4_weighted_hermite_support_recovery.py sashimi M20_K4_WEIGHTED_HERMITE_SUPPORT_RECOVERY.json
+          cat M20_K4_WEIGHTED_HERMITE_SUPPORT_RECOVERY.json
+      - name: Enforce diagnostic guardrails
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('M20_K4_WEIGHTED_HERMITE_SUPPORT_RECOVERY.json'))
+          assert r['K4_promoted'] is False
+          assert r['scientific_fail'] is False
+          assert r['physical_falsification'] is False
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m20-k4-weighted-hermite-support-recovery
+          path: M20_K4_WEIGHTED_HERMITE_SUPPORT_RECOVERY.json
+          retention-days: 30
