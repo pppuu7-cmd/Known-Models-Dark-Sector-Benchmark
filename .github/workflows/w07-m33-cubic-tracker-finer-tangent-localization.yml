@@ -1,0 +1,131 @@
+name: W07 M33 cubic tracker finer tangent localization
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m33-cubic-tracker-finer-tangent-localization.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  HICLASS_PIN: '0009f51d89e6465c79e570b496c66fc90058fa77'
+
+jobs:
+  finer-tangent:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch immutable parents and build exact provider
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p source_parent tangent_parent
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10302796592/zip" > source_parent.zip
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10302377346/zip" > tangent_parent.zip
+          unzip -q source_parent.zip -d source_parent
+          unzip -q tangent_parent.zip -d tangent_parent
+          sha256sum source_parent.zip tangent_parent.zip > immutable_parent_sha256.txt
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3-numpy >/dev/null
+          git clone -q https://github.com/hiclass-code/hi_class_public.git provider
+          git -C provider checkout -q --detach "$HICLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$HICLASS_PIN"
+          make -C provider -j2 >/dev/null
+          git -C provider rev-parse HEAD > provider_commit.txt
+      - name: Verify parents and generate frozen finer arms
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib,re
+          sh=list(pathlib.Path('source_parent').rglob('M33_CUBIC_TRACKER_SOURCE_GEOMETRY_AUDIT.json'))
+          th=list(pathlib.Path('tangent_parent').rglob('M33_CUBIC_TRACKER_LOCAL_TANGENT.json'))
+          if len(sh)!=1 or len(th)!=1: raise SystemExit(f'parent json counts source={len(sh)} tangent={len(th)}')
+          s=json.loads(sh[0].read_text()); t=json.loads(th[0].read_text())
+          if s.get('classification')!='M33_DOCUMENTED_CUBIC_TRACKER_SOURCE_MANIFOLD_1D_WITH_DEBUG_ROGUE_ROUTE_EXCLUDED_FROM_PRODUCTION_SCOPE' or s.get('all_checks_pass') is not True: raise SystemExit('source parent invalid')
+          if t.get('classification')!='M33_CUBIC_TRACKER_LOCAL_TANGENT_NOT_CONVERGED' or t.get('all_tangent_criteria_pass') is not False: raise SystemExit('negative tangent parent not preserved')
+          src=pathlib.Path('provider/gravity_models/galileon_3.ini').read_text(); out=pathlib.Path('m33fine').resolve(); out.mkdir(exist_ok=True)
+          specs={'base':0.005,'cm':0.0045,'cp':0.0055,'fm':0.00475,'fp':0.00525}
+          def drop(x,key): return re.sub(rf'(?m)^\s*{re.escape(key)}\s*=.*\n?','',x)
+          def setkey(x,key,val):
+              pat=rf'(?m)^\s*{re.escape(key)}\s*=.*$'
+              return re.sub(pat,f'{key} = {val}',x) if re.search(pat,x) else x+f'\n{key} = {val}\n'
+          for tag,om in specs.items():
+              x=setkey(src,'Omega_smg',f'{om:.16g}'); x=drop(drop(x,'Omega_Lambda'),'Omega_fld'); x=setkey(x,'D_safe_smg','1e-100'); x=setkey(x,'a_min_stability_test_smg','0'); x=setkey(x,'root',f'{out}/{tag}_'); (out/f'{tag}.ini').write_text(x)
+          (out/'arms.txt').write_text('\n'.join(specs)+'\n')
+          pathlib.Path('parent_negative_tangent.json').write_text(json.dumps({'classification':t['classification'],'angle':t.get('principal_angle_deg'),'mismatch':t.get('relative_norm_mismatch'),'signed_cosine':t.get('signed_cosine')},indent=2)+'\n')
+          PY
+          grep -H -E '^(Omega_smg|D_safe_smg|a_min_stability_test_smg|gravity_model|gravity_submodel|root)[[:space:]]*=' m33fine/*.ini | tee frozen_m33_finer_parameters.txt
+      - name: Execute frozen finer arms
+        run: |
+          set -euo pipefail
+          while read tag; do
+            set +e
+            ./provider/class "m33fine/${tag}.ini" >"m33fine/${tag}.stdout" 2>"m33fine/${tag}.stderr"
+            echo $? >"m33fine/${tag}.exit"
+            set -e
+          done < m33fine/arms.txt
+      - name: Apply unchanged combined gate and block localization
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,math,pathlib,numpy as np
+          b=pathlib.Path('m33fine'); tags=['base','cm','cp','fm','fp']; exits={t:int((b/f'{t}.exit').read_text()) for t in tags}; pin=pathlib.Path('provider_commit.txt').read_text().strip()
+          out={'schema':'m33_cubic_tracker_finer_tangent_localization_v0.1','model_id':'M33','family_id':'F33','protocol':'protocol/W07_M33_CUBIC_TRACKER_FINER_TANGENT_LOCALIZATION_v0.1.md','provider_commit':pin,'expected_commit':'0009f51d89e6465c79e570b496c66fc90058fa77','base_Omega_smg':0.005,'coarse_h':0.0005,'fine_h':0.00025,'D_safe_smg':1e-100,'source_parent_run':34708671061,'source_parent_artifact':10302796592,'negative_parent_tangent_run':34708771934,'negative_parent_tangent_artifact':10302377346,'exits':exits,'K2_promoted':False,'canonical_K2':'OPEN','physical_falsification':False,'all_Galileon_variants_claim':False}
+          if pin!=out['expected_commit']: out['classification']='M33_CUBIC_TRACKER_FINER_LOCAL_TANGENT_CONTROL_BLOCKED'
+          elif any(exits[t]!=0 for t in tags): out['classification']='M33_CUBIC_TRACKER_FINER_LOCAL_TANGENT_PROVIDER_BLOCKED'; out['failed_arms']=[t for t in tags if exits[t]!=0]
+          else:
+              def load(tag,kind):
+                  h=sorted(b.glob(f'{tag}_*{kind}.dat'))
+                  if len(h)!=1: raise RuntimeError(f'{tag} {kind}: {len(h)} files')
+                  rows=[]
+                  for line in h[0].read_text(errors='replace').splitlines():
+                      s=line.strip()
+                      if not s or s.startswith('#'): continue
+                      try: rows.append([float(x) for x in s.split()])
+                      except ValueError: pass
+                  a=np.asarray(rows,float)
+                  if a.ndim!=2 or len(a)<5 or a.shape[1]<2: raise RuntimeError(f'bad table {h[0]}')
+                  return a
+              cls={t:load(t,'cl') for t in tags}; pks={t:load(t,'pk') for t in tags}
+              maps={t:{int(r[0]):np.asarray(r[1:],float) for r in cls[t] if np.isfinite(r[0])} for t in tags}; common=sorted(set.intersection(*(set(maps[t]) for t in tags))); cmb={t:[] for t in tags}
+              for ell in common:
+                  n=min(len(maps[t][ell]) for t in tags)
+                  for j in range(n):
+                      vals=[maps[t][ell][j] for t in tags]
+                      if all(np.isfinite(v) for v in vals):
+                          for t,v in zip(tags,vals): cmb[t].append(v)
+              cmb={t:np.asarray(v,float) for t,v in cmb.items()}; cn=float(np.linalg.norm(cmb['base']))
+              lo=max(float(np.nanmin(pks[t][:,0])) for t in tags); hi=min(float(np.nanmax(pks[t][:,0])) for t in tags); bp=pks['base']; m=(bp[:,0]>=lo)&(bp[:,0]<=hi)&np.isfinite(bp[:,0])&np.isfinite(bp[:,1]); x=bp[m,0]; pk={t:(bp[m,1] if t=='base' else np.interp(x,pks[t][:,0],pks[t][:,1])) for t in tags}; good=np.ones(len(x),dtype=bool)
+              for t in tags: good &= np.isfinite(pk[t])
+              x=x[good]; pk={t:v[good] for t,v in pk.items()}; pn=float(np.linalg.norm(pk['base']))
+              if cn==0 or pn==0 or len(cmb['base'])<5 or len(x)<5: raise RuntimeError('global support invalid')
+              def blocks(plus,minus,h): return (cmb[plus]-cmb[minus])/(2*h*cn),(pk[plus]-pk[minus])/(2*h*pn)
+              cc,pc=blocks('cp','cm',0.0005); cf,pf=blocks('fp','fm',0.00025); coarse=np.concatenate([cc,pc]); fine=np.concatenate([cf,pf])
+              def geom(a,c):
+                  na=float(np.linalg.norm(a)); nb=float(np.linalg.norm(c)); co=float(np.dot(a,c)/(na*nb)); co=max(-1,min(1,co)); return {'signed_cosine':co,'principal_angle_deg':float(math.degrees(math.acos(abs(co)))),'relative_norm_mismatch':float(abs(na-nb)/max(na,nb)),'norm_coarse':na,'norm_fine':nb}
+              combined=geom(coarse,fine); cg=geom(cc,cf); pg=geom(pc,pf)
+              disp={}
+              for t in tags[1:]:
+                  cv=(cmb[t]-cmb['base'])/cn; pv=(pk[t]-pk['base'])/pn; disp[t]={'cmb':float(np.linalg.norm(cv)),'pk':float(np.linalg.norm(pv)),'full':float(np.linalg.norm(np.concatenate([cv,pv])))}
+              cmb_coarse=.5*(disp['cm']['cmb']+disp['cp']['cmb']); cmb_fine=.5*(disp['fm']['cmb']+disp['fp']['cmb']); pk_coarse=.5*(disp['cm']['pk']+disp['cp']['pk']); pk_fine=.5*(disp['fm']['pk']+disp['fp']['pk'])
+              crit={'signed_cosine_ge_0p995':combined['signed_cosine']>=0.995,'principal_angle_le_5deg':combined['principal_angle_deg']<=5,'relative_norm_mismatch_le_0p25':combined['relative_norm_mismatch']<=0.25,'all_displacements_nonzero':all(disp[t]['full']>0 for t in disp),'fine_symmetric_displacement_contracts_cmb_and_pk':cmb_fine<cmb_coarse and pk_fine<pk_coarse}; passed=all(crit.values())
+              out.update({'global_support':{'cmb_values':len(cmb['base']),'ell_count':len(common),'pk_values':len(x),'pk_k_min':float(x.min()),'pk_k_max':float(x.max())},'combined_tangent':combined,'cmb_block_tangent':cg,'pk_block_tangent':pg,'displacements':disp,'symmetric_displacement_scales':{'cmb_coarse_mean':cmb_coarse,'cmb_fine_mean':cmb_fine,'pk_coarse_mean':pk_coarse,'pk_fine_mean':pk_fine},'criteria':crit,'all_tangent_criteria_pass':passed,'classification':'M33_CUBIC_TRACKER_FINER_LOCAL_TANGENT_CONVERGED_K2_SYNTHESIS_ELIGIBLE' if passed else 'M33_CUBIC_TRACKER_FINER_LOCAL_TANGENT_NOT_CONVERGED'})
+          pathlib.Path('M33_CUBIC_TRACKER_FINER_TANGENT_LOCALIZATION.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); pathlib.Path('M33_CUBIC_TRACKER_FINER_TANGENT_LOCALIZATION.md').write_text('# M33 cubic-tracker finer tangent localization\n\nClassification: `'+out['classification']+'`  \n\nK2 remains OPEN in this workflow.\n'); print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m33-cubic-tracker-finer-tangent-localization
+          path: |
+            M33_CUBIC_TRACKER_FINER_TANGENT_LOCALIZATION.json
+            M33_CUBIC_TRACKER_FINER_TANGENT_LOCALIZATION.md
+            provider_commit.txt
+            immutable_parent_sha256.txt
+            parent_negative_tangent.json
+            frozen_m33_finer_parameters.txt
+            m33fine/
