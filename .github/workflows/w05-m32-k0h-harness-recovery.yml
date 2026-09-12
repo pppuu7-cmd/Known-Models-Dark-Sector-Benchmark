@@ -1,0 +1,175 @@
+name: W05 M32 K0h harness recovery
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w05-m32-k0h-harness-recovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recover-nine:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recover immutable target classifications
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p recovered
+          cat > mapping.tsv <<'EOF'
+          interpol_hydro.o	10303590624
+          godunov_utils.o	10302004386
+          condinit.o	10302942715
+          hydro_flag.o	10302004375
+          hydro_boundary.o	10303251393
+          boundana.o	10303655354
+          read_hydro_params.o	10302638733
+          synchro_hydro_fine.o	10303680122
+          gas_analytics.o	10303066760
+          EOF
+          while IFS=$'\t' read -r target aid; do
+            mkdir -p "recovered/$target"
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${aid}/zip" > "recovered/$target.zip"
+            unzip -q "recovered/$target.zip" -d "recovered/$target"
+          done < mapping.tsv
+          python3 - <<'PY'
+          import json,pathlib
+          rows=[]
+          for line in pathlib.Path('mapping.tsv').read_text().splitlines():
+              target,aid=line.split('\t'); d=pathlib.Path('recovered')/target
+              rc=int((d/'build_exit_code.txt').read_text().strip())
+              exists=(d/target).is_file()
+              stderr=(d/'build_stderr.log').read_text(errors='replace') if (d/'build_stderr.log').exists() else ''
+              stdout=(d/'build_stdout.log').read_text(errors='replace') if (d/'build_stdout.log').exists() else ''
+              low=(stderr+'\n'+stdout).lower()
+              if rc==0 and exists: cls='TARGET_COMPILED_EXACT_PIN'
+              elif rc in (124,130,137,143) or 'shutdown signal' in low or 'cancel' in low: cls='TARGET_HOSTED_INFRASTRUCTURE_BLOCKED'
+              else: cls='TARGET_COMPILER_OR_SOURCE_BLOCKED'
+              rows.append({'target':target,'source_artifact':int(aid),'build_exit_code':rc,'target_object_exists':exists,'classification':cls})
+          out={'schema':'m32_k0h_recover_nine_v0.1','source_run':34710463111,'rows':rows,'K0_promoted':False,'physical_falsification':False}
+          pathlib.Path('M32_K0H_RECOVERED_NINE.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m32-k0h-recovered-nine
+          path: M32_K0H_RECOVERED_NINE.json
+          retention-days: 30
+
+  rerun-umuscl:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install exact Intel-family toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gpg-agent wget ca-certificates >/dev/null
+          key=$(mktemp)
+          wget -qO "$key" https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+          gpg --dearmor <"$key" | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg >/dev/null
+          rm -f "$key"
+          echo 'deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main' | sudo tee /etc/apt/sources.list.d/oneAPI.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq intel-oneapi-compiler-fortran intel-oneapi-mpi-devel >/dev/null
+      - name: Recompute only missing umuscl target
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          PIN=849ddb716041316d0e223ba22badc0d630b72435
+          TARGET=umuscl.o
+          mkdir -p work result
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10283774354/zip" > stage1.zip
+          sha256sum stage1.zip > result/parent_zip_sha256.txt
+          unzip -q stage1.zip -d work/stage1
+          git clone -q https://github.com/nat-woodcock/EFT-Ramses.git work/provider
+          git -C work/provider checkout -q --detach "$PIN"
+          test "$(git -C work/provider rev-parse HEAD)" = "$PIN"
+          cd work/provider/bin
+          rm -f -- *.o *.mod ramses3d
+          tar -xf "$GITHUB_WORKSPACE/work/stage1/checkpoint.tar" -C .
+          find . -maxdepth 1 -type f \( -name '*.o' -o -name '*.mod' \) -print0 | sort -z | xargs -0 sha256sum > "$GITHUB_WORKSPACE/result/hashes_before_touch.txt"
+          find . -maxdepth 1 -type f \( -name '*.o' -o -name '*.mod' \) -exec touch {} +
+          find . -maxdepth 1 -type f \( -name '*.o' -o -name '*.mod' \) -print0 | sort -z | xargs -0 sha256sum > "$GITHUB_WORKSPACE/result/hashes_after_touch.txt"
+          cmp "$GITHUB_WORKSPACE/result/hashes_before_touch.txt" "$GITHUB_WORKSPACE/result/hashes_after_touch.txt"
+          set +u
+          source /opt/intel/oneapi/setvars.sh --force >/dev/null 2>&1
+          set -u
+          rm -f -- "$TARGET"
+          set +e
+          make "$TARGET" F90='mpiifx' FFLAGS='-O3 -g -mcmodel=large -traceback -fpe0 -ftrapuv -cpp $(DEFINES)' > "$GITHUB_WORKSPACE/result/build_stdout.log" 2> "$GITHUB_WORKSPACE/result/build_stderr.log"
+          RC=$?
+          set -e
+          EXISTS=false; test -f "$TARGET" && EXISTS=true
+          test "$EXISTS" = false || cp "$TARGET" "$GITHUB_WORKSPACE/result/$TARGET"
+          echo "$RC" > "$GITHUB_WORKSPACE/result/build_exit_code.txt"
+          cd "$GITHUB_WORKSPACE"
+          python3 - "$TARGET" "$RC" "$EXISTS" <<'PY'
+          import json,pathlib,sys
+          target=sys.argv[1]; rc=int(sys.argv[2]); exists=sys.argv[3].lower()=='true'
+          stderr=pathlib.Path('result/build_stderr.log').read_text(errors='replace')
+          stdout=pathlib.Path('result/build_stdout.log').read_text(errors='replace')
+          low=(stderr+'\n'+stdout).lower()
+          if rc==0 and exists: cls='TARGET_COMPILED_EXACT_PIN'
+          elif rc in (124,130,137,143) or 'shutdown signal' in low or 'cancel' in low: cls='TARGET_HOSTED_INFRASTRUCTURE_BLOCKED'
+          else: cls='TARGET_COMPILER_OR_SOURCE_BLOCKED'
+          out={'schema':'m32_k0h_umuscl_recovery_v0.1','target':target,'parent_artifact':10283774354,'provider_commit':'849ddb716041316d0e223ba22badc0d630b72435','build_exit_code':rc,'target_object_exists':exists,'classification':cls,'K0_promoted':False,'physical_falsification':False}
+          pathlib.Path('result/target_result.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m32-k0h-umuscl-recovered
+          path: result/
+          retention-days: 30
+
+  aggregate:
+    if: always()
+    needs: [recover-nine, rerun-umuscl]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: m32-k0h-recovered-nine
+          path: nine
+      - uses: actions/download-artifact@v4
+        with:
+          name: m32-k0h-umuscl-recovered
+          path: one
+      - name: Aggregate unchanged K0h interpretation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib
+          nine=json.loads(pathlib.Path('nine/M32_K0H_RECOVERED_NINE.json').read_text())['rows']
+          one=json.loads(pathlib.Path('one/target_result.json').read_text())
+          rows=[one]+nine
+          expected={'umuscl.o','interpol_hydro.o','godunov_utils.o','condinit.o','hydro_flag.o','hydro_boundary.o','boundana.o','read_hydro_params.o','synchro_hydro_fine.o','gas_analytics.o'}
+          if {r['target'] for r in rows}!=expected: cls='M32_K0H_HYDRO_TAIL_AGGREGATE_INCOMPLETE'
+          elif all(r['classification']=='TARGET_COMPILED_EXACT_PIN' for r in rows): cls='M32_K0H_HYDRO_TAIL_ALL_TARGETS_COMPILED'
+          elif any(r['classification']=='TARGET_COMPILER_OR_SOURCE_BLOCKED' for r in rows): cls='M32_K0H_HYDRO_TAIL_EXPLICIT_TARGET_BLOCKER_LOCALIZED'
+          else: cls='M32_K0H_HYDRO_TAIL_HOSTED_INFRASTRUCTURE_BLOCKED'
+          out={'schema':'m32_k0h_harness_recovery_aggregate_v0.1','classification':cls,'targets':rows,'K0_promoted':False,'physical_falsification':False,'next_if_all_compiled':'preregister remaining Poisson/PM/ramses/link microcheckpoint layer'}
+          pathlib.Path('M32_K0H_HARNESS_RECOVERY_AGGREGATE.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m32-k0h-harness-recovery-aggregate
+          path: M32_K0H_HARNESS_RECOVERY_AGGREGATE.json
+          retention-days: 30
