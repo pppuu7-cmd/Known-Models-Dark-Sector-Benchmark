@@ -12,7 +12,7 @@ Active recovery computations at this delta:
 - full compatible frozen ladder run `34716044903`, commit `d0696195da093e942cc579c43bdd7daeb39224ae`;
 - precision-profile matrix run `34716054597`, commit `16399c0d7ffd6d033d57c8f6d4f85a956d870eda`, three independent lanes `UR20/UR30/UR40` with fail-fast disabled.
 
-Do not update canonical K1 until these recovery artifacts are terminal and consumed.
+Do not update canonical K1 until these recovery artifacts are terminal and consumed. The full-compatible and precision-profile reruns are diagnostic-only and cannot override the earlier preregistered authorization condition for canonical K1 promotion.
 
 ## M33 / F33 — cubic tracker K2 tangent
 
@@ -24,7 +24,11 @@ Frozen combined tangent diagnostics: signed cosine `0.9885980734821153` (<0.995)
 
 K0i run `34711054960`, attempt 2, job `103604333371` reached a live exact-pin `ifx` compilation of `umuscl.o`. Repeated shell heartbeats were observed, then the GitHub-hosted Ubuntu-22.04 runner emitted an external shutdown signal and the step exited `143`; no compiler/source diagnostic preceded the shutdown. This remains infrastructure blockage, not scientific failure.
 
-A prospectively frozen independent execution-envelope control changes only the hosted image to Ubuntu-24.04 while preserving provider commit, immutable checkpoint, oneAPI compiler family, exact target and flags. Workflow commit `4bc0e43a9d670338310721c8992c538dc09f7e24`; run `34716115931` is queued at this delta. No K0 promotion and no physical falsification unless later frozen stages explicitly establish them.
+K0j prospectively changed only the hosted image to Ubuntu-24.04 while preserving provider commit `849ddb716041316d0e223ba22badc0d630b72435`, immutable checkpoint artifact `10283774354`, oneAPI compiler family, exact target and O3 flags. Run `34716115931`, job `103613543497`, on Ubuntu `24.04.5`, image `20260907.300.1`, Azure `westus3`, again reached a live `ifx` compile, emitted heartbeats at `20:07:30/35/40/45Z`, then received a runner-level shutdown at `20:07:52Z` and exited `143`. No explicit compiler/source diagnostic preceded shutdown. Frozen classification: `M32_K0J_UMUSCL_HOSTED_INFRASTRUCTURE_BLOCKED_CROSS_IMAGE`; K0 remains unpromoted and physical/scientific falsification remains false. Durable result: `waves/wave_05_modified_gravity/M32_K0J_UMUSCL_HOSTED_IMAGE_CONTROL_RESULT.json`.
+
+This materially weakens an Ubuntu-22-specific explanation. The blocker is now localized to hosted execution during the exact UMUSCL compilation path, but compiler phase remains unresolved.
+
+K0k was preregistered before execution in `protocol/W05_M32_K0K_UMUSCL_COMPILER_PHASE_LOCALIZATION_v0.1.md`. It launches two independent infrastructure-only lanes in run `34716897688`: Intel preprocessing of the exact `hydro/umuscl.f90` source/macros, and exact-checkpoint `umuscl.o` compilation with only optimization changed from O3 to O0. K0k cannot promote K0 and cannot establish physical/scientific failure; it only discriminates preprocessing/front-end viability from optimization/code-generation workload sensitivity.
 
 ## Guardrail
 
