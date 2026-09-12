@@ -1,4 +1,5 @@
 name: W05 M32 DGP K0d provider Intel toolchain
+# W07 continuation trigger only: frozen K0d build protocol and classification are unchanged.
 
 on:
   workflow_dispatch:
