@@ -1,0 +1,149 @@
+name: W04 M24 Pk reference precision diagnostic
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m24-pk-reference-precision-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  profile:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        profile: [default, pk_ref]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analysis dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+      - name: Pin and build exact CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+          make -C class -j2 > build.log 2>&1
+      - name: Prepare unchanged parent ETHOS-1 cases
+        run: python3 verification/m24/ethos1_k1_reference.py prepare m24_cases
+      - name: Execute frozen four-case profile
+        shell: bash
+        run: |
+          set +e
+          mkdir -p class/output evidence
+          args=()
+          if [ '${{ matrix.profile }}' = 'pk_ref' ]; then args=(pk_ref.pre); fi
+          for tag in ref zero a0 a4; do
+            (cd class && ./class "../m24_cases/${tag}.ini" "${args[@]}" > "../${{ matrix.profile }}_${tag}.log" 2>&1)
+            rc=$?
+            printf '%d\n' "$rc" > "evidence/${tag}.exit"
+          done
+          cp class/output/ref_pk.dat evidence/ref_pk.dat 2>/dev/null || true
+          cp class/output/zero_pk.dat evidence/zero_pk.dat 2>/dev/null || true
+          cp class/output/a0_pk.dat evidence/top_pk.dat 2>/dev/null || true
+          cp class/output/a4_pk.dat evidence/tail_pk.dat 2>/dev/null || true
+          exit 0
+      - name: Analyze frozen per-profile controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - '${{ matrix.profile }}' <<'PY'
+          import json,math,pathlib,sys
+          import numpy as np
+          profile=sys.argv[1]; b=pathlib.Path('evidence')
+          out={'schema':'m24_pk_reference_precision_profile_v0.1','model_id':'M24','profile':profile,
+               'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','K1_promoted':False,'physical_falsification':False}
+          try:
+              exits={t:int((b/f'{t}.exit').read_text()) for t in ['ref','zero','a0','a4']}
+              out['exits']=exits
+              if any(v!=0 for v in exits.values()): raise RuntimeError(f'provider exits {exits}')
+              def load(p):
+                  rows=[]
+                  for line in pathlib.Path(p).read_text(errors='replace').splitlines():
+                      s=line.strip()
+                      if not s or s.startswith('#'): continue
+                      try: r=[float(x.replace('D','E').replace('d','e')) for x in s.split()]
+                      except ValueError: continue
+                      if len(r)>=2 and all(math.isfinite(x) for x in r[:2]) and r[0]>0: rows.append(r[:2])
+                  a=np.asarray(rows,float)
+                  if a.ndim!=2 or len(a)<5: raise RuntimeError(f'bad Pk table {p}')
+                  return a
+              def nl2(a,r):
+                  lo=max(a[:,0].min(),r[:,0].min()); hi=min(a[:,0].max(),r[:,0].max())
+                  m=(a[:,0]>=lo)&(a[:,0]<=hi); x=a[m,0]; y=a[m,1]
+                  rr=np.interp(np.log(x),np.log(r[:,0]),r[:,1])
+                  return float(np.linalg.norm(y-rr)/max(np.linalg.norm(rr),1e-300))
+              ref=load(b/'ref_pk.dat'); zero=load(b/'zero_pk.dat'); top=load(b/'top_pk.dat'); tail=load(b/'tail_pk.dat')
+              zid=nl2(zero,ref); rt=nl2(top,zero); rl=nl2(tail,zero); ratio=rl/rt if rt>0 else float('inf')
+              out.update({'zero_identity_R2':zid,'zero_identity_pass':bool(zid<=1e-12),'top_R2':rt,'tail_R2':rl,'tail_over_top':ratio,
+                          'top_response_gt_1e6':bool(rt>1e-6),'classification':'PROFILE_EXECUTED'})
+          except Exception as e:
+              out['classification']='PROFILE_BLOCKED'; out['error']=repr(e)
+          pathlib.Path(f'M24_PK_PROFILE_{profile}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m24-pk-precision-${{ matrix.profile }}
+          path: |
+            M24_PK_PROFILE_${{ matrix.profile }}.json
+            evidence/
+            ${{ matrix.profile }}_*.log
+            build.log
+          retention-days: 30
+
+  aggregate:
+    needs: profile
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m24-pk-precision-*
+          path: profiles
+      - name: Apply frozen cross-profile interpretation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,math,pathlib
+          paths=list(pathlib.Path('profiles').rglob('M24_PK_PROFILE_*.json'))
+          rows={}
+          for p in paths:
+              r=json.loads(p.read_text()); rows[r['profile']]=r
+          out={'schema':'m24_pk_reference_precision_diagnostic_v0.1','model_id':'M24',
+               'protocol':'protocol/W04_M24_PK_REFERENCE_PRECISION_DIAGNOSTIC_v0.1.md',
+               'profiles':rows,'K1_promoted':False,'physical_falsification':False,'family_exclusion':False}
+          if set(rows)!={'default','pk_ref'} or any(r.get('classification')!='PROFILE_EXECUTED' for r in rows.values()) or any(r.get('zero_identity_pass') is not True for r in rows.values()):
+              cls='M24_PK_REFERENCE_PRECISION_CONTROL_BLOCKED'
+          elif rows['pk_ref']['top_R2']<=1e-6:
+              cls='M24_PK_REFERENCE_PRECISION_CONTROL_BLOCKED'
+          elif rows['pk_ref']['tail_over_top']<=0.25:
+              cls='M24_PK_REF_CONTRACTION_RECOVERED_REQUIRES_FULL_LADDER_CONFIRMATION'
+          else:
+              d=rows['default']['tail_over_top']; p=rows['pk_ref']['tail_over_top']
+              rel=abs(p-d)/max(abs(d),1e-300); out['ratio_relative_change']=rel
+              cls='M24_PK_PLATEAU_PERSISTS_REFERENCE_PRECISION' if rel<=0.20 else 'M24_PK_PLATEAU_PRECISION_SENSITIVE'
+          out['classification']=cls
+          out['next_step_authorized']='FULL_FIVE_POINT_PK_REF_K1_CONFIRMATION' if cls=='M24_PK_REF_CONTRACTION_RECOVERED_REQUIRES_FULL_LADDER_CONFIRMATION' else 'NO_K1_PROMOTION_FROM_THIS_DIAGNOSTIC'
+          pathlib.Path('M24_PK_REFERENCE_PRECISION_DIAGNOSTIC.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m24-pk-reference-precision-diagnostic
+          path: M24_PK_REFERENCE_PRECISION_DIAGNOSTIC.json
+          retention-days: 30
