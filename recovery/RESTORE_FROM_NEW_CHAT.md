@@ -184,3 +184,9 @@ M25 compile-capacity isolation classification M25_M0_PK_STOCK_CAPACITY_PROVIDER_
 - M33: reference-map discovery run 34657647905, job 103453403141, artifact 10286258353, digest sha256:4b1e9028ba4fb896d722056f55278da4190cb4565e259b56934d2e346dd5e7fd is BLOCKED_IMPLEMENTATION_CONFIGURATION. All arms stopped at provider parser closure rules; no physical falsification. Parser-compliant recovery is prospectively frozen; K1 not promoted.
 - Census lag for F26/F30/F31/F35/F40 synchronized to already-canonical mandatory-matrix classifications.
 
+## 2026-09-12 M33 parser-compliant reference-map recovery terminal
+- Run 34660258070, job 103461090824, artifact 10286747855, digest sha256:4569fb114ee152b1694d4f14a44ed69aabf94c7df9b5368538d32fdb066528fd.
+- Parser/configuration blocker is removed. Omega_smg 0.5, 0.1, 0.01 plus native and GR controls execute with finite TT/P(k).
+- Omega_smg=0.001 is rejected by pinned provider stability_tests_smg with Ghost instability (minimum D=-1.11467e-106 at a=1e-14). This is a stability/reference-path boundary, not infrastructure and not family-level falsification. K1 remains unpromoted.
+- Next gate: analysis-only immutable-artifact/source audit preregistered in W06_M33_GALILEON_REFERENCE_PATH_STABILITY_AUDIT_v0.1.md; no retuning or stability-check disabling permitted.
+
