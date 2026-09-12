@@ -1,0 +1,35 @@
+{
+  "schema": "KMDSB.M20.K4WeightedGridAxesSummary.v1",
+  "family_id": "F20",
+  "model_id": "M20",
+  "provider": "shinichiroando/sashimi-si",
+  "provider_commit": "e17d3664dac677b604fd4ff02fb2af105a6937fa",
+  "preregistration": "protocol/W04_M20_K4_WEIGHTED_GRID_AXES_PREREGISTRATION_v0.1.md",
+  "run_id": 34719183403,
+  "K4_promoted": false,
+  "scientific_fail": false,
+  "physical_falsification": false,
+  "mass_axis": {
+    "job_id": 103621755655,
+    "artifact_id": 10305633214,
+    "artifact_sha256": "ceaf9b7afe94bb51cb25094c15bc027da45e861693fc94552bb4945b9209c25f",
+    "grid": [30, 60, 120],
+    "step1_max": 0.019365180558786114,
+    "step1_median": 0.00967645276978906,
+    "step2_max": 0.010405632254471308,
+    "step2_median": 0.004670556884709884,
+    "classification": "M20_K4_MASS_WEIGHTED_GRID_CONVERGENCE_CANDIDATE_DIAGNOSTIC"
+  },
+  "redshift_axis": {
+    "job_id": 103621755505,
+    "artifact_id": 10305352361,
+    "artifact_sha256": "25c87ec802e51718da0fec0a39dda105a5df0934c56ebc603778f7dc57cb6e98",
+    "grid": [0.2, 0.1, 0.05],
+    "step1_max": 0.042314014919695046,
+    "step1_median": 0.014448900943745263,
+    "step2_max": 0.005888014337777188,
+    "step2_median": 0.00018697236519853766,
+    "classification": "M20_K4_REDSHIFT_WEIGHTED_GRID_CONVERGENCE_CANDIDATE_DIAGNOSTIC"
+  },
+  "interpretation": "Both prospectively frozen independent grid axes satisfy their weighted convergence-candidate gates with exact-zero identity preserved. These remain diagnostic inputs to a separate K4 synthesis."
+}
