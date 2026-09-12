@@ -1,0 +1,83 @@
+name: Compute M24 full compatible K1 ladder
+
+on:
+  push:
+    paths:
+      - '.github/workflows/compute-m24-k1-full-ladder.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  OMP_NUM_THREADS: '1'
+
+jobs:
+  full-k1-ladder:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pinned CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-numpy >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+          make -C class -j2 > build.log 2>&1
+      - name: Build compatible ur30 profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp class/pk_ref.pre class/pk_ref_idr_compat.pre
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class/pk_ref_idr_compat.pre'); s=p.read_text()
+          old='ur_fluid_trigger_tau_over_tau_k = 50.'
+          new='ur_fluid_trigger_tau_over_tau_k = 30.'
+          if s.count(old)!=1: raise SystemExit(f'expected one UR trigger, got {s.count(old)}')
+          p.write_text(s.replace(old,new))
+          PY
+          diff -u class/pk_ref.pre class/pk_ref_idr_compat.pre > precision_profile.diff || true
+      - name: Prepare frozen preregistered cases
+        run: python3 verification/m24/ethos1_k1_reference.py prepare m24_cases
+      - name: Execute all seven frozen cases
+        shell: bash
+        run: |
+          set +e
+          mkdir -p class/output logs
+          python3 - <<'PY'
+          import json
+          json.dump({}, open('status.json','w'))
+          PY
+          for tag in ref zero a0 a1 a2 a3 a4; do
+            (cd class && ./class "../m24_cases/${tag}.ini" pk_ref_idr_compat.pre > "../logs/${tag}.log" 2>&1)
+            rc=$?
+            python3 - "$tag" "$rc" <<'PY'
+          import json,sys
+          p='status.json'; d=json.load(open(p)); d[sys.argv[1]]=int(sys.argv[2]); json.dump(d,open(p,'w'),indent=2,sort_keys=True)
+          PY
+          done
+          exit 0
+      - name: Apply frozen K1 analyzer unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m24/ethos1_k1_reference.py analyze class status.json M24_ETHOS1_K1_COMPAT_FULL.json
+          cat M24_ETHOS1_K1_COMPAT_FULL.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m24-k1-compatible-full-ladder
+          path: |
+            M24_ETHOS1_K1_COMPAT_FULL.json
+            status.json
+            m24_cases/
+            precision_profile.diff
+            logs/
+            build.log
+          retention-days: 30
