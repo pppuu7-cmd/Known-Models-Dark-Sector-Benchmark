@@ -1,0 +1,124 @@
+name: Compute M24 K1 small-a4 tail extension diagnostic
+
+on:
+  push:
+    paths:
+      - '.github/workflows/compute-m24-k1-tail-extension.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  OMP_NUM_THREADS: '1'
+
+jobs:
+  small-a4-tail:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pinned CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-numpy >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+          make -C class -j2 > build.log 2>&1
+      - name: Build compatible ur30 profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp class/pk_ref.pre class/pk_ref_idr_compat.pre
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class/pk_ref_idr_compat.pre'); s=p.read_text()
+          old='ur_fluid_trigger_tau_over_tau_k = 50.'; new='ur_fluid_trigger_tau_over_tau_k = 30.'
+          if s.count(old)!=1: raise SystemExit(f'expected one UR trigger, got {s.count(old)}')
+          p.write_text(s.replace(old,new))
+          PY
+      - name: Prepare frozen baseline plus diagnostic tail
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m24/ethos1_k1_reference.py prepare m24_cases
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path('m24_cases/zero.ini').read_text()
+          for tag,val in [('e200',200.0),('e60',60.0),('e20',20.0)]:
+              s=base.replace('root = output/zero',f'root = output/{tag}')
+              s=s.replace('a_idm_dr = 0',f'a_idm_dr = {val:.12e}')
+              Path(f'm24_cases/{tag}.ini').write_text(s)
+          Path('DIAGNOSTIC_SCOPE.txt').write_text('Frozen gate unchanged. Extra a4={200,60,20} Mpc^-1 are diagnostic-only tail points; no preregistered threshold is altered.\n')
+          PY
+      - name: Execute zero frozen-600 and tail extension
+        shell: bash
+        run: |
+          set +e
+          mkdir -p class/output logs
+          echo '{}' > status.json
+          for tag in zero a4 e200 e60 e20; do
+            (cd class && ./class "../m24_cases/${tag}.ini" pk_ref_idr_compat.pre > "../logs/${tag}.log" 2>&1)
+            rc=$?
+            python3 - "$tag" "$rc" <<'PY'
+          import json,sys
+          p='status.json'; d=json.load(open(p)); d[sys.argv[1]]=int(sys.argv[2]); json.dump(d,open(p,'w'),indent=2,sort_keys=True)
+          PY
+          done
+          exit 0
+      - name: Analyze asymptotic Pk tail independently
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,math
+          from pathlib import Path
+          import numpy as np
+          st=json.load(open('status.json'))
+          out={'schema':'KMDSB.M24.K1SmallA4TailDiagnostic.v1','diagnostic_only':True,'physical_falsification':False,'status':st,'a4_Mpc^-1':[600.0,200.0,60.0,20.0]}
+          try:
+              if any(st.get(k)!=0 for k in ['zero','a4','e200','e60','e20']): raise RuntimeError(f'provider exits {st}')
+              def load(path):
+                  rows=[]
+                  for line in Path(path).read_text(errors='replace').splitlines():
+                      s=line.strip()
+                      if not s or s.startswith('#'): continue
+                      try:r=[float(x.replace('D','E').replace('d','e')) for x in s.split()]
+                      except ValueError: continue
+                      if len(r)>=2 and r[0]>0 and all(math.isfinite(x) for x in r[:2]): rows.append(r[:2])
+                  a=np.asarray(rows,float)
+                  if a.ndim!=2 or len(a)<5: raise RuntimeError(f'bad table {path}')
+                  return a
+              def r2(a,r):
+                  lo=max(a[:,0].min(),r[:,0].min()); hi=min(a[:,0].max(),r[:,0].max())
+                  m=(a[:,0]>=lo)&(a[:,0]<=hi); x=a[m,0]; y=a[m,1]
+                  rr=np.interp(np.log(x),np.log(r[:,0]),r[:,1])
+                  return float(np.linalg.norm(y-rr)/max(np.linalg.norm(rr),1e-300))
+              z=load('class/output/zero_pk.dat')
+              vals=[]
+              for tag in ['a4','e200','e60','e20']:
+                  vals.append(r2(load(f'class/output/{tag}_pk.dat'),z))
+              x=np.asarray(out['a4_Mpc^-1']); y=np.asarray(vals)
+              p=float(np.polyfit(np.log(x),np.log(y),1)[0]) if np.all(y>0) else None
+              monotonic=all(vals[i+1] <= 1.02*vals[i] for i in range(len(vals)-1))
+              out.update({'Pk_R2':vals,'loglog_slope_all4':p,'monotonic_with_2pct_slack':monotonic,'tail_floor_ratio_20_over_600':vals[-1]/vals[0] if vals[0]>0 else None,'classification':'M24_SMALL_A4_TAIL_EXECUTED'})
+          except Exception as e:
+              out.update({'classification':'M24_SMALL_A4_TAIL_BLOCKED','error':repr(e)})
+          Path('M24_SMALL_A4_TAIL_DIAGNOSTIC.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m24-k1-small-a4-tail-diagnostic
+          path: |
+            M24_SMALL_A4_TAIL_DIAGNOSTIC.json
+            DIAGNOSTIC_SCOPE.txt
+            status.json
+            logs/
+            build.log
+          retention-days: 30
