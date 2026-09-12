@@ -23,7 +23,7 @@ jobs:
           set -euo pipefail
           gh api "repos/${GITHUB_REPOSITORY}/actions/runs/34708140820" > run.json
           gh api "repos/${GITHUB_REPOSITORY}/actions/runs/34708140820/jobs" > jobs.json
-          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/103591842815/logs" > job.log
+          gh api --allow-escape-sequences "repos/${GITHUB_REPOSITORY}/actions/jobs/103591842815/logs" > job.log
           sha256sum run.json jobs.json job.log > immutable_job_log_sha256.txt
       - name: Apply unchanged termination signatures
         run: |
