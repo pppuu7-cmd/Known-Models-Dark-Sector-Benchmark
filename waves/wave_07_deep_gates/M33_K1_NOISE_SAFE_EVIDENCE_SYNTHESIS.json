@@ -1,0 +1,40 @@
+{
+  "K2_K9": "OPEN",
+  "all_requirements_pass": true,
+  "canonical_K1": "PASS_WITH_SCOPE_NUMERICAL_NOISE_SAFE_PROFILE",
+  "canonical_coverage_state": "K0_K1_PASS_WITH_SCOPE_NOISE_SAFE_PROFILE_K2_K9_OPEN",
+  "classification": "M33_K1_PROMOTED_WITH_SCOPE_NOISE_SAFE_PROFILE",
+  "family_id": "F33",
+  "family_wide_stability_claim": false,
+  "model_id": "M33",
+  "physical_falsification": false,
+  "protocol": "protocol/W07_M33_K1_NOISE_SAFE_EVIDENCE_SYNTHESIS_v0.1.md",
+  "requirements": {
+    "all_four_ladder_criteria": true,
+    "classification": true,
+    "control_cmb_le_1e12": true,
+    "control_pass": true,
+    "control_pk_le_1e12": true,
+    "ladder_scoped_pass": true,
+    "loglog_ge_0p90": true,
+    "no_execution_promotion": true,
+    "no_family_stability_claim": true,
+    "no_physical_falsification": true,
+    "provider_pin": true,
+    "recommended_status": true,
+    "reduction_le_0p25": true
+  },
+  "schema": "m33_k1_noise_safe_evidence_synthesis_v0.1",
+  "source_artifact": 10301813578,
+  "source_control": {
+    "cmb_common_values": 2499,
+    "cmb_normalized_l2": 0.0,
+    "pass": true,
+    "pk_common_values": 534,
+    "pk_normalized_l2": 0.0,
+    "threshold_each": 1e-12
+  },
+  "source_ladder_reduction": 0.20875487103551446,
+  "source_loglog_pearson": 0.9248706314914629,
+  "source_run": 34708072066
+}
