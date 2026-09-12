@@ -1,0 +1,143 @@
+name: W07 M33 frozen reference-path audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m33-frozen-reference-path-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PARENT_RUN: '34660258070'
+  PARENT_ARTIFACT: '10286747855'
+  PROVIDER_REPO: 'https://github.com/hiclass-code/hi_class_public.git'
+  PROVIDER_COMMIT: '0009f51d89e6465c79e570b496c66fc90058fa77'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch exact immutable parent artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p parent
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${PARENT_ARTIFACT}/zip" > parent/recovery.zip
+          unzip -q parent/recovery.zip -d parent/recovery
+          sha256sum parent/recovery.zip > parent/recovery.zip.sha256
+      - name: Fetch exact pinned provider source
+        run: |
+          set -euo pipefail
+          git clone -q "$PROVIDER_REPO" provider
+          git -C provider checkout -q "$PROVIDER_COMMIT"
+          test "$(git -C provider rev-parse HEAD)" = "$PROVIDER_COMMIT"
+      - name: Frozen metrics and stability audit
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python - <<'PY'
+          import json, math, pathlib, hashlib, re
+          import numpy as np
+          root=pathlib.Path('parent/recovery')
+          result_files=list(root.rglob('M33_REFERENCE_MAP_PARSER_RECOVERY_RESULT.json'))
+          if len(result_files)!=1:
+              raise SystemExit(f'expected one result json, found {len(result_files)}')
+          result_path=result_files[0]
+          d=json.load(open(result_path))
+          expected_commit='0009f51d89e6465c79e570b496c66fc90058fa77'
+          integrity=(d.get('provider_commit')==expected_commit and d.get('model_id')=='M33' and d.get('K1_promoted') is False)
+          arms={a['arm']:a for a in d.get('arms',[])}
+          required=['D_gr','P_om0p5','P_om0p1','P_om0p01','P_om0p001']
+          integrity=integrity and all(x in arms for x in required)
+          datroot=result_path.parent/'m33recover'
+          if not datroot.exists():
+              cand=list(root.rglob('D_gr__cl.dat'))
+              if not cand: raise SystemExit('D_gr__cl.dat not found')
+              datroot=cand[0].parent
+          def load(path):
+              x=np.loadtxt(path)
+              if x.ndim==1: x=x.reshape(1,-1)
+              return x
+          ccl=load(datroot/'D_gr__cl.dat'); cpk=load(datroot/'D_gr__pk.dat')
+          def cl_metric(arm):
+              m=load(datroot/f'{arm}__cl.dat')
+              ci={int(r[0]):r[1:] for r in ccl}; mi={int(r[0]):r[1:] for r in m}
+              ell=sorted(set(ci).intersection(mi))
+              if not ell: raise ValueError('no matched ell')
+              c=np.concatenate([ci[e] for e in ell]); v=np.concatenate([mi[e] for e in ell])
+              mask=np.isfinite(c)&np.isfinite(v)
+              if not np.any(mask): raise ValueError('no finite C_l support')
+              den=np.linalg.norm(c[mask])
+              if den==0: raise ValueError('zero control C_l norm')
+              return float(np.linalg.norm(v[mask]-c[mask])/den), len(ell), int(mask.sum())
+          def pk_metric(arm):
+              m=load(datroot/f'{arm}__pk.dat')
+              goodc=np.isfinite(cpk[:,0])&np.isfinite(cpk[:,1]); goodm=np.isfinite(m[:,0])&np.isfinite(m[:,1])
+              c=cpk[goodc]; v=m[goodm]
+              c=c[np.argsort(c[:,0])]; v=v[np.argsort(v[:,0])]
+              lo=max(float(c[:,0].min()),float(v[:,0].min())); hi=min(float(c[:,0].max()),float(v[:,0].max()))
+              mask=(c[:,0]>=lo)&(c[:,0]<=hi)
+              k=c[mask,0]; pc=c[mask,1]
+              pm=np.interp(k,v[:,0],v[:,1])
+              finite=np.isfinite(pc)&np.isfinite(pm)
+              den=np.linalg.norm(pc[finite])
+              if den==0 or not np.any(finite): raise ValueError('invalid common P(k) support')
+              return float(np.linalg.norm(pm[finite]-pc[finite])/den), int(finite.sum()), [lo,hi]
+          order=[('P_om0p5',0.5),('P_om0p1',0.1),('P_om0p01',0.01)]
+          metrics=[]
+          for arm,omega in order:
+              cm, nell, ncl=cl_metric(arm); pm, npk, overlap=pk_metric(arm)
+              metrics.append({'arm':arm,'Omega_smg':omega,'cmb_normalized_l2':cm,'pk_normalized_l2':pm,
+                              'matched_ell_rows':nell,'finite_cmb_values':ncl,'pk_common_points':npk,'pk_overlap':overlap})
+          cmb_seq=[x['cmb_normalized_l2'] for x in metrics]; pk_seq=[x['pk_normalized_l2'] for x in metrics]
+          cmb_contract=all(a>b for a,b in zip(cmb_seq,cmb_seq[1:])); pk_contract=all(a>b for a,b in zip(pk_seq,pk_seq[1:]))
+          bad=arms['P_om0p001']; badtext=(bad.get('stdout_tail') or '')
+          stability_veto=(bad.get('exit')!=0 and re.search(r'stability_tests_smg|Ghost instability',badtext,re.I) is not None)
+          archive_hash=hashlib.sha256(open('parent/recovery.zip','rb').read()).hexdigest()
+          base_class='REFERENCE_PREFIX_CONTRACTS_STABILITY_BOUNDARY_CONFIRMED' if (integrity and cmb_contract and pk_contract and stability_veto) else ('REFERENCE_PREFIX_NONCONTRACTING' if integrity and stability_veto and not (cmb_contract and pk_contract) else 'AUDIT_INTEGRITY_BLOCKED')
+          out={'schema':'m33_frozen_reference_path_audit_v0.1','model_id':'M33','analysis_only':True,
+               'protocol':'protocol/W06_M33_GALILEON_REFERENCE_PATH_STABILITY_AUDIT_v0.1.md','parent_run':34660258070,
+               'parent_artifact':10286747855,'parent_artifact_sha256':archive_hash,'provider_commit':expected_commit,
+               'integrity_ok':bool(integrity),'metrics':metrics,'cmb_strict_prefix_contraction':bool(cmb_contract),
+               'pk_strict_prefix_contraction':bool(pk_contract),'omega_0p001_provider_stability_veto_confirmed':bool(stability_veto),
+               'tested_stability_bracket':{'invalid_tested':0.001,'valid_tested':0.01,
+                 'scope':'pinned provider/config tested bracket only; not a universal theoretical boundary'},
+               'quantitative_classification_before_source-route_review':base_class,
+               'source_route_review_required':True,'K1_promoted':False,'physical_falsification':False,
+               'full_family_claim':False,'stability_checks_disabled':False}
+          json.dump(out,open('out/M33_FROZEN_REFERENCE_PATH_AUDIT.json','w'),indent=2)
+          with open('out/M33_FROZEN_REFERENCE_PATH_AUDIT.md','w') as f:
+              f.write('# M33 frozen reference-path audit\n\n')
+              f.write(f"Parent run `{out['parent_run']}`, artifact `{out['parent_artifact']}`, provider `{expected_commit}`.\n\n")
+              for x in metrics:
+                  f.write(f"- Omega_smg={x['Omega_smg']}: CMB L2={x['cmb_normalized_l2']:.12g}; P(k) L2={x['pk_normalized_l2']:.12g}\n")
+              f.write(f"\nStrict contraction: CMB={cmb_contract}, P(k)={pk_contract}.  \n")
+              f.write(f"Omega_smg=0.001 provider stability veto confirmed: {stability_veto}.  \n")
+              f.write(f"Quantitative classification before source-route review: `{base_class}`.\n\n")
+              f.write('K1 remains unpromoted. No physical falsification or family-wide stability boundary is claimed.\n')
+          PY
+      - name: Frozen provider-source evidence inventory
+        run: |
+          set -euo pipefail
+          {
+            echo "provider_commit=$(git -C provider rev-parse HEAD)"
+            echo "# Omega_smg / Galileon / GR-reference / stability evidence"
+            grep -RniE --exclude-dir=.git 'Omega_smg|Galileon|cubic|stability_tests_smg|Ghost instability|D_safe_smg|gravity_model|LambdaCDM|LCDM|GR limit|GR-limit|decoupl' provider 2>/dev/null || true
+          } > out/M33_PROVIDER_SOURCE_EVIDENCE.txt
+          python - <<'PY'
+          import json, pathlib
+          p=pathlib.Path('out/M33_PROVIDER_SOURCE_EVIDENCE.txt')
+          d=json.load(open('out/M33_FROZEN_REFERENCE_PATH_AUDIT.json'))
+          d['provider_source_evidence_lines']=sum(1 for _ in open(p,errors='ignore'))
+          d['provider_source_evidence_sha256']=__import__('hashlib').sha256(p.read_bytes()).hexdigest()
+          json.dump(d,open('out/M33_FROZEN_REFERENCE_PATH_AUDIT.json','w'),indent=2)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m33-frozen-reference-path-audit
+          path: out/
