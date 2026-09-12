@@ -1,0 +1,86 @@
+name: W07 M40 xi lambda immutable block convergence
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m40-xi-lambda-block-convergence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install numpy
+        run: sudo apt-get update -qq && sudo apt-get install -y python3-numpy >/dev/null
+      - name: Fetch immutable coordinate artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p inputs/xi inputs/lambda out
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10298324085/zip" > /tmp/xi.zip
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10298572066/zip" > /tmp/lambda.zip
+          unzip -q /tmp/xi.zip -d inputs/xi
+          unzip -q /tmp/lambda.zip -d inputs/lambda
+          sha256sum /tmp/xi.zip /tmp/lambda.zip > out/artifact_zip_sha256.txt
+      - name: Localize immutable coordinate convergence
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,math,pathlib
+          import numpy as np
+          pin='16d9c4e9f85751e30efd0a53b177941713078904'
+          roots={'xi':pathlib.Path('inputs/xi'),'lambda':pathlib.Path('inputs/lambda')}
+          def one(root,name):
+              h=list(root.rglob(name))
+              if len(h)!=1: raise RuntimeError(f'{root}/{name}: {len(h)} hits')
+              return h[0]
+          def tab(path):
+              r=[]
+              for line in path.read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  try:r.append([float(x) for x in s.split()])
+                  except ValueError:pass
+              a=np.asarray(r,float)
+              if a.ndim!=2 or len(a)<5:return (_ for _ in ()).throw(RuntimeError(f'bad table {path}'))
+              return a
+          def geom(a,b):
+              na=float(np.linalg.norm(a)); nb=float(np.linalg.norm(b))
+              c=float(np.dot(a,b)/(na*nb)); c=max(-1.,min(1.,c)); ang=float(math.degrees(math.acos(abs(c)))); mm=abs(na-nb)/max(na,nb)
+              return {'principal_angle_deg':ang,'relative_norm_mismatch':mm,'passes_5deg_025':bool(ang<=5 and mm<=.25)}
+          out={'schema':'m40_xi_lambda_block_convergence_v0.1','model_id':'M40','family_id':'F40','protocol':'protocol/W07_M40_XI_LAMBDA_BLOCK_CONVERGENCE_v0.1.md','provider_commit':pin,'K2_promoted':False,'physical_falsification':False,'complete_Horava_family_claim':False}
+          try:
+              results={}
+              for axis,root in roots.items():
+                  jsn=json.loads(one(root,f'M40_{axis.upper()}_COORDINATE_RESPONSE.json').read_text())
+                  if jsn.get('provider_commit')!=pin: raise RuntimeError(f'{axis} pin mismatch')
+                  cls={t:tab(one(root,f'{t}__scalCls.dat')) for t in ['base','ap2','am2','ap1','am1']}
+                  pks={t:tab(one(root,f'{t}__matterpower.dat')) for t in ['base','ap2','am2','ap1','am1']}
+                  maps={t:{int(r[0]):r[1:] for r in cls[t]} for t in cls}; common=sorted(set.intersection(*(set(maps[t]) for t in maps)))
+                  nc=min(len(maps[t][l]) for t in maps for l in common); cmb={t:np.asarray([maps[t][l][j] for l in common for j in range(nc)],float) for t in maps}; cn=float(np.linalg.norm(cmb['base']))
+                  lo=max(a[:,0].min() for a in pks.values()); hi=min(a[:,0].max() for a in pks.values()); b=pks['base']; m=(b[:,0]>=lo)&(b[:,0]<=hi); k=b[m,0]; pk={t:(b[m,1] if t=='base' else np.interp(k,pks[t][:,0],pks[t][:,1])) for t in pks}; pn=float(np.linalg.norm(pk['base']))
+                  cc=(cmb['ap2']-cmb['am2'])/(4e-6*cn); cf=(cmb['ap1']-cmb['am1'])/(2e-6*cn)
+                  pc=(pk['ap2']-pk['am2'])/(4e-6*pn); pf=(pk['ap1']-pk['am1'])/(2e-6*pn)
+                  gc=geom(cc,cf); gp=geom(pc,pf)
+                  results[axis]={'cmb':gc,'pk':gp,'combined_parent_converged':bool(jsn.get('coordinate_derivative_converged')),
+                                 'classification':('BOTH_BLOCKS_CONVERGED' if gc['passes_5deg_025'] and gp['passes_5deg_025'] else 'CMB_ONLY_CONVERGED' if gc['passes_5deg_025'] else 'PK_ONLY_CONVERGED' if gp['passes_5deg_025'] else 'NEITHER_BLOCK_CONVERGED')}
+              out['axes']=results
+              out['classification']='M40_XI_LAMBDA_BLOCK_CONVERGENCE_LOCALIZED'
+          except Exception as e:
+              out['classification']='M40_XI_LAMBDA_BLOCK_CONVERGENCE_INTEGRITY_BLOCKED';out['error']=repr(e)
+          pathlib.Path('out/M40_XI_LAMBDA_BLOCK_CONVERGENCE.json').write_text(json.dumps(out,indent=2)+'\n')
+          pathlib.Path('out/M40_XI_LAMBDA_BLOCK_CONVERGENCE.md').write_text('# M40 xi/lambda block convergence\n\nClassification: `'+out['classification']+'`\n\nNo K2 promotion.\n')
+          print(pathlib.Path('out/M40_XI_LAMBDA_BLOCK_CONVERGENCE.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m40-xi-lambda-block-convergence
+          path: out/
