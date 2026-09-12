@@ -1,0 +1,89 @@
+name: W07 M31 reference precision artifact recovery
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m31-reference-precision-artifact-recovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch immutable artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p current prior
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10300871714/zip" > current.zip
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10301225238/zip" > prior.zip
+          unzip -q current.zip -d current
+          unzip -q prior.zip -d prior
+          sha256sum current.zip prior.zip > immutable_artifact_zip_sha256.txt
+      - name: Apply frozen recovery rule
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib
+          cur_hits=list(pathlib.Path('current').rglob('M31_REFERENCE_CMB_PRECISION_ROBUSTNESS.json'))
+          old_hits=list(pathlib.Path('prior').rglob('M31_CMB_ELL_LOCALIZATION.json'))
+          out={'schema':'m31_reference_precision_artifact_recovery_v0.1','model_id':'M31','family_id':'F31',
+               'protocol':'protocol/W07_M31_REFERENCE_PRECISION_ARTIFACT_RECOVERY_v0.1.md',
+               'current_run':34702705097,'current_artifact':10300871714,
+               'prior_localization_run':34702495845,'prior_localization_artifact':10301225238,
+               'integrity_tolerance_abs':1e-12,'K2_promoted':False,'canonical_K2':'OPEN',
+               'physical_falsification':False,'family_exclusion':False}
+          if len(cur_hits)!=1 or len(old_hits)!=1:
+              out['classification']='M31_REFERENCE_PRECISION_ARTIFACT_INTEGRITY_BLOCKED'
+              out['error']=f'json discovery current={len(cur_hits)} prior={len(old_hits)}'
+          else:
+              cur=json.loads(cur_hits[0].read_text()); old=json.loads(old_hits[0].read_text())
+              bands=['low_2_30','acoustic_low_31_200','acoustic_mid_201_1000','high_1001_2500','full_2_2500']
+              checks={}; ok=True
+              for b in bands:
+                  a=cur['bands'][b]['default']['coarse_fine']; p=old['bands'][b]['h0005_vs_h00025']
+                  da=abs(float(a['principal_angle_deg'])-float(p['principal_angle_deg']))
+                  dm=abs(float(a['relative_norm_mismatch'])-float(p['relative_norm_mismatch']))
+                  passed=da<=1e-12 and dm<=1e-12
+                  checks[b]={'angle_abs_diff':da,'mismatch_abs_diff':dm,'pass':passed,
+                             'default_fine_pair':a,'prior_h0005_vs_h00025':p}
+                  ok &= passed
+              out['fine_pair_identity_checks']=checks; out['fine_pair_identity_pass']=bool(ok)
+              cl={b:cur['bands'][b]['cl_ref']['coarse_fine'] for b in bands}
+              out['cl_ref_fine_pair_by_band']=cl
+              high=['acoustic_mid_201_1000','high_1001_2500','full_2_2500']
+              failed=[b for b in high if not bool(cl[b]['passes_5deg_025'])]
+              out['high_ell_failed_bands']=failed
+              out['acoustic_low_cl_ref_pass']=bool(cl['acoustic_low_31_200']['passes_5deg_025'])
+              if not ok:
+                  out['classification']='M31_REFERENCE_PRECISION_ARTIFACT_INTEGRITY_BLOCKED'
+              elif failed:
+                  out['classification']='M31_REFERENCE_PRECISION_HIGH_ELL_NONCONVERGENCE_PERSISTS'
+              else:
+                  out['classification']='M31_REFERENCE_PRECISION_HIGH_ELL_FINE_PAIR_CONVERGENCE_RESTORED'
+              out['interpretation']='Immutable reanalysis only. The earlier baseline mismatch flag compared a fine-pair-only run against a three-level band classification; no simulation or threshold was changed.'
+          pathlib.Path('M31_REFERENCE_PRECISION_ARTIFACT_RECOVERY.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          with open('M31_REFERENCE_PRECISION_ARTIFACT_RECOVERY.md','w') as f:
+              f.write('# M31 reference-precision immutable recovery\n\n')
+              f.write(f"Classification: `{out['classification']}`  \n")
+              if out.get('fine_pair_identity_checks'):
+                  f.write(f"Fine-pair identity: {out['fine_pair_identity_pass']}  \n")
+                  f.write('High-ell failed bands under cl_ref.pre: '+', '.join(out.get('high_ell_failed_bands',[]))+'  \n')
+              f.write('\nK2 remains OPEN; no physical/family exclusion.\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m31-reference-precision-artifact-recovery
+          path: |
+            M31_REFERENCE_PRECISION_ARTIFACT_RECOVERY.json
+            M31_REFERENCE_PRECISION_ARTIFACT_RECOVERY.md
+            immutable_artifact_zip_sha256.txt
