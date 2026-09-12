@@ -1,0 +1,14 @@
+{
+  "schema":"m20_k4_hermite_high_order_extension_result_v0.1",
+  "model_id":"M20","family_id":"F20","date":"2026-09-12",
+  "protocol":"protocol/W04_M20_K4_HERMITE_HIGHER_ORDER_EXTENSION_PREREGISTRATION_v0.1.md",
+  "run_id":34717756538,"job_id":103617936805,"head_commit":"2a87a806dc86f3919edcc985ff4a8a9c957d720f",
+  "artifact_id":10305886096,"artifact_sha256":"f35c58d996c885400a3fe071378d5292de038818f5be8b3a7b82daca0ab6d511",
+  "provider_commit":"e17d3664dac677b604fd4ff02fb2af105a6937fa",
+  "orders":[9,11,13],"exact_zero_identity_pass_all":true,
+  "D_9to11":{"max":0.6803476320209885,"median":0.14665619753904058},
+  "D_11to13":{"max":0.6135806018848695,"median":0.13463557778224539},
+  "classification":"M20_K4_HERMITE_HIGH_ORDER_IMPROVING_NOT_CONVERGED_DIAGNOSTIC",
+  "inference":"Hermite-order sensitivity continues to improve from 9->11 to 11->13 but remains far above the preregistered 0.10 convergence-candidate threshold. Numerical closure is not established at N_herm=13.",
+  "diagnostic_only":true,"K4_promoted":false,"physical_falsification":false,"scientific_fail":false
+}
