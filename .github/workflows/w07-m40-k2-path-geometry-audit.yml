@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install analysis dependency
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-numpy >/dev/null
       - name: Fetch immutable successful M40 K1 recovery
         env:
           GH_TOKEN: ${{ github.token }}
