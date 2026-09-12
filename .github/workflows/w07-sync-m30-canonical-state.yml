@@ -1,0 +1,84 @@
+name: W07 sync M30 canonical state
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-sync-m30-canonical-state.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch and verify immutable M30 synthesis
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/m30
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10298263294/zip" > /tmp/m30.zip
+          unzip -q /tmp/m30.zip -d evidence/m30
+          sha256sum /tmp/m30.zip > evidence/m30_zip_sha256.txt
+          python3 - <<'PY'
+          import json,pathlib
+          p=next(pathlib.Path('evidence/m30').rglob('M30_K2_EVIDENCE_SYNTHESIS.json'))
+          r=json.loads(p.read_text())
+          assert r['provider_commit']=='0009f51d89e6465c79e570b496c66fc90058fa77'
+          assert r['classification']=='M30_K2_PARTIAL_LOCAL_RESPONSE_RANK2_SOURCE_QUOTIENT_OPEN'
+          assert r['recommended_K2_status']=='PARTIAL'
+          assert r['checks']['integrity'] and r['checks']['original_path_rank1'] and r['checks']['local_rank2_response']
+          assert not r['K2_pass'] and not r['physical_falsification']
+          print('M30 immutable synthesis verified')
+          PY
+      - name: Update canonical M30 matrix and census rows
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv,pathlib
+          matrix=pathlib.Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(matrix.open(newline=''))); fields=list(rows[0].keys()); hit=0
+          for r in rows:
+              if r['family_id']=='F30' and r['benchmark_id']=='M30':
+                  hit+=1
+                  r['K2_physical_geometry']='PARTIAL'
+                  r['coverage_state']='K0_K1_PASS_K2_PARTIAL_LOCAL_RANK2_SOURCE_QUOTIENT_OPEN_K3_K9_OPEN'
+                  r['notes']=('Horndeski/EFT-of-DE scalar-tensor scoped representative. Pinned hi_class provider has K0/K1 PASS_WITH_SCOPE. '
+                              'W07 path-geometry audit run 34667418003 artifact 10289448682 shows the successful K1 ladder is rank-1 and leaves c_T/c_H frozen. '
+                              'Prospectively frozen central Jacobian run 34694420359 artifact 10297689056 has converged radial and c_T derivatives '
+                              '(2.874986 deg / 0.001396 mismatch and 0.435036 deg / 0.000334 mismatch) separated by 20.765547 deg. '
+                              'Immutable synthesis run 34695369158 artifact 10298263294 therefore recommends K2 PARTIAL only. Complete covariant/source parameter geometry, degeneracy quotient and global admissible-domain closure remain open; K2 is not PASS; no physical falsification.')
+          assert hit==1,hit
+          with matrix.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          census=pathlib.Path('matrices/model_family_census.csv')
+          cr=list(csv.DictReader(census.open(newline=''))); cf=list(cr[0].keys()); hit=0
+          for r in cr:
+              if r['family_id']=='F30':
+                  hit+=1
+                  r['status']='K0_K1_PASS_K2_PARTIAL_LOCAL_RANK2_SOURCE_QUOTIENT_OPEN_K3_K9_OPEN'
+                  r['notes']=('Pinned hi_class Horndeski/EFT scalar representation: K0/K1 PASS_WITH_SCOPE. W07 immutable K2 synthesis run 34695369158 '
+                              'artifact 10298263294 verifies the original K1 path is one-dimensional and a separately varied c_T direction gives converged '
+                              'local response-rank>=2 evidence with 20.765547 deg fine-direction separation. K2 is PARTIAL, not PASS; complete covariant geometry/quotient remains open; no physical falsification.')
+          assert hit==1,hit
+          with census.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=cf); w.writeheader(); w.writerows(cr)
+          PY
+          git diff -- matrices/mandatory_properties_matrix.csv matrices/model_family_census.csv
+      - name: Commit verified canonical state
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add matrices/mandatory_properties_matrix.csv matrices/model_family_census.csv
+          git diff --cached --quiet && exit 0
+          git commit -m 'W07: canonicalize M30 K2 partial local rank evidence'
+          git push
