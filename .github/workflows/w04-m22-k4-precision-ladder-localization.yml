@@ -1,0 +1,112 @@
+name: W04 M22 annihilating-DM K4 precision ladder localization
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m22-k4-precision-ladder-localization.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  OMP_NUM_THREADS: '1'
+
+jobs:
+  profile:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        profile: [default, permille, reference]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analysis dependency and build exact CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+          make -C class -j2 > build.log 2>&1
+      - name: Prepare frozen selected K1 points
+        run: python3 verification/m22/k4_precision_ladder_localization.py prepare m22k4_cases
+      - name: Execute profile cases
+        shell: bash
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: |
+          set +e
+          mkdir -p class/output logs
+          case "$PROFILE" in
+            default) PRE='' ;;
+            permille) PRE='cl_permille.pre' ;;
+            reference) PRE='cl_ref.pre' ;;
+          esac
+          echo '{"build":0}' > "status_${PROFILE}.json"
+          for tag in ref zero p0 p3 p5; do
+            if [ -z "$PRE" ]; then
+              (cd class && ./class "../m22k4_cases/${PROFILE}_${tag}.ini" > "../logs/${PROFILE}_${tag}.log" 2>&1)
+            else
+              (cd class && ./class "../m22k4_cases/${PROFILE}_${tag}.ini" "$PRE" > "../logs/${PROFILE}_${tag}.log" 2>&1)
+            fi
+            rc=$?
+            python3 - "$PROFILE" "$tag" "$rc" <<'PY'
+          import json,sys
+          prof,tag,rc=sys.argv[1],sys.argv[2],int(sys.argv[3]);p=f'status_{prof}.json';d=json.load(open(p));d[f'{prof}_{tag}']=rc;json.dump(d,open(p,'w'),indent=2,sort_keys=True)
+          PY
+          done
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m22-k4-${{ matrix.profile }}
+          path: |
+            class/output/${{ matrix.profile }}_*.dat
+            status_${{ matrix.profile }}.json
+            logs/${{ matrix.profile }}_*.log
+            build.log
+          retention-days: 30
+
+  aggregate:
+    needs: profile
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m22-k4-*
+          path: merged
+          merge-multiple: true
+      - name: Reconstruct aggregate status and analyze frozen diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib
+          d={'build':0}
+          for prof in ['default','permille','reference']:
+              p=pathlib.Path('merged')/f'status_{prof}.json'
+              if not p.exists(): d['build']=1; continue
+              q=json.loads(p.read_text());
+              if q.get('build')!=0: d['build']=1
+              d.update({k:v for k,v in q.items() if k!='build'})
+          pathlib.Path('merged_status.json').write_text(json.dumps(d,indent=2,sort_keys=True)+'\n')
+          PY
+          python3 verification/m22/k4_precision_ladder_localization.py analyze merged/class merged_status.json M22_K4_PRECISION_LADDER_RESULT.json
+          cat M22_K4_PRECISION_LADDER_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m22-k4-precision-ladder-aggregate
+          path: |
+            M22_K4_PRECISION_LADDER_RESULT.json
+            merged_status.json
+          retention-days: 30
