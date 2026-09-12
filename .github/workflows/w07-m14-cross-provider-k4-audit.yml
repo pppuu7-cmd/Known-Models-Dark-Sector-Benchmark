@@ -1,0 +1,97 @@
+name: W07 M14 cross-provider K4 audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m14-cross-provider-k4-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact immutable M14 artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p parent
+          for id in 10140443081 10147076509 10147169505; do
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}/zip" > "parent/${id}.zip"
+            mkdir -p "parent/${id}"
+            unzip -q "parent/${id}.zip" -d "parent/${id}"
+            sha256sum "parent/${id}.zip" >> parent/artifacts.sha256
+          done
+      - name: Cross-provider K4 concordance audit
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python - <<'PY'
+          import json, pathlib, hashlib
+          root=pathlib.Path('parent')
+          def one(name):
+              hits=list(root.rglob(name))
+              if len(hits)!=1: raise SystemExit(f'{name}: expected exactly one, got {len(hits)}')
+              return json.load(open(hits[0])), str(hits[0])
+          idm,idm_path=one('m14_k2k5_local_response.json')
+          ide,ide_path=one('m14_idecamb_k4k5.json')
+          small,small_path=one('m14_small_step_recovery.json')
+          idm_fail=(idm.get('K4')=='FAIL_LOCAL_CONVERGENCE')
+          ide_fail=('K4_FAIL' in ide.get('classification',''))
+          small_fail=('K4_SMALL_STEP_RECOVERY_FAIL' in small.get('classification',''))
+          it=idm['thresholds']; im=float(idm['tangent_relative_norm_mismatch']); ia=float(idm['tangent_angle_deg'])
+          em=ide['metrics']; emismatch=float(em['relative_norm_mismatch']); eangle=float(em['angle_deg'])
+          rows=[
+            {'provider':'iDM','step':float(idm['steps'][0]),'norm_mismatch':im,'angle_deg':ia,
+             'norm_threshold':float(it['tangent_relative_norm_mismatch_max']),'angle_threshold_deg':float(it['tangent_angle_deg_max'])},
+            {'provider':'IDECAMB','step':float(em['fine_h']),'norm_mismatch':emismatch,'angle_deg':eangle,
+             'norm_threshold':float(em['norm_threshold']),'angle_threshold_deg':float(em['angle_threshold_deg'])},
+            {'provider':'IDECAMB','step':float(small['intermediate_pair']['h']),'norm_mismatch':float(small['intermediate_pair']['relative_norm_mismatch']),
+             'angle_deg':float(small['intermediate_pair']['angle_deg']),'norm_threshold':float(em['norm_threshold']),'angle_threshold_deg':float(em['angle_threshold_deg'])},
+            {'provider':'IDECAMB','step':float(small['finest_pair']['h']),'norm_mismatch':float(small['finest_pair']['relative_norm_mismatch']),
+             'angle_deg':float(small['finest_pair']['angle_deg']),'norm_threshold':float(em['norm_threshold']),'angle_threshold_deg':float(em['angle_threshold_deg'])}
+          ]
+          for r in rows:
+              r['norm_excess_factor']=r['norm_mismatch']/r['norm_threshold']
+              r['angle_excess_factor']=r['angle_deg']/r['angle_threshold_deg']
+              r['passes_both_thresholds']=(r['norm_mismatch']<=r['norm_threshold'] and r['angle_deg']<=r['angle_threshold_deg'])
+          concordance=bool(idm_fail and ide_fail and small_fail)
+          robust_small_failure=not rows[-1]['passes_both_thresholds']
+          out={
+            'schema':'m14_cross_provider_k4_audit_v0.1','model_id':'M14','analysis_only':True,
+            'source_runs':[34448063620,34464786896,34465008067],
+            'source_artifacts':[10140443081,10147076509,10147169505],
+            'source_paths':[idm_path,ide_path,small_path],
+            'provider_results':{
+              'iDM':{'provider':idm.get('provider'),'K4':idm.get('K4'),'classification':idm.get('classification')},
+              'IDECAMB':{'provider_base':ide.get('provider_base'),'provider_overlay':ide.get('provider_overlay'),'classification':ide.get('classification')},
+              'IDECAMB_small_step':{'classification':small.get('classification'),'scale_trend_improves_norm':small.get('scale_trend_improves_norm'),
+                                     'scale_trend_improves_angle':small.get('scale_trend_improves_angle')}
+            },
+            'diagnostics':rows,
+            'cross_provider_k4_failure_concordance':concordance,
+            'finest_IDECAMB_pair_still_fails_preregistered_joint_threshold':robust_small_failure,
+            'classification':'M14_CROSS_PROVIDER_K4_NONNESTED_LOCAL_RESPONSE_REPRODUCED_WITH_SCOPE' if concordance and robust_small_failure else 'M14_CROSS_PROVIDER_K4_CONCORDANCE_INCOMPLETE',
+            'K5_status':'BLOCKED_BY_K4' if concordance else 'UNCHANGED',
+            'new_K_stage_promotion':False,'physical_falsification':False,'observational_exclusion_claim':False,
+            'scope':'Cross-provider reproducibility of theory-space local-response nonconvergence only; not an observational or family-wide physical exclusion.'
+          }
+          json.dump(out,open('out/M14_CROSS_PROVIDER_K4_AUDIT.json','w'),indent=2)
+          with open('out/M14_CROSS_PROVIDER_K4_AUDIT.md','w') as f:
+              f.write('# M14 cross-provider K4 audit\n\n')
+              f.write(f"Classification: `{out['classification']}`  \n")
+              f.write(f"Cross-provider K4 failure concordance: {concordance}  \n")
+              f.write(f"Finest IDECAMB pair still fails joint threshold: {robust_small_failure}  \n\n")
+              for r in rows:
+                  f.write(f"- {r['provider']} h={r['step']}: norm mismatch={r['norm_mismatch']:.9g} ({r['norm_excess_factor']:.3f}x threshold), angle={r['angle_deg']:.9g} deg ({r['angle_excess_factor']:.3f}x threshold), pass={r['passes_both_thresholds']}\n")
+              f.write('\nNo physical falsification, observational exclusion, or new K-stage promotion is assigned.\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m14-cross-provider-k4-audit
+          path: out/
