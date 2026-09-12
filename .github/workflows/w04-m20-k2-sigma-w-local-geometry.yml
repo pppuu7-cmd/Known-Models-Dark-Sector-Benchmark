@@ -1,0 +1,45 @@
+name: W04 M20 SIDM K2 sigma-w local geometry
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m20-k2-sigma-w-local-geometry.yml'
+      - 'verification/m20/k2_sigma_w_local_geometry.py'
+      - 'protocol/W04_M20_K2_SIGMA_W_LOCAL_GEOMETRY_PREREGISTRATION_v0.1.md'
+permissions:
+  contents: read
+jobs:
+  geometry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PROVIDER_PIN: e17d3664dac677b604fd4ff02fb2af105a6937fa
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin provider and environment
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/shinichiroando/sashimi-si.git sashimi
+          git -C sashimi checkout -q --detach "$PROVIDER_PIN"
+          test "$(git -C sashimi rev-parse HEAD)" = "$PROVIDER_PIN"
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3 scipy==1.16.1 numexpr==2.11.0 tqdm==4.67.1
+      - name: Run preregistered finite-base local geometry
+        run: |
+          set -euo pipefail
+          python3 verification/m20/k2_sigma_w_local_geometry.py sashimi M20_K2_SIGMA_W_LOCAL_GEOMETRY.json
+          cat M20_K2_SIGMA_W_LOCAL_GEOMETRY.json
+      - name: Guardrails
+        run: |
+          python3 - <<'PY'
+          import json
+          r=json.load(open('M20_K2_SIGMA_W_LOCAL_GEOMETRY.json'))
+          assert r['K2_promoted'] is False and r['K5_promoted'] is False
+          assert r['scientific_fail'] is False and r['physical_falsification'] is False
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m20-k2-sigma-w-local-geometry
+          path: M20_K2_SIGMA_W_LOCAL_GEOMETRY.json
+          retention-days: 30
