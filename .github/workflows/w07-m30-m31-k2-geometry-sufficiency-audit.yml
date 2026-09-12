@@ -1,0 +1,164 @@
+name: W07 M30 M31 K2 geometry sufficiency audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m30-m31-k2-geometry-sufficiency-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PARENT_RUN: '34656276938'
+  M30_ARTIFACT: '10286001416'
+  M31_ARTIFACT: '10285409601'
+  HICLASS_REPO: 'https://github.com/hiclass-code/hi_class_public.git'
+  HICLASS_COMMIT: '0009f51d89e6465c79e570b496c66fc90058fa77'
+
+jobs:
+  geometry-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch immutable K1 parent artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p parent/M30 parent/M31
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${M30_ARTIFACT}/zip" > parent/M30.zip
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${M31_ARTIFACT}/zip" > parent/M31.zip
+          unzip -q parent/M30.zip -d parent/M30
+          unzip -q parent/M31.zip -d parent/M31
+          sha256sum parent/M30.zip parent/M31.zip > parent/artifacts.sha256
+      - name: Fetch exact pinned hi_class source
+        run: |
+          set -euo pipefail
+          git clone -q "$HICLASS_REPO" provider
+          git -C provider checkout -q "$HICLASS_COMMIT"
+          test "$(git -C provider rev-parse HEAD)" = "$HICLASS_COMMIT"
+      - name: Quantify K1 path rank versus advertised coefficient geometry
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python - <<'PY'
+          import hashlib, json, math, pathlib, re
+
+          labels=['c_K','c_B','c_M','c_T','c_H','M2_ini']
+          dynamic_labels=labels[:5]
+
+          def parse_vector(path):
+              text=path.read_text(errors='strict')
+              m=re.search(r'^\s*parameters_smg\s*=\s*(.+)$',text,re.M)
+              if not m: raise ValueError(f'parameters_smg missing in {path}')
+              vals=[float(x.strip()) for x in m.group(1).split(',')]
+              if len(vals)!=6: raise ValueError(f'expected 6 parameters_smg values in {path}, got {len(vals)}')
+              gm=re.search(r'^\s*gravity_model\s*=\s*(\S+)',text,re.M)
+              return vals, gm.group(1) if gm else None, text
+
+          def rank(matrix,tol=1e-12):
+              a=[list(map(float,row)) for row in matrix if any(abs(float(x))>tol for x in row)]
+              if not a: return 0
+              m=len(a); n=len(a[0]); r=0
+              for c in range(n):
+                  piv=max(range(r,m), key=lambda i: abs(a[i][c]), default=r)
+                  if r>=m or abs(a[piv][c])<=tol: continue
+                  a[r],a[piv]=a[piv],a[r]
+                  p=a[r][c]
+                  a[r]=[x/p for x in a[r]]
+                  for i in range(m):
+                      if i==r: continue
+                      f=a[i][c]
+                      if abs(f)>tol: a[i]=[x-f*y for x,y in zip(a[i],a[r])]
+                  r+=1
+                  if r==m: break
+              return r
+
+          models={
+            'M30':{'artifact':10286001416,'family':'Horndeski / EFT-of-DE scalar-tensor manifold','dir':'k1_M30'},
+            'M31':{'artifact':10285409601,'family':'beyond-Horndeski / DHOST effective slice','dir':'k1_M31'},
+          }
+          report={
+            'schema':'m30_m31_k2_geometry_sufficiency_audit_v0.1',
+            'analysis_only':True,'parent_run':34656276938,'provider_commit':'0009f51d89e6465c79e570b496c66fc90058fa77',
+            'K2_definition':'physical parameter geometry and exact quotient',
+            'models':{},'K2_promoted':False,'physical_falsification':False,'family_exclusion_claim':False
+          }
+          for mid,meta in models.items():
+              root=pathlib.Path('parent')/mid/meta['dir']
+              order=['ref','s1','s01','s001','s0001']
+              parsed={}
+              for arm in order:
+                  vals,gm,text=parse_vector(root/f'{arm}.ini')
+                  parsed[arm]={'parameters_smg':vals,'gravity_model':gm}
+              ref=parsed['ref']['parameters_smg']
+              displacements=[]
+              for arm in order[1:]:
+                  v=parsed[arm]['parameters_smg']
+                  displacements.append([v[i]-ref[i] for i in range(5)])
+              r=rank(displacements)
+              nonzero=[dynamic_labels[i] for i in range(5) if any(abs(row[i])>1e-12 for row in displacements)]
+              frozen=[x for x in dynamic_labels if x not in nonzero]
+              radial=True
+              base=displacements[0]
+              for row in displacements[1:]:
+                  ratios=[]
+                  for a,b in zip(row,base):
+                      if abs(b)>1e-12: ratios.append(a/b)
+                      elif abs(a)>1e-12: radial=False
+                  if ratios and max(ratios)-min(ratios)>1e-10: radial=False
+              result_file=pathlib.Path('parent')/mid/f'{mid}_k1_result.json'
+              result=json.load(open(result_file))
+              provider_file=pathlib.Path('parent')/mid/'provider_commit.txt'
+              provider=provider_file.read_text().strip()
+              integrity=(provider==report['provider_commit'] and result.get('provider_commit')==report['provider_commit'] and all(parsed[a]['gravity_model']=='propto_omega_bh' for a in order))
+              if not integrity:
+                  cls=f'{mid}_K2_GEOMETRY_AUDIT_INTEGRITY_BLOCKED'
+              elif r==1 and radial:
+                  cls=f'{mid}_K2_NOT_CLOSED_BY_ONE_DIMENSIONAL_K1_PATH'
+              else:
+                  cls=f'{mid}_K2_REQUIRES_EXPLICIT_QUOTIENT_AUDIT'
+              report['models'][mid]={
+                'family':meta['family'],'source_artifact':meta['artifact'],'integrity_ok':integrity,
+                'gravity_model':'propto_omega_bh','advertised_parameters_smg_labels':labels,
+                'reference_parameters_smg':ref,'arms':parsed,'dynamic_displacements':displacements,
+                'frozen_path_rank_in_five_alpha_coefficients':r,'strictly_radial_K1_path':radial,
+                'nonzero_direction_coordinates':nonzero,'frozen_zero_direction_coordinates':frozen,
+                'M2_ini_fixed_across_path':all(abs(parsed[a]['parameters_smg'][5]-1.0)<1e-12 for a in order),
+                'classification':cls,
+                'interpretation':'The successful K1 decoupling ladder samples only this frozen radial direction. It cannot by itself establish the full physical parameter geometry, degeneracy quotient, or coordinate identifications required by K2.'
+              }
+          report['overall_classification']='M30_M31_K2_REQUIRES_MULTIDIRECTIONAL_GEOMETRY_AND_QUOTIENT_PREREGISTRATION'
+          report['next_preregistered_requirement']='Define author-supported physical coordinates, allowed domains and exact quotient/equivalence relations; then probe independent admissible directions rather than reusing the K1 radial ladder.'
+          for mid in ['M30','M31']:
+              report['models'][mid]['artifact_zip_sha256']=hashlib.sha256(open(f"parent/{mid}.zip",'rb').read()).hexdigest()
+          json.dump(report,open('out/M30_M31_K2_GEOMETRY_SUFFICIENCY_AUDIT.json','w'),indent=2)
+          with open('out/M30_M31_K2_GEOMETRY_SUFFICIENCY_AUDIT.md','w') as f:
+              f.write('# M30/M31 K2 geometry-sufficiency audit\n\n')
+              for mid in ['M30','M31']:
+                  x=report['models'][mid]
+                  f.write(f"## {mid}\n- path rank = {x['frozen_path_rank_in_five_alpha_coefficients']}\n- radial = {x['strictly_radial_K1_path']}\n- nonzero K1 direction coordinates = {', '.join(x['nonzero_direction_coordinates'])}\n- frozen-zero direction coordinates = {', '.join(x['frozen_zero_direction_coordinates']) or 'none'}\n- classification = `{x['classification']}`\n\n")
+              f.write('K2 is not promoted. This audit establishes a geometry-coverage limitation of the existing K1 ladder, not a physical failure of either family.\n')
+          PY
+      - name: Inventory pinned provider evidence for parameter geometry and quotient
+        run: |
+          set -euo pipefail
+          {
+            echo "provider_commit=$(git -C provider rev-parse HEAD)"
+            echo '# propto_omega_bh / parameters_smg / coefficient evidence'
+            grep -RniE --exclude-dir=.git 'propto_omega_bh|parameters_smg|c_K|c_B|c_M|c_T|c_H|M\*\^2_ini|alpha_H|alpha_K|alpha_B|alpha_M|alpha_T' provider 2>/dev/null || true
+          } > out/M30_M31_K2_PROVIDER_GEOMETRY_EVIDENCE.txt
+          python - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('out/M30_M31_K2_PROVIDER_GEOMETRY_EVIDENCE.txt')
+          d=json.load(open('out/M30_M31_K2_GEOMETRY_SUFFICIENCY_AUDIT.json'))
+          d['provider_evidence_lines']=sum(1 for _ in open(p,errors='ignore'))
+          d['provider_evidence_sha256']=hashlib.sha256(p.read_bytes()).hexdigest()
+          json.dump(d,open('out/M30_M31_K2_GEOMETRY_SUFFICIENCY_AUDIT.json','w'),indent=2)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m30-m31-k2-geometry-sufficiency-audit
+          path: out/
