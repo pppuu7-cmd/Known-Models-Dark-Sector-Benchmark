@@ -1,0 +1,111 @@
+name: W07 M33 pinned stability boundary refinement
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m33-pinned-stability-boundary-refinement.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  HICLASS_PIN: '0009f51d89e6465c79e570b496c66fc90058fa77'
+
+jobs:
+  refine:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact pinned hi_class
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3-numpy >/dev/null
+          git clone -q https://github.com/hiclass-code/hi_class_public.git provider
+          git -C provider checkout -q --detach "$HICLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$HICLASS_PIN"
+          make -C provider -j2 >/dev/null
+          git -C provider rev-parse HEAD > provider_commit.txt
+      - name: Generate frozen parser-compliant stability grid
+        run: |
+          set -euo pipefail
+          mkdir -p m33boundary
+          python3 - <<'PY'
+          import pathlib,re
+          src=pathlib.Path('provider/gravity_models/galileon_3.ini').read_text();out=pathlib.Path('m33boundary').resolve()
+          vals=[0.0015,0.002,0.003,0.004,0.006,0.008]
+          def drop(t,key): return re.sub(rf'(?m)^{re.escape(key)}\s*=.*\n?','',t)
+          rows=[]
+          for v in vals:
+              tag='om_'+str(v).replace('.','p')
+              t=re.sub(r'(?m)^Omega_smg\s*=.*$',f'Omega_smg = {v}',src)
+              t=drop(drop(t,'Omega_Lambda'),'Omega_fld')
+              t=re.sub(r'(?m)^root\s*=.*$',f'root = {out}/{tag}_',t)
+              (out/f'{tag}.ini').write_text(t);rows.append((tag,v))
+          (out/'grid.tsv').write_text('\n'.join(f'{t}\t{v}' for t,v in rows)+'\n')
+          PY
+          grep -H -E '^(Omega_smg|gravity_model|gravity_submodel|root)' m33boundary/*.ini > m33boundary/frozen_configs.txt
+      - name: Execute frozen grid
+        run: |
+          set +e
+          while IFS=$'\t' read -r tag val; do
+            ./provider/class "m33boundary/${tag}.ini" > "m33boundary/${tag}.stdout" 2> "m33boundary/${tag}.stderr"
+            echo $? > "m33boundary/${tag}.exit"
+          done < m33boundary/grid.tsv
+          exit 0
+      - name: Apply frozen boundary classification
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib,re,numpy as np
+          b=pathlib.Path('m33boundary'); pin=pathlib.Path('provider_commit.txt').read_text().strip(); expected='0009f51d89e6465c79e570b496c66fc90058fa77'
+          out={'schema':'m33_pinned_stability_boundary_refinement_v0.1','model_id':'M33','family_id':'F33','protocol':'protocol/W07_M33_PINNED_STABILITY_BOUNDARY_REFINEMENT_v0.1.md','provider_commit':pin,'expected_commit':expected,'parent_valid':0.01,'parent_veto':0.001,'K1_promoted':False,'physical_falsification':False,'family_wide_stability_claim':False}
+          def table(pat):
+              h=sorted(b.glob(pat))
+              if not h:return False
+              rows=[]
+              for line in h[0].read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'):continue
+                  try:rows.append([float(x) for x in s.split()])
+                  except ValueError:pass
+              try:a=np.asarray(rows,float);return bool(a.ndim==2 and len(a)>=5 and np.isfinite(a).all())
+              except:return False
+          pts=[]
+          if pin!=expected: out['classification']='M33_STABILITY_REFINEMENT_INTEGRITY_BLOCKED_PROVIDER_PIN'
+          else:
+              for line in (b/'grid.tsv').read_text().splitlines():
+                  tag,sv=line.split('\t');v=float(sv);ex=int((b/f'{tag}.exit').read_text());txt=(b/f'{tag}.stdout').read_text(errors='replace')+'\n'+(b/f'{tag}.stderr').read_text(errors='replace')
+                  finite=ex==0 and table(f'{tag}_*cl.dat') and table(f'{tag}_*pk.dat')
+                  ghost=('Ghost instability' in txt or 'ghost instability' in txt)
+                  m=re.search(r'minimum\s+D\s*=\s*([+\-0-9.eE]+)\s+at\s+a\s*=\s*([+\-0-9.eE]+)',txt,re.I)
+                  cls='valid' if finite else 'provider_stability_veto' if ex!=0 and ghost else 'provider_or_harness_failure'
+                  pts.append({'Omega_smg':v,'tag':tag,'exit':ex,'finite_cl_pk':finite,'ghost_diagnostic':ghost,'minimum_D':float(m.group(1)) if m else None,'minimum_D_a':float(m.group(2)) if m else None,'classification':cls})
+              out['points']=pts
+              veto=sorted(p['Omega_smg'] for p in pts if p['classification']=='provider_stability_veto');valid=sorted(p['Omega_smg'] for p in pts if p['classification']=='valid');other=[p for p in pts if p['classification']=='provider_or_harness_failure']
+              if other:
+                  out['classification']='M33_STABILITY_REFINEMENT_PROVIDER_OR_HARNESS_FAILURE';out['nonclassifying_points']=other
+              elif veto and valid:
+                  lv=max(veto);uv=min(valid);out['tightest_tested_transition_bracket']={'vetoed_max':lv,'valid_min':uv,'ordered':lv<uv}
+                  out['classification']='M33_PINNED_STABILITY_TRANSITION_REFINED' if lv<uv else 'M33_PINNED_STABILITY_GRID_NONMONOTONIC_OR_OVERLAPPING'
+              elif valid:
+                  out['classification']='M33_FROZEN_INTERMEDIATE_GRID_ALL_VALID_PARENT_VETO_REMAINS'
+              elif veto:
+                  out['classification']='M33_FROZEN_INTERMEDIATE_GRID_ALL_VETOED_PARENT_VALID_REMAINS'
+              else: out['classification']='M33_STABILITY_REFINEMENT_NO_CLASSIFYING_POINTS'
+              out['interpretation']='Empirical pinned-provider/config boundary only; no interpolation to a universal critical Omega_smg and no physical family falsification.'
+          pathlib.Path('M33_PINNED_STABILITY_BOUNDARY_REFINEMENT.json').write_text(json.dumps(out,indent=2)+'\n')
+          pathlib.Path('M33_PINNED_STABILITY_BOUNDARY_REFINEMENT.md').write_text('# M33 pinned stability boundary refinement\n\nClassification: `'+out['classification']+'`  \nBracket: `'+str(out.get('tightest_tested_transition_bracket'))+'`  \n\nNo K1 promotion or family-wide stability claim.\n')
+          print(pathlib.Path('M33_PINNED_STABILITY_BOUNDARY_REFINEMENT.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m33-pinned-stability-boundary-refinement
+          path: |
+            M33_PINNED_STABILITY_BOUNDARY_REFINEMENT.json
+            M33_PINNED_STABILITY_BOUNDARY_REFINEMENT.md
+            provider_commit.txt
+            m33boundary/
