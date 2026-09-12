@@ -41,8 +41,7 @@ jobs:
           set -euo pipefail
           mkdir -p out
           python - <<'PY'
-          import json, math, pathlib, hashlib, re
-          import numpy as np
+          import bisect, hashlib, json, math, pathlib, re
           root=pathlib.Path('parent/recovery')
           result_files=list(root.rglob('M33_REFERENCE_MAP_PARSER_RECOVERY_RESULT.json'))
           if len(result_files)!=1:
@@ -60,38 +59,61 @@ jobs:
               if not cand: raise SystemExit('D_gr__cl.dat not found')
               datroot=cand[0].parent
           def load(path):
-              x=np.loadtxt(path)
-              if x.ndim==1: x=x.reshape(1,-1)
-              return x
+              rows=[]
+              with open(path,errors='strict') as f:
+                  for line in f:
+                      s=line.strip()
+                      if not s or s.startswith('#'): continue
+                      rows.append([float(x) for x in s.split()])
+              if not rows: raise ValueError(f'no numeric rows in {path}')
+              return rows
+          def l2(values):
+              return math.sqrt(sum(x*x for x in values))
           ccl=load(datroot/'D_gr__cl.dat'); cpk=load(datroot/'D_gr__pk.dat')
           def cl_metric(arm):
               m=load(datroot/f'{arm}__cl.dat')
               ci={int(r[0]):r[1:] for r in ccl}; mi={int(r[0]):r[1:] for r in m}
               ell=sorted(set(ci).intersection(mi))
               if not ell: raise ValueError('no matched ell')
-              c=np.concatenate([ci[e] for e in ell]); v=np.concatenate([mi[e] for e in ell])
-              mask=np.isfinite(c)&np.isfinite(v)
-              if not np.any(mask): raise ValueError('no finite C_l support')
-              den=np.linalg.norm(c[mask])
+              c=[]; v=[]
+              for e in ell:
+                  n=min(len(ci[e]),len(mi[e]))
+                  for a,b in zip(ci[e][:n],mi[e][:n]):
+                      if math.isfinite(a) and math.isfinite(b):
+                          c.append(a); v.append(b)
+              if not c: raise ValueError('no finite C_l support')
+              den=l2(c)
               if den==0: raise ValueError('zero control C_l norm')
-              return float(np.linalg.norm(v[mask]-c[mask])/den), len(ell), int(mask.sum())
+              return l2([b-a for a,b in zip(c,v)])/den, len(ell), len(c)
           def pk_metric(arm):
               m=load(datroot/f'{arm}__pk.dat')
-              goodc=np.isfinite(cpk[:,0])&np.isfinite(cpk[:,1]); goodm=np.isfinite(m[:,0])&np.isfinite(m[:,1])
-              c=cpk[goodc]; v=m[goodm]
-              c=c[np.argsort(c[:,0])]; v=v[np.argsort(v[:,0])]
-              lo=max(float(c[:,0].min()),float(v[:,0].min())); hi=min(float(c[:,0].max()),float(v[:,0].max()))
-              mask=(c[:,0]>=lo)&(c[:,0]<=hi)
-              k=c[mask,0]; pc=c[mask,1]
-              pm=np.interp(k,v[:,0],v[:,1])
-              finite=np.isfinite(pc)&np.isfinite(pm)
-              den=np.linalg.norm(pc[finite])
-              if den==0 or not np.any(finite): raise ValueError('invalid common P(k) support')
-              return float(np.linalg.norm(pm[finite]-pc[finite])/den), int(finite.sum()), [lo,hi]
+              c=sorted((r[0],r[1]) for r in cpk if len(r)>=2 and math.isfinite(r[0]) and math.isfinite(r[1]))
+              v=sorted((r[0],r[1]) for r in m if len(r)>=2 and math.isfinite(r[0]) and math.isfinite(r[1]))
+              if len(c)<2 or len(v)<2: raise ValueError('insufficient finite P(k) rows')
+              lo=max(c[0][0],v[0][0]); hi=min(c[-1][0],v[-1][0])
+              if not lo < hi: raise ValueError('empty P(k) overlap')
+              vx=[x for x,_ in v]
+              def interp(x):
+                  i=bisect.bisect_left(vx,x)
+                  if i < len(v) and vx[i]==x: return v[i][1]
+                  if i==0 or i==len(v): raise ValueError('interpolation outside support')
+                  x0,y0=v[i-1]; x1,y1=v[i]
+                  if x1==x0: raise ValueError('duplicate model k grid')
+                  return y0+(y1-y0)*(x-x0)/(x1-x0)
+              pc=[]; pm=[]
+              for k,y in c:
+                  if lo <= k <= hi:
+                      z=interp(k)
+                      if math.isfinite(y) and math.isfinite(z):
+                          pc.append(y); pm.append(z)
+              if not pc: raise ValueError('invalid common P(k) support')
+              den=l2(pc)
+              if den==0: raise ValueError('zero control P(k) norm')
+              return l2([b-a for a,b in zip(pc,pm)])/den, len(pc), [lo,hi]
           order=[('P_om0p5',0.5),('P_om0p1',0.1),('P_om0p01',0.01)]
           metrics=[]
           for arm,omega in order:
-              cm, nell, ncl=cl_metric(arm); pm, npk, overlap=pk_metric(arm)
+              cm,nell,ncl=cl_metric(arm); pm,npk,overlap=pk_metric(arm)
               metrics.append({'arm':arm,'Omega_smg':omega,'cmb_normalized_l2':cm,'pk_normalized_l2':pm,
                               'matched_ell_rows':nell,'finite_cmb_values':ncl,'pk_common_points':npk,'pk_overlap':overlap})
           cmb_seq=[x['cmb_normalized_l2'] for x in metrics]; pk_seq=[x['pk_normalized_l2'] for x in metrics]
@@ -100,16 +122,17 @@ jobs:
           stability_veto=(bad.get('exit')!=0 and re.search(r'stability_tests_smg|Ghost instability',badtext,re.I) is not None)
           archive_hash=hashlib.sha256(open('parent/recovery.zip','rb').read()).hexdigest()
           base_class='REFERENCE_PREFIX_CONTRACTS_STABILITY_BOUNDARY_CONFIRMED' if (integrity and cmb_contract and pk_contract and stability_veto) else ('REFERENCE_PREFIX_NONCONTRACTING' if integrity and stability_veto and not (cmb_contract and pk_contract) else 'AUDIT_INTEGRITY_BLOCKED')
-          out={'schema':'m33_frozen_reference_path_audit_v0.1','model_id':'M33','analysis_only':True,
+          out={'schema':'m33_frozen_reference_path_audit_v0.2','model_id':'M33','analysis_only':True,
                'protocol':'protocol/W06_M33_GALILEON_REFERENCE_PATH_STABILITY_AUDIT_v0.1.md','parent_run':34660258070,
                'parent_artifact':10286747855,'parent_artifact_sha256':archive_hash,'provider_commit':expected_commit,
                'integrity_ok':bool(integrity),'metrics':metrics,'cmb_strict_prefix_contraction':bool(cmb_contract),
                'pk_strict_prefix_contraction':bool(pk_contract),'omega_0p001_provider_stability_veto_confirmed':bool(stability_veto),
                'tested_stability_bracket':{'invalid_tested':0.001,'valid_tested':0.01,
                  'scope':'pinned provider/config tested bracket only; not a universal theoretical boundary'},
-               'quantitative_classification_before_source-route_review':base_class,
+               'quantitative_classification_before_source_route_review':base_class,
                'source_route_review_required':True,'K1_promoted':False,'physical_falsification':False,
-               'full_family_claim':False,'stability_checks_disabled':False}
+               'full_family_claim':False,'stability_checks_disabled':False,
+               'runner_dependency_note':'pure-Python implementation; no numpy/scipy dependency'}
           json.dump(out,open('out/M33_FROZEN_REFERENCE_PATH_AUDIT.json','w'),indent=2)
           with open('out/M33_FROZEN_REFERENCE_PATH_AUDIT.md','w') as f:
               f.write('# M33 frozen reference-path audit\n\n')
