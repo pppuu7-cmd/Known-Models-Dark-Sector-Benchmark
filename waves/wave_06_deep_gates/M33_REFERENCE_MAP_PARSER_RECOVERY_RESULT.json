@@ -1,0 +1,28 @@
+{
+  "schema": "m33_parser_compliant_reference_map_recovery_v0.1",
+  "model_id": "M33",
+  "provider_commit": "0009f51d89e6465c79e570b496c66fc90058fa77",
+  "run_id": 34660258070,
+  "job_id": 103461090824,
+  "artifact_id": 10286747855,
+  "artifact_digest": "sha256:4569fb114ee152b1694d4f14a44ed69aabf94c7df9b5368538d32fdb066528fd",
+  "classification": "PARSER_COMPLIANT_REFERENCE_MAP_EXECUTABLE_STABILITY_BOUNDARY_OPEN",
+  "K1_promoted": false,
+  "physical_falsification": false,
+  "valid_arms": ["P_om0p5", "P_om0p1", "P_om0p01", "N_native", "D_gr"],
+  "blocked_arm": {
+    "arm": "P_om0p001",
+    "exit": 1,
+    "classification": "PROVIDER_STABILITY_VETO_ON_REFERENCE_PATH",
+    "diagnostic": "Ghost instability for scalar field perturbations with minimum D=-1.11467e-106 at a=1e-14 after closure shooting matched Omega_Lambda=0.742904"
+  },
+  "finite_rows": {
+    "P_om0p5": {"cl": 2499, "pk": 531},
+    "P_om0p1": {"cl": 2499, "pk": 533},
+    "P_om0p01": {"cl": 2499, "pk": 534},
+    "N_native": {"cl": 2499, "pk": 530},
+    "D_gr": {"cl": 2499, "pk": 534}
+  },
+  "interpretation": "The parser/configuration blocker is removed. The accessible positive-Omega_smg prefix and GR/native controls execute with finite TT/P(k), but the prospectively included Omega_smg=0.001 arm is rejected by the provider scalar-stability test. This is a stability/pathology boundary on this reference path, not infrastructure failure and not a family-level falsification. No K1 promotion is authorized from this recovery.",
+  "next_gate": "Analysis-only, prospectively frozen reference-path/stability audit using immutable run 34660258070 outputs and pinned provider source. It must preserve the 0.001 stability veto and decide whether an author-supported alternate GR/decoupling route exists before any K1 promotion."
+}
