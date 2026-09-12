@@ -50,11 +50,12 @@ jobs:
           cubic_decl=bool(re.search(r'gravity_submodel\s*=\s*cubic',gt,re.I))
           no_extra=bool(re.search(r'no extra parameters in cubic model',gt,re.I))
           tracker_fixed=bool(re.search(r'all model parameters are fixed by Omega_smg and the tracker condition',gt,re.I))
-          debug_marked=bool(re.search(r'Omega_smg_debug.*debugging purposes',gt,re.I|re.S))
-          omega_zero_off=bool(re.search(r'if set to zero.*skip the equations of the scalar field',ht,re.I|re.S))
+          # Pinned source contains the misspelling "purpouses"; match the semantic source phrase conservatively.
+          debug_marked=bool(re.search(r'For debugging purp\w* one can specify a Omega_smg_debug',gt,re.I))
+          # hi_class.ini documents: Omega_smg unspecified or set to 0 -> ignore scalar-field equations -> standard CLASS.
+          omega_zero_off=bool(re.search(r'Omega_smg is the fractional density.*?Omega_smg unspecified or equivalently set to 0.*?ignore the scalar field equations.*?standard CLASS equations',ht,re.I|re.S))
           quantitative_ok=bool(q.get('integrity_ok') and q.get('cmb_strict_prefix_contraction') and q.get('pk_strict_prefix_contraction') and q.get('omega_0p001_provider_stability_veto_confirmed'))
           documented_physical_alt_found=False
-          # Frozen adjudication: a debug closure shortcut and the generic SMG-off switch are not counted as an internal author-supported physical cubic-Galileon continuation.
           source_review_complete=all([cubic_decl,no_extra,tracker_fixed,debug_marked,omega_zero_off])
           if quantitative_ok and source_review_complete and not documented_physical_alt_found:
               cls='REFERENCE_PREFIX_CONTRACTS_STABILITY_BOUNDARY_CONFIRMED'
@@ -65,7 +66,7 @@ jobs:
           else:
               cls='AUDIT_INTEGRITY_BLOCKED'
           out={
-            'schema':'m33_source_route_adjudication_v0.1','model_id':'M33',
+            'schema':'m33_source_route_adjudication_v0.2','model_id':'M33',
             'quantitative_audit_run':34667305834,'quantitative_audit_artifact':10289263752,
             'provider_commit':pin,'quantitative_prefix_contraction_confirmed':quantitative_ok,
             'source_checks':{
