@@ -41,16 +41,32 @@ jobs:
           set -euo pipefail
           mkdir -p out
           python - <<'PY'
-          import json, math, pathlib, statistics, csv
+          import json, math, pathlib, csv
           cand=list(pathlib.Path('parent').rglob('m35_k1_result.json'))
           if not cand: raise SystemExit('m35_k1_result.json not found')
           src=cand[0]
           d=json.load(open(src))
           pts=[]
-          for p in d['perturbation_points']:
-              x=10.0**float(p['log10_scale'])
-              pts.append({'name':p['name'],'scale':x,'tt':float(p['tt_l2_rel_vs_gr']),'pk':float(p['pk_l2_rel_vs_gr'])})
+          schema=None
+          if isinstance(d.get('perturbation_points'), list):
+              schema='perturbation_points'
+              for p in d['perturbation_points']:
+                  x=10.0**float(p['log10_scale']) if 'log10_scale' in p else float(p['scale'])
+                  pts.append({'name':p.get('name',str(x)),'scale':x,'tt':float(p.get('tt_l2_rel_vs_gr',p.get('tt_normalized_l2'))),'pk':float(p.get('pk_l2_rel_vs_gr',p.get('pk_normalized_l2')))})
+          elif isinstance(d.get('points'), list):
+              schema='points'
+              for p in d['points']:
+                  x=10.0**float(p['log10_scale']) if 'log10_scale' in p else float(p['scale'])
+                  pts.append({'name':p.get('name',str(x)),'scale':x,'tt':float(p.get('tt_l2_rel_vs_gr',p.get('tt_normalized_l2',p.get('tt')))),'pk':float(p.get('pk_l2_rel_vs_gr',p.get('pk_normalized_l2',p.get('pk'))))})
+          elif isinstance(d.get('arms'), dict):
+              schema='arms'
+              for name,a in d['arms'].items():
+                  pts.append({'name':name,'scale':float(a['scale']),'tt':float(a['tt_normalized_l2']),'pk':float(a['pk_normalized_l2'])})
+          else:
+              raise SystemExit('unsupported M35 K1 schema; keys='+','.join(sorted(d.keys())))
+          pts=[p for p in pts if p['scale']>0 and p['tt']>0 and p['pk']>0]
           pts.sort(key=lambda q:q['scale'])
+          if len(pts)<3: raise SystemExit(f'need >=3 positive response points, got {len(pts)}')
           def regress(key, subset):
               xs=[math.log10(p['scale']) for p in subset]; ys=[math.log10(p[key]) for p in subset]
               xm=sum(xs)/len(xs); ym=sum(ys)/len(ys)
@@ -60,7 +76,7 @@ jobs:
               ssy=sum((y-ym)**2 for y in ys)
               resid=sum((y-(intercept+slope*x))**2 for x,y in zip(xs,ys))
               r2=1-resid/ssy if ssy else 1.0
-              return {'slope':slope,'intercept':intercept,'r2':r2}
+              return {'slope':slope,'intercept':intercept,'r2':r2,'n':len(subset)}
           def local(key):
               out=[]
               for a,b in zip(pts,pts[1:]):
@@ -68,19 +84,22 @@ jobs:
                   out.append({'scale_lo':a['scale'],'scale_hi':b['scale'],'slope':s})
               return out
           small=[p for p in pts if p['scale']<=0.1]
+          if len(small)<2: raise SystemExit('need >=2 small-amplitude points')
           metrics={}
           for key in ('tt','pk'):
               loc=local(key)
+              smloc=[z for z in loc if z['scale_hi']<=0.1]
               metrics[key]={
                 'full_loglog':regress(key,pts),
                 'small_amplitude_loglog':regress(key,small),
                 'adjacent_local_slopes':loc,
                 'response_per_scale':[{'scale':p['scale'],'value':p[key]/p['scale']} for p in pts],
-                'max_abs_small_local_slope_minus_1':max(abs(z['slope']-1) for z in loc if z['scale_hi']<=0.1)
+                'max_abs_small_local_slope_minus_1':max(abs(z['slope']-1) for z in smloc) if smloc else None
               }
           out={
-            'schema_version':'1.0','model_id':'M35','analysis_only':True,'parent_run':34657362639,
-            'parent_result_path':str(src),'provider_commit':d.get('provider_commit'),'scope':d.get('scope'),
+            'schema_version':'1.1','model_id':'M35','analysis_only':True,'parent_run':34657362639,
+            'parent_result_path':str(src),'parsed_parent_schema':schema,
+            'provider_commit':d.get('provider_commit'),'scope':d.get('scope'),
             'physical_family_falsification':False,'full_family_claim':False,'full_svt_claim':False,
             'points':pts,'metrics':metrics,
             'stage_claim':'Descriptive response-law audit of immutable M35 K1 parent artifact; no new K-stage or full-family verdict assigned.'
@@ -90,12 +109,12 @@ jobs:
               w=csv.DictWriter(f,fieldnames=['name','scale','tt','pk']); w.writeheader(); w.writerows(pts)
           with open('out/M35_RESPONSE_LAW_AUDIT.md','w') as f:
               f.write('# M35 response-law audit\n\n')
-              f.write(f"Parent run: {out['parent_run']}  \nProvider commit: `{out['provider_commit']}`  \n")
+              f.write(f"Parent run: {out['parent_run']}  \nParsed schema: `{schema}`  \nProvider commit: `{out['provider_commit']}`  \n")
               for key in ('tt','pk'):
                   m=metrics[key]
                   f.write(f"\n## {key.upper()}\nFull slope: {m['full_loglog']['slope']:.9f}, R2={m['full_loglog']['r2']:.9f}  \n")
                   f.write(f"Small-amplitude slope: {m['small_amplitude_loglog']['slope']:.9f}, R2={m['small_amplitude_loglog']['r2']:.9f}  \n")
-                  f.write(f"Max |local slope-1| for scale<=0.1: {m['max_abs_small_local_slope_minus_1']:.9g}  \n")
+                  f.write(f"Max |local slope-1| for scale<=0.1: {m['max_abs_small_local_slope_minus_1']!r}  \n")
               f.write('\nNo physical-family falsification or full-SVT claim is made.\n')
           PY
       - uses: actions/upload-artifact@v4
