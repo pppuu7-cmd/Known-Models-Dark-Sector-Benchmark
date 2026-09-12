@@ -1,0 +1,147 @@
+name: W07 M31 reference CMB precision robustness
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m31-reference-cmb-precision-robustness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  HICLASS_PIN: '0009f51d89e6465c79e570b496c66fc90058fa77'
+
+jobs:
+  precision-robustness:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact pinned hi_class
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3-numpy >/dev/null
+          git clone -q https://github.com/hiclass-code/hi_class_public.git provider
+          git -C provider checkout -q --detach "$HICLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$HICLASS_PIN"
+          make -C provider -j2 >/dev/null
+          test -f provider/cl_ref.pre
+          git -C provider rev-parse HEAD > provider_commit.txt
+          sha256sum provider/cl_ref.pre > cl_ref_sha256.txt
+      - name: Generate frozen physical stencil for both precision profiles
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib,re
+          src=pathlib.Path('provider/gravity_models/propto_omega_bh.ini').read_text()
+          specs={'base':.10000,'rp2':.10050,'rm2':.09950,'rp1':.10025,'rm1':.09975}
+          for profile in ['default','cl_ref']:
+              b=pathlib.Path('m31_precision')/profile; b.mkdir(parents=True,exist_ok=True)
+              for tag,q in specs.items():
+                  vals=[q,.5*q,.2*q,0.,.3*q,1.]
+                  t=re.sub(r'(?m)^parameters_smg\s*=.*$','parameters_smg = '+', '.join(f'{v:.16g}' for v in vals),src)
+                  t=re.sub(r'(?m)^root\s*=.*$',f'root = {b.resolve()}/{tag}_',t)
+                  (b/f'{tag}.ini').write_text(t)
+          pathlib.Path('m31_precision/FROZEN_PROTOCOL.txt').write_text('Same physical stencil for default and pinned cl_ref.pre: q=.1; h=.0005/.00025; TT band convergence angle<=5deg and norm mismatch<=.25. No other tuning.\n')
+          PY
+          grep -H -E '^(parameters_smg|background_Nloga|kineticity_safe_smg|root)' m31_precision/*/*.ini > m31_precision/frozen_parameters.txt
+      - name: Execute default and provider reference-CMB precision profiles
+        run: |
+          set -euo pipefail
+          for profile in default cl_ref; do
+            for tag in base rp2 rm2 rp1 rm1; do
+              cfg="$GITHUB_WORKSPACE/m31_precision/$profile/$tag.ini"
+              set +e
+              if [ "$profile" = default ]; then
+                ./provider/class "$cfg" > "m31_precision/$profile/$tag.stdout" 2> "m31_precision/$profile/$tag.stderr"
+              else
+                ./provider/class "$cfg" "$GITHUB_WORKSPACE/provider/cl_ref.pre" > "m31_precision/$profile/$tag.stdout" 2> "m31_precision/$profile/$tag.stderr"
+              fi
+              rc=$?
+              set -e
+              echo "$rc" > "m31_precision/$profile/$tag.exit"
+            done
+          done
+      - name: Analyze frozen precision discriminator
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,math,pathlib
+          import numpy as np
+          pin='0009f51d89e6465c79e570b496c66fc90058fa77'; root=pathlib.Path('m31_precision')
+          out={'schema':'m31_reference_cmb_precision_robustness_v0.1','model_id':'M31','family_id':'F31',
+               'protocol':'protocol/W07_M31_REFERENCE_CMB_PRECISION_ROBUSTNESS_v0.1.md','provider_commit':pathlib.Path('provider_commit.txt').read_text().strip(),
+               'expected_commit':pin,'cl_ref_sha256':pathlib.Path('cl_ref_sha256.txt').read_text().strip(),
+               'K2_promoted':False,'physical_falsification':False,'family_exclusion':False}
+          tags=['base','rp2','rm2','rp1','rm1']; profiles=['default','cl_ref']
+          out['exits']={p:{t:int((root/p/f'{t}.exit').read_text()) for t in tags} for p in profiles}
+          def tt(path):
+              d={}
+              for line in path.read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  q=s.split()
+                  try: d[int(float(q[0]))]=float(q[1])
+                  except (ValueError,IndexError): pass
+              if len(d)<100: raise RuntimeError(f'bad TT table {path}')
+              return d
+          def geom(a,b):
+              na=float(np.linalg.norm(a)); nb=float(np.linalg.norm(b))
+              if na==0 or nb==0: raise RuntimeError('zero derivative norm')
+              c=float(np.dot(a,b)/(na*nb)); c=max(-1.,min(1.,c)); ang=float(math.degrees(math.acos(abs(c)))); mm=abs(na-nb)/max(na,nb)
+              return {'principal_angle_deg':ang,'relative_norm_mismatch':mm,'passes_5deg_025':bool(ang<=5. and mm<=.25)}
+          try:
+              if out['provider_commit']!=pin: raise RuntimeError('provider mismatch')
+              if any(v!=0 for p in profiles for v in out['exits'][p].values()):
+                  out['classification']='M31_REFERENCE_PRECISION_PROVIDER_BLOCKED'; out['failed_arms']=[f'{p}:{t}' for p in profiles for t,v in out['exits'][p].items() if v!=0]
+              else:
+                  dat={p:{t:tt(next((root/p).glob(f'{t}_*_cl.dat'))) for t in tags} for p in profiles}
+                  common=sorted(set.intersection(*(set(dat[p][t]) for p in profiles for t in tags)))
+                  bands={'low_2_30':(2,30),'acoustic_low_31_200':(31,200),'acoustic_mid_201_1000':(201,1000),'high_1001_2500':(1001,2500),'full_2_2500':(2,2500)}
+                  res={}; prior_fail=['acoustic_low_31_200','acoustic_mid_201_1000','high_1001_2500']
+                  for name,(lo,hi) in bands.items():
+                      ells=[l for l in common if lo<=l<=hi]
+                      res[name]={}
+                      bases={p:np.asarray([dat[p]['base'][l] for l in ells],float) for p in profiles}
+                      scale=np.maximum(np.maximum(abs(bases['default']),abs(bases['cl_ref'])),1e-30)
+                      res[name]['base_default_vs_cl_ref_norm_l2']=float(np.linalg.norm(bases['default']-bases['cl_ref'])/max(np.linalg.norm(bases['cl_ref']),1e-30))
+                      res[name]['base_default_vs_cl_ref_max_sym_rel']=float(np.max(abs(bases['default']-bases['cl_ref'])/scale))
+                      for p in profiles:
+                          norm=float(np.linalg.norm(bases[p]))
+                          rc=(np.asarray([dat[p]['rp2'][l] for l in ells])-np.asarray([dat[p]['rm2'][l] for l in ells]))/(2*.0005*norm)
+                          rf=(np.asarray([dat[p]['rp1'][l] for l in ells])-np.asarray([dat[p]['rm1'][l] for l in ells]))/(2*.00025*norm)
+                          g=geom(rc,rf); res[name][p]={'coarse_fine':g,'converged':g['passes_5deg_025']}
+                  out['bands']=res
+                  default_reproduces=all(not res[b]['default']['converged'] for b in prior_fail)
+                  ref_restores=all(res[b]['cl_ref']['converged'] for b in prior_fail)
+                  out['default_reproduces_prior_failures']=default_reproduces; out['cl_ref_restores_all_prior_failing_subbands']=ref_restores
+                  if not default_reproduces:
+                      out['classification']='M31_REFERENCE_PRECISION_BASELINE_REPRODUCTION_MISMATCH'
+                  elif ref_restores:
+                      out['classification']='M31_CMB_NONCONVERGENCE_PRECISION_SENSITIVE'
+                  else:
+                      out['classification']='M31_CMB_NONCONVERGENCE_PERSISTS_AT_REFERENCE_PRECISION'
+                  out['interpretation']='Provider cl_ref.pre is a pre-frozen trusted CMB precision profile. Persistence is numerical-robustness evidence only, not physical family falsification.'
+          except Exception as e:
+              out['classification']='M31_REFERENCE_PRECISION_INTEGRITY_BLOCKED'; out['error']=repr(e)
+          pathlib.Path('M31_REFERENCE_CMB_PRECISION_ROBUSTNESS.json').write_text(json.dumps(out,indent=2)+'\n')
+          with open('M31_REFERENCE_CMB_PRECISION_ROBUSTNESS.md','w') as f:
+              f.write('# M31 reference-CMB precision robustness\n\n')
+              f.write(f"Classification: `{out['classification']}`  \n")
+              for b,v in out.get('bands',{}).items():
+                  f.write(f"- {b}: default={v['default']['converged']}, cl_ref={v['cl_ref']['converged']}, base L2 shift={v['base_default_vs_cl_ref_norm_l2']:.6g}\n")
+              f.write('\nNo K2 promotion or physical family exclusion is authorized.\n')
+          print(pathlib.Path('M31_REFERENCE_CMB_PRECISION_ROBUSTNESS.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m31-reference-cmb-precision-robustness
+          path: |
+            M31_REFERENCE_CMB_PRECISION_ROBUSTNESS.json
+            M31_REFERENCE_CMB_PRECISION_ROBUSTNESS.md
+            provider_commit.txt
+            cl_ref_sha256.txt
+            m31_precision/
