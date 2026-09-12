@@ -1,0 +1,74 @@
+name: W07 M40 pinned source geometry audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m40-pinned-source-geometry-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  EFTCAMB_PIN: '16d9c4e9f85751e30efd0a53b177941713078904'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch exact pinned provider source
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/EFTCAMB/EFTCAMB.git provider
+          git -C provider checkout -q --detach "$EFTCAMB_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$EFTCAMB_PIN"
+      - name: Apply frozen source-geometry questions
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python3 - <<'PY'
+          import hashlib,json,pathlib,re
+          pin='16d9c4e9f85751e30efd0a53b177941713078904'
+          files={
+            'source':'provider/fortran/eftcamb/08f_full_models/008p1_Horava.f90',
+            'docs':'provider/find_your_model/Setting and Specfying.md',
+            'params':'provider/inifiles/params_EFT.ini',
+            'eta2':'provider/fortran/eftcamb_test/parameters/5_Horava_eta_2.ini',
+            'eta3':'provider/fortran/eftcamb_test/parameters/5_Horava_eta_3.ini',
+          }
+          out={'schema':'m40_pinned_source_geometry_audit_v0.1','model_id':'M40','family_id':'F40',
+               'protocol':'protocol/W07_M40_PINNED_SOURCE_GEOMETRY_AUDIT_v0.1.md','provider_commit':pin,
+               'K2_promoted':False,'physical_falsification':False,'complete_Horava_family_claim':False}
+          try:
+              texts={k:pathlib.Path(v).read_text(errors='replace') for k,v in files.items()}
+              hashes={k:hashlib.sha256(pathlib.Path(v).read_bytes()).hexdigest() for k,v in files.items()}
+              docs=texts['docs']; src=texts['source']; params=texts['params']; eta2=texts['eta2']
+              separate=all(x in docs for x in ['Horava_eta','Horava_xi','Horava_lambda']) and ('FullMappingEFTmodel' in docs)
+              default_false=bool(re.search(r'(?mi)^\s*HoravaSolarSystem\s*=\s*F\s*$',params))
+              optional_ignore=('Horava_xi is ignored' in src or 'Horava_xi is not needed' in docs) and ('HoravaSolarSystem' in src)
+              combination=bool(re.search(r'2\._dl\s*\+2\._dl\*self%Horava_xi\s*-self%Horava_eta',src)) and bool(re.search(r'3\._dl\*self%Horava_lambda\s*\+2\._dl',src))
+              base_native=(bool(re.search(r'(?mi)^\s*Horava_xi\s*=\s*-0\.0001\s*$',eta2)) and
+                           bool(re.search(r'(?mi)^\s*Horava_lambda\s*=\s*0\.0001\s*$',eta2)) and
+                           bool(re.search(r'(?mi)^\s*Horava_eta\s*=\s*0\.0021\s*$',eta2)))
+              checks={'three_separate_normal_inputs':separate,'HoravaSolarSystem_default_false':default_false,
+                      'optional_solar_branch_ignores_xi':optional_ignore,'nontrivial_xi_lambda_eta_combination_in_source':combination,
+                      'current_base_is_author_shipped_eta2_config':base_native}
+              cls='M40_SOURCE_THREE_INPUT_COORDINATES_OPTIONAL_SOLAR_REDUCTION' if all(checks.values()) else 'M40_SOURCE_INPUT_GEOMETRY_PARTIAL'
+              out.update({'files':files,'sha256':hashes,'checks':checks,'classification':cls,
+                          'interpretation':'Pinned EFTCAMB exposes a normal three-input Horava mapping, with an optional Solar-System branch that reduces/ignores xi. Source-level input dimensionality is not equivalent to physical quotient dimension or observable response rank.'})
+          except Exception as e:
+              out['classification']='M40_SOURCE_GEOMETRY_INTEGRITY_BLOCKED'; out['error']=repr(e)
+          pathlib.Path('out/M40_PINNED_SOURCE_GEOMETRY_AUDIT.json').write_text(json.dumps(out,indent=2)+'\n')
+          with open('out/M40_PINNED_SOURCE_GEOMETRY_AUDIT.md','w') as f:
+              f.write('# M40 pinned source geometry audit\n\n')
+              f.write(f"Classification: `{out['classification']}`  \n")
+              for k,v in out.get('checks',{}).items(): f.write(f"- {k}: `{v}`\n")
+              f.write('\nImplementation input geometry only; no K2 promotion or physical-family claim.\n')
+          print(pathlib.Path('out/M40_PINNED_SOURCE_GEOMETRY_AUDIT.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m40-pinned-source-geometry-audit
+          path: out/
