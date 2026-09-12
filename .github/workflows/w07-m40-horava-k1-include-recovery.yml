@@ -50,7 +50,7 @@ jobs:
           gr=pin_include(gr)
           gr=re.sub(r'(?m)^\s*output_root\s*=.*$', f'output_root = {b}/gr_', gr)
           (b/'gr.ini').write_text(gr)
-          (b/'HARNESS_RECOVERY.txt').write_text('Only DEFAULT(base_params.ini) was rewritten to the exact absolute pinned-provider include path. Frozen Hořava coefficients and scaling ladder are unchanged.\n')
+          (b/'HARNESS_RECOVERY.txt').write_text('Only DEFAULT(base_params.ini) was rewritten to the exact absolute pinned-provider include path. Frozen Hořava coefficients and scaling ladder are unchanged. EFTCAMB appends its own underscore to output_root, so analysis reads the resulting double-underscore filenames.\n')
           PY
           grep -H -E '^(Horava_xi|Horava_lambda|Horava_eta|output_root|DEFAULT)' "$BASE"/*.ini | tee "$BASE/frozen_config_extract.txt"
       - name: Execute reference, ladder, and explicit GR control
@@ -71,19 +71,19 @@ jobs:
           import json,pathlib,sys
           b=pathlib.Path(sys.argv[1]); arms=[]
           for label,x in [('s1',1.0),('s01',0.1),('s001',0.01),('s0001',0.001)]:
-              arms.append({'label':label,'x':x,'cl':str(b/f'{label}_scalCls.dat'),'pk':str(b/f'{label}_matterpower.dat'),'exit':int((b/f'{label}.exit').read_text())})
+              arms.append({'label':label,'x':x,'cl':str(b/f'{label}__scalCls.dat'),'pk':str(b/f'{label}__matterpower.dat'),'exit':int((b/f'{label}.exit').read_text())})
           pathlib.Path('m40_arms.json').write_text(json.dumps(arms))
           PY
           python3 verification/k1/decoupling_ladder.py \
             --model M40 --provider-commit "$(cat provider_commit.txt)" --expected-commit "$EFTCAMB_PIN" \
-            --reference-cl "$BASE/ref_scalCls.dat" --reference-pk "$BASE/ref_matterpower.dat" \
+            --reference-cl "$BASE/ref__scalCls.dat" --reference-pk "$BASE/ref__matterpower.dat" \
             --arms-json m40_arms.json --out M40_K1_INCLUDE_RECOVERY_RESULT.json \
-            --scope 'pinned EFTCAMB native Hořava mapping; original preregistered joint xi/lambda/eta scaling; include-path harness recovery only; explicit EFT-GR endpoint control'
+            --scope 'pinned EFTCAMB native Hořava mapping; original preregistered joint xi/lambda/eta scaling; include-path and output-name harness recovery only; explicit EFT-GR endpoint control'
           python3 - "$BASE" <<'PY'
           import json,pathlib,sys,numpy as np
           b=pathlib.Path(sys.argv[1]); p=pathlib.Path('M40_K1_INCLUDE_RECOVERY_RESULT.json'); r=json.loads(p.read_text())
           r['source_blocked_run']=34656276938; r['source_blocked_artifact']=10286391289
-          r['harness_recovery']='DEFAULT(base_params.ini) rewritten to exact absolute pinned-provider path only'
+          r['harness_recovery']='DEFAULT(base_params.ini) rewritten to exact absolute pinned-provider path; analyzer corrected to EFTCAMB double-underscore output filenames only'
           exits={x:int((b/f'{x}.exit').read_text()) for x in ['ref','s1','s01','s001','s0001','gr']}; r['exits']=exits
           def tab(path):
               rows=[]
@@ -101,15 +101,15 @@ jobs:
               return float(np.sqrt(np.mean(((y-z)/sc)**2)))
           try:
               if exits['ref']!=0 or exits['gr']!=0: raise RuntimeError('nonzero native-zero or GR exit')
-              tt=dist(tab(b/'ref_scalCls.dat'),tab(b/'gr_scalCls.dat')); pk=dist(tab(b/'ref_matterpower.dat'),tab(b/'gr_matterpower.dat')); D=max(tt,pk)
+              tt=dist(tab(b/'ref__scalCls.dat'),tab(b/'gr__scalCls.dat')); pk=dist(tab(b/'ref__matterpower.dat'),tab(b/'gr__matterpower.dat')); D=max(tt,pk)
               endpoint={'tt_normalized_l2':tt,'pk_normalized_l2':pk,'D':D,'threshold':1e-4,'pass':D<=1e-4}
               r['native_zero_vs_explicit_GR']=endpoint
               if r.get('K1_scoped_pass') and endpoint['pass']:
-                  r['classification']='M40_K1_PASS_WITH_SCOPE_AFTER_INCLUDE_PATH_RECOVERY'; r['K1']='PASS_WITH_SCOPE'
+                  r['classification']='M40_K1_PASS_WITH_SCOPE_AFTER_HARNESS_RECOVERY'; r['K1']='PASS_WITH_SCOPE'
               else:
                   r['K1_scoped_pass']=False; r['K1']='PARTIAL'; r['classification']='M40_K1_NOT_ESTABLISHED_REFERENCE_LIMIT_OR_ENDPOINT_IDENTITY'
           except Exception as e:
-              r['K1_scoped_pass']=False; r['K1']='BLOCKED_IMPLEMENTATION'; r['classification']='M40_K1_BLOCKED_AFTER_INCLUDE_PATH_RECOVERY'; r['endpoint_error']=repr(e)
+              r['K1_scoped_pass']=False; r['K1']='BLOCKED_IMPLEMENTATION'; r['classification']='M40_K1_BLOCKED_AFTER_HARNESS_RECOVERY'; r['endpoint_error']=repr(e)
           r['physical_falsification']=False; r['K2_K9']='OPEN'
           p.write_text(json.dumps(r,indent=2,sort_keys=True)+'\n'); print(p.read_text())
           PY
