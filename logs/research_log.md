@@ -359,3 +359,9 @@ M25 compile-capacity isolation classification M25_M0_PK_STOCK_CAPACITY_PROVIDER_
 - Recovery run 34652066337: exact provider pin/build PASS, reference and active exit 0, all four actual TT/P(k) outputs finite, TT response 0.0114841754 and P(k) response 0.0157569608. Classification `M37_K0_PARTIAL_EXECUTABLE_FT_PROVIDER_PROVENANCE_OPEN`; K0 not promoted because authority/provenance remains open; no physical falsification.
 - Consumed seven-lane provider reconnaissance run 34650903154: M34/M36/M38/M39/M41/M42/M43 each returned `NO_PROVIDER_GRADE_CANDIDATE_FOUND_IN_FROZEN_SEARCH`, candidate_count=0. Aggregate result: `waves/wave_05_modified_gravity/W05_PARALLEL_PROVIDER_RECON_RESULT_v0.1.json`; no physical inference.
 - M32 K0f run 34647841987 attempt 1 failed because the hosted runner received a shutdown signal (exit 143) during corrected stage1, not because of provider/science. Only the failed job/dependents were rerun; scientific criteria unchanged.
+
+## 2026-09-12 W06 M33/M35 frontier sync
+- M35: exact-pin CLASS_LVDM weak-coupling GR-limit K1 is PASS_WITH_SCOPE; run 34657362639, artifact 10286581994, digest sha256:2ffb54348c923579227c8e75a211fee54ced12e83221a69f00527daaab6edcc0. This is scalar-cosmology preferred-frame scope only, not full Einstein-Aether SVT closure.
+- M33: reference-map discovery run 34657647905, job 103453403141, artifact 10286258353, digest sha256:4b1e9028ba4fb896d722056f55278da4190cb4565e259b56934d2e346dd5e7fd is BLOCKED_IMPLEMENTATION_CONFIGURATION. All arms stopped at provider parser closure rules; no physical falsification. Parser-compliant recovery is prospectively frozen; K1 not promoted.
+- Census lag for F26/F30/F31/F35/F40 synchronized to already-canonical mandatory-matrix classifications.
+

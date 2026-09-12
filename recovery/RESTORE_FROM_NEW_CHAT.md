@@ -178,3 +178,9 @@ M25 compile-capacity isolation classification M25_M0_PK_STOCK_CAPACITY_PROVIDER_
 ### W05 current provider frontier (2026-09-12)
 - M37 f(T): exact-pin executable provider evidence is positive but K0 is only PARTIAL pending publication/author provenance. Canonical run 34652066337, artifact 10284291219.
 - M34/M36/M38/M39/M41/M42/M43: frozen seven-lane GitHub reconnaissance run 34650903154 found no provider-grade candidate; coverage stays OPEN, not failed. Use literature-linked provider routes or preregistered verification implementations rather than repeating the same search tranche.
+
+## 2026-09-12 W06 M33/M35 frontier sync
+- M35: exact-pin CLASS_LVDM weak-coupling GR-limit K1 is PASS_WITH_SCOPE; run 34657362639, artifact 10286581994, digest sha256:2ffb54348c923579227c8e75a211fee54ced12e83221a69f00527daaab6edcc0. This is scalar-cosmology preferred-frame scope only, not full Einstein-Aether SVT closure.
+- M33: reference-map discovery run 34657647905, job 103453403141, artifact 10286258353, digest sha256:4b1e9028ba4fb896d722056f55278da4190cb4565e259b56934d2e346dd5e7fd is BLOCKED_IMPLEMENTATION_CONFIGURATION. All arms stopped at provider parser closure rules; no physical falsification. Parser-compliant recovery is prospectively frozen; K1 not promoted.
+- Census lag for F26/F30/F31/F35/F40 synchronized to already-canonical mandatory-matrix classifications.
+

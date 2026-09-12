@@ -233,3 +233,9 @@ M25 compile-capacity isolation classification M25_M0_PK_STOCK_CAPACITY_PROVIDER_
 Run `34652066337` (artifact `10284291219`, digest `sha256:e885cda93e26c13268f86e58e667aa8596d0cbeff4e26ff8f80a4edece32f4b5`) repaired only the output-root harness path after preregistration `protocol/W05_M37_K0_OUTPUT_ROOT_RECOVERY_v0.1.md`. Exact provider `Speeddemon5050/Modified-CLASS-fT-Exact-@74e6a8679cdc233fb339c67127ed0921ba547894` builds; n_fT=0 and n_fT=0.10 both exit 0 with finite TT/P(k). Active response: TT normalized-L2 `0.011484175401063655`, P(k) `0.015756960779908492` > frozen 1e-6 activity threshold. Analyzer classification: `M37_K0_PARTIAL_EXECUTABLE_FT_PROVIDER_PROVENANCE_OPEN`; K0 remains PARTIAL because publication/author provenance is open. K1-K9 open. No physical falsification.
 
 Seven-lane provider reconnaissance run `34650903154` returned zero provider-grade candidates for M34/M36/M38/M39/M41/M42/M43 in the frozen keyword tranche. This is a provider-search boundary only; no K0 promotion and no physical failure. Do not repeat the same keyword tranche.
+
+## 2026-09-12 W06 M33/M35 frontier sync
+- M35: exact-pin CLASS_LVDM weak-coupling GR-limit K1 is PASS_WITH_SCOPE; run 34657362639, artifact 10286581994, digest sha256:2ffb54348c923579227c8e75a211fee54ced12e83221a69f00527daaab6edcc0. This is scalar-cosmology preferred-frame scope only, not full Einstein-Aether SVT closure.
+- M33: reference-map discovery run 34657647905, job 103453403141, artifact 10286258353, digest sha256:4b1e9028ba4fb896d722056f55278da4190cb4565e259b56934d2e346dd5e7fd is BLOCKED_IMPLEMENTATION_CONFIGURATION. All arms stopped at provider parser closure rules; no physical falsification. Parser-compliant recovery is prospectively frozen; K1 not promoted.
+- Census lag for F26/F30/F31/F35/F40 synchronized to already-canonical mandatory-matrix classifications.
+
