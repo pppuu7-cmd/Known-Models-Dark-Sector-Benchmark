@@ -1,0 +1,108 @@
+name: W06 M33 Galileon reference-map parser recovery
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w06-m33-galileon-reference-map-parser-recovery.yml'
+      - 'protocol/W06_M33_GALILEON_REFERENCE_MAP_PARSER_COMPLIANT_RECOVERY_v0.1.md'
+  workflow_dispatch:
+
+jobs:
+  recover:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      HICLASS_PIN: 0009f51d89e6465c79e570b496c66fc90058fa77
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact pinned hi_class
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3-numpy >/dev/null
+          git clone -q https://github.com/hiclass-code/hi_class_public.git provider
+          cd provider
+          git checkout -q --detach "$HICLASS_PIN"
+          test "$(git rev-parse HEAD)" = "$HICLASS_PIN"
+          make -j2 >/dev/null
+          git rev-parse HEAD > ../provider_commit.txt
+      - name: Prepare parser-compliant frozen arms
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p m33recover
+          python3 - <<'PY'
+          import pathlib,re
+          src=pathlib.Path('provider/gravity_models/galileon_3.ini').read_text()
+          out=pathlib.Path('m33recover').resolve(); arms=[]
+          def drop(t,key):
+              return re.sub(rf'(?m)^{re.escape(key)}\s*=.*\n?','',t)
+          for val in [0.5,0.1,0.01,0.001]:
+              tag='P_om'+str(val).replace('.','p')
+              t=re.sub(r'(?m)^Omega_smg\s*=.*$',f'Omega_smg = {val}',src)
+              t=drop(drop(t,'Omega_Lambda'),'Omega_fld')
+              t=re.sub(r'(?m)^root\s*=.*$',f'root = {out}/{tag}_',t)
+              pathlib.Path(out/f'{tag}.ini').write_text(t); arms.append(tag)
+          t=re.sub(r'(?m)^root\s*=.*$',f'root = {out}/N_native_',src)
+          pathlib.Path(out/'N_native.ini').write_text(t); arms.append('N_native')
+          t=src
+          for k in ['Omega_smg','Omega_Lambda','Omega_fld','gravity_model','gravity_submodel']:
+              t=drop(t,k)
+          t=re.sub(r'(?m)^root\s*=.*$',f'root = {out}/D_gr_',t)
+          pathlib.Path(out/'D_gr.ini').write_text(t); arms.append('D_gr')
+          pathlib.Path(out/'arms.txt').write_text('\n'.join(arms)+'\n')
+          PY
+      - name: Execute independent arms
+        shell: bash
+        run: |
+          set +e
+          while read tag; do
+            ./provider/class "m33recover/${tag}.ini" > "m33recover/${tag}.stdout" 2> "m33recover/${tag}.stderr"
+            echo $? > "m33recover/${tag}.exit"
+          done < m33recover/arms.txt
+          exit 0
+      - name: Apply frozen recovery classification
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,numpy as np
+          b=pathlib.Path('m33recover'); rows=[]
+          def table(pattern):
+              pp=sorted(b.glob(pattern))
+              if not pp: return False,0,None
+              p=pp[0]; rr=[]
+              for line in p.read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  try: rr.append([float(x) for x in s.split()])
+                  except ValueError: pass
+              if not rr: return False,0,p.name
+              try: a=np.asarray(rr,float); ok=(a.ndim==2 and len(rr)>=5 and np.isfinite(a).all())
+              except Exception: ok=False
+              return bool(ok),len(rr),p.name
+          for tag in b.joinpath('arms.txt').read_text().split():
+              ex=int((b/f'{tag}.exit').read_text())
+              cl,cln,clf=table(f'{tag}_*cl.dat'); pk,pkn,pkf=table(f'{tag}_*pk.dat')
+              rows.append({'arm':tag,'exit':ex,'finite_cl':cl,'cl_rows':cln,'cl_file':clf,'finite_pk':pk,'pk_rows':pkn,'pk_file':pkf,
+                           'stdout_tail':'\n'.join((b/f'{tag}.stdout').read_text(errors='replace').splitlines()[-20:])})
+          valid=[r['arm'] for r in rows if r['exit']==0 and r['finite_cl'] and r['finite_pk']]
+          pos=any(x.startswith('P_') for x in valid)
+          if 'D_gr' in valid and 'N_native' in valid and pos: cls='PARSER_COMPLIANT_REFERENCE_MAP_EXECUTABLE'
+          elif valid: cls='PARSER_COMPLIANT_REFERENCE_MAP_PARTIAL'
+          else: cls='PARSER_COMPLIANT_REFERENCE_MAP_BLOCKED_IMPLEMENTATION'
+          out={'schema':'m33_parser_compliant_reference_map_recovery_v0.1','model_id':'M33','provider_commit':pathlib.Path('provider_commit.txt').read_text().strip(),
+               'classification':cls,'valid_arms':valid,'arms':rows,'K1_promoted':False,'physical_falsification':False,
+               'scope':'implementation/configuration recovery only; separate preregistered K1 continuity gate required'}
+          pathlib.Path('M33_REFERENCE_MAP_PARSER_RECOVERY_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: M33-reference-map-parser-recovery
+          path: |
+            M33_REFERENCE_MAP_PARSER_RECOVERY_RESULT.json
+            provider_commit.txt
+            m33recover/
+          retention-days: 30
