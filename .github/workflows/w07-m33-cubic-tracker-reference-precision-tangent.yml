@@ -1,0 +1,131 @@
+name: W07 M33 cubic tracker reference precision tangent
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m33-cubic-tracker-reference-precision-tangent.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  HICLASS_PIN: '0009f51d89e6465c79e570b496c66fc90058fa77'
+
+jobs:
+  reference-precision-tangent:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify immutable default negative parent and build exact provider
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p parent
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10302990037/zip" > parent.zip
+          unzip -q parent.zip -d parent
+          sha256sum parent.zip > immutable_parent_sha256.txt
+          python3 - <<'PY'
+          import json,pathlib
+          p=list(pathlib.Path('parent').rglob('M33_CUBIC_TRACKER_FINER_TANGENT_LOCALIZATION.json'))
+          if len(p)!=1: raise SystemExit(f'parent count={len(p)}')
+          r=json.loads(p[0].read_text())
+          if r.get('classification')!='M33_CUBIC_TRACKER_FINER_LOCAL_TANGENT_NOT_CONVERGED' or r.get('all_tangent_criteria_pass') is not False: raise SystemExit('default negative parent not preserved')
+          PY
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3-numpy >/dev/null
+          git clone -q https://github.com/hiclass-code/hi_class_public.git provider
+          git -C provider checkout -q --detach "$HICLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$HICLASS_PIN"
+          make -C provider -j2 >/dev/null
+          test -s provider/cl_ref.pre
+          git -C provider rev-parse HEAD > provider_commit.txt
+      - name: Generate unchanged physical stencil
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib,re
+          src=pathlib.Path('provider/gravity_models/galileon_3.ini').read_text(); out=pathlib.Path('m33ref').resolve(); out.mkdir(exist_ok=True)
+          specs={'base':0.005,'cm':0.0045,'cp':0.0055,'fm':0.00475,'fp':0.00525}
+          def drop(x,key): return re.sub(rf'(?m)^\s*{re.escape(key)}\s*=.*\n?','',x)
+          def setkey(x,key,val):
+              pat=rf'(?m)^\s*{re.escape(key)}\s*=.*$'
+              return re.sub(pat,f'{key} = {val}',x) if re.search(pat,x) else x+f'\n{key} = {val}\n'
+          for tag,om in specs.items():
+              x=setkey(src,'Omega_smg',f'{om:.16g}'); x=drop(drop(x,'Omega_Lambda'),'Omega_fld'); x=setkey(x,'D_safe_smg','1e-100'); x=setkey(x,'a_min_stability_test_smg','0'); x=setkey(x,'root',f'{out}/{tag}_'); (out/f'{tag}.ini').write_text(x)
+          (out/'arms.txt').write_text('\n'.join(specs)+'\n')
+          PY
+      - name: Execute same stencil with provider cl_ref.pre
+        shell: bash
+        run: |
+          set -euo pipefail
+          while read tag; do
+            set +e
+            ./provider/class "m33ref/${tag}.ini" provider/cl_ref.pre >"m33ref/${tag}.stdout" 2>"m33ref/${tag}.stderr"
+            echo $? >"m33ref/${tag}.exit"
+            set -e
+          done < m33ref/arms.txt
+      - name: Apply unchanged tangent gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,math,pathlib,numpy as np
+          b=pathlib.Path('m33ref'); tags=['base','cm','cp','fm','fp']; exits={t:int((b/f'{t}.exit').read_text()) for t in tags}; pin=pathlib.Path('provider_commit.txt').read_text().strip()
+          out={'schema':'m33_cubic_tracker_reference_precision_tangent_v0.1','model_id':'M33','protocol':'protocol/W07_M33_CUBIC_TRACKER_REFERENCE_PRECISION_TANGENT_v0.1.md','provider_commit':pin,'expected_commit':'0009f51d89e6465c79e570b496c66fc90058fa77','default_negative_parent_run':34708946793,'default_negative_parent_artifact':10302990037,'base_Omega_smg':0.005,'coarse_h':0.0005,'fine_h':0.00025,'precision_profile':'provider/cl_ref.pre','exits':exits,'K2_promoted':False,'canonical_K2':'OPEN','physical_falsification':False}
+          if pin!=out['expected_commit'] or any(exits[t]!=0 for t in tags):
+              out['classification']='M33_CUBIC_TRACKER_REFERENCE_PRECISION_TANGENT_BLOCKED'
+          else:
+              def load(tag,kind):
+                  h=sorted(b.glob(f'{tag}_*{kind}.dat'))
+                  if len(h)!=1: raise RuntimeError(f'{tag} {kind}: {len(h)} files')
+                  rows=[]
+                  for line in h[0].read_text(errors='replace').splitlines():
+                      s=line.strip()
+                      if not s or s.startswith('#'): continue
+                      try: rows.append([float(x) for x in s.split()])
+                      except ValueError: pass
+                  a=np.asarray(rows,float)
+                  if a.ndim!=2 or len(a)<5 or a.shape[1]<2: raise RuntimeError(f'bad table {h[0]}')
+                  return a
+              cls={t:load(t,'cl') for t in tags}; pks={t:load(t,'pk') for t in tags}
+              maps={t:{int(r[0]):np.asarray(r[1:],float) for r in cls[t] if np.isfinite(r[0])} for t in tags}; common=sorted(set.intersection(*(set(maps[t]) for t in tags))); cmb={t:[] for t in tags}
+              for ell in common:
+                  n=min(len(maps[t][ell]) for t in tags)
+                  for j in range(n):
+                      vals=[maps[t][ell][j] for t in tags]
+                      if all(np.isfinite(v) for v in vals):
+                          for t,v in zip(tags,vals): cmb[t].append(v)
+              cmb={t:np.asarray(v,float) for t,v in cmb.items()}; cn=float(np.linalg.norm(cmb['base']))
+              lo=max(float(np.nanmin(pks[t][:,0])) for t in tags); hi=min(float(np.nanmax(pks[t][:,0])) for t in tags); bp=pks['base']; m=(bp[:,0]>=lo)&(bp[:,0]<=hi)&np.isfinite(bp[:,0])&np.isfinite(bp[:,1]); x=bp[m,0]; pk={t:(bp[m,1] if t=='base' else np.interp(x,pks[t][:,0],pks[t][:,1])) for t in tags}; good=np.ones(len(x),dtype=bool)
+              for t in tags: good &= np.isfinite(pk[t])
+              x=x[good]; pk={t:v[good] for t,v in pk.items()}; pn=float(np.linalg.norm(pk['base']))
+              if cn==0 or pn==0 or len(cmb['base'])<5 or len(x)<5: raise RuntimeError('global support invalid')
+              def blocks(plus,minus,h): return (cmb[plus]-cmb[minus])/(2*h*cn),(pk[plus]-pk[minus])/(2*h*pn)
+              cc,pc=blocks('cp','cm',0.0005); cf,pf=blocks('fp','fm',0.00025); coarse=np.concatenate([cc,pc]); fine=np.concatenate([cf,pf])
+              def geom(a,c):
+                  na=float(np.linalg.norm(a)); nb=float(np.linalg.norm(c)); co=float(np.dot(a,c)/(na*nb)); co=max(-1,min(1,co)); return {'signed_cosine':co,'principal_angle_deg':float(math.degrees(math.acos(abs(co)))),'relative_norm_mismatch':float(abs(na-nb)/max(na,nb)),'norm_coarse':na,'norm_fine':nb}
+              combined=geom(coarse,fine); cg=geom(cc,cf); pg=geom(pc,pf)
+              disp={}
+              for t in tags[1:]:
+                  cv=(cmb[t]-cmb['base'])/cn; pv=(pk[t]-pk['base'])/pn; disp[t]={'cmb':float(np.linalg.norm(cv)),'pk':float(np.linalg.norm(pv)),'full':float(np.linalg.norm(np.concatenate([cv,pv])))}
+              cmb_coarse=.5*(disp['cm']['cmb']+disp['cp']['cmb']); cmb_fine=.5*(disp['fm']['cmb']+disp['fp']['cmb']); pk_coarse=.5*(disp['cm']['pk']+disp['cp']['pk']); pk_fine=.5*(disp['fm']['pk']+disp['fp']['pk'])
+              crit={'signed_cosine_ge_0p995':combined['signed_cosine']>=0.995,'principal_angle_le_5deg':combined['principal_angle_deg']<=5,'relative_norm_mismatch_le_0p25':combined['relative_norm_mismatch']<=0.25,'all_displacements_nonzero':all(disp[t]['full']>0 for t in disp),'fine_symmetric_displacement_contracts_cmb_and_pk':cmb_fine<cmb_coarse and pk_fine<pk_coarse}; passed=all(crit.values())
+              out.update({'combined_tangent':combined,'cmb_block_tangent':cg,'pk_block_tangent':pg,'displacements':disp,'symmetric_displacement_scales':{'cmb_coarse_mean':cmb_coarse,'cmb_fine_mean':cmb_fine,'pk_coarse_mean':pk_coarse,'pk_fine_mean':pk_fine},'criteria':crit,'all_tangent_criteria_pass':passed,'classification':'M33_CUBIC_TRACKER_REFERENCE_PRECISION_TANGENT_CONVERGED_SYNTHESIS_REQUIRED' if passed else 'M33_CUBIC_TRACKER_REFERENCE_PRECISION_TANGENT_NONCONVERGENCE_PERSISTS'})
+          pathlib.Path('M33_CUBIC_TRACKER_REFERENCE_PRECISION_TANGENT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m33-cubic-tracker-reference-precision-tangent
+          path: |
+            M33_CUBIC_TRACKER_REFERENCE_PRECISION_TANGENT.json
+            provider_commit.txt
+            immutable_parent_sha256.txt
+            m33ref/
+          retention-days: 30
