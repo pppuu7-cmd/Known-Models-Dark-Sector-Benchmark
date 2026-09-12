@@ -1,0 +1,92 @@
+name: W07 M35 pinned source quotient geometry audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m35-pinned-source-quotient-geometry.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch exact pinned CLASS_LVDM source
+        run: |
+          set -euo pipefail
+          PIN='d9a20bd0c7b7a6c8957410fd245ed06b30b915c1'
+          git clone -q https://github.com/Michalychforever/CLASS_LVDM.git provider
+          git -C provider checkout -q --detach "$PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$PIN"
+          git -C provider rev-parse HEAD > provider_commit.txt
+      - name: Apply frozen source quotient audit
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python3 - <<'PY'
+          import json,pathlib,re
+          pin='d9a20bd0c7b7a6c8957410fd245ed06b30b915c1'
+          p=pathlib.Path('provider')
+          def text(rel): return (p/rel).read_text(errors='replace')
+          h=text('include/perturbations.h'); src=text('source/perturbations.c'); inp=text('source/input.c'); misha=text('Misha.ini'); lcdm=text('lcdm.ini')
+          commit=pathlib.Path('provider_commit.txt').read_text().strip()
+          params=['alpha','beta','lambda','Y_dm']
+          separate={x:bool(re.search(r'\bdouble\s+'+re.escape(x)+r'\s*;',h)) for x in params}
+          # Production input references: record occurrences rather than assuming a particular parser helper signature.
+          input_refs={x:len(re.findall(r'\b'+re.escape(x)+r'\b',inp)) for x in params}
+          lines=src.splitlines()
+          commented_alpha2beta=[ln.strip() for ln in lines if re.search(r'alpha\s*=\s*2\.?\*?\s*.*beta',ln,re.I) and ln.lstrip().startswith('//')]
+          active_alpha2beta=[ln.strip() for ln in lines if re.search(r'alpha\s*=\s*2\.?\*?\s*.*beta',ln,re.I) and not ln.lstrip().startswith('//')]
+          compact=re.sub(r'\s+','',src)
+          checks={
+            'provider_pin_exact':commit==pin,
+            'four_separate_storage_coordinates':all(separate.values()),
+            'all_four_referenced_in_input_source':all(input_refs[x]>0 for x in params),
+            'alpha_2beta_relation_only_commented_when_matched':bool(commented_alpha2beta) and not bool(active_alpha2beta),
+            'G_cosmo_beta_lambda_combination':('G_cosmo_over_G_0=1./(1.+ppt->beta/2.+3./2.*ppt->lambda)' in compact),
+            'c_sq_chi_ratio':('c_sq_chi=(ppt->beta+ppt->lambda)/ppt->alpha' in compact),
+            'B_ratio':('B=(ppt->beta+3.*ppt->lambda)/ppt->alpha' in compact),
+            'H_alpha_scale':('H_alpha=pba->H0/sqrt(ppt->alpha)' in compact),
+            'Y_dm_nontrivial_production_use':len(re.findall(r'ppt->Y_dm',src))>=2,
+            'author_gravity_config_four_values':all(re.search(r'(?m)^\s*'+re.escape(x)+r'\s*=',misha) for x in params),
+            'numerical_control_config_has_gravity_coordinates':all(re.search(r'(?m)^\s*'+re.escape(x)+r'\s*=',lcdm) for x in ['alpha','beta','lambda'])
+          }
+          derived_lines=[]
+          for ln in lines:
+              if any(key in ln for key in ['G_cosmo_over_G_0','c_sq_chi','ppt->B','H_alpha','Y_dm']):
+                  s=ln.strip()
+                  if s and len(derived_lines)<80: derived_lines.append(s)
+          required=['provider_pin_exact','four_separate_storage_coordinates','all_four_referenced_in_input_source','alpha_2beta_relation_only_commented_when_matched','G_cosmo_beta_lambda_combination','c_sq_chi_ratio','B_ratio','H_alpha_scale','Y_dm_nontrivial_production_use']
+          ok=all(checks[k] for k in required)
+          out={'schema':'m35_pinned_source_quotient_geometry_v0.1','model_id':'M35','family_id':'F35',
+               'protocol':'protocol/W07_M35_PINNED_SOURCE_QUOTIENT_GEOMETRY_v0.1.md','provider_commit':commit,'expected_commit':pin,
+               'separate_storage_coordinates':separate,'input_reference_counts':input_refs,'checks':checks,
+               'commented_alpha2beta_matches':commented_alpha2beta,'active_alpha2beta_matches':active_alpha2beta,
+               'Y_dm_production_reference_count':len(re.findall(r'ppt->Y_dm',src)),
+               'selected_derived_source_lines':derived_lines,
+               'K2_promoted':False,'canonical_K2_remains':'PARTIAL','physical_falsification':False,'full_Einstein_Aether_SVT_claim':False}
+          if ok:
+              out['classification']='M35_SOURCE_FOUR_INPUTS_DERIVED_COMBINATIONS_QUOTIENT_NOT_CLOSED'
+              out['remaining_blocker']='complete covariant scalar/vector/tensor parameter geometry plus quotient/equivalence closure; four nominal source inputs are not equivalent to observable rank four'
+          else:
+              out['classification']='M35_SOURCE_QUOTIENT_AUDIT_INTEGRITY_OR_PATTERN_BLOCKED'
+              out['failed_required_checks']=[k for k in required if not checks[k]]
+          pathlib.Path('out/M35_PINNED_SOURCE_QUOTIENT_GEOMETRY.json').write_text(json.dumps(out,indent=2)+'\n')
+          with open('out/M35_PINNED_SOURCE_QUOTIENT_GEOMETRY.md','w') as f:
+              f.write('# M35 pinned-source quotient geometry audit\n\n')
+              f.write(f"Classification: `{out['classification']}`  \n")
+              f.write(f"Checks: `{checks}`  \n")
+              f.write('\nCanonical K2 remains PARTIAL. This source audit does not establish full Einstein-Aether SVT geometry or physical falsification.\n')
+          print(pathlib.Path('out/M35_PINNED_SOURCE_QUOTIENT_GEOMETRY.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m35-pinned-source-quotient-geometry
+          path: |
+            out/
+            provider_commit.txt
