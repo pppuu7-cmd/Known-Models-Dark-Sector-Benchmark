@@ -1,0 +1,157 @@
+name: W05 M32 K0h hydro-tail microcheckpoint
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w05-m32-k0h-hydro-tail-microcheckpoint.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  compile-target:
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        target:
+          - umuscl.o
+          - interpol_hydro.o
+          - godunov_utils.o
+          - condinit.o
+          - hydro_flag.o
+          - hydro_boundary.o
+          - boundana.o
+          - read_hydro_params.o
+          - synchro_hydro_fine.o
+          - gas_analytics.o
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install exact Intel-family toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gpg-agent wget ca-certificates >/dev/null
+          key=$(mktemp)
+          wget -qO "$key" https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+          gpg --dearmor <"$key" | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg >/dev/null
+          rm -f "$key"
+          echo 'deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main' | sudo tee /etc/apt/sources.list.d/oneAPI.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq intel-oneapi-compiler-fortran intel-oneapi-mpi-devel >/dev/null
+      - name: Restore immutable stage-1 checkpoint and compile one frozen target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET: ${{ matrix.target }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          PIN=849ddb716041316d0e223ba22badc0d630b72435
+          mkdir -p work result
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10283774354/zip" > stage1.zip
+          echo 'sha256: expected immutable GitHub artifact id 10283774354' > result/parent_identity.txt
+          sha256sum stage1.zip >> result/parent_identity.txt
+          unzip -q stage1.zip -d work/stage1
+          git clone -q https://github.com/nat-woodcock/EFT-Ramses.git work/provider
+          git -C work/provider checkout -q --detach "$PIN"
+          ACTUAL=$(git -C work/provider rev-parse HEAD)
+          printf '%s\n' "$ACTUAL" > result/provider_commit.txt
+          test "$ACTUAL" = "$PIN"
+          cd work/provider/bin
+          rm -f -- *.o *.mod ramses3d
+          tar -xf "$GITHUB_WORKSPACE/work/stage1/checkpoint.tar" -C .
+          find . -maxdepth 1 -type f \( -name '*.o' -o -name '*.mod' \) -print0 | sort -z | xargs -0 sha256sum > "$GITHUB_WORKSPACE/result/hashes_before_touch.txt"
+          find . -maxdepth 1 -type f \( -name '*.o' -o -name '*.mod' \) -exec touch {} +
+          find . -maxdepth 1 -type f \( -name '*.o' -o -name '*.mod' \) -print0 | sort -z | xargs -0 sha256sum > "$GITHUB_WORKSPACE/result/hashes_after_touch.txt"
+          cmp "$GITHUB_WORKSPACE/result/hashes_before_touch.txt" "$GITHUB_WORKSPACE/result/hashes_after_touch.txt"
+          set +u
+          source /opt/intel/oneapi/setvars.sh --force >/dev/null 2>&1
+          set -u
+          ifx --version > "$GITHUB_WORKSPACE/result/ifx_version.txt" 2>&1
+          mpiifx -v > "$GITHUB_WORKSPACE/result/mpiifx_version.txt" 2>&1 || true
+          rm -f -- "$TARGET"
+          set +e
+          make "$TARGET" \
+            F90='mpiifx' \
+            FFLAGS='-O3 -g -mcmodel=large -traceback -fpe0 -ftrapuv -cpp $(DEFINES)' \
+            > "$GITHUB_WORKSPACE/result/build_stdout.log" 2> "$GITHUB_WORKSPACE/result/build_stderr.log"
+          RC=$?
+          set -e
+          EXISTS=false
+          test -f "$TARGET" && EXISTS=true
+          test "$EXISTS" = false || cp "$TARGET" "$GITHUB_WORKSPACE/result/$TARGET"
+          printf '%s\n' "$RC" > "$GITHUB_WORKSPACE/result/build_exit_code.txt"
+          python3 - "$TARGET" "$RC" "$EXISTS" <<'PY'
+          import json,pathlib,sys
+          target=sys.argv[1]; rc=int(sys.argv[2]); exists=sys.argv[3].lower()=='true'
+          stderr=pathlib.Path('result/build_stderr.log').read_text(errors='replace')
+          stdout=pathlib.Path('result/build_stdout.log').read_text(errors='replace')
+          low=(stderr+'\n'+stdout).lower()
+          if rc==0 and exists:
+              cls='TARGET_COMPILED_EXACT_PIN'
+          elif rc in (124,130,137,143) or 'shutdown signal' in low or 'cancel' in low:
+              cls='TARGET_HOSTED_INFRASTRUCTURE_BLOCKED'
+          else:
+              cls='TARGET_COMPILER_OR_SOURCE_BLOCKED'
+          out={'schema':'m32_k0h_hydro_tail_target_v0.1','model_id':'M32','target':target,
+               'provider_commit':'849ddb716041316d0e223ba22badc0d630b72435','parent_artifact':10283774354,
+               'build_exit_code':rc,'target_object_exists':exists,'classification':cls,
+               'K0_promoted':False,'physical_falsification':False,
+               'scope':'infrastructure-only exact-pin hydro-tail microcheckpoint target compile'}
+          pathlib.Path('result/target_result.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m32-k0h-${{ matrix.target }}
+          path: result/
+          retention-days: 30
+
+  aggregate:
+    if: always()
+    needs: compile-target
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m32-k0h-*
+          path: targets
+      - name: Aggregate frozen target classifications
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib
+          rows=[]
+          for p in sorted(pathlib.Path('targets').rglob('target_result.json')):
+              rows.append(json.loads(p.read_text()))
+          expected=['umuscl.o','interpol_hydro.o','godunov_utils.o','condinit.o','hydro_flag.o','hydro_boundary.o','boundana.o','read_hydro_params.o','synchro_hydro_fine.o','gas_analytics.o']
+          found={r['target'] for r in rows}
+          if found != set(expected):
+              classification='M32_K0H_HYDRO_TAIL_AGGREGATE_INCOMPLETE'
+          elif all(r['classification']=='TARGET_COMPILED_EXACT_PIN' for r in rows):
+              classification='M32_K0H_HYDRO_TAIL_ALL_TARGETS_COMPILED'
+          elif any(r['classification']=='TARGET_COMPILER_OR_SOURCE_BLOCKED' for r in rows):
+              classification='M32_K0H_HYDRO_TAIL_EXPLICIT_TARGET_BLOCKER_LOCALIZED'
+          else:
+              classification='M32_K0H_HYDRO_TAIL_HOSTED_INFRASTRUCTURE_BLOCKED'
+          out={'schema':'m32_k0h_hydro_tail_aggregate_v0.1','model_id':'M32','classification':classification,
+               'targets':rows,'expected_targets':expected,'K0_promoted':False,'physical_falsification':False,
+               'next_if_all_compiled':'prospectively preregister remaining Poisson/PM/ramses/link microcheckpoint layer'}
+          pathlib.Path('M32_K0H_HYDRO_TAIL_AGGREGATE.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m32-k0h-hydro-tail-aggregate
+          path: M32_K0H_HYDRO_TAIL_AGGREGATE.json
+          retention-days: 30
