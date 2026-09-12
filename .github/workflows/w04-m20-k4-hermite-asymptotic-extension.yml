@@ -1,0 +1,38 @@
+name: W04 M20 SIDM K4 Hermite asymptotic extension
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m20-k4-hermite-asymptotic-extension.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  PROVIDER_PIN: e17d3664dac677b604fd4ff02fb2af105a6937fa
+jobs:
+  hermite-asymptotic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin validated provider environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/shinichiroando/sashimi-si.git sashimi
+          git -C sashimi checkout -q --detach "$PROVIDER_PIN"
+          test "$(git -C sashimi rev-parse HEAD)" = "$PROVIDER_PIN"
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3 scipy==1.16.1 numexpr==2.11.0 tqdm==4.67.1
+      - name: Run preregistered Nherm 13-17-21 extension
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 verification/m20/k4_hermite_asymptotic_extension.py sashimi M20_K4_HERMITE_ASYMPTOTIC.json
+          cat M20_K4_HERMITE_ASYMPTOTIC.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m20-k4-hermite-asymptotic
+          path: M20_K4_HERMITE_ASYMPTOTIC.json
+          retention-days: 30
