@@ -1,0 +1,93 @@
+name: W06 M33 Galileon reference-path stability audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w06-m33-reference-path-stability-audit.yml'
+      - 'protocol/W06_M33_GALILEON_REFERENCE_PATH_STABILITY_AUDIT_v0.1.md'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      HICLASS_PIN: 0009f51d89e6465c79e570b496c66fc90058fa77
+      PARENT_RUN: '34660258070'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch immutable parent artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir parent
+          gh run download "$PARENT_RUN" -n M33-reference-map-parser-recovery -D parent
+          test -f parent/M33_REFERENCE_MAP_PARSER_RECOVERY_RESULT.json
+      - name: Fetch exact pinned provider source
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/hiclass-code/hi_class_public.git provider
+          cd provider && git checkout -q --detach "$HICLASS_PIN"
+          test "$(git rev-parse HEAD)" = "$HICLASS_PIN"
+      - name: Apply frozen analysis-only audit
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,numpy as np,re
+          p=pathlib.Path('parent'); meta=json.loads((p/'M33_REFERENCE_MAP_PARSER_RECOVERY_RESULT.json').read_text())
+          assert meta['provider_commit']=='0009f51d89e6465c79e570b496c66fc90058fa77'
+          tags=['P_om0p5','P_om0p1','P_om0p01']; ref='D_gr'
+          def load(tag,kind):
+            fs=sorted((p/'m33recover').glob(f'{tag}_*{kind}.dat')); assert fs
+            rr=[]
+            for line in fs[0].read_text(errors='replace').splitlines():
+              s=line.strip()
+              if not s or s.startswith('#'): continue
+              try: rr.append([float(x) for x in s.split()])
+              except: pass
+            a=np.asarray(rr,float); assert a.ndim==2 and np.isfinite(a).all(); return a
+          def cldist(a,b):
+            n=min(len(a),len(b)); m=min(a.shape[1],b.shape[1]); x=a[:n,1:m]; y=b[:n,1:m]
+            return float(np.linalg.norm(x-y)/(np.linalg.norm(y)+1e-300))
+          def pkdist(a,b):
+            lo=max(a[:,0].min(),b[:,0].min()); hi=min(a[:,0].max(),b[:,0].max())
+            aa=a[(a[:,0]>=lo)&(a[:,0]<=hi)]; yy=np.interp(aa[:,0],b[:,0],b[:,1]); xx=aa[:,1]
+            return float(np.linalg.norm(xx-yy)/(np.linalg.norm(yy)+1e-300))
+          brc=load(ref,'cl'); brp=load(ref,'pk'); cmb=[]; pk=[]
+          for t in tags:
+            cmb.append(cldist(load(t,'cl'),brc)); pk.append(pkdist(load(t,'pk'),brp))
+          prefix=all(cmb[i+1]<cmb[i] for i in range(2)) and all(pk[i+1]<pk[i] for i in range(2))
+          arm={x['arm']:x for x in meta['arms']}['P_om0p001']
+          stab=arm['exit']!=0 and 'Ghost instability' in arm.get('stdout_tail','')
+          texts=[]
+          for f in pathlib.Path('provider').rglob('*'):
+            if f.is_file() and f.suffix in {'.c','.h','.ini','.md','.txt'}:
+              try:
+                s=f.read_text(errors='replace')
+                if any(k in s for k in ['galileon','Omega_smg','Omega_smg_debug']): texts.append((str(f),s))
+              except: pass
+          # Conservative source rule: an alternate route only if provider documentation explicitly couples cubic/galileon to GR/LambdaCDM/decoupling/zero-coupling semantics.
+          hits=[]
+          pat=re.compile(r'(?is)(galileon|cubic).{0,300}(GR limit|LambdaCDM|decoupl|zero[- ]coupl)|(?:GR limit|LambdaCDM|decoupl|zero[- ]coupl).{0,300}(galileon|cubic)')
+          for fn,s in texts:
+            if pat.search(s): hits.append(fn)
+          if hits: cls='ALTERNATE_AUTHOR_REFERENCE_ROUTE_FOUND_REQUIRES_NEW_PREREGISTRATION'
+          elif prefix and stab: cls='REFERENCE_PREFIX_CONTRACTS_STABILITY_BOUNDARY_CONFIRMED'
+          elif not prefix: cls='REFERENCE_PREFIX_NONCONTRACTING'
+          else: cls='AUDIT_INTEGRITY_BLOCKED'
+          out={'schema':'m33_reference_path_stability_audit_v0.1','model_id':'M33','parent_run':34660258070,'parent_artifact':10286747855,
+               'provider_commit':meta['provider_commit'],'classification':cls,'cmb_distances':dict(zip(tags,cmb)),'pk_distances':dict(zip(tags,pk)),
+               'prefix_contracts':prefix,'omega_0p001_stability_veto_confirmed':stab,'alternate_route_source_hits':hits,
+               'K1_promoted':False,'physical_falsification':False}
+          pathlib.Path('M33_REFERENCE_PATH_STABILITY_AUDIT_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: M33-reference-path-stability-audit
+          path: M33_REFERENCE_PATH_STABILITY_AUDIT_RESULT.json
+          retention-days: 30
