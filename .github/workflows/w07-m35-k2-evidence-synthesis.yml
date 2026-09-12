@@ -1,0 +1,104 @@
+name: W07 M35 K2 evidence synthesis
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m35-k2-evidence-synthesis.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  synthesize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch immutable prerequisite artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p inputs/k1 inputs/geometry inputs/ydm inputs/jac
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10286581994/zip" > /tmp/k1.zip
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10288863878/zip" > /tmp/geometry.zip
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10289609230/zip" > /tmp/ydm.zip
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10290165068/zip" > /tmp/jac.zip
+          unzip -q /tmp/k1.zip -d inputs/k1
+          unzip -q /tmp/geometry.zip -d inputs/geometry
+          unzip -q /tmp/ydm.zip -d inputs/ydm
+          unzip -q /tmp/jac.zip -d inputs/jac
+          sha256sum /tmp/k1.zip /tmp/geometry.zip /tmp/ydm.zip /tmp/jac.zip > inputs/artifact_zip_sha256.txt
+      - name: Apply frozen K2 synthesis rule
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python3 - <<'PY'
+          import json,pathlib
+          pin='d9a20bd0c7b7a6c8957410fd245ed06b30b915c1'
+          def one(root,name):
+              hits=list(pathlib.Path(root).rglob(name))
+              if len(hits)!=1: raise RuntimeError(f'{name}: expected one, got {len(hits)}')
+              return json.loads(hits[0].read_text())
+          try:
+              k1=one('inputs/k1','m35_k1_result.json')
+              geo=one('inputs/geometry','M35_K2_GEOMETRY_SUFFICIENCY_AUDIT.json')
+              ydm=one('inputs/ydm','M35_YDM_ORTHOGONAL_COVERAGE.json')
+              jac=one('inputs/jac','M35_LOCAL_2D_RESPONSE_JACOBIAN.json')
+              integrity=(
+                k1.get('provider_commit')==pin and geo.get('provider_commit')==pin and
+                ydm.get('provider_commit')==pin and jac.get('provider_commit')==pin and
+                bool(geo.get('integrity_ok'))
+              )
+              k1_ok=bool(k1.get('K1_promoted')) and not bool(k1.get('physical_falsification'))
+              geo_ok=(geo.get('classification')=='M35_K2_NOT_CLOSED_BY_NEAR_RADIAL_GRAVITY_ONLY_K1_LADDER' and
+                      geo.get('raw_active_arm_rank')==1 and bool(geo.get('raw_active_arms_strictly_radial_from_zero_origin')) and
+                      geo.get('fixed_raw_coordinates')==['Y_dm'] and not bool(geo.get('K2_promoted')))
+              ydm_ok=(ydm.get('classification')=='M35_YDM_DIRECTION_EXECUTABLE_CONTRACTING' and
+                      all(v==0 for v in ydm.get('exits',{}).values()) and bool(ydm.get('strict_contraction_tt')) and bool(ydm.get('strict_contraction_pk')) and
+                      not bool(ydm.get('K2_promoted')))
+              jac_ok=(jac.get('classification')=='M35_LOCAL_2D_RESPONSE_RANK_EVIDENCE' and
+                      bool(jac.get('gravity_derivative_converged')) and bool(jac.get('Y_derivative_converged')) and
+                      bool(jac.get('cross_direction_separated')) and not bool(jac.get('K2_promoted')))
+              if not integrity:
+                  cls='M35_K2_SYNTHESIS_INTEGRITY_BLOCKED'; status='OPEN'
+              elif k1_ok and geo_ok and ydm_ok and jac_ok:
+                  cls='M35_K2_PARTIAL_LOCAL_RESPONSE_RANK2_SOURCE_QUOTIENT_OPEN'; status='PARTIAL'
+              else:
+                  cls='M35_K2_OPEN_LOCAL_RANK_NOT_ESTABLISHED'; status='OPEN'
+              out={
+                'schema':'m35_k2_evidence_synthesis_v0.1','model_id':'M35','family_id':'F35',
+                'protocol':'protocol/W07_M35_K2_EVIDENCE_SYNTHESIS_v0.1.md','provider_commit':pin,
+                'inputs':{
+                  'k1':{'run':34657362639,'artifact':10286581994,'classification':k1.get('classification')},
+                  'geometry':{'run':34667748388,'artifact':10288863878,'classification':geo.get('classification')},
+                  'ydm':{'run':34667885612,'artifact':10289609230,'classification':ydm.get('classification')},
+                  'jacobian':{'run':34668120323,'artifact':10290165068,'classification':jac.get('classification')}
+                },
+                'checks':{'integrity':integrity,'k1_scoped_pass':k1_ok,'original_path_geometry_narrow':geo_ok,'Y_dm_direction':ydm_ok,'local_rank2_response':jac_ok},
+                'local_cross_direction_angle_deg':jac.get('fine_cross_direction_geometry',{}).get('principal_angle_deg'),
+                'local_cross_direction_sin':jac.get('fine_cross_direction_geometry',{}).get('sin_principal_angle'),
+                'recommended_K2_status':status,'classification':cls,
+                'K2_pass':False,'physical_falsification':False,'full_Einstein_Aether_SVT_claim':False,
+                'remaining_K2_blocker':'complete source/covariant scalar-vector-tensor parameter geometry and quotient/equivalence closure',
+                'interpretation':'PARTIAL, when assigned, is limited to reproducible local rank>=2 response evidence in the pinned scalar CLASS_LVDM representation. It is not a complete K2 PASS.'
+              }
+          except Exception as e:
+              out={'schema':'m35_k2_evidence_synthesis_v0.1','model_id':'M35','classification':'M35_K2_SYNTHESIS_INTEGRITY_BLOCKED','recommended_K2_status':'OPEN','K2_pass':False,'physical_falsification':False,'error':repr(e)}
+          pathlib.Path('out/M35_K2_EVIDENCE_SYNTHESIS.json').write_text(json.dumps(out,indent=2)+'\n')
+          with open('out/M35_K2_EVIDENCE_SYNTHESIS.md','w') as f:
+              f.write('# M35 K2 immutable evidence synthesis\n\n')
+              f.write(f"Classification: `{out['classification']}`  \n")
+              f.write(f"Recommended K2 status: `{out['recommended_K2_status']}`  \n")
+              if 'local_cross_direction_angle_deg' in out:
+                  f.write(f"Local cross-direction angle: {out['local_cross_direction_angle_deg']} deg  \n")
+              f.write('\nK2 PASS is not authorized by this synthesis. Full source/covariant SVT quotient closure remains open.\n')
+          print(pathlib.Path('out/M35_K2_EVIDENCE_SYNTHESIS.json').read_text())
+          PY
+          cp inputs/artifact_zip_sha256.txt out/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m35-k2-evidence-synthesis
+          path: out/
