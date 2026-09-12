@@ -1,0 +1,58 @@
+name: Sync W04 M20 K4 synthesis
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-w04-m20-k4-synthesis.yml'
+      - 'models/self_interacting_dark_matter/M20_K4_NUMERICAL_ROBUSTNESS_SYNTHESIS_RESULT.json'
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify immutable synthesis and patch F20 matrix row
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv,json
+          from pathlib import Path
+          r=json.loads(Path('models/self_interacting_dark_matter/M20_K4_NUMERICAL_ROBUSTNESS_SYNTHESIS_RESULT.json').read_text())
+          assert r['classification']=='M20_K4_PASS_WITH_SCOPE_WEIGHTED_HERMITE_MASS_REDSHIFT_CONVERGENCE'
+          assert r['K4_promoted'] is True and r['physical_falsification'] is False
+          p=Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(p.open(newline='')))
+          fields=list(rows[0].keys())
+          hits=0
+          for x in rows:
+            if x['family_id']=='F20' and x['benchmark_id']=='M20':
+              hits+=1
+              assert x['K1_reference_limit']=='PASS_WITH_SCOPE_NONLINEAR_HALO_EXACT_CDM_LIMIT'
+              x['K4_numerical_robustness']='PASS_WITH_SCOPE_WEIGHTED_HERMITE_MASS_REDSHIFT_CONVERGENCE'
+              x['coverage_state']='K1_K4_NONLINEAR_SCOPED_PASS_K3_K5_K9_OPEN'
+              add=(' K4 now PASS_WITH_SCOPE after prospective provider-weighted convergence on three independent numerical axes: '
+                   'Hermite quadrature N=21->25->29 (terminal max 0.0130492), accretion-mass grid N_ma=30->60->120 '
+                   '(terminal max 0.0104056), and redshift grid dz=0.2->0.1->0.05 (terminal max 0.00588801). '
+                   'Earlier unweighted flattened-node Hermite sensitivity is preserved as a methodological negative control; '
+                   'this K4 scope is nonlinear SASHIMI-SIDM structural response only. K3/K5-K9 remain open.')
+              if 'K4 now PASS_WITH_SCOPE after prospective provider-weighted convergence' not in x['notes']:
+                x['notes']=x['notes']+add
+          assert hits==1
+          with p.open('w',newline='') as f:
+            w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n');w.writeheader();w.writerows(rows)
+          PY
+      - name: Commit matrix sync
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/mandatory_properties_matrix.csv
+          if ! git diff --cached --quiet; then
+            git commit -m 'Sync M20 K4 scoped numerical robustness PASS'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
