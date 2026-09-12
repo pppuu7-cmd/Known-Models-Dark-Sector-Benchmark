@@ -1,0 +1,36 @@
+{
+  "schema": "m20_k4_numerical_axis_localization_result_v0.1",
+  "model_id": "M20",
+  "family_id": "F20",
+  "date": "2026-09-12",
+  "protocol": "protocol/W04_M20_K4_NUMERICAL_AXIS_LOCALIZATION_PREREGISTRATION_v0.1.md",
+  "run_id": 34717549823,
+  "head_commit": "def7d6a45e5ab7de1f6cbd858ab6ad8d38d54798",
+  "provider_commit": "e17d3664dac677b604fd4ff02fb2af105a6937fa",
+  "hermite5": {
+    "job_id": 103617375682,
+    "artifact_id": 10305295761,
+    "artifact_sha256": "fdf9ea9a348fa53206d27f7b2525fc325dc7ce0730b7e1ef0fbb79ef3c2995e7",
+    "baseline": {"N_herm": 3, "dz": 0.2},
+    "diagnostic": {"N_herm": 5, "dz": 0.2},
+    "max_symmetric_relative_discrepancy": 0.8842068464159993,
+    "median_symmetric_relative_discrepancy": 0.37251299304632857,
+    "classification": "M20_K4_AXIS_STRONG_SENSITIVITY_DIAGNOSTIC"
+  },
+  "dz01": {
+    "job_id": 103617375780,
+    "artifact_id": 10305705493,
+    "artifact_sha256": "4d5c738448b2523b2270185a5433e585aa7bc3c6923d27fc14c16289fd94203c",
+    "baseline": {"N_herm": 3, "dz": 0.2},
+    "diagnostic": {"N_herm": 3, "dz": 0.1},
+    "max_symmetric_relative_discrepancy": 0.03852684135623168,
+    "median_symmetric_relative_discrepancy": 0.02231018298872599,
+    "classification": "M20_K4_AXIS_LOW_SENSITIVITY_DIAGNOSTIC"
+  },
+  "exact_zero_identity_pass_all": true,
+  "dominant_numerical_axis": "Hermite quadrature order",
+  "inference": "At fixed physics, the redshift-step axis is low-sensitivity at dz 0.2->0.1 while the Hermite quadrature axis is strongly sensitive at N_herm 3->5. Canonical K4 cannot be promoted until Hermite convergence is demonstrated.",
+  "K4_promoted": false,
+  "physical_falsification": false,
+  "scientific_fail": false
+}
