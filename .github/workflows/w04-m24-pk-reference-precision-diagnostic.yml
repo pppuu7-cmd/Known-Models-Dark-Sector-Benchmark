@@ -25,7 +25,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install analysis dependency
-        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-numpy >/dev/null
       - name: Pin and build exact CLASS
         shell: bash
         run: |
