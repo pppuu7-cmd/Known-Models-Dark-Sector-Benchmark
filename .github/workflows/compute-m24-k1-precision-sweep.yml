@@ -59,7 +59,10 @@ jobs:
         run: |
           set +e
           mkdir -p class/output logs
-          echo '{}' > status.json
+          python3 - <<'PY'
+          import json
+          json.dump({'build': 0}, open('status.json','w'))
+          PY
           for tag in ref zero a0 a1 a2 a3 a4; do
             (cd class && ./class "../m24_cases/${tag}.ini" pk_ref_diag.pre > "../logs/${tag}.log" 2>&1)
             rc=$?
