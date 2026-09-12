@@ -1,0 +1,84 @@
+name: W07 strict census consistency audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-coverage-consistency-audit.yml'
+      - 'matrices/mandatory_properties_matrix.csv'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compute F00-F45 gate coverage and consistency diagnostics
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python - <<'PY'
+          import csv,json,re,pathlib,collections
+          path=pathlib.Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(path.open()))
+          strict=[r for r in rows if re.fullmatch(r'F(?:0[0-9]|[1-3][0-9]|4[0-5])',r['family_id'] or '')]
+          expected={f'F{i:02d}' for i in range(46)}
+          ids=[r['family_id'] for r in strict]
+          missing=sorted(expected-set(ids)); duplicate=sorted(k for k,v in collections.Counter(ids).items() if v>1)
+          gates=[f'K{i}_{name}' for i,name in [
+            (0,'provenance'),(1,'reference_limit'),(2,'physical_geometry'),(3,'conservation_gauge_closure'),
+            (4,'numerical_robustness'),(5,'multichannel_rank'),(6,'nearest_family_manifold'),
+            (7,'common_observation_space'),(8,'quotient_novelty'),(9,'prospective_holdout')]]
+          def positive(s):
+              s=(s or '').upper()
+              return s.startswith('PASS') or s.startswith('SUPPORTED') or s.startswith('REPRESENTED') or s in {'NO_NOVELTY_EXPECTED','NOT_APPLICABLE_CONTROL'}
+          def unresolved(s):
+              s=(s or '').upper()
+              return s in {'OPEN','NOT_TESTED'} or s.startswith('BLOCKED')
+          dist={g:collections.Counter(r[g] for r in strict) for g in gates}
+          positive_cells=sum(positive(r[g]) for r in strict for g in gates)
+          unresolved_cells=sum(unresolved(r[g]) for r in strict for g in gates)
+          total_cells=len(strict)*len(gates)
+          terminal=[r['family_id'] for r in strict if (r['coverage_state'] or '').startswith('TERMINAL') or (r['coverage_state'] or '')=='REPRESENTED']
+          represented=[r['family_id'] for r in strict if (r['coverage_state'] or '')=='REPRESENTED']
+          stale=[]
+          for r in strict:
+              note=(r.get('notes') or '').lower()
+              if positive(r['K1_reference_limit']) and ('k1-k9 remain open' in note or 'k1-k9 open' in note):
+                  stale.append({'family_id':r['family_id'],'type':'note_says_K1_open_but_matrix_K1_positive','K1':r['K1_reference_limit']})
+              cs=(r.get('coverage_state') or '').upper()
+              if 'K1' in cs and 'PASS' in cs and not positive(r['K1_reference_limit']):
+                  stale.append({'family_id':r['family_id'],'type':'coverage_state_mentions_K1_PASS_but_matrix_K1_not_positive','K1':r['K1_reference_limit'],'coverage_state':r['coverage_state']})
+          result={
+            'schema_version':'1.0','strict_census_definition':'F00-F45 inclusive; F46 external comparator excluded',
+            'strict_family_count':len(strict),'expected_family_count':46,'missing_family_ids':missing,'duplicate_family_ids':duplicate,
+            'terminal_or_represented_count':len(terminal),'terminal_or_represented_ids':terminal,'represented_count':len(represented),
+            'gate_cell_count':total_cells,'positive_gate_cells':positive_cells,
+            'positive_gate_fraction':positive_cells/total_cells if total_cells else None,
+            'unresolved_or_blocked_cells':unresolved_cells,'unresolved_or_blocked_fraction':unresolved_cells/total_cells if total_cells else None,
+            'definitions':{
+              'positive':'PASS*, SUPPORTED*, REPRESENTED*, NO_NOVELTY_EXPECTED, NOT_APPLICABLE_CONTROL',
+              'unresolved_or_blocked':'OPEN, NOT_TESTED, BLOCKED*',
+              'warning':'These are bookkeeping fractions, not probabilities that a theory is true/false and not NEW_REQUIRED evidence.'},
+            'per_gate_status_distribution':{g:dict(c) for g,c in dist.items()},
+            'stale_note_candidates':stale
+          }
+          json.dump(result,open('out/STRICT_CENSUS_CONSISTENCY_AUDIT.json','w'),indent=2)
+          with open('out/STRICT_CENSUS_CONSISTENCY_AUDIT.md','w') as f:
+              f.write('# Strict census consistency audit\n\n')
+              f.write(f"Strict census: {len(strict)}/46 rows present. Missing: {missing or 'none'}. Duplicates: {duplicate or 'none'}.  \n")
+              f.write(f"Terminal/represented: {len(terminal)}/{len(strict)} = {len(terminal)/len(strict):.4%}.  \n")
+              f.write(f"Positive gate cells under explicit bookkeeping definition: {positive_cells}/{total_cells} = {positive_cells/total_cells:.4%}.  \n")
+              f.write(f"OPEN/NOT_TESTED/BLOCKED* cells: {unresolved_cells}/{total_cells} = {unresolved_cells/total_cells:.4%}.  \n")
+              f.write(f"Stale-note candidates: {len(stale)}.  \n\n")
+              for x in stale: f.write('- '+json.dumps(x,sort_keys=True)+'\n')
+              f.write('\nThese are bookkeeping diagnostics only; they are not physical falsification rates or evidence that a new model is required.\n')
+          if missing or duplicate:
+              raise SystemExit('strict census structural error')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: strict-census-consistency-audit
+          path: out/
