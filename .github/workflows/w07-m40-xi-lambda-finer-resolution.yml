@@ -1,0 +1,155 @@
+name: W07 M40 xi lambda finer resolution
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m40-xi-lambda-finer-resolution.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  EFTCAMB_PIN: '16d9c4e9f85751e30efd0a53b177941713078904'
+  RADIAL_ARTIFACT: '10298444789'
+
+jobs:
+  finer:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        axis: [xi, lambda]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch immutable radial authority and build exact provider
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p immutable_radial
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${RADIAL_ARTIFACT}/zip" > /tmp/radial.zip
+          unzip -q /tmp/radial.zip -d immutable_radial
+          sha256sum /tmp/radial.zip > immutable_radial_zip_sha256.txt
+          sudo apt-get update -qq
+          sudo apt-get install -y libblas-dev liblapack-dev python3-numpy >/dev/null
+          git clone -q https://github.com/EFTCAMB/EFTCAMB.git provider
+          git -C provider checkout -q --detach "$EFTCAMB_PIN"
+          git -C provider submodule update --init --recursive
+          test "$(git -C provider rev-parse HEAD)" = "$EFTCAMB_PIN"
+          (cd provider/fortran && make clean >/dev/null 2>&1 || true; make camb >/dev/null)
+          git -C provider rev-parse HEAD > provider_commit.txt
+      - name: Generate frozen half-spacing coordinate stencil
+        run: |
+          set -euo pipefail
+          AXIS='${{ matrix.axis }}'; BASE="$GITHUB_WORKSPACE/m40fine_${AXIS}"; mkdir -p "$BASE"
+          python3 - "$AXIS" "$BASE" <<'PY'
+          import pathlib,re,sys
+          axis=sys.argv[1]; b=pathlib.Path(sys.argv[2]); p=pathlib.Path('provider/fortran/eftcamb_test/parameters').resolve()
+          src=(p/'5_Horava_eta_3.ini').read_text(); include=str((p/'base_params.ini').resolve())
+          src=re.sub(r'(?m)^\s*DEFAULT\(base_params\.ini\)\s*$',f'DEFAULT({include})',src)
+          base={'Horava_xi':-1e-4,'Horava_lambda':1e-4,'Horava_eta':2.1e-3}; key={'xi':'Horava_xi','lambda':'Horava_lambda'}[axis]
+          for tag,d in {'base':0.0,'ap2':1e-6,'am2':-1e-6,'ap1':5e-7,'am1':-5e-7}.items():
+              vals=dict(base); vals[key]+=d; t=src
+              for k,v in vals.items(): t=re.sub(rf'(?m)^\s*{k}\s*=.*$',f'{k} = {v:.16g}',t)
+              t=re.sub(r'(?m)^\s*output_root\s*=.*$',f'output_root = {b}/{tag}_',t)
+              (b/f'{tag}.ini').write_text(t)
+          PY
+          grep -H -E '^(Horava_xi|Horava_lambda|Horava_eta|output_root|DEFAULT)' "$BASE"/*.ini | tee "$BASE/frozen_config_extract.txt"
+      - name: Execute frozen arms
+        run: |
+          set -euo pipefail
+          AXIS='${{ matrix.axis }}'; BASE="$GITHUB_WORKSPACE/m40fine_${AXIS}"
+          set +e
+          for tag in base ap2 am2 ap1 am1; do
+            (cd provider/fortran && ./camb "$BASE/${tag}.ini" > "$BASE/${tag}.stdout" 2> "$BASE/${tag}.stderr")
+            echo $? > "$BASE/${tag}.exit"
+          done
+          set -e
+      - name: Analyze unchanged convergence and radial-separation criteria
+        run: |
+          set -euo pipefail
+          AXIS='${{ matrix.axis }}'; BASE="$GITHUB_WORKSPACE/m40fine_${AXIS}"
+          python3 - "$AXIS" "$BASE" <<'PY'
+          import json,math,pathlib,sys,numpy as np
+          axis=sys.argv[1]; b=pathlib.Path(sys.argv[2]); imm=pathlib.Path('immutable_radial')
+          pin=pathlib.Path('provider_commit.txt').read_text().strip(); expected='16d9c4e9f85751e30efd0a53b177941713078904'
+          tags=['base','ap2','am2','ap1','am1']; exits={t:int((b/f'{t}.exit').read_text()) for t in tags}
+          out={'schema':'m40_xi_lambda_finer_resolution_v0.1','model_id':'M40','family_id':'F40','axis':axis,
+               'protocol':'protocol/W07_M40_XI_LAMBDA_FINER_RESOLUTION_DIAGNOSTIC_v0.1.md','provider_commit':pin,'expected_commit':expected,
+               'immutable_radial_run':34695408204,'immutable_radial_artifact':10298444789,'coarse_delta':1e-6,'fine_delta':5e-7,'exits':exits,
+               'prior_scale_pair':{'coarse_delta':2e-6,'fine_delta':1e-6,'result_retained':'DERIVATIVE_NOT_CONVERGED'},
+               'K2_promoted':False,'canonical_K2':'OPEN','physical_falsification':False,'complete_Horava_family_claim':False}
+          def one(root,pat):
+              h=list(root.rglob(pat))
+              if len(h)!=1: raise RuntimeError(f'{pat}: {len(h)} hits')
+              return h[0]
+          def load(p):
+              rows=[]
+              for line in p.read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  try: rows.append([float(x) for x in s.split()])
+                  except ValueError: pass
+              a=np.asarray(rows,float)
+              if a.ndim!=2 or len(a)<5 or a.shape[1]<2: raise RuntimeError(f'bad table {p}')
+              return a
+          try:
+              if pin!=expected or one(imm,'provider_commit.txt').read_text().strip()!=expected: raise RuntimeError('provider pin mismatch')
+              if any(exits[t]!=0 for t in tags):
+                  out['classification']=f'M40_{axis.upper()}_FINER_RESOLUTION_PROVIDER_BLOCKED'; out['failed_arms']=[t for t,v in exits.items() if v!=0]
+              else:
+                  icl={t:load(one(imm,f'{t}__scalCls.dat')) for t in ['base','rp1','rm1']}; ipk={t:load(one(imm,f'{t}__matterpower.dat')) for t in ['base','rp1','rm1']}
+                  ncl={t:load(b/f'{t}__scalCls.dat') for t in tags}; npk={t:load(b/f'{t}__matterpower.dat') for t in tags}
+                  maps={p:{t:{int(r[0]):np.asarray(r[1:],float) for r in a} for t,a in d.items()} for p,d in [('i',icl),('n',ncl)]}
+                  common=sorted(set.intersection(*(set(maps[p][t]) for p in maps for t in maps[p])))
+                  cmb={p:{t:[] for t in maps[p]} for p in maps}
+                  for ell in common:
+                      n=min(len(maps[p][t][ell]) for p in maps for t in maps[p])
+                      for j in range(n):
+                          vals={(p,t):maps[p][t][ell][j] for p in maps for t in maps[p]}
+                          if all(np.isfinite(v) for v in vals.values()):
+                              for (p,t),v in vals.items(): cmb[p][t].append(v)
+                  cmb={p:{t:np.asarray(v,float) for t,v in d.items()} for p,d in cmb.items()}
+                  allpk=list(ipk.values())+list(npk.values()); lo=max(float(a[:,0].min()) for a in allpk); hi=min(float(a[:,0].max()) for a in allpk)
+                  base=npk['base']; m=(base[:,0]>=lo)&(base[:,0]<=hi); x=base[m,0]
+                  pk={'i':{t:np.interp(x,a[:,0],a[:,1]) for t,a in ipk.items()},'n':{t:np.interp(x,a[:,0],a[:,1]) for t,a in npk.items()}}
+                  good=np.ones(len(x),dtype=bool)
+                  for p in pk:
+                      for t in pk[p]: good &= np.isfinite(pk[p][t])
+                  x=x[good]; pk={p:{t:v[good] for t,v in d.items()} for p,d in pk.items()}
+                  def rel(a,c): return float(np.linalg.norm(a-c)/max(np.linalg.norm(a),np.linalg.norm(c),1e-30))
+                  bd={'cmb':rel(cmb['i']['base'],cmb['n']['base']),'pk':rel(pk['i']['base'],pk['n']['base'])}; control=max(bd.values())<=1e-8
+                  out['immutable_base_identity']=dict(bd,threshold=1e-8,passed=bool(control))
+                  if not control: out['classification']=f'M40_{axis.upper()}_FINER_RESOLUTION_CONTROL_BLOCKED'
+                  else:
+                      cn=float(np.linalg.norm(cmb['n']['base'])); pn=float(np.linalg.norm(pk['n']['base']))
+                      def vec(p,plus,minus,h): return np.concatenate([(cmb[p][plus]-cmb[p][minus])/(2*h*cn),(pk[p][plus]-pk[p][minus])/(2*h*pn)])
+                      radial=vec('i','rp1','rm1',0.001); coarse=vec('n','ap2','am2',1e-6); fine=vec('n','ap1','am1',5e-7)
+                      def geom(a,c):
+                          na=float(np.linalg.norm(a)); nb=float(np.linalg.norm(c)); co=float(np.dot(a,c)/(na*nb)); co=max(-1,min(1,co)); return {'principal_angle_deg':float(math.degrees(math.acos(abs(co)))),'relative_norm_mismatch':float(abs(na-nb)/max(na,nb)),'signed_cosine':co,'norm_a':na,'norm_b':nb}
+                      conv=geom(coarse,fine); cross=geom(radial,fine); cv=conv['principal_angle_deg']<=5 and conv['relative_norm_mismatch']<=0.25; sep=cross['principal_angle_deg']>=10
+                      out.update({'coordinate_derivative_convergence':conv,'radial_vs_coordinate_fine':cross,'coordinate_derivative_converged':cv,'cross_direction_separated':sep})
+                      if not cv: cls=f'M40_{axis.upper()}_FINER_RESOLUTION_DERIVATIVE_NOT_CONVERGED'
+                      elif sep: cls=f'M40_{axis.upper()}_FINER_RESOLUTION_DISTINCT_EVIDENCE'
+                      else: cls=f'M40_{axis.upper()}_FINER_RESOLUTION_NEAR_COLLINEAR'
+                      out['classification']=cls
+          except Exception as e:
+              out['classification']=f'M40_{axis.upper()}_FINER_RESOLUTION_CONTROL_BLOCKED'; out['error']=repr(e)
+          pathlib.Path(f'M40_{axis.upper()}_FINER_RESOLUTION.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          pathlib.Path(f'M40_{axis.upper()}_FINER_RESOLUTION.md').write_text(f'# M40 {axis} finer resolution\n\nClassification: `{out["classification"]}`  \n\nPrior larger-step nonconvergence is retained. K2 remains OPEN.\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m40-${{ matrix.axis }}-finer-resolution
+          path: |
+            M40_*_FINER_RESOLUTION.json
+            M40_*_FINER_RESOLUTION.md
+            provider_commit.txt
+            immutable_radial_zip_sha256.txt
+            m40fine_${{ matrix.axis }}/
