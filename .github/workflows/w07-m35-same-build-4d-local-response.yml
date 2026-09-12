@@ -1,0 +1,132 @@
+name: W07 M35 same-build 4D local response
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m35-same-build-4d-local-response.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PROVIDER_COMMIT: 'd9a20bd0c7b7a6c8957410fd245ed06b30b915c1'
+
+jobs:
+  response4d:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact provider
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential gfortran python3-numpy >/dev/null
+          git clone -q --branch LVDM https://github.com/Michalychforever/CLASS_LVDM.git provider
+          git -C provider checkout -q "$PROVIDER_COMMIT"
+          test "$(git -C provider rev-parse HEAD)" = "$PROVIDER_COMMIT"
+          git -C provider rev-parse HEAD > provider_commit.txt
+          make -C provider -j2 class
+      - name: Generate frozen 17-arm stencil
+        run: |
+          set -euo pipefail
+          cd provider; mkdir -p output ../m35_4d
+          python3 - <<'PY'
+          import pathlib,re
+          src=pathlib.Path('Misha.ini').read_text(); base={'alpha':.005,'beta':.025,'lambda':-.01,'Y_dm':0.}
+          specs={'base':base}
+          for tag,dq in [('gc',.002),('gf',.001)]:
+              for sgn,name in [(1,'p'),(-1,'m')]:
+                  q=.1+sgn*dq; specs[tag+name]={'alpha':.05*q,'beta':.25*q,'lambda':-.10*q,'Y_dm':0.}
+          for tag,dy in [('yc',.002),('yf',.001)]:
+              specs[tag+'p']={**base,'Y_dm':dy}; specs[tag+'m']={**base,'Y_dm':-dy}
+          for tag,db in [('bc',.0005),('bf',.00025)]:
+              specs[tag+'p']={**base,'beta':base['beta']+db}; specs[tag+'m']={**base,'beta':base['beta']-db}
+          for tag,dl in [('lc',.0002),('lf',.0001)]:
+              specs[tag+'p']={**base,'lambda':base['lambda']+dl}; specs[tag+'m']={**base,'lambda':base['lambda']-dl}
+          for tag,vals in specs.items():
+              t=src
+              for k,v in vals.items(): t=re.sub(rf'(?m)^\s*{re.escape(k)}\s*=.*$',f'{k} = {v:.16g}',t)
+              t=re.sub(r'(?m)^\s*root\s*=.*$',f'root = output/{tag}_',t)
+              pathlib.Path(f'{tag}.ini').write_text(t)
+          pathlib.Path('../m35_4d/arms.txt').write_text('\n'.join(specs)+'\n')
+          PY
+          grep -H -E '^(alpha|beta|lambda|Y_dm|root)[[:space:]]*=' *.ini > ../m35_4d/frozen_parameters.txt
+      - name: Execute frozen arms in one build
+        run: |
+          set -euo pipefail
+          cd provider
+          while read tag; do
+            set +e
+            ./class "$tag.ini" > "../m35_4d/$tag.stdout" 2> "../m35_4d/$tag.stderr"
+            rc=$?; set -e; echo "$rc" > "../m35_4d/$tag.exit"
+            if [ "$rc" -eq 0 ]; then cp "output/${tag}_cl.dat" "../m35_4d/${tag}_cl.dat"; cp "output/${tag}_pk.dat" "../m35_4d/${tag}_pk.dat"; fi
+          done < ../m35_4d/arms.txt
+      - name: Apply frozen 4D response analysis
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,math,pathlib,numpy as np
+          b=pathlib.Path('m35_4d'); pin=pathlib.Path('provider_commit.txt').read_text().strip(); expected='d9a20bd0c7b7a6c8957410fd245ed06b30b915c1'
+          tags=(b/'arms.txt').read_text().split(); exits={t:int((b/f'{t}.exit').read_text()) for t in tags}
+          out={'schema':'m35_same_build_4d_local_response_v0.1','model_id':'M35','family_id':'F35','protocol':'protocol/W07_M35_SAME_BUILD_4D_LOCAL_RESPONSE_v0.1.md','provider_commit':pin,'expected_commit':expected,'exits':exits,'K2_promoted':False,'canonical_K2_remains':'PARTIAL','physical_falsification':False,'full_Einstein_Aether_SVT_claim':False}
+          def tab(path):
+              rows=[]
+              for line in path.read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  try: rows.append([float(x) for x in s.split()])
+                  except ValueError: pass
+              a=np.asarray(rows,float)
+              if a.ndim!=2 or len(a)<5 or a.shape[1]<2 or not np.isfinite(a).all(): raise RuntimeError(f'bad table {path}')
+              return a
+          def geom(a,c):
+              na=float(np.linalg.norm(a)); nb=float(np.linalg.norm(c)); co=float(np.dot(a,c)/(na*nb)); co=max(-1.,min(1.,co)); ang=float(math.degrees(math.acos(abs(co)))); mm=abs(na-nb)/max(na,nb)
+              return {'principal_angle_deg':ang,'relative_norm_mismatch':mm,'passes_5deg_025':bool(ang<=5 and mm<=.25),'absolute_cosine':abs(co)}
+          try:
+              if pin!=expected or exits['base']!=0: raise RuntimeError('provider/base integrity blocked')
+              if any(v!=0 for v in exits.values()):
+                  out['classification']='M35_SAME_BUILD_4D_PROVIDER_BLOCKED'; out['failed_arms']=[t for t,v in exits.items() if v!=0]
+              else:
+                  cls={t:tab(b/f'{t}_cl.dat') for t in tags}; pks={t:tab(b/f'{t}_pk.dat') for t in tags}
+                  maps={t:{int(r[0]):r[1:] for r in cls[t]} for t in tags}; common=sorted(set.intersection(*(set(maps[t]) for t in tags))); nc=min(len(maps[t][l]) for t in tags for l in common)
+                  cmb={t:np.asarray([maps[t][l][j] for l in common for j in range(nc)],float) for t in tags}; cn=float(np.linalg.norm(cmb['base']))
+                  lo=max(a[:,0].min() for a in pks.values()); hi=min(a[:,0].max() for a in pks.values()); bb=pks['base']; m=(bb[:,0]>=lo)&(bb[:,0]<=hi); k=bb[m,0]; pk={t:(bb[m,1] if t=='base' else np.interp(k,pks[t][:,0],pks[t][:,1])) for t in tags}; pn=float(np.linalg.norm(pk['base']))
+                  if cn==0 or pn==0 or len(common)<100 or len(k)<20: raise RuntimeError('support/norm invalid')
+                  dirs={'gravity':('gcp','gcm',.002,'gfp','gfm',.001),'Y_dm':('ycp','ycm',.002,'yfp','yfm',.001),'beta':('bcp','bcm',.0005,'bfp','bfm',.00025),'lambda':('lcp','lcm',.0002,'lfp','lfm',.0001)}
+                  fine={}; info={}
+                  def deriv(p,m,h): return np.concatenate([(cmb[p]-cmb[m])/(2*h*cn),(pk[p]-pk[m])/(2*h*pn)])
+                  for d,(cp,cm,ch,fp,fm,fh) in dirs.items():
+                      c=deriv(cp,cm,ch); f=deriv(fp,fm,fh); g=geom(c,f); info[d]={'convergence':g,'converged':g['passes_5deg_025']}; fine[d]=f
+                  order=['gravity','Y_dm','beta','lambda']; elig=[d for d in order if info[d]['converged']]
+                  M=np.column_stack([fine[d] for d in elig]) if elig else np.empty((len(fine['gravity']),0)); sv=np.linalg.svd(M,compute_uv=False) if elig else np.array([]); tol=float(max(M.shape)*np.finfo(float).eps*sv[0]) if len(sv) else 0.; rank=int(np.sum(sv>tol)) if len(sv) else 0
+                  pair={}
+                  for i,a in enumerate(order):
+                      for c in order[i+1:]: pair[f'{a}__{c}']=geom(fine[a],fine[c])
+                  incremental={}; prev=[]
+                  for d in order:
+                      if not info[d]['converged']: incremental[d]={'eligible':False}; continue
+                      v=fine[d]; nv=float(np.linalg.norm(v))
+                      if not prev: incremental[d]={'eligible':True,'angle_to_previous_span_deg':90.0,'orthogonal_fraction':1.0}
+                      else:
+                          A=np.column_stack([fine[x] for x in prev]); Q=np.linalg.qr(A)[0]; r=v-Q@(Q.T@v); frac=max(0.,min(1.,float(np.linalg.norm(r)/nv))); incremental[d]={'eligible':True,'angle_to_previous_span_deg':float(math.degrees(math.asin(frac))),'orthogonal_fraction':frac}
+                      prev.append(d)
+                  out.update({'global_support':{'ell_count':len(common),'cmb_values':len(cmb['base']),'pk_values':len(k),'pk_k_min':float(k.min()),'pk_k_max':float(k.max())},'directions':info,'eligible_directions':elig,'eligible_response_singular_values':sv.tolist(),'eligible_response_rank_tolerance':tol,'eligible_local_response_rank':rank,'pairwise_geometry':pair,'incremental_span_geometry':incremental})
+                  out['classification']=f'M35_SAME_BUILD_LOCAL_RESPONSE_RANK_{rank}_ELIGIBLE_{len(elig)}_SOURCE_QUOTIENT_OPEN'
+                  out['interpretation']='Same-build local observable-response rank only. Canonical K2 remains PARTIAL until full covariant SVT and quotient/equivalence closure.'
+          except Exception as e:
+              out['classification']='M35_SAME_BUILD_4D_RESPONSE_INTEGRITY_BLOCKED'; out['error']=repr(e)
+          pathlib.Path('M35_SAME_BUILD_4D_LOCAL_RESPONSE.json').write_text(json.dumps(out,indent=2)+'\n')
+          pathlib.Path('M35_SAME_BUILD_4D_LOCAL_RESPONSE.md').write_text('# M35 same-build 4D local response\n\nClassification: `'+out['classification']+'`  \nEligible rank: `'+str(out.get('eligible_local_response_rank'))+'`  \nEligible directions: `'+str(out.get('eligible_directions'))+'`  \n\nCanonical K2 remains PARTIAL.\n')
+          print(pathlib.Path('M35_SAME_BUILD_4D_LOCAL_RESPONSE.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m35-same-build-4d-local-response
+          path: |
+            M35_SAME_BUILD_4D_LOCAL_RESPONSE.json
+            M35_SAME_BUILD_4D_LOCAL_RESPONSE.md
+            provider_commit.txt
+            m35_4d/
