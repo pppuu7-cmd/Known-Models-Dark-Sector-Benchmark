@@ -1,0 +1,81 @@
+name: W07 M35 CLASS_LVDM K4 local 2D precision
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w07-m35-k4-local-2d-precision.yml'
+      - 'verification/m35/k4_local_2d_precision.py'
+      - 'protocol/W07_M35_K4_LOCAL_2D_PRECISION_PREREGISTRATION_v0.1.md'
+permissions:
+  contents: read
+jobs:
+  k4-local-2d:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      PROVIDER_COMMIT: d9a20bd0c7b7a6c8957410fd245ed06b30b915c1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact pinned CLASS_LVDM
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential gfortran python3-numpy >/dev/null
+          git clone -q --branch LVDM https://github.com/Michalychforever/CLASS_LVDM.git provider
+          git -C provider checkout -q "$PROVIDER_COMMIT"
+          test "$(git -C provider rev-parse HEAD)" = "$PROVIDER_COMMIT"
+          make -C provider -j2 class
+      - name: Freeze three local physical points and precision profiles
+        run: |
+          set -euo pipefail
+          BASE="$GITHUB_WORKSPACE/m35k4"; mkdir -p "$BASE"
+          python3 - "$BASE" <<'PY'
+          import pathlib,re,sys
+          b=pathlib.Path(sys.argv[1]);src=pathlib.Path('provider/Misha.ini').read_text()
+          specs={'base':(0.100,0.000),'gravity':(0.102,0.000),'Y':(0.100,0.002)}
+          for point,(q,y) in specs.items():
+            t=src
+            for key,val in {'alpha':0.05*q,'beta':0.25*q,'lambda':-0.10*q,'Y_dm':y}.items():
+              t=re.sub(rf'(?m)^\s*{re.escape(key)}\s*=.*$',f'{key} = {val:.16g}',t)
+            for prof in ['default','permille','reference']:
+              u=re.sub(r'(?m)^\s*root\s*=.*$',f'root = {b}/{point}_{prof}_',t)
+              (b/f'{point}_{prof}.ini').write_text(u)
+          PY
+      - name: Execute nine frozen solver cases
+        shell: bash
+        run: |
+          set +e
+          BASE="$GITHUB_WORKSPACE/m35k4"
+          echo '{"build":0}' > "$BASE/status.json"
+          for point in base gravity Y; do
+            for prof in default permille reference; do
+              if [ "$prof" = default ]; then
+                ./provider/class "$BASE/${point}_${prof}.ini" > "$BASE/${point}_${prof}.stdout" 2> "$BASE/${point}_${prof}.stderr"
+              elif [ "$prof" = permille ]; then
+                ./provider/class "$BASE/${point}_${prof}.ini" provider/cl_permille.pre > "$BASE/${point}_${prof}.stdout" 2> "$BASE/${point}_${prof}.stderr"
+              else
+                ./provider/class "$BASE/${point}_${prof}.ini" provider/cl_ref.pre > "$BASE/${point}_${prof}.stdout" 2> "$BASE/${point}_${prof}.stderr"
+              fi
+              rc=$?
+              python3 - "$BASE/status.json" "${point}_${prof}" "$rc" <<'PY'
+          import json,sys
+          p,k,rc=sys.argv[1],sys.argv[2],int(sys.argv[3]);d=json.load(open(p));d[k]=rc;open(p,'w').write(json.dumps(d,sort_keys=True)+'\n')
+          PY
+            done
+          done
+          cat "$BASE/status.json"
+          exit 0
+      - name: Analyze preregistered local 2D precision gate
+        run: |
+          set -euo pipefail
+          BASE="$GITHUB_WORKSPACE/m35k4"
+          python3 verification/m35/k4_local_2d_precision.py "$BASE" "$BASE/status.json" M35_K4_LOCAL_2D_PRECISION_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m35-k4-local-2d-precision
+          path: |
+            M35_K4_LOCAL_2D_PRECISION_RESULT.json
+            m35k4/
+          retention-days: 30
