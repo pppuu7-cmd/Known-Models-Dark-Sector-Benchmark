@@ -1,0 +1,42 @@
+{
+  "schema": "KMDSB.M20.K2SigmaWLocalGeometrySummary.v1",
+  "family_id": "F20",
+  "model_id": "M20",
+  "provider": "shinichiroando/sashimi-si",
+  "provider_commit": "e17d3664dac677b604fd4ff02fb2af105a6937fa",
+  "preregistration": "protocol/W04_M20_K2_SIGMA_W_LOCAL_GEOMETRY_PREREGISTRATION_v0.1.md",
+  "run_id": 34719372299,
+  "job_id": 103622273138,
+  "artifact_id": 10305763421,
+  "artifact_sha256": "d3e28978e7e3f996d63d9ad4f33d0e9d0aa7cc9c2b3e88d6bae2bd3e1154e145",
+  "base_sigma0_m": 0.1,
+  "base_w_km_s": 24.33,
+  "numerics": {"N_herm":25,"N_ma":120,"dz":0.05,"M0":1000000000000.0,"redshift":0.0,"zmax":4.0,"logmamin":9},
+  "sigma_tangent": {
+    "coarse_fine_signed_cosine": 0.9999999148745746,
+    "relative_norm_mismatch": 0.0002702271473803976,
+    "coarse_norm": 1.7247581596951127,
+    "fine_norm": 1.7252243621530885,
+    "pass": true
+  },
+  "w_tangent": {
+    "coarse_fine_signed_cosine": 0.9998745616099864,
+    "relative_norm_mismatch": 0.0017417452375661927,
+    "coarse_norm": 2.8776426995652846,
+    "fine_norm": 2.8726392937561394,
+    "pass": true
+  },
+  "fine_local_independence": {
+    "signed_cosine": 0.9976145706197536,
+    "principal_angle_deg": 3.9582870141455415,
+    "normalized_column_singular_values": [1.4133699341006776,0.048840857693600005],
+    "s2_over_s1": 0.03455631573532606,
+    "pass": false
+  },
+  "classification": "M20_K2_FINITE_BASE_SIGMA_W_LOCAL_DEGENERACY_DIAGNOSTIC",
+  "K2_promoted": false,
+  "K5_promoted": false,
+  "scientific_fail": false,
+  "physical_falsification": false,
+  "interpretation": "Both finite-base log-parameter tangents are numerically well converged, but their response directions are nearly collinear and fail the prospectively frozen local-independence gate. This strengthens a locally low-rank/degenerate interpretation of the tested nonlinear response map; it does not remove the exact-CDM-boundary unidentifiability of w and does not promote K2 or K5."
+}
