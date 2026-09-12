@@ -1,0 +1,81 @@
+name: W07 M40 K2 path geometry audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m40-k2-path-geometry-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch immutable successful M40 K1 recovery
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p input
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10298366664/zip" > input.zip
+          unzip -q input.zip -d input
+          sha256sum input.zip > input_zip_sha256.txt
+      - name: Audit frozen parameter-path rank
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib,re
+          import numpy as np
+          root=pathlib.Path('input')
+          result=json.loads(next(root.rglob('M40_K1_INCLUDE_RECOVERY_RESULT.json')).read_text())
+          b=next(p for p in root.rglob('m40recovery') if p.is_dir())
+          labels=['ref','s1','s01','s001','s0001']
+          keys=['Horava_xi','Horava_lambda','Horava_eta']
+          pars={}
+          for lab in labels:
+              txt=(b/f'{lab}.ini').read_text()
+              vals=[]
+              for k in keys:
+                  m=re.search(rf'(?m)^\s*{re.escape(k)}\s*=\s*([^#\s]+)',txt)
+                  if not m: raise RuntimeError(f'{lab}: missing {k}')
+                  vals.append(float(m.group(1)))
+              pars[lab]=vals
+          active=np.asarray([pars[x] for x in ['s1','s01','s001','s0001']],float)
+          rank=int(np.linalg.matrix_rank(active,tol=1e-14))
+          ref=np.asarray(pars['ref'],float)
+          disp=active-ref
+          affine_rank=int(np.linalg.matrix_rank(disp,tol=1e-14))
+          norms=np.linalg.norm(active,axis=1); unit=active/norms[:,None]
+          radial_spread=float(np.max(np.linalg.norm(unit-unit[0],axis=1)))
+          native_source_separate_parameters=True
+          ok=(result.get('classification')=='M40_K1_PASS_WITH_SCOPE_AFTER_HARNESS_RECOVERY' and result.get('K1_scoped_pass') and
+              result.get('native_zero_vs_explicit_GR',{}).get('pass') and not result.get('physical_falsification'))
+          cls='M40_K2_NOT_CLOSED_BY_RANK1_K1_LADDER' if ok and rank==1 else 'M40_K2_PATH_GEOMETRY_AUDIT_INTEGRITY_BLOCKED'
+          out={
+            'schema':'m40_k2_path_geometry_audit_v0.1','model_id':'M40','family_id':'F40',
+            'source_run':34693761809,'source_artifact':10298366664,'provider_commit':result.get('provider_commit'),
+            'parameter_order':keys,'points':pars,'active_point_matrix_rank_from_zero':rank,'affine_displacement_rank_from_native_zero':affine_rank,
+            'max_unit_direction_spread':radial_spread,'strictly_radial_from_zero':bool(rank==1 and radial_spread<1e-12),
+            'native_config_exposes_xi_lambda_eta_as_separate_inputs':native_source_separate_parameters,
+            'K1_success_integrity':bool(ok),'classification':cls,'K2_promoted':False,'physical_falsification':False,
+            'interpretation':'The successful K1 ladder establishes the reference limit only along one joint xi/lambda/eta ray. It cannot establish multidimensional Hořava parameter geometry or quotient structure. The pinned native test configuration exposes xi, lambda and eta separately, motivating a prospectively frozen orthogonal local-response probe.'
+          }
+          pathlib.Path('M40_K2_PATH_GEOMETRY_AUDIT.json').write_text(json.dumps(out,indent=2)+'\n')
+          with open('M40_K2_PATH_GEOMETRY_AUDIT.md','w') as f:
+              f.write('# M40 K2 path-geometry audit\n\n')
+              f.write(f"Classification: `{cls}`  \n")
+              f.write(f"Active rank from zero: {rank}; affine displacement rank: {affine_rank}; max unit-direction spread: {radial_spread:.6g}.  \n")
+              f.write('K2 is not promoted. This audit only determines whether the existing successful K1 ladder supplies enough parameter-space geometry.\n')
+          print(pathlib.Path('M40_K2_PATH_GEOMETRY_AUDIT.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m40-k2-path-geometry-audit
+          path: |
+            M40_K2_PATH_GEOMETRY_AUDIT.json
+            M40_K2_PATH_GEOMETRY_AUDIT.md
+            input_zip_sha256.txt
