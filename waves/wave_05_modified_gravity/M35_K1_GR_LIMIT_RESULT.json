@@ -1,0 +1,22 @@
+{
+  "schema": "m35_k1_gr_limit_ladder_v0.1",
+  "model_id": "M35",
+  "provider": "CLASS_LVDM",
+  "provider_commit": "d9a20bd0c7b7a6c8957410fd245ed06b30b915c1",
+  "run_id": 34657362639,
+  "artifact_id": 10286581994,
+  "artifact_digest": "sha256:2ffb54348c923579227c8e75a211fee54ced12e83221a69f00527daaab6edcc0",
+  "classification": "M35_K1_PASS_WITH_SCOPE_PINNED_CLASS_LVDM_GR_LIMIT",
+  "K1_promoted": true,
+  "physical_falsification": false,
+  "scales": [1.0, 0.1, 0.01, 0.001],
+  "tt_sequence": [0.3987044857396753, 0.0436164878611354, 0.004389698478139386, 0.0004631048758734637],
+  "pk_sequence": [0.39837134001877567, 0.04352225815275097, 0.004344608667604057, 0.000395254613340203],
+  "final_over_initial_tt": 0.0011615241173279327,
+  "final_over_initial_pk": 0.0009921763280500405,
+  "monotone_tt_2pct_slack": true,
+  "monotone_pk_2pct_slack": true,
+  "contraction_tt_le_0p2": true,
+  "contraction_pk_le_0p2": true,
+  "scope": "Pinned CLASS_LVDM scalar-cosmology weak-coupling continuity only; no complete Einstein-Aether scalar/vector/tensor coverage claim; K2-K9 remain open."
+}
