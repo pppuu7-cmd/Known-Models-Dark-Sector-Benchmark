@@ -1,0 +1,51 @@
+name: W04 M20 SIDM K4 numerical axis localization
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m20-k4-numerical-axis-localization.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PROVIDER_PIN: e17d3664dac677b604fd4ff02fb2af105a6937fa
+
+jobs:
+  axis:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        lane: [hermite5, dz01]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin provider and dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/shinichiroando/sashimi-si.git sashimi
+          git -C sashimi checkout -q --detach "$PROVIDER_PIN"
+          test "$(git -C sashimi rev-parse HEAD)" = "$PROVIDER_PIN"
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3 scipy==1.16.1 numexpr==2.11.0 tqdm==4.67.1
+          git -C sashimi rev-parse HEAD > provider_commit.txt
+      - name: Run preregistered numerical-axis diagnostic
+        shell: bash
+        env:
+          LANE: ${{ matrix.lane }}
+        run: |
+          set -euo pipefail
+          python3 verification/m20/k4_numerical_axis_localization.py sashimi "$LANE" "M20_K4_${LANE}.json"
+          cat "M20_K4_${LANE}.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m20-k4-${{ matrix.lane }}
+          path: |
+            M20_K4_${{ matrix.lane }}.json
+            provider_commit.txt
+          retention-days: 30
