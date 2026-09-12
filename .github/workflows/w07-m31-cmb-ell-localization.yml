@@ -1,0 +1,117 @@
+name: W07 M31 immutable CMB ell localization
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m31-cmb-ell-localization.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  localize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analysis dependency
+        run: sudo apt-get update -qq && sudo apt-get install -y python3-numpy >/dev/null
+      - name: Fetch immutable M31 raw artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p inputs/parent inputs/fine out
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10298453048/zip" > /tmp/parent.zip
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10298900445/zip" > /tmp/fine.zip
+          unzip -q /tmp/parent.zip -d inputs/parent
+          unzip -q /tmp/fine.zip -d inputs/fine
+          sha256sum /tmp/parent.zip /tmp/fine.zip > out/artifact_zip_sha256.txt
+      - name: Apply frozen ell-band localization rule
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, math, pathlib
+          import numpy as np
+          pin='0009f51d89e6465c79e570b496c66fc90058fa77'
+          roots={'parent':pathlib.Path('inputs/parent'),'fine':pathlib.Path('inputs/fine')}
+          tags=['base','rp2','rm2','rp1','rm1']
+          def one(root,name):
+              hits=list(root.rglob(name))
+              if len(hits)!=1: raise RuntimeError(f'{root}/{name}: expected 1, got {len(hits)}')
+              return hits[0]
+          def read_tt(path):
+              d={}
+              for line in path.read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  p=s.split()
+                  try:
+                      ell=int(float(p[0])); tt=float(p[1])
+                  except (ValueError,IndexError): continue
+                  if np.isfinite(tt): d[ell]=tt
+              if len(d)<100: raise RuntimeError(f'bad TT table {path}')
+              return d
+          out={'schema':'m31_cmb_ell_localization_v0.1','model_id':'M31','family_id':'F31',
+               'protocol':'protocol/W07_M31_CMB_ELL_LOCALIZATION_v0.1.md',
+               'inputs':{'parent':{'run':34694420359,'artifact':10298453048},'fine':{'run':34695461864,'artifact':10298900445}},
+               'provider_commit_expected':pin,'K2_promoted':False,'physical_falsification':False,'family_exclusion':False}
+          try:
+              rec={}
+              for key,root in roots.items():
+                  commit=one(root,'provider_commit.txt').read_text().strip()
+                  if commit!=pin: raise RuntimeError(f'{key} provider mismatch {commit}')
+                  rec[key]={t:read_tt(one(root,f'{t}_00_cl.dat')) for t in tags}
+              common=sorted(set.intersection(*(set(rec[k][t]) for k in rec for t in tags)))
+              bands={'low_2_30':(2,30),'acoustic_low_31_200':(31,200),'acoustic_mid_201_1000':(201,1000),'high_1001_2500':(1001,2500),'full_2_2500':(2,2500)}
+              def vec(key,tag,ells): return np.asarray([rec[key][tag][l] for l in ells],float)
+              def geom(a,b):
+                  na=float(np.linalg.norm(a)); nb=float(np.linalg.norm(b))
+                  if na==0 or nb==0: raise RuntimeError('zero derivative norm')
+                  c=float(np.dot(a,b)/(na*nb)); c=max(-1.,min(1.,c)); ang=float(math.degrees(math.acos(abs(c))))
+                  mm=abs(na-nb)/max(na,nb)
+                  return {'principal_angle_deg':ang,'relative_norm_mismatch':mm,'absolute_cosine':abs(c),'passes_5deg_025':bool(ang<=5. and mm<=.25)}
+              results={}; failed=[]
+              base_cons=[]
+              for name,(lo,hi) in bands.items():
+                  ells=[l for l in common if lo<=l<=hi]
+                  if len(ells)<5: raise RuntimeError(f'insufficient ell support {name}')
+                  b0=vec('fine','base',ells); bp=vec('parent','base',ells)
+                  scale=np.maximum(np.maximum(abs(b0),abs(bp)),1e-30)
+                  base_rel=float(np.max(abs(b0-bp)/scale)); base_cons.append(base_rel)
+                  norm=float(np.linalg.norm(b0))
+                  if norm==0: raise RuntimeError(f'zero base norm {name}')
+                  d_p001=(vec('parent','rp1',ells)-vec('parent','rm1',ells))/(2*.001*norm)
+                  d_f0005=(vec('fine','rp2',ells)-vec('fine','rm2',ells))/(2*.0005*norm)
+                  d_f00025=(vec('fine','rp1',ells)-vec('fine','rm1',ells))/(2*.00025*norm)
+                  g1=geom(d_p001,d_f0005); g2=geom(d_f0005,d_f00025)
+                  conv=bool(g1['passes_5deg_025'] and g2['passes_5deg_025'])
+                  results[name]={'ell_count':len(ells),'base_parent_vs_fine_max_sym_rel':base_rel,'h001_vs_h0005':g1,'h0005_vs_h00025':g2,'converged':conv}
+                  if not conv and name!='full_2_2500': failed.append(name)
+              out['base_identity_max_sym_rel']=max(base_cons); out['bands']=results; out['failed_subbands']=failed
+              if not failed:
+                  cls='M31_CMB_RADIAL_NONCONVERGENCE_NOT_LOCALIZED_IN_FROZEN_SUBBANDS'
+              elif len(failed)==1:
+                  cls='M31_CMB_RADIAL_NONCONVERGENCE_LOCALIZED_'+failed[0].upper()
+              else:
+                  cls='M31_CMB_RADIAL_NONCONVERGENCE_MULTIBAND'
+              out['classification']=cls
+              out['interpretation']='Analysis-only localization of immutable TT radial finite-difference behavior; no new h, retuning, K2 promotion or family exclusion.'
+          except Exception as e:
+              out['classification']='M31_CMB_ELL_LOCALIZATION_INTEGRITY_BLOCKED'; out['error']=repr(e)
+          pathlib.Path('out/M31_CMB_ELL_LOCALIZATION.json').write_text(json.dumps(out,indent=2)+'\n')
+          with open('out/M31_CMB_ELL_LOCALIZATION.md','w') as f:
+              f.write('# M31 immutable CMB ell localization\n\n')
+              f.write(f"Classification: `{out['classification']}`  \n")
+              for k,v in out.get('bands',{}).items():
+                  f.write(f"- {k}: converged={v['converged']}; h=.001/.0005 angle={v['h001_vs_h0005']['principal_angle_deg']:.6g}; h=.0005/.00025 angle={v['h0005_vs_h00025']['principal_angle_deg']:.6g}\n")
+              f.write('\nNo K2 promotion or physical-family exclusion is authorized.\n')
+          print(pathlib.Path('out/M31_CMB_ELL_LOCALIZATION.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m31-cmb-ell-localization
+          path: out/
