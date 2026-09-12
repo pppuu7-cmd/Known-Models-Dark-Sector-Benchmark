@@ -1,0 +1,108 @@
+name: W07 M33 early-time stability-noise diagnostic
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m33-early-time-stability-noise-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  HICLASS_PIN: '0009f51d89e6465c79e570b496c66fc90058fa77'
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact pinned hi_class
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3-numpy >/dev/null
+          git clone -q https://github.com/hiclass-code/hi_class_public.git provider
+          git -C provider checkout -q --detach "$HICLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$HICLASS_PIN"
+          make -C provider -j2 >/dev/null
+          git -C provider rev-parse HEAD > provider_commit.txt
+      - name: Generate frozen profiles and points
+        run: |
+          set -euo pipefail
+          mkdir -p m33noise
+          python3 - <<'PY'
+          import pathlib,re
+          src=pathlib.Path('provider/gravity_models/galileon_3.ini').read_text(); out=pathlib.Path('m33noise').resolve(); vals=[.001,.0035,.004,.0045,.005]
+          profiles={'baseline':{},'late_start':{'a_min_stability_test_smg':'1e-13'},'tiny_D_safe':{'D_safe_smg':'1e-100'}}
+          def drop(t,key): return re.sub(rf'(?m)^{re.escape(key)}\s*=.*\n?','',t)
+          def setkey(t,key,val):
+              if re.search(rf'(?m)^\s*{re.escape(key)}\s*=',t): return re.sub(rf'(?m)^\s*{re.escape(key)}\s*=.*$',f'{key} = {val}',t)
+              return t+'\n'+f'{key} = {val}\n'
+          rows=[]
+          for prof,mods in profiles.items():
+              for v in vals:
+                  tag=prof+'_om_'+str(v).replace('.','p'); t=re.sub(r'(?m)^Omega_smg\s*=.*$',f'Omega_smg = {v}',src); t=drop(drop(t,'Omega_Lambda'),'Omega_fld')
+                  t=setkey(t,'D_safe_smg','0.'); t=setkey(t,'a_min_stability_test_smg','0')
+                  for k,x in mods.items(): t=setkey(t,k,x)
+                  t=re.sub(r'(?m)^root\s*=.*$',f'root = {out}/{tag}_',t); (out/f'{tag}.ini').write_text(t); rows.append((tag,prof,v))
+          (out/'grid.tsv').write_text('\n'.join(f'{a}\t{p}\t{v}' for a,p,v in rows)+'\n')
+          PY
+      - name: Execute frozen diagnostic matrix
+        run: |
+          set +e
+          while IFS=$'\t' read -r tag prof val; do
+            ./provider/class "m33noise/${tag}.ini" > "m33noise/${tag}.stdout" 2> "m33noise/${tag}.stderr"
+            echo $? > "m33noise/${tag}.exit"
+          done < m33noise/grid.tsv
+          exit 0
+      - name: Apply frozen sensitivity classification
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib,re,numpy as np
+          b=pathlib.Path('m33noise'); expected='0009f51d89e6465c79e570b496c66fc90058fa77'; pin=pathlib.Path('provider_commit.txt').read_text().strip()
+          out={'schema':'m33_early_time_stability_noise_diagnostic_v0.1','model_id':'M33','family_id':'F33','protocol':'protocol/W07_M33_EARLY_TIME_STABILITY_NOISE_DIAGNOSTIC_v0.1.md','provider_commit':pin,'expected_commit':expected,'K1_promoted':False,'physical_falsification':False,'family_wide_stability_claim':False}
+          def finite(pat):
+              h=sorted(b.glob(pat)); rr=[]
+              if not h:return False
+              for line in h[0].read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'):continue
+                  try:rr.append([float(x) for x in s.split()])
+                  except ValueError:pass
+              try:a=np.asarray(rr,float);return bool(a.ndim==2 and len(a)>=5 and np.isfinite(a).all())
+              except:return False
+          try:
+              if pin!=expected: raise RuntimeError('provider pin mismatch')
+              pts=[]
+              for line in (b/'grid.tsv').read_text().splitlines():
+                  tag,prof,sv=line.split('\t');v=float(sv);ex=int((b/f'{tag}.exit').read_text());txt=(b/f'{tag}.stdout').read_text(errors='replace')+'\n'+(b/f'{tag}.stderr').read_text(errors='replace');ghost='ghost instability' in txt.lower();ok=ex==0 and finite(f'{tag}_*cl.dat') and finite(f'{tag}_*pk.dat');m=re.search(r'minimum\s+D\s*=\s*([+\-0-9.eE]+)\s+at\s+a\s*=\s*([+\-0-9.eE]+)',txt,re.I)
+                  pts.append({'profile':prof,'Omega_smg':v,'exit':ex,'finite_cl_pk':ok,'ghost_veto':ghost,'minimum_D':float(m.group(1)) if m else None,'minimum_D_a':float(m.group(2)) if m else None,'classification':'finite' if ok else 'ghost_veto' if ex!=0 and ghost else 'other_failure'})
+              out['points']=pts
+              vals=[.001,.0035,.004,.0045,.005]
+              def allcls(prof,cls): return all(next(p for p in pts if p['profile']==prof and abs(p['Omega_smg']-v)<1e-12)['classification']==cls for v in vals)
+              baseline=allcls('baseline','ghost_veto'); late=allcls('late_start','finite'); safe=allcls('tiny_D_safe','finite')
+              out['baseline_reproduces_all_vetoes']=baseline;out['late_start_all_finite']=late;out['tiny_D_safe_all_finite']=safe
+              if not baseline: out['classification']='M33_NOISE_DIAGNOSTIC_BASELINE_REPRODUCIBILITY_BLOCKED'
+              elif late and safe: out['classification']='M33_TINY_EARLY_D_VETO_PROVIDER_NOISE_CONTROLS_SENSITIVE'
+              elif late: out['classification']='M33_TINY_EARLY_D_VETO_EARLY_TIME_CUTOFF_SENSITIVE'
+              elif safe: out['classification']='M33_TINY_EARLY_D_VETO_D_SAFE_SENSITIVE'
+              else: out['classification']='M33_TINY_EARLY_D_VETO_PERSISTS_UNDER_FROZEN_NOISE_CONTROLS'
+              out['interpretation']='Diagnostic sensitivity of pinned-provider strict stability classification only. Finite diagnostic runs do not establish physical family stability or promote K1.'
+          except Exception as e:
+              out['classification']='M33_NOISE_DIAGNOSTIC_INTEGRITY_BLOCKED';out['error']=repr(e)
+          pathlib.Path('M33_EARLY_TIME_STABILITY_NOISE_DIAGNOSTIC.json').write_text(json.dumps(out,indent=2)+'\n')
+          pathlib.Path('M33_EARLY_TIME_STABILITY_NOISE_DIAGNOSTIC.md').write_text('# M33 early-time stability-noise diagnostic\n\nClassification: `'+out['classification']+'`  \n\nDiagnostic only; no K1 promotion or family stability claim.\n')
+          print(pathlib.Path('M33_EARLY_TIME_STABILITY_NOISE_DIAGNOSTIC.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m33-early-time-stability-noise-diagnostic
+          path: |
+            M33_EARLY_TIME_STABILITY_NOISE_DIAGNOSTIC.json
+            M33_EARLY_TIME_STABILITY_NOISE_DIAGNOSTIC.md
+            provider_commit.txt
+            m33noise/
