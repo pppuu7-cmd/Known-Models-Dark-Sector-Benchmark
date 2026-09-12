@@ -1,0 +1,99 @@
+name: W07 M33 frozen source-route adjudication
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m33-source-route-adjudication.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  AUDIT_RUN: '34667305834'
+  AUDIT_ARTIFACT: '10289263752'
+  PROVIDER_REPO: 'https://github.com/hiclass-code/hi_class_public.git'
+  PROVIDER_COMMIT: '0009f51d89e6465c79e570b496c66fc90058fa77'
+
+jobs:
+  adjudicate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch immutable quantitative audit and exact provider
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p parent
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${AUDIT_ARTIFACT}/zip" > parent/m33-audit.zip
+          unzip -q parent/m33-audit.zip -d parent/m33-audit
+          git clone -q "$PROVIDER_REPO" provider
+          git -C provider checkout -q "$PROVIDER_COMMIT"
+          test "$(git -C provider rev-parse HEAD)" = "$PROVIDER_COMMIT"
+      - name: Apply frozen source-route adjudication rule
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python - <<'PY'
+          import hashlib,json,pathlib,re
+          root=pathlib.Path('parent/m33-audit')
+          hits=list(root.rglob('M33_FROZEN_REFERENCE_PATH_AUDIT.json'))
+          if len(hits)!=1: raise SystemExit(f'expected one quantitative audit, got {len(hits)}')
+          q=json.load(open(hits[0]))
+          pin='0009f51d89e6465c79e570b496c66fc90058fa77'
+          g3=pathlib.Path('provider/gravity_models/galileon_3.ini')
+          hcfg=pathlib.Path('provider/hi_class.ini')
+          if not g3.exists() or not hcfg.exists(): raise SystemExit('required pinned source files missing')
+          gt=g3.read_text(errors='strict'); ht=hcfg.read_text(errors='strict')
+          cubic_decl=bool(re.search(r'gravity_submodel\s*=\s*cubic',gt,re.I))
+          no_extra=bool(re.search(r'no extra parameters in cubic model',gt,re.I))
+          tracker_fixed=bool(re.search(r'all model parameters are fixed by Omega_smg and the tracker condition',gt,re.I))
+          debug_marked=bool(re.search(r'Omega_smg_debug.*debugging purposes',gt,re.I|re.S))
+          omega_zero_off=bool(re.search(r'if set to zero.*skip the equations of the scalar field',ht,re.I|re.S))
+          quantitative_ok=bool(q.get('integrity_ok') and q.get('cmb_strict_prefix_contraction') and q.get('pk_strict_prefix_contraction') and q.get('omega_0p001_provider_stability_veto_confirmed'))
+          documented_physical_alt_found=False
+          # Frozen adjudication: a debug closure shortcut and the generic SMG-off switch are not counted as an internal author-supported physical cubic-Galileon continuation.
+          source_review_complete=all([cubic_decl,no_extra,tracker_fixed,debug_marked,omega_zero_off])
+          if quantitative_ok and source_review_complete and not documented_physical_alt_found:
+              cls='REFERENCE_PREFIX_CONTRACTS_STABILITY_BOUNDARY_CONFIRMED'
+          elif documented_physical_alt_found:
+              cls='ALTERNATE_AUTHOR_REFERENCE_ROUTE_FOUND_REQUIRES_NEW_PREREGISTRATION'
+          elif quantitative_ok:
+              cls='SOURCE_ROUTE_REVIEW_INCOMPLETE'
+          else:
+              cls='AUDIT_INTEGRITY_BLOCKED'
+          out={
+            'schema':'m33_source_route_adjudication_v0.1','model_id':'M33',
+            'quantitative_audit_run':34667305834,'quantitative_audit_artifact':10289263752,
+            'provider_commit':pin,'quantitative_prefix_contraction_confirmed':quantitative_ok,
+            'source_checks':{
+              'cubic_submodel_declared':cubic_decl,
+              'cubic_no_extra_parameters_statement':no_extra,
+              'all_cubic_parameters_fixed_by_Omega_smg_and_tracker_statement':tracker_fixed,
+              'Omega_smg_debug_explicitly_marked_debugging_only':debug_marked,
+              'Omega_smg_zero_generic_SMG_off_switch_statement':omega_zero_off
+            },
+            'documented_author_supported_internal_cubic_alternate_reference_route_found':documented_physical_alt_found,
+            'source_review_complete_under_frozen_files':source_review_complete,
+            'classification':cls,
+            'K1_promoted':False,'physical_falsification':False,'family_wide_stability_claim':False,
+            'interpretation':'The valid positive-Omega_smg prefix contracts toward the D_gr comparator, while the next tested smaller point is rejected by the pinned provider stability gate. In the frozen documented cubic configuration, no extra cubic parameter is exposed; Omega_smg_debug is explicitly a debugging shortcut, and Omega_smg=0 is the generic SMG-off switch. Therefore no documented author-supported internal cubic-Galileon alternate reference route is counted as found. This does not prove that no alternative theoretical route exists outside the frozen source scope.'
+          }
+          out['quantitative_artifact_zip_sha256']=hashlib.sha256(open('parent/m33-audit.zip','rb').read()).hexdigest()
+          json.dump(out,open('out/M33_SOURCE_ROUTE_ADJUDICATION.json','w'),indent=2)
+          pathlib.Path('out/M33_FROZEN_SOURCE_EXCERPTS.txt').write_text(
+              '# galileon_3.ini\n'+gt+'\n\n# hi_class.ini relevant lines\n'+'\n'.join(x for x in ht.splitlines() if 'Omega_smg' in x or 'scalar field' in x)+'\n')
+          with open('out/M33_SOURCE_ROUTE_ADJUDICATION.md','w') as f:
+              f.write('# M33 frozen source-route adjudication\n\n')
+              f.write(f'- quantitative contraction/stability evidence complete: {quantitative_ok}\n')
+              f.write(f'- frozen source checks complete: {source_review_complete}\n')
+              f.write(f'- documented internal physical cubic alternate route found: {documented_physical_alt_found}\n')
+              f.write(f'- classification: `{cls}`\n\n')
+              f.write('K1 remains unpromoted by this analysis-only adjudication. No family-wide falsification or universal stability boundary is claimed.\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m33-source-route-adjudication
+          path: out/
