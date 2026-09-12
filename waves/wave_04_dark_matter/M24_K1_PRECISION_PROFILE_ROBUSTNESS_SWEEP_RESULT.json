@@ -1,0 +1,50 @@
+{
+  "schema": "m24_k1_precision_profile_robustness_sweep_result_v0.1",
+  "model_id": "M24",
+  "family_id": "F24",
+  "date": "2026-09-12",
+  "run_id": 34716054597,
+  "head_commit": "16399c0d7ffd6d033d57c8f6d4f85a956d870eda",
+  "class_pin": "e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "a4_Mpc^-1": [60000.0, 18000.0, 6000.0, 1800.0, 600.0],
+  "profiles": {
+    "UR20": {
+      "job_id": 103613376606,
+      "artifact_id": 10306010310,
+      "artifact_sha256": "bb105e93ccdd0d63eaad1bfd188b2ffa85ade3d4d94c35985b7bd7f307e69697",
+      "R2_sequence": [2.583456036834494e-06, 2.2099566550339906e-06, 2.0927239555417225e-06, 2.04956665874183e-06, 2.04035183317337e-06],
+      "tail_over_top": 0.7897760999538475,
+      "tail_loglog_slope_smallest3": 0.011107315856520363,
+      "classification": "M24_ETHOS1_K1_DECOUPLING_NOT_ESTABLISHED",
+      "K1_reference_limit": "NOT_PROMOTED"
+    },
+    "UR30": {
+      "job_id": 103613376617,
+      "artifact_id": 10305225713,
+      "artifact_sha256": "6522dea836b9c5acdfe665e025356bc7bb48f3a09ca34e541499e2b42d6aa3ab",
+      "R2_sequence": [2.582285897613336e-06, 2.208878685483948e-06, 2.091672623349137e-06, 2.048524252564187e-06, 2.0393132033775004e-06],
+      "tail_over_top": 0.7897317664408595,
+      "tail_loglog_slope_smallest3": 0.011110250072532211,
+      "classification": "M24_ETHOS1_K1_DECOUPLING_NOT_ESTABLISHED",
+      "K1_reference_limit": "NOT_PROMOTED"
+    },
+    "UR40": {
+      "job_id": 103613376456,
+      "artifact_id": 10304894382,
+      "artifact_sha256": "1f1fa95f1c8afddae7ecb1453f754107e165e1f2787589fa3ff58933e77d5de8",
+      "R2_sequence": [2.581892951533243e-06, 2.2085580679761224e-06, 2.0913755746456484e-06, 2.0482359350579677e-06, 2.0390278595909535e-06],
+      "tail_over_top": 0.7897414408215833,
+      "tail_loglog_slope_smallest3": 0.011109338457699059,
+      "classification": "M24_ETHOS1_K1_DECOUPLING_NOT_ESTABLISHED",
+      "K1_reference_limit": "NOT_PROMOTED"
+    }
+  },
+  "tail_over_top_range": [0.7897317664408595, 0.7897760999538475],
+  "tail_over_top_absolute_spread": 4.433351298793742e-05,
+  "robustness_inference": "The shallow residual plateau is essentially invariant over ur_fluid_trigger_tau_over_tau_k=20,30,40. All three profiles fail the frozen quarter-contraction criterion and retain a near-zero tail slope around 0.01111.",
+  "diagnostic_only": true,
+  "canonical_promotion_authorized": false,
+  "K1_promoted": false,
+  "physical_falsification": false,
+  "scientific_fail": false
+}
