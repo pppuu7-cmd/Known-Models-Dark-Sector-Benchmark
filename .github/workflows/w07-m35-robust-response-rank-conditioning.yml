@@ -1,0 +1,96 @@
+name: W07 M35 robust response-rank conditioning audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m35-robust-response-rank-conditioning.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  condition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install numpy
+        run: sudo apt-get update -qq && sudo apt-get install -y python3-numpy >/dev/null
+      - name: Fetch immutable same-build response artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p input out
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/10301610297/zip" > /tmp/parent.zip
+          unzip -q /tmp/parent.zip -d input
+          sha256sum /tmp/parent.zip > out/parent_zip_sha256.txt
+      - name: Apply frozen robust-rank rule
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,math,pathlib,numpy as np
+          root=pathlib.Path('input'); b=next(root.rglob('m35_4d')); pin='d9a20bd0c7b7a6c8957410fd245ed06b30b915c1'
+          parent=json.loads(next(root.rglob('M35_SAME_BUILD_4D_LOCAL_RESPONSE.json')).read_text())
+          out={'schema':'m35_robust_response_rank_conditioning_v0.1','model_id':'M35','family_id':'F35','protocol':'protocol/W07_M35_ROBUST_RESPONSE_RANK_CONDITIONING_v0.1.md','parent_run':34703069517,'parent_artifact':10301610297,'provider_commit':parent.get('provider_commit'),'K2_promoted':False,'canonical_K2_remains':'PARTIAL','physical_falsification':False,'full_Einstein_Aether_SVT_claim':False}
+          def tab(path):
+              rows=[]
+              for line in path.read_text(errors='replace').splitlines():
+                  s=line.strip()
+                  if not s or s.startswith('#'): continue
+                  try: rows.append([float(x) for x in s.split()])
+                  except ValueError: pass
+              a=np.asarray(rows,float)
+              if a.ndim!=2 or len(a)<5 or a.shape[1]<2 or not np.isfinite(a).all(): raise RuntimeError(f'bad table {path}')
+              return a
+          def angle_to_span(v,cols):
+              nv=float(np.linalg.norm(v))
+              if not cols: return 90.0,1.0
+              A=np.column_stack(cols); Q=np.linalg.qr(A)[0]; r=v-Q@(Q.T@v); frac=max(0.,min(1.,float(np.linalg.norm(r)/nv))); return float(math.degrees(math.asin(frac))),frac
+          try:
+              if parent.get('provider_commit')!=pin or parent.get('eligible_directions')!=['gravity','Y_dm','beta','lambda']:
+                  raise RuntimeError('immutable prerequisite mismatch')
+              tags=['base','gfp','gfm','yfp','yfm','bfp','bfm','lfp','lfm']
+              cls={t:tab(b/f'{t}_cl.dat') for t in tags}; pks={t:tab(b/f'{t}_pk.dat') for t in tags}
+              maps={t:{int(r[0]):r[1:] for r in cls[t]} for t in tags}; common=sorted(set.intersection(*(set(maps[t]) for t in tags))); nc=min(len(maps[t][l]) for t in tags for l in common)
+              cmb={t:np.asarray([maps[t][l][j] for l in common for j in range(nc)],float) for t in tags}; cn=float(np.linalg.norm(cmb['base']))
+              lo=max(a[:,0].min() for a in pks.values()); hi=min(a[:,0].max() for a in pks.values()); bb=pks['base']; m=(bb[:,0]>=lo)&(bb[:,0]<=hi); k=bb[m,0]; pk={t:(bb[m,1] if t=='base' else np.interp(k,pks[t][:,0],pks[t][:,1])) for t in tags}; pn=float(np.linalg.norm(pk['base']))
+              def d(p,m,h): return np.concatenate([(cmb[p]-cmb[m])/(2*h*cn),(pk[p]-pk[m])/(2*h*pn)])
+              vec={'gravity':d('gfp','gfm',.001),'Y_dm':d('yfp','yfm',.001),'beta':d('bfp','bfm',.00025),'lambda':d('lfp','lfm',.0001)}
+              order=['gravity','Y_dm','beta','lambda']; M=np.column_stack([vec[x] for x in order]); sv=np.linalg.svd(M,compute_uv=False); tol=max(M.shape)*np.finfo(float).eps*sv[0]; alg=int(np.sum(sv>tol)); cond=float(sv[0]/sv[-1])
+              gy=np.column_stack([vec['gravity'],vec['Y_dm']]); gy_sv=np.linalg.svd(gy,compute_uv=False); gy_rank=int(np.sum(gy_sv>max(gy.shape)*np.finfo(float).eps*gy_sv[0]));
+              if gy_rank!=2: raise RuntimeError(f'established gravity/Y rank {gy_rank}')
+              base_cols=[vec['gravity'],vec['Y_dm']]; cand={}
+              for x in ['beta','lambda']:
+                  a,f=angle_to_span(vec[x],base_cols);cand[x]={'angle_to_gravity_Y_span_deg':a,'orthogonal_fraction':f,'passes_10deg':bool(a>=10.)}
+              passing=[x for x in ['beta','lambda'] if cand[x]['passes_10deg']]; selected=[]; cols=list(base_cols)
+              while passing:
+                  scored=[]
+                  for x in passing:
+                      a,f=angle_to_span(vec[x],cols);scored.append((a,x,f))
+                  scored.sort(reverse=True);a,x,f=scored[0]
+                  cand[x]['angle_when_considered_deg']=a; cand[x]['orthogonal_fraction_when_considered']=f
+                  if a>=10.:
+                      selected.append(x);cols.append(vec[x])
+                  passing=[q for q in passing if q!=x]
+              robust=2+len(selected)
+              # Ensure nonselected candidate gets expansion diagnostic if another selected first.
+              for x in ['beta','lambda']:
+                  if x not in selected and 'angle_when_considered_deg' not in cand[x]:
+                      a,f=angle_to_span(vec[x],cols); cand[x]['angle_when_considered_deg']=a;cand[x]['orthogonal_fraction_when_considered']=f
+              out.update({'full_singular_values':sv.tolist(),'singular_value_ratios_to_max':(sv/sv[0]).tolist(),'condition_number':cond,'algebraic_numerical_rank':alg,'established_gravity_Y_singular_values':gy_sv.tolist(),'candidate_geometry':cand,'selected_additional_directions':selected,'robust_geometric_rank_10deg':robust})
+              out['classification']=f'M35_ALGEBRAIC_RANK_{alg}_ROBUST_10DEG_RANK_{robust}_SOURCE_QUOTIENT_OPEN'
+              out['interpretation']='Algebraic local rank and robust >=10-degree geometric rank are deliberately separated. Neither closes full covariant SVT quotient/equivalence geometry.'
+          except Exception as e:
+              out['classification']='M35_ROBUST_RANK_CONDITIONING_INTEGRITY_BLOCKED';out['error']=repr(e)
+          pathlib.Path('out/M35_ROBUST_RESPONSE_RANK_CONDITIONING.json').write_text(json.dumps(out,indent=2)+'\n')
+          pathlib.Path('out/M35_ROBUST_RESPONSE_RANK_CONDITIONING.md').write_text('# M35 robust response-rank conditioning\n\nClassification: `'+out['classification']+'`  \nAlgebraic rank: `'+str(out.get('algebraic_numerical_rank'))+'`  \nRobust 10-deg rank: `'+str(out.get('robust_geometric_rank_10deg'))+'`  \n\nCanonical K2 remains PARTIAL.\n')
+          print(pathlib.Path('out/M35_ROBUST_RESPONSE_RANK_CONDITIONING.json').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m35-robust-response-rank-conditioning
+          path: out/
