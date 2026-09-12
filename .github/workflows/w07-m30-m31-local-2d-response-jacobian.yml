@@ -1,0 +1,168 @@
+name: W07 M30 M31 local 2D response Jacobian
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m30-m31-local-2d-response-jacobian.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  HICLASS_PIN: '0009f51d89e6465c79e570b496c66fc90058fa77'
+
+jobs:
+  jacobian:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        model: [M30, M31]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install and build exact pinned hi_class
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3-numpy >/dev/null
+          git clone -q https://github.com/hiclass-code/hi_class_public.git provider
+          git -C provider checkout -q --detach "$HICLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$HICLASS_PIN"
+          make -C provider -j2 >/dev/null
+          git -C provider rev-parse HEAD > provider_commit.txt
+      - name: Freeze base and two-coordinate finite differences
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODEL='${{ matrix.model }}'
+          BASE="$GITHUB_WORKSPACE/jac_${MODEL}"; mkdir -p "$BASE"
+          python3 - "$MODEL" "$BASE" <<'PY'
+          import pathlib,re,sys
+          model=sys.argv[1]; b=pathlib.Path(sys.argv[2])
+          src=pathlib.Path('provider/gravity_models/propto_omega_bh.ini').read_text()
+          specs={
+            'base':(0.100,0.000),
+            'rcoarse':(0.102,0.000),
+            'rfine':(0.101,0.000),
+            'tcoarse':(0.100,0.002),
+            'tfine':(0.100,0.001),
+          }
+          for tag,(q,ct) in specs.items():
+              ch=0.0 if model=='M30' else 0.3*q
+              vals=[1.0*q,0.5*q,0.2*q,ct,ch,1.0]
+              t=re.sub(r'(?m)^parameters_smg\s*=.*$', 'parameters_smg = '+', '.join(f'{v:.16g}' for v in vals), src)
+              t=re.sub(r'(?m)^root\s*=.*$', f'root = {b}/{tag}_', t)
+              (b/f'{tag}.ini').write_text(t)
+          PY
+          grep -H -E '^(gravity_model|parameters_smg|root|expansion_model|Omega_smg|background_Nloga|kineticity_safe_smg)' "$BASE"/*.ini | tee "$BASE/frozen_jacobian_parameters.txt"
+      - name: Execute frozen arms
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODEL='${{ matrix.model }}'; BASE="$GITHUB_WORKSPACE/jac_${MODEL}"
+          for tag in base rcoarse rfine tcoarse tfine; do
+            set +e
+            ./provider/class "$BASE/${tag}.ini" > "$BASE/${tag}.stdout" 2> "$BASE/${tag}.stderr"
+            rc=$?
+            set -e
+            echo "$rc" > "$BASE/${tag}.exit"
+          done
+      - name: Compute preregistered local response geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODEL='${{ matrix.model }}'; BASE="$GITHUB_WORKSPACE/jac_${MODEL}"
+          python3 - "$MODEL" "$BASE" <<'PY'
+          import json,math,pathlib,sys
+          import numpy as np
+          model=sys.argv[1]; b=pathlib.Path(sys.argv[2])
+          pin=pathlib.Path('provider_commit.txt').read_text().strip(); expected='0009f51d89e6465c79e570b496c66fc90058fa77'
+          tags=['base','rcoarse','rfine','tcoarse','tfine']
+          exits={t:int((b/f'{t}.exit').read_text()) for t in tags}
+          prefix=model
+          out={
+            'schema':'m30_m31_local_2d_response_jacobian_v0.1','model_id':model,
+            'family_id':'F30' if model=='M30' else 'F31',
+            'protocol':'protocol/W07_M30_M31_LOCAL_2D_RESPONSE_JACOBIAN_PREREGISTRATION_v0.1.md',
+            'provider_commit':pin,'expected_commit':expected,
+            'base':{'q':0.1,'c_T':0.0,'c_H':0.0 if model=='M30' else 0.03},
+            'steps':{'radial_coarse_dq':0.002,'radial_fine_dq':0.001,'cT_coarse':0.002,'cT_fine':0.001},
+            'exits':exits,'K2_promoted':False,'physical_falsification':False,
+            'complete_covariant_family_claim':False
+          }
+          if pin!=expected or exits['base']!=0:
+              out['classification']=f'{prefix}_LOCAL_2D_RESPONSE_CONTROL_BLOCKED'
+          elif any(exits[t]!=0 for t in tags[1:]):
+              out['classification']=f'{prefix}_LOCAL_2D_RESPONSE_PROVIDER_BLOCKED'
+              out['failed_arms']=[t for t in tags[1:] if exits[t]!=0]
+          else:
+              def load(path):
+                  rows=[]
+                  for line in pathlib.Path(path).read_text(errors='replace').splitlines():
+                      s=line.strip()
+                      if not s or s.startswith('#'): continue
+                      try: rows.append([float(x) for x in s.split()])
+                      except ValueError: pass
+                  a=np.asarray(rows,float)
+                  if a.ndim!=2 or len(a)<5 or a.shape[1]<2 or not np.isfinite(a).all(): raise RuntimeError(f'bad table {path}')
+                  return a
+              bcl=load(b/'base_cl.dat'); bpk=load(b/'base_pk.dat')
+              def response(tag,step):
+                  acl=load(b/f'{tag}_cl.dat'); apk=load(b/f'{tag}_pk.dat')
+                  bi={int(r[0]):r[1:] for r in bcl}; ai={int(r[0]):r[1:] for r in acl}
+                  common=sorted(set(bi).intersection(ai)); bc=[]; ac=[]
+                  for ell in common:
+                      n=min(len(bi[ell]),len(ai[ell])); bc.extend(bi[ell][:n]); ac.extend(ai[ell][:n])
+                  bc=np.asarray(bc); ac=np.asarray(ac); mask=np.isfinite(bc)&np.isfinite(ac); bc=bc[mask]; ac=ac[mask]
+                  cnorm=np.linalg.norm(bc)
+                  if cnorm==0: raise RuntimeError('zero CMB base norm')
+                  cvec=(ac-bc)/(step*cnorm)
+                  lo=max(bpk[:,0].min(),apk[:,0].min()); hi=min(bpk[:,0].max(),apk[:,0].max())
+                  br=bpk[(bpk[:,0]>=lo)&(bpk[:,0]<=hi)]; x=br[:,0]; bp=br[:,1]; ap=np.interp(x,apk[:,0],apk[:,1])
+                  pmask=np.isfinite(bp)&np.isfinite(ap); bp=bp[pmask]; ap=ap[pmask]
+                  pnorm=np.linalg.norm(bp)
+                  if pnorm==0: raise RuntimeError('zero P(k) base norm')
+                  pvec=(ap-bp)/(step*pnorm)
+                  return np.concatenate([cvec,pvec]), {'cmb_values':int(len(cvec)),'pk_values':int(len(pvec)),'cmb_block_norm':float(np.linalg.norm(cvec)),'pk_block_norm':float(np.linalg.norm(pvec))}
+              rc,rcm=response('rcoarse',0.002); rf,rfm=response('rfine',0.001)
+              tc,tcm=response('tcoarse',0.002); tf,tfm=response('tfine',0.001)
+              def geom(a,b):
+                  na=np.linalg.norm(a); nb=np.linalg.norm(b)
+                  if na==0 or nb==0: raise RuntimeError('zero response derivative')
+                  cos=float(np.dot(a,b)/(na*nb)); cos=max(-1.0,min(1.0,cos))
+                  return {'cosine':cos,'absolute_cosine':abs(cos),'principal_angle_deg':float(math.degrees(math.acos(abs(cos)))),'relative_norm_mismatch':float(abs(na-nb)/max(na,nb)),'norm_a':float(na),'norm_b':float(nb)}
+              rconv=geom(rc,rf); tconv=geom(tc,tf); cross=geom(rf,tf)
+              cross['sin_principal_angle']=float(math.sin(math.radians(cross['principal_angle_deg'])))
+              rpass=(rconv['principal_angle_deg']<=5.0 and rconv['relative_norm_mismatch']<=0.25)
+              tpass=(tconv['principal_angle_deg']<=5.0 and tconv['relative_norm_mismatch']<=0.25)
+              separated=(cross['principal_angle_deg']>=10.0)
+              out.update({'radial_derivative_convergence':rconv,'cT_derivative_convergence':tconv,'fine_cross_direction_geometry':cross,
+                          'radial_coarse_meta':rcm,'radial_fine_meta':rfm,'cT_coarse_meta':tcm,'cT_fine_meta':tfm,
+                          'radial_derivative_converged':rpass,'cT_derivative_converged':tpass,'cross_direction_separated':separated})
+              if not (rpass and tpass): out['classification']=f'{prefix}_LOCAL_2D_RESPONSE_DERIVATIVE_NOT_CONVERGED'
+              elif not separated: out['classification']=f'{prefix}_LOCAL_2D_RESPONSE_NEAR_COLLINEAR'
+              else: out['classification']=f'{prefix}_LOCAL_2D_RESPONSE_RANK_EVIDENCE'
+          op=pathlib.Path(f'{model}_LOCAL_2D_RESPONSE_JACOBIAN.json'); op.write_text(json.dumps(out,indent=2)+'\n')
+          md=pathlib.Path(f'{model}_LOCAL_2D_RESPONSE_JACOBIAN.md')
+          with md.open('w') as f:
+              f.write(f'# {model} local 2D response-Jacobian audit\n\n')
+              f.write(f"Classification: `{out['classification']}`  \n")
+              if 'radial_derivative_convergence' in out:
+                  f.write(f"Radial coarse/fine angle: {out['radial_derivative_convergence']['principal_angle_deg']:.6g} deg; norm mismatch: {out['radial_derivative_convergence']['relative_norm_mismatch']:.6g}  \n")
+                  f.write(f"c_T coarse/fine angle: {out['cT_derivative_convergence']['principal_angle_deg']:.6g} deg; norm mismatch: {out['cT_derivative_convergence']['relative_norm_mismatch']:.6g}  \n")
+                  f.write(f"Fine cross-direction angle: {out['fine_cross_direction_geometry']['principal_angle_deg']:.6g} deg; sin(angle): {out['fine_cross_direction_geometry']['sin_principal_angle']:.6g}  \n")
+              f.write('\nNo K2 promotion, observational discrimination, complete covariant-family claim, or physical falsification is assigned.\n')
+          print(op.read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.model }}-local-2d-response-jacobian
+          path: |
+            ${{ matrix.model }}_LOCAL_2D_RESPONSE_JACOBIAN.json
+            ${{ matrix.model }}_LOCAL_2D_RESPONSE_JACOBIAN.md
+            provider_commit.txt
+            jac_${{ matrix.model }}/
