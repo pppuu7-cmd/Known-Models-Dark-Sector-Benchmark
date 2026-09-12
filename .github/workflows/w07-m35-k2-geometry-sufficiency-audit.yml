@@ -1,0 +1,127 @@
+name: W07 M35 K2 geometry sufficiency audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m35-k2-geometry-sufficiency-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PARENT_RUN: '34657362639'
+  PARENT_ARTIFACT: '10286581994'
+  PROVIDER_REPO: 'https://github.com/Michalychforever/CLASS_LVDM.git'
+  PROVIDER_COMMIT: 'd9a20bd0c7b7a6c8957410fd245ed06b30b915c1'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch exact immutable K1 artifact and provider
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p parent
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${PARENT_ARTIFACT}/zip" > parent/m35.zip
+          unzip -q parent/m35.zip -d parent/m35
+          git clone -q "$PROVIDER_REPO" provider
+          git -C provider checkout -q "$PROVIDER_COMMIT"
+          test "$(git -C provider rev-parse HEAD)" = "$PROVIDER_COMMIT"
+      - name: K2 geometry coverage audit
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python - <<'PY'
+          import hashlib,json,pathlib,re
+          root=pathlib.Path('parent/m35')
+          result_files=list(root.rglob('m35_k1_result.json'))
+          if len(result_files)!=1: raise SystemExit(f'expected one m35_k1_result.json, got {len(result_files)}')
+          d=json.load(open(result_files[0]))
+          expected='d9a20bd0c7b7a6c8957410fd245ed06b30b915c1'
+          integrity=(d.get('provider_commit')==expected and d.get('K1_promoted') is True)
+          param_files={p.name:p for p in root.rglob('*.ini')}
+          # Parent artifact also contains frozen_parameters.txt; use it as the authoritative frozen-coordinate ledger.
+          frozen=list(root.rglob('frozen_parameters.txt'))
+          if len(frozen)!=1: raise SystemExit('frozen_parameters.txt missing/ambiguous')
+          text=frozen[0].read_text()
+          blocks={}
+          current=None
+          for raw in text.splitlines():
+              s=raw.strip()
+              if not s: continue
+              if s.endswith(':'):
+                  current=s[:-1]; blocks[current]={}; continue
+              if current and '=' in s:
+                  k,v=[x.strip() for x in s.split('=',1)]
+                  try: blocks[current][k]=float(v)
+                  except ValueError: pass
+          order=['s1','s01','s001','s0001']
+          control=blocks.get('control',{})
+          coords=['alpha','beta','lambda','Y_dm']
+          disp=[]
+          for a in order:
+              row=[blocks[a][c]-control[c] for c in coords]
+              disp.append(row)
+          def rank(a,tol=1e-12):
+              a=[r[:] for r in a]; m=len(a); n=len(a[0]); rr=0
+              for c in range(n):
+                  piv=None
+                  for i in range(rr,m):
+                      if abs(a[i][c])>tol: piv=i; break
+                  if piv is None: continue
+                  a[rr],a[piv]=a[piv],a[rr]
+                  p=a[rr][c]; a[rr]=[x/p for x in a[rr]]
+                  for i in range(m):
+                      if i==rr: continue
+                      f=a[i][c]
+                      if abs(f)>tol: a[i]=[x-f*y for x,y in zip(a[i],a[rr])]
+                  rr+=1
+              return rr
+          r=rank(disp)
+          base=disp[0]
+          radial=True
+          for row in disp[1:]:
+              rat=[]
+              for a,b in zip(row,base):
+                  if abs(b)>1e-12: rat.append(a/b)
+                  elif abs(a)>1e-12: radial=False
+              if rat and max(rat)-min(rat)>1e-10: radial=False
+          active=[coords[i] for i in range(len(coords)) if any(abs(row[i])>1e-12 for row in disp)]
+          fixed=[c for c in coords if c not in active]
+          # Search pinned provider for coordinate definitions and algebraic/stability relations.
+          markers=[]
+          for p in pathlib.Path('provider').rglob('*'):
+              if not p.is_file() or '.git' in p.parts: continue
+              try: t=p.read_text(errors='ignore')
+              except Exception: continue
+              for n,line in enumerate(t.splitlines(),1):
+                  if re.search(r'\b(alpha|beta|lambda|Y_dm)\b|Einstein.?[Aa]ether|Lorentz',line):
+                      markers.append(f'{p}:{n}:{line}')
+          cls='M35_K2_NOT_CLOSED_BY_ONE_DIMENSIONAL_GRAVITY_ONLY_K1_PATH' if integrity and r==1 and radial else 'M35_K2_GEOMETRY_AUDIT_INTEGRITY_OR_RANK_REVIEW'
+          out={
+            'schema':'m35_k2_geometry_sufficiency_audit_v0.1','model_id':'M35','family_id':'F35',
+            'parent_run':34657362639,'parent_artifact':10286581994,'provider_commit':expected,
+            'integrity_ok':integrity,'coordinates_from_frozen_protocol':coords,'control':control,'arms':{a:blocks[a] for a in order},
+            'displacements_from_control':disp,'k1_path_rank_in_four_provider_coordinates':r,'strictly_radial_k1_path':radial,
+            'active_direction_coordinates':active,'fixed_coordinates':fixed,
+            'provider_marker_line_count':len(markers),'classification':cls,
+            'K2_promoted':False,'physical_falsification':False,'full_Einstein_Aether_SVT_claim':False,
+            'interpretation':'The successful K1 weak-coupling ladder establishes continuity only along its frozen gravity-only radial direction. It does not establish the full physical geometry, exact quotient/equivalences, or complete scalar/vector/tensor parameter space required by K2.'
+          }
+          out['artifact_zip_sha256']=hashlib.sha256(open('parent/m35.zip','rb').read()).hexdigest()
+          json.dump(out,open('out/M35_K2_GEOMETRY_SUFFICIENCY_AUDIT.json','w'),indent=2)
+          pathlib.Path('out/M35_PROVIDER_GEOMETRY_MARKERS.txt').write_text('\n'.join(markers)+'\n')
+          with open('out/M35_K2_GEOMETRY_SUFFICIENCY_AUDIT.md','w') as f:
+              f.write('# M35 K2 geometry-sufficiency audit\n\n')
+              f.write(f'- K1 path rank: {r}\n- radial: {radial}\n- active coordinates: {active}\n- fixed coordinates: {fixed}\n')
+              f.write(f'- classification: `{cls}`\n\nK2 is not promoted; no physical falsification or full Einstein–Aether SVT claim is made.\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m35-k2-geometry-sufficiency-audit
+          path: out/
