@@ -1,0 +1,104 @@
+name: W07 M35 response-law audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m35-response-law-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PARENT_RUN: '34657362639'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download immutable parent artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p parent
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${PARENT_RUN}/artifacts?per_page=100" > parent/artifacts.json
+          python - <<'PY'
+          import json, os, pathlib, subprocess
+          d=json.load(open('parent/artifacts.json'))
+          arts=d.get('artifacts',[])
+          if not arts: raise SystemExit('no parent artifacts')
+          for a in arts:
+              p=pathlib.Path('parent')/f"{a['id']}.zip"
+              with p.open('wb') as f:
+                  subprocess.run(['gh','api',f"repos/{os.environ['GITHUB_REPOSITORY']}/actions/artifacts/{a['id']}/zip"],stdout=f,check=True)
+          PY
+          for z in parent/*.zip; do d="${z%.zip}"; mkdir -p "$d"; unzip -q "$z" -d "$d"; done
+      - name: Compute response-law diagnostics
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python - <<'PY'
+          import json, math, pathlib, statistics, csv
+          cand=list(pathlib.Path('parent').rglob('m35_k1_result.json'))
+          if not cand: raise SystemExit('m35_k1_result.json not found')
+          src=cand[0]
+          d=json.load(open(src))
+          pts=[]
+          for p in d['perturbation_points']:
+              x=10.0**float(p['log10_scale'])
+              pts.append({'name':p['name'],'scale':x,'tt':float(p['tt_l2_rel_vs_gr']),'pk':float(p['pk_l2_rel_vs_gr'])})
+          pts.sort(key=lambda q:q['scale'])
+          def regress(key, subset):
+              xs=[math.log10(p['scale']) for p in subset]; ys=[math.log10(p[key]) for p in subset]
+              xm=sum(xs)/len(xs); ym=sum(ys)/len(ys)
+              ssx=sum((x-xm)**2 for x in xs)
+              slope=sum((x-xm)*(y-ym) for x,y in zip(xs,ys))/ssx
+              intercept=ym-slope*xm
+              ssy=sum((y-ym)**2 for y in ys)
+              resid=sum((y-(intercept+slope*x))**2 for x,y in zip(xs,ys))
+              r2=1-resid/ssy if ssy else 1.0
+              return {'slope':slope,'intercept':intercept,'r2':r2}
+          def local(key):
+              out=[]
+              for a,b in zip(pts,pts[1:]):
+                  s=(math.log10(b[key])-math.log10(a[key]))/(math.log10(b['scale'])-math.log10(a['scale']))
+                  out.append({'scale_lo':a['scale'],'scale_hi':b['scale'],'slope':s})
+              return out
+          small=[p for p in pts if p['scale']<=0.1]
+          metrics={}
+          for key in ('tt','pk'):
+              loc=local(key)
+              metrics[key]={
+                'full_loglog':regress(key,pts),
+                'small_amplitude_loglog':regress(key,small),
+                'adjacent_local_slopes':loc,
+                'response_per_scale':[{'scale':p['scale'],'value':p[key]/p['scale']} for p in pts],
+                'max_abs_small_local_slope_minus_1':max(abs(z['slope']-1) for z in loc if z['scale_hi']<=0.1)
+              }
+          out={
+            'schema_version':'1.0','model_id':'M35','analysis_only':True,'parent_run':34657362639,
+            'parent_result_path':str(src),'provider_commit':d.get('provider_commit'),'scope':d.get('scope'),
+            'physical_family_falsification':False,'full_family_claim':False,'full_svt_claim':False,
+            'points':pts,'metrics':metrics,
+            'stage_claim':'Descriptive response-law audit of immutable M35 K1 parent artifact; no new K-stage or full-family verdict assigned.'
+          }
+          json.dump(out,open('out/M35_RESPONSE_LAW_AUDIT.json','w'),indent=2)
+          with open('out/M35_RESPONSE_LAW_AUDIT.csv','w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=['name','scale','tt','pk']); w.writeheader(); w.writerows(pts)
+          with open('out/M35_RESPONSE_LAW_AUDIT.md','w') as f:
+              f.write('# M35 response-law audit\n\n')
+              f.write(f"Parent run: {out['parent_run']}  \nProvider commit: `{out['provider_commit']}`  \n")
+              for key in ('tt','pk'):
+                  m=metrics[key]
+                  f.write(f"\n## {key.upper()}\nFull slope: {m['full_loglog']['slope']:.9f}, R2={m['full_loglog']['r2']:.9f}  \n")
+                  f.write(f"Small-amplitude slope: {m['small_amplitude_loglog']['slope']:.9f}, R2={m['small_amplitude_loglog']['r2']:.9f}  \n")
+                  f.write(f"Max |local slope-1| for scale<=0.1: {m['max_abs_small_local_slope_minus_1']:.9g}  \n")
+              f.write('\nNo physical-family falsification or full-SVT claim is made.\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m35-response-law-audit
+          path: out/
