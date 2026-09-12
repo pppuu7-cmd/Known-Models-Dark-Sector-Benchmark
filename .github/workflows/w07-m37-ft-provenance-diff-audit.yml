@@ -1,0 +1,104 @@
+name: W07 M37 fT provenance diff audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m37-ft-provenance-diff-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clone exact provider and upstream CLASS
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/Speeddemon5050/Modified-CLASS-fT-Exact-.git provider
+          git -C provider checkout -q 74e6a8679cdc233fb339c67127ed0921ba547894
+          test "$(git -C provider rev-parse HEAD)" = 74e6a8679cdc233fb339c67127ed0921ba547894
+          git -C provider remote add upstream https://github.com/lesgourg/class_public.git
+          git -C provider fetch -q upstream '+refs/heads/*:refs/remotes/upstream/*' '+refs/tags/*:refs/tags/upstream/*' || git -C provider fetch -q upstream
+      - name: Build exact provenance fingerprint
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python - <<'PY'
+          import json, pathlib, re, subprocess
+          P='provider'; pin='74e6a8679cdc233fb339c67127ed0921ba547894'
+          def sh(*args,check=True):
+              p=subprocess.run(args,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+              if check and p.returncode: raise RuntimeError(p.stderr)
+              return p.stdout.strip(),p.returncode,p.stderr.strip()
+          refs,_rc,_=sh('git','-C',P,'for-each-ref','--format=%(refname)','refs/remotes/upstream',check=False)
+          bases=[]
+          for ref in refs.splitlines():
+              mb,rc,_=sh('git','-C',P,'merge-base',pin,ref,check=False)
+              if rc==0 and mb: bases.append((ref,mb))
+          # Choose the merge-base closest to provider pin (fewest provider-side commits).
+          scored=[]
+          for ref,mb in bases:
+              cnt,rc,_=sh('git','-C',P,'rev-list','--count',f'{mb}..{pin}',check=False)
+              if rc==0: scored.append((int(cnt),ref,mb))
+          scored.sort()
+          best=scored[0] if scored else None
+          if best:
+              count,upref,base=best
+              log,_,_=sh('git','-C',P,'log','--reverse','--format=%H%x09%an%x09%ae%x09%aI%x09%s',f'{base}..{pin}')
+              diffstat,_,_=sh('git','-C',P,'diff','--stat',base,pin)
+              names,_,_=sh('git','-C',P,'diff','--name-status',base,pin)
+              patch,_,_=sh('git','-C',P,'diff','--unified=1',base,pin)
+          else:
+              count=None; upref=None; base=None
+              log,_,_=sh('git','-C',P,'log','--reverse','--format=%H%x09%an%x09%ae%x09%aI%x09%s','--max-count=200',pin)
+              diffstat=''; names=''; patch=''
+          commits=[]
+          for line in log.splitlines():
+              p=line.split('\t',4)
+              if len(p)==5: commits.append(dict(sha=p[0],author=p[1],email=p[2],date=p[3],subject=p[4]))
+          # Search exact provider tree and provider-side patch for provenance markers.
+          grep,_,_=sh('git','-C',P,'grep','-n','-I','-E',r'(n_fT|f\(T\)|teleparallel|arXiv|doi:|10\.[0-9]{4,9}/)',pin,check=False)
+          relevant=[]
+          for line in grep.splitlines():
+              if re.search(r'n_fT|f\(T\)|teleparallel|arXiv|doi:|10\.[0-9]{4,9}/',line,re.I): relevant.append(line)
+          added=[x[1:] for x in patch.splitlines() if x.startswith('+') and not x.startswith('+++')]
+          added_refs=[x for x in added if re.search(r'arXiv|doi:|10\.[0-9]{4,9}/|teleparallel|f\(T\)|n_fT',x,re.I)]
+          ids=sorted(set(re.findall(r'(?:arXiv[:\s]*)?\d{4}\.\d{4,5}|10\.\d{4,9}/[-._;()/:A-Z0-9]+','\n'.join(added_refs),re.I)))
+          # Conservative provenance rule: do not promote automatically. A paper identifier in f(T)-specific added lines is evidence, not enough alone to assert authorship correspondence.
+          if not best:
+              cls='M37_K0_PROVENANCE_HISTORY_NOT_CONNECTED_TO_UPSTREAM'
+          elif ids:
+              cls='M37_K0_PROVENANCE_PAPER_IDENTIFIER_FOUND_REQUIRES_AUTHORSHIP_LINK_REVIEW'
+          else:
+              cls='M37_K0_PROVENANCE_MODIFICATION_COMMITS_IDENTIFIED_PAPER_LINK_STILL_OPEN'
+          out={
+            'schema':'m37_ft_provenance_diff_audit_v0.1','model_id':'M37','family_id':'F37',
+            'provider':'Speeddemon5050/Modified-CLASS-fT-Exact-','provider_commit':pin,
+            'upstream':'lesgourg/class_public','connected_upstream_history':bool(best),
+            'selected_upstream_ref':upref,'merge_base':base,'provider_side_commit_count':count,
+            'provider_side_commits':commits,'changed_files_name_status':names.splitlines(),
+            'diffstat':diffstat,'tree_marker_line_count':len(relevant),'added_ft_or_reference_line_count':len(added_refs),
+            'paper_identifiers_in_added_ft_lines':ids,'classification':cls,
+            'K0_promoted':False,'K1_changed':False,'physical_falsification':False,
+            'interpretation':'This audit localizes code provenance. K0 requires an authoritative publication/author-to-implementation link; executable behavior alone is insufficient.'
+          }
+          json.dump(out,open('out/M37_FT_PROVENANCE_DIFF_AUDIT.json','w'),indent=2)
+          pathlib.Path('out/M37_PROVIDER_SIDE_COMMITS.tsv').write_text(log+'\n')
+          pathlib.Path('out/M37_PROVIDER_DIFFSTAT.txt').write_text(diffstat+'\n')
+          pathlib.Path('out/M37_CHANGED_FILES.txt').write_text(names+'\n')
+          pathlib.Path('out/M37_FT_TREE_MARKERS.txt').write_text('\n'.join(relevant)+'\n')
+          pathlib.Path('out/M37_FT_ADDED_REFERENCE_LINES.txt').write_text('\n'.join(added_refs)+'\n')
+          with open('out/M37_FT_PROVENANCE_DIFF_AUDIT.md','w') as f:
+              f.write('# M37 f(T) provenance diff audit\n\n')
+              f.write(f'- provider pin: `{pin}`\n- connected upstream history: {bool(best)}\n')
+              f.write(f'- merge base: `{base}`\n- provider-side commits after base: {count}\n')
+              f.write(f'- paper identifiers in f(T)-specific added lines: {ids}\n')
+              f.write(f'- classification: `{cls}`\n\nNo K0 promotion or physical falsification is assigned automatically.\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m37-ft-provenance-diff-audit
+          path: out/
