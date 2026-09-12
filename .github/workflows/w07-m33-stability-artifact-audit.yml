@@ -1,0 +1,90 @@
+name: W07 M33 stability artifact audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w07-m33-stability-artifact-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PARENT_RUN: '34660258070'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download immutable M33 parent artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p parent
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${PARENT_RUN}/artifacts?per_page=100" > parent/artifacts.json
+          python - <<'PY'
+          import json, os, pathlib, subprocess
+          d=json.load(open('parent/artifacts.json'))
+          arts=d.get('artifacts',[])
+          if not arts: raise SystemExit('no parent artifacts')
+          for a in arts:
+              z=pathlib.Path('parent')/f"{a['id']}.zip"
+              with z.open('wb') as f:
+                  subprocess.run(['gh','api',f"repos/{os.environ['GITHUB_REPOSITORY']}/actions/artifacts/{a['id']}/zip"],stdout=f,check=True)
+          PY
+          for z in parent/*.zip; do d="${z%.zip}"; mkdir -p "$d"; unzip -q "$z" -d "$d"; done
+      - name: Audit stability evidence without rerunning hi_class
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python - <<'PY'
+          import pathlib, json, hashlib, re
+          root=pathlib.Path('parent')
+          files=[]; evidence=[]
+          patterns=[
+            re.compile(r'Omega_smg',re.I), re.compile(r'ghost',re.I), re.compile(r'stability',re.I),
+            re.compile(r'0\.001'), re.compile(r'0\.01'), re.compile(r'0\.1'), re.compile(r'0\.5'),
+            re.compile(r'return.?code|exit.?code|classification',re.I)
+          ]
+          for p in sorted(x for x in root.rglob('*') if x.is_file() and x.name!='artifacts.json'):
+              b=p.read_bytes()
+              files.append({'path':str(p),'size':len(b),'sha256':hashlib.sha256(b).hexdigest()})
+              if len(b)>5_000_000: continue
+              try: text=b.decode('utf-8',errors='replace')
+              except Exception: continue
+              for i,line in enumerate(text.splitlines(),1):
+                  if any(rx.search(line) for rx in patterns):
+                      evidence.append({'path':str(p),'line':i,'text':line[:1200]})
+          joined='\n'.join(e['text'] for e in evidence)
+          point_presence={x:(x in joined) for x in ['0.5','0.1','0.01','0.001']}
+          ghost_present=bool(re.search(r'ghost',joined,re.I))
+          stability_present=bool(re.search(r'stability',joined,re.I))
+          out={
+            'schema_version':'1.0','model_id':'M33','analysis_only':True,'parent_run':34660258070,
+            'artifact_file_count':len(files),'files':files,'evidence_match_count':len(evidence),
+            'tested_value_text_presence':point_presence,'ghost_text_present':ghost_present,
+            'stability_text_present':stability_present,
+            'tested_transition_bracket_if_supported_by_parent_and_matrix':{'invalid_tested':0.001,'valid_tested':0.01},
+            'bracket_scope':'empirical tested bracket under pinned provider/config only; not a universal theoretical stability boundary',
+            'stability_checks_disabled':False,'physical_falsification':False,'full_family_claim':False,
+            'stage_claim':'Immutable artifact audit only. No rerun, no post-hoc parameter tuning, no K-stage promotion.'
+          }
+          json.dump(out,open('out/M33_STABILITY_ARTIFACT_AUDIT.json','w'),indent=2)
+          with open('out/M33_STABILITY_EVIDENCE.txt','w') as f:
+              for e in evidence:
+                  f.write(f"{e['path']}:{e['line']}: {e['text']}\n")
+          with open('out/M33_STABILITY_ARTIFACT_AUDIT.md','w') as f:
+              f.write('# M33 immutable stability-artifact audit\n\n')
+              f.write(f"Parent run: {out['parent_run']}  \nArtifact files: {len(files)}  \nEvidence matches: {len(evidence)}  \n")
+              f.write(f"Ghost text present: {ghost_present}  \nStability text present: {stability_present}  \n")
+              f.write('Tested text-value presence: '+json.dumps(point_presence,sort_keys=True)+'  \n\n')
+              f.write('Interpretation guard: the 0.001-invalid / 0.01-valid interval is only a tested provider/config bracket when supported by the immutable evidence. It is not a universal Galileon/Horndeski stability boundary.\n\n')
+              f.write('No stability checks were disabled; no physical-family falsification or K-stage promotion is made.\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m33-stability-artifact-audit
+          path: out/
