@@ -1,0 +1,417 @@
+name: W03 M13b K3D2-B z5-handoff full regression
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w03-m13b-k3d2b-z5-handoff.yml'
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+  K1: '0.00022398828992555914'
+  K10: '0.0022398828992555913'
+
+permissions:
+  contents: write
+
+jobs:
+  handoff_audit:
+    name: S z5 handoff source audit
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply adapter and output-only diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter_manifest.json
+          python3 verification/m13b/k3d2b_apply_output_diagnostics.py provider --manifest result/diagnostic_manifest.json
+      - name: Prospectively frozen handoff audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          bg=Path('provider/source/background.c').read_text()
+          pt=Path('provider/source/perturbations.c').read_text()
+          am=json.loads(Path('result/adapter_manifest.json').read_text())
+          dm=json.loads(Path('result/diagnostic_manifest.json').read_text())
+          checks={}
+          def need(k,v): checks[k]=bool(v); assert v,k
+          need('upstream_scf_preserved',am['upstream_scf_lines_byte_sequence_preserved'])
+          need('handoff_literal_background',bg.count('a < 1./6.')==4)
+          need('handoff_literal_perturbations',pt.count('a < 1./6.')==2)
+          need('qcf_background_frozen_derivatives','dy[pba->index_bi_phi_qcf] = 0.;' in bg and 'dy[pba->index_bi_phi_prime_qcf] = 0.;' in bg)
+          need('qpf_background_frozen_derivatives','dy[pba->index_bi_psi_qpf] = 0.;' in bg and 'dy[pba->index_bi_psi_prime_qpf] = 0.;' in bg)
+          need('qcf_pressure_frozen','pvecback[pba->index_bg_p_prime_qcf] = 0.;' in bg)
+          need('qpf_pressure_frozen','pvecback[pba->index_bg_p_prime_qpf] = 0.;' in bg)
+          need('qcf_posthandoff_force_unchanged','- a*dV_qcf(pba,y[pba->index_bi_phi_qcf])/H;' in bg)
+          need('qpf_posthandoff_force_unchanged','+ a*dV_qpf(pba,y[pba->index_bi_psi_qpf])/H;' in bg)
+          need('qcf_perturb_frozen','dy[pv->index_pt_phi_qcf] = 0.;' in pt and 'dy[pv->index_pt_phi_prime_qcf] = 0.;' in pt)
+          need('qpf_perturb_frozen','dy[pv->index_pt_psi_qpf] = 0.;' in pt and 'dy[pv->index_pt_psi_prime_qpf] = 0.;' in pt)
+          need('qcf_posthandoff_mass_sign','(k2 + a2*pvecback[pba->index_bg_ddV_qcf])*y[pv->index_pt_phi_qcf]' in pt)
+          need('qpf_posthandoff_mass_sign','(k2 - a2*pvecback[pba->index_bg_ddV_qpf])*y[pv->index_pt_psi_qpf]' in pt)
+          need('diagnostics_output_only',dm['output_only'] and not dm['changes_rhs'] and not dm['changes_state_vector'] and not dm['changes_einstein_sources'] and not dm['changes_boltzmann_hierarchy'] and not dm['changes_background'])
+          out={'schema':'KMDSB.W03.M13b.K3D2BZ5HandoffSourceAudit.v0.1','checks':checks,'all_required_checks_pass':all(checks.values())}
+          Path('result/handoff_audit.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: k3d2b-z5-handoff-audit
+          path: result/
+          retention-days: 90
+
+  default_enabled:
+    name: D default full-Boltzmann B1+B3
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact-pin recovered adapter with diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$CLASS_PIN"
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter_manifest.json
+          python3 verification/m13b/k3d2b_apply_output_diagnostics.py provider --manifest result/diagnostic_manifest.json
+          make -C provider -j2 class > result/build.log 2>&1
+      - name: Run frozen enabled cosmology
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > result/enabled.ini <<EOF
+          h = 0.6715
+          omega_b = 0.0224
+          Omega_cdm = 0.26172292868512664
+          Omega_g = 5.4572897176151613e-05
+          Omega_ur = 3.772710282384838e-05
+          N_ncdm = 0
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = 0
+          Omega_k = 0
+          qcf_U0 = 0.3362232603714306
+          qcf_phi_ini = 0.92
+          qcf_phi_prime_ini = 0
+          qpf_U0 = 0.3362232603714306
+          qpf_psi_ini = 1.02
+          qpf_psi_prime_ini = 0
+          gauge = synchronous
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = tCl,pCl,lCl,mPk,dTk
+          lensing = yes
+          l_max_scalars = 1200
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          k_output_values = $K1,$K10
+          write_background = yes
+          root = $GITHUB_WORKSPACE/out/default_
+          EOF
+          set +e
+          (cd provider && ./class "$GITHUB_WORKSPACE/result/enabled.ini") > result/stdout.txt 2> result/stderr.txt
+          rc=$?
+          set -e
+          echo "$rc" > result/provider_rc.txt
+          find out -maxdepth 1 -type f -printf '%f\n' | sort > result/output_files.txt
+          if [ "$rc" -ne 0 ]; then echo 'STDERR'; cat result/stderr.txt; echo 'STDOUT'; cat result/stdout.txt; exit "$rc"; fi
+      - name: Evaluate frozen B1, default B2 and B3
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re,math,hashlib,os
+          root=Path('out')
+          def one(pat):
+              a=sorted(root.glob(pat)); assert len(a)==1,(pat,[str(x) for x in a]); return a[0]
+          def rows(path): return [[float(x) for x in l.split()] for l in path.read_text().splitlines() if l.strip() and not l.lstrip().startswith('#')]
+          def numbered_header(path,required):
+              hs=[l for l in path.read_text().splitlines() if l.lstrip().startswith('#') and all(x in l for x in required)]
+              assert len(hs)==1,(path,required,hs)
+              return {m.group(2).strip():int(m.group(1))-1 for m in re.finditer(r'(\d+):(.+?)(?=\s+\d+:|$)',hs[0].lstrip('#').strip())}
+          bg=one('default*_background.dat'); pk=one('default*_pk.dat'); cl=one('default*_cl.dat')
+          bt=numbered_header(bg,['phi_qcf','psi_qpf'])
+          br=rows(bg); H0=67.15/299792.458
+          pts=[]
+          for r in br:
+              z=r[bt['z']]; a=1/(1+z); H=r[bt['H [1/Mpc]']]
+              p=r[bt["phi'_qcf"]]/(a*H); q=r[bt["psi'_qpf"]]/(a*H)
+              pts.append({'z':z,'a':a,'H':H,'E':H/H0,'x':r[bt['phi_qcf']],'p':p,'y':r[bt['psi_qpf']],'q':q,'D':p*p-q*q,'rqcf':r[bt['(.)rho_qcf']],'rqpf':r[bt['(.)rho_qpf']],'phip':r[bt["phi'_qcf"]],'psip':r[bt["psi'_qpf"]],'dVqcf':r[bt["V'_qcf"]],'dVqpf':r[bt["V'_qpf"]]})
+          assert pts and all(all(math.isfinite(v) for v in d.values()) and d['H']>0 for d in pts)
+          pts.sort(key=lambda d:d['a'])
+          def binterp(a,key):
+              for u,v in zip(pts[:-1],pts[1:]):
+                  if u['a']<=a<=v['a']:
+                      f=(a-u['a'])/(v['a']-u['a']) if v['a']!=u['a'] else 0
+                      return u[key]+f*(v[key]-u[key])
+              if abs(a-pts[-1]['a'])<1e-10:return pts[-1][key]
+              raise AssertionError((a,pts[0]['a'],pts[-1]['a']))
+          def zinterp(z,key): return binterp(1/(1+z),key)
+          z5={k:zinterp(5,k) for k in ['x','p','y','q','D','E']}; d49=zinterp(4.9,'D')
+          today=min(pts,key=lambda d:abs(d['a']-1))
+          evo=sorted([d for d in pts if 1/6<=d['a']<=1],key=lambda d:d['a'])
+          crosses=[]
+          for u,v in zip(evo[:-1],evo[1:]):
+              if u['D']<0<=v['D']:
+                  f=-u['D']/(v['D']-u['D']); ac=u['a']+f*(v['a']-u['a']); crosses.append(1/ac-1)
+          omega=(today['rqcf']+today['rqpf'])/(today['H']**2)
+          ref={'zx':1.1978720736725847,'x':1.3910277872721561,'p':0.3117003532815687,'y':0.7979144626637236,'q':-0.02751848184245475,'OmegaDE':0.6885076999845492}
+          pr=rows(pk); cr=rows(cl)
+          b1={
+            'provider_rc_zero':Path('result/provider_rc.txt').read_text().strip()=='0',
+            'finite_positive_background':True,
+            'z5_x':abs(z5['x']-.92)<=2e-4,'z5_y':abs(z5['y']-1.02)<=2e-4,
+            'z5_p':abs(z5['p'])<=2e-3,'z5_q':abs(z5['q'])<=2e-3,
+            'one_crossing':len(crosses)==1,'crossing_match':len(crosses)==1 and abs(crosses[0]-ref['zx'])<=.02,
+            'today_x':abs(today['x']-ref['x'])<=5e-3,'today_y':abs(today['y']-ref['y'])<=5e-3,
+            'today_p':abs(today['p']-ref['p'])<=5e-3,'today_q':abs(today['q']-ref['q'])<=2e-3,
+            'E0':abs(today['E']-1)<=3e-3,'OmegaDE0':abs(omega-ref['OmegaDE'])<=3e-3,
+            'phantom_after_start':d49<0,'quintessence_today':today['D']>0,
+          }
+          b2={
+            'pk_positive_finite':bool(pr) and all(len(r)>=2 and r[0]>0 and r[1]>0 and all(math.isfinite(x) for x in r) for r in pr),
+            'cl_finite':bool(cr) and all(all(math.isfinite(x) for x in r) for r in cr),
+            'cl_tt_ee_nonnegative':all((len(r)<3) or (r[1]>=-1e-30 and r[2]>=-1e-30) for r in cr),
+          }
+          assert all(b1.values()),{'B1_failed':[k for k,v in b1.items() if not v],'z5':z5,'today':today,'crossings':crosses,'OmegaDE':omega}
+          assert all(b2.values()),{'B2_failed':[k for k,v in b2.items() if not v]}
+
+          # B3: canonical source is hashed before parsing; no mutation is performed.
+          canon_path=Path('waves/wave_03_expanded_dark_energy/M13B_K3C2_INDEPENDENT_PERTURBATION_BRIDGE_RESULT.json')
+          canon_bytes=canon_path.read_bytes(); canon_sha=hashlib.sha256(canon_bytes).hexdigest(); canon=json.loads(canon_bytes)
+          target_modes={'khat_1':float(os.environ['K1']),'khat_10':float(os.environ['K10'])}
+          pf=sorted(root.glob('default*_perturbations_k*_s.dat')); assert len(pf)==2,[str(x) for x in pf]
+          mode_files={}
+          for f in pf:
+              first=f.read_text().splitlines()[0]
+              m=re.search(r'k\s*=\s*([0-9.eE+-]+)',first); assert m,first
+              kval=float(m.group(1)); key=min(target_modes,key=lambda k:abs(target_modes[k]-kval)); assert abs(target_modes[key]-kval)/target_modes[key]<1e-10
+              mode_files[key]=f
+          assert set(mode_files)==set(target_modes)
+          b3_modes={}
+          all_b3=True
+          for key,kval in target_modes.items():
+              f=mode_files[key]; pt=numbered_header(f,['delta_qcf_S','alpha_sync_to_newt']); rr=rows(f)
+              required=['a','phi','psi','delta_g','theta_g','delta_ur','theta_ur','shear_ur','delta_qcf_S','delta_prime_qcf_S','delta_qpf_S','delta_prime_qpf_S','alpha_sync_to_newt','alpha_prime_sync_to_newt']
+              assert all(x in pt for x in required),(key,required,pt)
+              traj=[]
+              max_direct=0.; nonzero_qcf=0.; nonzero_qpf=0.
+              for r in rr:
+                  a=r[pt['a']]; H=binterp(a,'H'); phip=binterp(a,'phip'); psip=binterp(a,'psip'); dVx=binterp(a,'dVqcf'); dVy=binterp(a,'dVqpf'); ah=a*H
+                  alpha=r[pt['alpha_sync_to_newt']]; alphap=r[pt['alpha_prime_sync_to_newt']]
+                  dxs=r[pt['delta_qcf_S']]; dxps=r[pt['delta_prime_qcf_S']]; dys=r[pt['delta_qpf_S']]; dyps=r[pt['delta_prime_qpf_S']]
+                  dx=dxs+alpha*phip
+                  dxp=dxps+(-2*ah*alpha*phip-a*a*dVx*alpha+phip*alphap)
+                  dy=dys+alpha*psip
+                  dyp=dyps+(-2*ah*alpha*psip+a*a*dVy*alpha+psip*alphap)
+                  rv=dxp/ah; tv=dyp/ah; Phi=r[pt['phi']]; Psi=r[pt['psi']]
+                  vals=[Phi,Psi,dx,rv,dy,tv]
+                  assert all(math.isfinite(x) for x in vals)
+                  max_direct=max(max_direct,abs(dxs),abs(dys)); nonzero_qcf=max(nonzero_qcf,abs(dxs),abs(dxps)); nonzero_qpf=max(nonzero_qpf,abs(dys),abs(dyps))
+                  traj.append({'a':a,'Phi':Phi,'Psi':Psi,'dx':dx,'r':rv,'dy':dy,'t':tv})
+              traj.sort(key=lambda d:d['a'])
+              def pint(a,name):
+                  for u,v in zip(traj[:-1],traj[1:]):
+                      if u['a']<=a<=v['a']:
+                          f0=(a-u['a'])/(v['a']-u['a']) if v['a']!=u['a'] else 0; return u[name]+f0*(v[name]-u[name])
+                  if abs(a-traj[-1]['a'])<1e-9:return traj[-1][name]
+                  raise AssertionError((key,a,traj[0]['a'],traj[-1]['a']))
+              phi5=pint(1/6,'Phi'); assert math.isfinite(phi5) and abs(phi5)>1e-12
+              S=1e-5/phi5
+              today_class={n:S*pint(1,n) for n in ['Phi','dx','r','dy','t']}
+              ep=canon['modes'][key]['fine']['endpoint']
+              today_ref={'Phi':ep['Phi'],'dx':ep['delta_x'],'r':ep['r'],'dy':ep['delta_y'],'t':ep['t']}
+              def sgn(x): return 1 if x>0 else (-1 if x<0 else 0)
+              ratios={n:abs(today_class[n])/max(abs(today_ref[n]),1e-300) for n in today_ref}
+              checks={
+                  'finite_trajectory':True,
+                  'phi5_nonzero':abs(phi5)>1e-12,
+                  'same_sign_all':all(sgn(today_class[n])==sgn(today_ref[n]) for n in today_ref if abs(today_ref[n])>=1e-12),
+                  'potential_ratio':0.5<=ratios['Phi']<=2.0,
+                  'dx_ratio':0.2<=ratios['dx']<=5.0,
+                  'r_ratio':0.2<=ratios['r']<=5.0,
+                  'dy_ratio':0.2<=ratios['dy']<=5.0,
+                  't_ratio':0.2<=ratios['t']<=5.0,
+                  'qcf_sourced':nonzero_qcf>1e-14,
+                  'qpf_sourced':nonzero_qpf>1e-14,
+                  'direct_fields_linear_raw':max_direct<0.1,
+                  'photon_hierarchy_present':all(x in pt for x in ['delta_g','theta_g']),
+                  'ur_hierarchy_present':all(x in pt for x in ['delta_ur','theta_ur','shear_ur']),
+              }
+              passed=all(checks.values()); all_b3=all_b3 and passed
+              b3_modes[key]={'k_1_Mpc':kval,'file':str(f),'S_k':S,'Phi_z5_raw':phi5,'today_CLASS_rescaled':today_class,'today_K3C2':today_ref,'absolute_amplitude_ratios':ratios,'checks':checks,'all_required_checks_pass':passed,'max_abs_raw_direct_field_perturbation':max_direct}
+          assert all_b3,b3_modes
+          result={'schema':'KMDSB.W03.M13b.K3D2BZ5HandoffDefaultFullRegression.v0.1','provider_commit':os.environ['CLASS_PIN'],'B1':{'checks':b1,'z5':z5,'D_z4p9':d49,'today':today,'crossings_z':crosses,'Omega_DE0':omega,'all_required_checks_pass':all(b1.values())},'B2_default':{'checks':b2,'pk_rows':len(pr),'cl_rows':len(cr),'all_required_checks_pass':all(b2.values())},'B3':{'canonical_K3C2_sha256':canon_sha,'modes':b3_modes,'all_required_checks_pass':all_b3},'all_required_checks_pass':all(b1.values()) and all(b2.values()) and all_b3}
+          Path('result/default_full_result.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k3d2b-z5-default
+          path: |
+            result/
+            out/
+          retention-days: 90
+
+  reference_enabled:
+    name: R reference precision full-Boltzmann
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run exact-pin reference precision
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter_manifest.json
+          python3 verification/m13b/k3d2b_apply_output_diagnostics.py provider --manifest result/diagnostic_manifest.json
+          make -C provider -j2 class > result/build.log 2>&1
+          cat > result/enabled.ini <<EOF
+          h = 0.6715
+          omega_b = 0.0224
+          Omega_cdm = 0.26172292868512664
+          Omega_g = 5.4572897176151613e-05
+          Omega_ur = 3.772710282384838e-05
+          N_ncdm = 0
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = 0
+          Omega_k = 0
+          qcf_U0 = 0.3362232603714306
+          qcf_phi_ini = 0.92
+          qcf_phi_prime_ini = 0
+          qpf_U0 = 0.3362232603714306
+          qpf_psi_ini = 1.02
+          qpf_psi_prime_ini = 0
+          gauge = synchronous
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = tCl,pCl,lCl,mPk,dTk
+          lensing = yes
+          l_max_scalars = 1200
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          k_output_values = $K1,$K10
+          write_background = yes
+          root = $GITHUB_WORKSPACE/out/ref_
+          EOF
+          set +e
+          (cd provider && ./class "$GITHUB_WORKSPACE/result/enabled.ini" cl_ref.pre) > result/stdout.txt 2> result/stderr.txt
+          rc=$?
+          set -e
+          echo "$rc" > result/provider_rc.txt
+          find out -maxdepth 1 -type f -printf '%f\n' | sort > result/output_files.txt
+          if [ "$rc" -ne 0 ]; then echo 'STDERR'; cat result/stderr.txt; echo 'STDOUT'; cat result/stdout.txt; exit "$rc"; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k3d2b-z5-reference
+          path: |
+            result/
+            out/
+          retention-days: 90
+
+  compare_precision:
+    name: P default-vs-reference frozen precision
+    needs: [default_enabled, reference_enabled]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: k3d2b-z5-default, path: d}
+      - uses: actions/download-artifact@v4
+        with: {name: k3d2b-z5-reference, path: r}
+      - name: Frozen precision comparison
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import math,re,json,bisect
+          def one(root,pat):
+              a=sorted(Path(root).glob(pat)); assert len(a)==1,(root,pat,[str(x) for x in a]); return a[0]
+          def rows(p): return [[float(x) for x in l.split()] for l in p.read_text().splitlines() if l.strip() and not l.lstrip().startswith('#')]
+          def log_interp(x,xs,ys):
+              assert x>0
+              i=bisect.bisect_left(xs,x)
+              if i==0:return ys[0]
+              if i>=len(xs):return ys[-1]
+              x0,x1=xs[i-1],xs[i]; y0,y1=ys[i-1],ys[i]
+              if y0>0 and y1>0:
+                  f=(math.log(x)-math.log(x0))/(math.log(x1)-math.log(x0)); return math.exp(math.log(y0)+f*(math.log(y1)-math.log(y0)))
+              f=(x-x0)/(x1-x0); return y0+f*(y1-y0)
+          dpk=rows(one('d/out','default*_pk.dat')); rpk=rows(one('r/out','ref*_pk.dat'))
+          rxs=[x[0] for x in rpk]; rys=[x[1] for x in rpk]; common=[x for x in dpk if rxs[0]<=x[0]<=rxs[-1]]; assert common
+          num=sum((x[1]-log_interp(x[0],rxs,rys))**2 for x in common); den=sum(x[1]**2 for x in common); pk_l2=math.sqrt(num/max(den,1e-300))
+          dcl={int(x[0]):x[1] for x in rows(one('d/out','default*_cl.dat')) if 30<=int(x[0])<=1200}; rcl={int(x[0]):x[1] for x in rows(one('r/out','ref*_cl.dat')) if 30<=int(x[0])<=1200}; ell=sorted(set(dcl)&set(rcl)); assert ell
+          tt_l2=math.sqrt(sum((dcl[l]-rcl[l])**2 for l in ell)/max(sum(dcl[l]**2 for l in ell),1e-300))
+          def bgdiag(path):
+              ls=path.read_text().splitlines(); hs=[l for l in ls if l.lstrip().startswith('#') and 'phi_qcf' in l and 'psi_qpf' in l]; assert len(hs)==1
+              t={m.group(2).strip():int(m.group(1))-1 for m in re.finditer(r'(\d+):(.+?)(?=\s+\d+:|$)',hs[0].lstrip('#').strip())}; rr=[[float(x) for x in l.split()] for l in ls if l.strip() and not l.lstrip().startswith('#')]
+              pts=[]
+              for v in rr:
+                  z=v[t['z']]; a=1/(1+z); H=v[t['H [1/Mpc]']]; p=v[t["phi'_qcf"]]/(a*H); q=v[t["psi'_qpf"]]/(a*H); pts.append((a,v[t['phi_qcf']],p,v[t['psi_qpf']],q,p*p-q*q))
+              pts.sort(); today=min(pts,key=lambda x:abs(x[0]-1)); evo=[x for x in pts if 1/6<=x[0]<=1]; c=[]
+              for u,v in zip(evo[:-1],evo[1:]):
+                  if u[5]<0<=v[5]:
+                      f=-u[5]/(v[5]-u[5]); ac=u[0]+f*(v[0]-u[0]); c.append(1/ac-1)
+              assert len(c)==1; return today,c[0]
+          db,dc=bgdiag(one('d/out','default*_background.dat')); rb,rc=bgdiag(one('r/out','ref*_background.dat'))
+          bgmax=max(abs(db[i]-rb[i]) for i in range(1,5)); crossdiff=abs(dc-rc)
+          checks={'pk_L2_le_5e_3':pk_l2<=5e-3,'tt_L2_le_5e_3':tt_l2<=5e-3,'crossing_diff_le_2e_3':crossdiff<=2e-3,'today_field_velocity_diff_le_1e_3':bgmax<=1e-3}
+          result={'schema':'KMDSB.W03.M13b.K3D2BZ5HandoffPrecision.v0.1','checks':checks,'all_required_checks_pass':all(checks.values()),'pk_normalized_L2_loggrid':pk_l2,'pk_common_default_rows':len(common),'tt_normalized_L2_ell30_1200':tt_l2,'tt_common_ell_count':len(ell),'crossing_z_abs_difference':crossdiff,'max_today_field_velocity_abs_difference':bgmax}
+          Path('precision_result.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n'); assert result['all_required_checks_pass'],result
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: k3d2b-z5-precision
+          path: precision_result.json
+          retention-days: 90
+
+  aggregate:
+    name: aggregate K3D2-B result
+    needs: [handoff_audit, default_enabled, reference_enabled, compare_precision]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/download-artifact@v4
+        with: {name: k3d2b-z5-handoff-audit, path: a}
+      - uses: actions/download-artifact@v4
+        with: {name: k3d2b-z5-default, path: d}
+      - uses: actions/download-artifact@v4
+        with: {name: k3d2b-z5-reference, path: r}
+      - uses: actions/download-artifact@v4
+        with: {name: k3d2b-z5-precision, path: p}
+      - name: Compose canonical K3D2-B PASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,os
+          A=json.loads(Path('a/handoff_audit.json').read_text()); D=json.loads(Path('d/result/default_full_result.json').read_text()); P=json.loads(Path('p/precision_result.json').read_text())
+          assert A['all_required_checks_pass'] and D['all_required_checks_pass'] and P['all_required_checks_pass']
+          result={'schema':'KMDSB.W03.M13b.K3D2BEnabledFullBoltzmannRegression.v0.1','model_id':'M13b','family_id':'F13','gate':'K3D2-B','classification':'M13B_K3D2B_ENABLED_FULL_BOLTZMANN_COSMOLOGY_REGRESSION_PASS_WITH_SCOPE','provider':'lesgourg/class_public','provider_commit':'64bbab707faf4de4779a9e04edd180fef18d98fa','protocol':'protocol/W03_M13B_K3D2B_ENABLED_TWO_FIELD_COSMOLOGY_REGRESSION_v0.1.md','z5_handoff_recovery':'protocol/W03_M13B_K3D2B_Z5_IVP_HANDOFF_RECOVERY_v0.1.md','actions_run':int(os.environ['GITHUB_RUN_ID']),'source_audit':A,'default_B1_B2_B3':D,'precision_B2':P,'all_required_checks_pass':True,'K3_state_ceiling':'PARTIAL','K4_promoted':False,'K5_promoted':False,'author_model_reproduced':False,'published_V0_reproduced':False,'author_normalization_map_claimed':False,'physical_falsification':False,'next_authorized_gate':'K3D3_FULL_BOLTZMANN_CLOSURE_CENSUS_AND_K3_PROMOTION_AUDIT'}
+          out=Path('waves/wave_03_expanded_dark_energy/M13B_K3D2B_ENABLED_FULL_BOLTZMANN_REGRESSION_RESULT.json'); out.write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add waves/wave_03_expanded_dark_energy/M13B_K3D2B_ENABLED_FULL_BOLTZMANN_REGRESSION_RESULT.json
+          git commit -m 'record M13b K3D2-B enabled full-Boltzmann regression pass'
+          git pull --rebase origin main
+          git push origin HEAD:main
