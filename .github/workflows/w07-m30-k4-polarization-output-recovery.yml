@@ -1,0 +1,117 @@
+name: W07 M30 K4 polarization-output recovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w07-m30-k4-polarization-output-recovery.yml'
+permissions:
+  contents: read
+jobs:
+  point:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        point: [base, radial, cT]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 75
+    env:
+      HICLASS_PIN: 0009f51d89e6465c79e570b496c66fc90058fa77
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact pinned hi_class
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3-numpy >/dev/null
+          git clone -q https://github.com/hiclass-code/hi_class_public.git provider
+          git -C provider checkout -q --detach "$HICLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$HICLASS_PIN"
+          make -C provider -j2 >/dev/null
+      - name: Prepare frozen local point with preregistered polarization outputs
+        shell: bash
+        env:
+          POINT: ${{ matrix.point }}
+        run: |
+          set -euo pipefail
+          BASE="$GITHUB_WORKSPACE/m30k4/$POINT"; mkdir -p "$BASE"
+          python3 - "$POINT" "$BASE" <<'PY'
+          import pathlib,re,sys
+          point=sys.argv[1];b=pathlib.Path(sys.argv[2]);src=pathlib.Path('provider/gravity_models/propto_omega_bh.ini').read_text()
+          spec={'base':(0.100,0.000),'radial':(0.102,0.000),'cT':(0.100,0.002)}[point];q,ct=spec
+          vals=[q,0.5*q,0.2*q,ct,0.0,1.0]
+          t=re.sub(r'(?m)^parameters_smg\s*=.*$','parameters_smg = '+', '.join(f'{v:.16g}' for v in vals),src)
+          if re.search(r'(?m)^output\s*=.*$',t):
+              t=re.sub(r'(?m)^output\s*=.*$','output = tCl,pCl,mPk',t)
+          else:
+              t+='\noutput = tCl,pCl,mPk\n'
+          for prof in ['default','permille','reference']:
+            u=re.sub(r'(?m)^root\s*=.*$',f'root = {b}/{prof}_',t);(b/f'{prof}.ini').write_text(u)
+          PY
+      - name: Execute unchanged frozen provider precision ladder
+        shell: bash
+        env:
+          POINT: ${{ matrix.point }}
+        run: |
+          set +e
+          BASE="$GITHUB_WORKSPACE/m30k4/$POINT"
+          printf '{"build":0' > "$BASE/status.tmp"
+          ./provider/class "$BASE/default.ini" > "$BASE/default.stdout" 2> "$BASE/default.stderr"; d=$?
+          ./provider/class "$BASE/permille.ini" provider/cl_permille.pre > "$BASE/permille.stdout" 2> "$BASE/permille.stderr"; p=$?
+          ./provider/class "$BASE/reference.ini" provider/cl_ref.pre > "$BASE/reference.stdout" 2> "$BASE/reference.stderr"; r=$?
+          printf ',"default":%d,"permille":%d,"reference":%d}\n' "$d" "$p" "$r" >> "$BASE/status.tmp"
+          tr -d '\n' < "$BASE/status.tmp" > "$BASE/status.json"; echo >> "$BASE/status.json"
+          rm "$BASE/status.tmp"
+          cat "$BASE/status.json"
+          exit 0
+      - name: Normalize native output paths byte-identically
+        shell: bash
+        env:
+          POINT: ${{ matrix.point }}
+        run: |
+          set -euo pipefail
+          BASE="$GITHUB_WORKSPACE/m30k4/$POINT"
+          for prof in default permille reference; do
+            test -s "$BASE/${prof}_00_cl.dat"
+            test -s "$BASE/${prof}_00_pk.dat"
+            cp "$BASE/${prof}_00_cl.dat" "$BASE/${prof}_cl.dat"
+            cp "$BASE/${prof}_00_pk.dat" "$BASE/${prof}_pk.dat"
+            cmp -s "$BASE/${prof}_00_cl.dat" "$BASE/${prof}_cl.dat"
+            cmp -s "$BASE/${prof}_00_pk.dat" "$BASE/${prof}_pk.dat"
+          done
+      - name: Analyze unchanged preregistered point gate
+        env:
+          POINT: ${{ matrix.point }}
+        run: |
+          set -euo pipefail
+          BASE="$GITHUB_WORKSPACE/m30k4/$POINT"
+          python3 verification/m30/k4_local_2d_precision.py point "$BASE" "$BASE/status.json" "$POINT" "M30_K4_POINT_${POINT}.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m30-k4-polarization-recovery-${{ matrix.point }}
+          path: |
+            M30_K4_POINT_${{ matrix.point }}.json
+            m30k4/${{ matrix.point }}/
+          retention-days: 30
+  aggregate:
+    needs: point
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m30-k4-polarization-recovery-*
+          path: m30-k4-artifacts
+      - name: Aggregate only after explicit matrix barrier
+        run: |
+          set -euo pipefail
+          python3 verification/m30/k4_local_2d_precision.py aggregate m30-k4-artifacts M30_K4_LOCAL_2D_PRECISION_RESULT.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m30-k4-polarization-output-recovery-aggregate
+          path: M30_K4_LOCAL_2D_PRECISION_RESULT.json
+          retention-days: 30
