@@ -1,0 +1,67 @@
+{
+  "schema": "KMDSB.W03.M13b.K3D2BFirstEnabledFullBoltzmannDiagnostic.v0.1",
+  "model_id": "M13b",
+  "family_id": "F13",
+  "gate": "K3D2-B",
+  "provider": "lesgourg/class_public",
+  "provider_commit": "64bbab707faf4de4779a9e04edd180fef18d98fa",
+  "actions_run": 34784844546,
+  "job": 103798316642,
+  "artifact_id": 10325654410,
+  "artifact_digest": "sha256:4125889da3c4f4a86b3fc83398cc2432427a89822f14ecb7d2eeb56fa37409be",
+  "classification": "M13B_K3D2B_INITIAL_EPOCH_BINDING_MISMATCH_FULL_BOLTZMANN_RUNTIME_PASS",
+  "provider_rc_zero": true,
+  "full_boltzmann_runtime_completed": true,
+  "spectra": {
+    "linear_pk_rows": 491,
+    "cl_rows": 1595,
+    "pk_positive_finite": true,
+    "cl_finite": true,
+    "cl_tt_ee_nonnegative": true
+  },
+  "background": {
+    "z5": {
+      "x": 0.9212361867037846,
+      "p": 0.0037689818538105806,
+      "y": 0.9924888256530414,
+      "q": -0.09018622724060346,
+      "D": -0.008119358861195332,
+      "E": 8.268215116395735
+    },
+    "D_z4p9": -0.008966880192181278,
+    "today": {
+      "z": 0.0,
+      "E": 0.9978021719205823,
+      "x": 1.389162163045,
+      "p": 0.2668061839931075,
+      "y": 0.8443415274736,
+      "q": -0.019195150981353288,
+      "D": 0.070817085995767
+    },
+    "crossings_z": [1.507195047141748],
+    "Omega_DE0": 0.687133959746866
+  },
+  "frozen_B1_checks": {
+    "z5_x": false,
+    "z5_y": false,
+    "z5_p": false,
+    "z5_q": false,
+    "one_crossing": true,
+    "crossing_match_K3C1": false,
+    "today_x": true,
+    "today_y": false,
+    "today_p": false,
+    "today_q": false,
+    "E0": true,
+    "OmegaDE0": true,
+    "phantom_after_start": true,
+    "quintessence_today": true
+  },
+  "diagnosis": "CLASS initialized qcf/qpf at its primordial background start, whereas K3C1/K3C2 define the independent comparison realization as an IVP released at z=5 with x=0.92,p=0,y=1.02,q=0. The pre-z=5 field drift is therefore an initial-epoch binding mismatch, not a failure of the enabled Einstein-Boltzmann runtime.",
+  "physical_falsification": false,
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "published_V0_reproduced": false,
+  "author_normalization_map_claimed": false
+}
