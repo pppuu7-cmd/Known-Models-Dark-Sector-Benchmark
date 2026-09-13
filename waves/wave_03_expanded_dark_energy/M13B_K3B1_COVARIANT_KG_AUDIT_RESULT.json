@@ -1,0 +1,42 @@
+{
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "all_required_checks_pass": true,
+  "canonical_literal_minus_covariant": "-2*Phi*Vphi*a**2 + Phip*phip",
+  "checks": {
+    "canonical_covariant_mass_sign_positive": true,
+    "canonical_covariant_rhs_source_structure": true,
+    "canonical_difference_not_identity": true,
+    "canonical_literal_minus_covariant_exact": true,
+    "canonical_no_metric_special_case_coincides": true,
+    "phantom_covariant_mass_sign_negative": true,
+    "phantom_covariant_rhs_source_structure": true,
+    "phantom_difference_not_identity": true,
+    "phantom_literal_minus_covariant_exact": true,
+    "phantom_no_metric_special_case_coincides": true
+  },
+  "classification": "M13B_K3B1_PUBLISHED_PERTURBED_KG_NOT_LITERAL_COVARIANT_IMPLEMENTATION_AUTHORITY",
+  "covariant_rhs_sources": {
+    "canonical": "-2*Phi*Vphi*a**2 + 4*Phip*phip",
+    "phantom": "2*Phi*Vpsi*a**2 + 4*Phip*psip"
+  },
+  "family_id": "F13",
+  "gate": "K3B1",
+  "generic_nonzero_probe": {
+    "canonical": "13/875",
+    "phantom": "7/660"
+  },
+  "implementation_authority": "independent_covariant_standard_GR",
+  "mass_term_coefficients": {
+    "canonical": "Vphiphi*a**2 + k**2",
+    "phantom": "-Vpsipsi*a**2 + k**2"
+  },
+  "model_id": "M13b",
+  "next_authorized_gate": "K3B2_INDEPENDENT_STANDARD_GR_TWO_FIELD_DYNAMICAL_EMBEDDING",
+  "original_provider_reproduced": false,
+  "phantom_literal_minus_covariant": "2*Phi*Vpsi*a**2 + Phip*psip",
+  "physical_falsification": false,
+  "protocol": "protocol/W03_M13B_K3B1_COVARIANT_KG_CONVENTION_AUDIT_v0.1.md",
+  "schema": "KMDSB.W03.M13b.K3B1CovariantKGAudit.v0.1"
+}
