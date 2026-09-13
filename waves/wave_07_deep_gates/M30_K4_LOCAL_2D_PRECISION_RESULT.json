@@ -1,0 +1,57 @@
+{
+  "K4_promoted": false,
+  "classification": "M30_K4_NUMERICAL_ROBUSTNESS_NOT_ESTABLISHED_LOCAL_2D",
+  "family_id": "F30",
+  "model_id": "M30",
+  "physical_falsification": false,
+  "preregistration": "protocol/W07_M30_K4_LOCAL_2D_PRECISION_PREREGISTRATION_v0.1.md",
+  "provider_commit": "0009f51d89e6465c79e570b496c66fc90058fa77",
+  "schema": "KMDSB.M30.K4Local2DPrecisionAggregate.v1",
+  "provenance": {
+    "scientific_parent_run": 34750957481,
+    "analysis_recovery_run": 34753465928,
+    "analysis_recovery_job": 103713787171,
+    "authoritative_artifact": 10316702998
+  },
+  "points": [
+    {
+      "point": "base",
+      "classification": "M30_K4_POINT_PROVIDER_PRECISION_NOT_ESTABLISHED",
+      "point_pass": false,
+      "K4_promoted": false,
+      "status": {"build": 0, "default": 0, "permille": 0, "reference": 0},
+      "blocks": {
+        "EE": {"R_coarse": 6.488931984988538e-05, "R_fine": 0.0003326903620766807, "pass": false},
+        "Pk": {"R_coarse": 0.0, "R_fine": 5.30981132329543e-05, "pass": false},
+        "TE": {"R_coarse": 0.0005083369340085974, "R_fine": 0.0007507990299127048, "pass": false},
+        "TT": {"R_coarse": 7.217065531926532e-05, "R_fine": 0.0002600035111038685, "pass": false}
+      }
+    },
+    {
+      "point": "cT",
+      "classification": "M30_K4_POINT_PROVIDER_PRECISION_NOT_ESTABLISHED",
+      "point_pass": false,
+      "K4_promoted": false,
+      "status": {"build": 0, "default": 0, "permille": 0, "reference": 0},
+      "blocks": {
+        "EE": {"R_coarse": 6.488907404419938e-05, "R_fine": 0.0003327016105568318, "pass": false},
+        "Pk": {"R_coarse": 0.0, "R_fine": 5.309379504655152e-05, "pass": false},
+        "TE": {"R_coarse": 0.0005083346304986302, "R_fine": 0.000750818690592168, "pass": false},
+        "TT": {"R_coarse": 7.217293239476217e-05, "R_fine": 0.0002600168222193581, "pass": false}
+      }
+    },
+    {
+      "point": "radial",
+      "classification": "M30_K4_POINT_PROVIDER_PRECISION_NOT_ESTABLISHED",
+      "point_pass": false,
+      "K4_promoted": false,
+      "status": {"build": 0, "default": 0, "permille": 0, "reference": 0},
+      "blocks": {
+        "EE": {"R_coarse": 6.488940731759999e-05, "R_fine": 0.00033423564029999684, "pass": false},
+        "Pk": {"R_coarse": 0.0, "R_fine": 5.296546071700381e-05, "pass": false},
+        "TE": {"R_coarse": 0.0005083380426307985, "R_fine": 0.0007530410680741605, "pass": false},
+        "TT": {"R_coarse": 7.217469780471248e-05, "R_fine": 0.00026241440798017643, "pass": false}
+      }
+    }
+  ]
+}
