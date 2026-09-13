@@ -1,0 +1,748 @@
+===== include/background.h =====
+000102: 
+000103:   double Omega0_lambda;    /**< \f$ \Omega_{0_\Lambda} \f$: cosmological constant */
+000104:   double Omega0_fld;       /**< \f$ \Omega_{0 de} \f$: fluid */
+000105:   double Omega0_scf;       /**< \f$ \Omega_{0 scf} \f$: scalar field */
+000106:   short use_ppf; /**< flag switching on PPF perturbation equations instead of true fluid equations for perturbations. It could have been defined inside
+000107:                     perturbation structure, but we leave it here in such way to have all fld parameters grouped. */
+000108:   double c_gamma_over_c_fld; /**< ppf parameter defined in eq. (16) of 0808.3125 [astro-ph] */
+...
+000112:   double cs2_fld;  /**< \f$ c^2_{s~DE} \f$: sound speed of the fluid in the frame comoving with the fluid (so, this is
+000113:                       not [delta p/delta rho] in the synchronous or newtonian gauge!) */
+000114:   double Omega_EDE;        /**< \f$ wa_{DE} \f$: Early Dark Energy density parameter */
+000115:   double * scf_parameters; /**< list of parameters describing the scalar field potential */
+000116:   short attractor_ic_scf;  /**< whether the scalar field has attractor initial conditions */
+000117:   int scf_tuning_index;    /**< index in scf_parameters used for tuning */
+000118:   double phi_ini_scf;      /**< \f$ \phi(t_0) \f$: scalar field initial value */
+000119:   double phi_prime_ini_scf;/**< \f$ d\phi(t_0)/d\tau \f$: scalar field initial derivative wrt conformal time */
+000120:   int scf_parameters_size; /**< size of scf_parameters */
+000121:   double varconst_alpha; /**< finestructure constant for varying fundamental constants */
+000122:   double varconst_me; /**< electron mass for varying fundamental constants */
+000123:   enum varconst_dependence varconst_dep; /**< dependence of the varying fundamental constants as a function of time */
+...
+000173:   int index_bg_rho_dcdm;      /**< dcdm density */
+000174:   int index_bg_rho_dr;        /**< dr density */
+000175: 
+000176:   int index_bg_phi_scf;       /**< scalar field value */
+000177:   int index_bg_phi_prime_scf; /**< scalar field derivative wrt conformal time */
+000178:   int index_bg_V_scf;         /**< scalar field potential V */
+000179:   int index_bg_dV_scf;        /**< scalar field potential derivative V' */
+000180:   int index_bg_ddV_scf;       /**< scalar field potential second derivative V'' */
+000181:   int index_bg_rho_scf;       /**< scalar field energy density */
+000182:   int index_bg_p_scf;         /**< scalar field pressure */
+000183:   int index_bg_p_prime_scf;         /**< scalar field pressure */
+000184: 
+...
+000255:   int index_bi_rho_dcdm;/**< {B} dcdm density */
+000256:   int index_bi_rho_dr;  /**< {B} dr density */
+000257:   int index_bi_rho_fld; /**< {B} fluid density */
+000258:   int index_bi_phi_scf;       /**< {B} scalar field value */
+000259:   int index_bi_phi_prime_scf; /**< {B} scalar field derivative wrt conformal time */
+000260: 
+000261:   int index_bi_time;    /**< {C} proper (cosmological) time in Mpc */
+...
+000283:   short has_idm;       /**< presence of interacting dark matter with photons, baryons, and idr */
+000284:   short has_dcdm;      /**< presence of decaying cold dark matter? */
+000285:   short has_dr;        /**< presence of relativistic decay radiation? */
+000286:   short has_scf;       /**< presence of a scalar field? */
+000287:   short has_ncdm;      /**< presence of non-cold dark matter? */
+000288:   short has_lambda;    /**< presence of cosmological constant? */
+000289:   short has_fld;       /**< presence of fluid with constant w and cs2? */
+...
+000547:                                );
+000548: 
+000549:   /** Scalar field potential and its derivatives **/
+000550:   double V_scf(
+000551:                struct background *pba,
+000552:                double phi
+000553:                );
+000554: 
+000555:   double dV_scf(
+000556:                 struct background *pba,
+000557:                 double phi
+000558:                 );
+000559: 
+000560:   double ddV_scf(
+000561:                  struct background *pba,
+000562:                  double phi
+000563:                  );
+
+===== source/background.c =====
+000470:   }
+000471: 
+000472:   /* Scalar field */
+000473:   if (pba->has_scf == _TRUE_) {
+000474:     phi = pvecback_B[pba->index_bi_phi_scf];
+000475:     phi_prime = pvecback_B[pba->index_bi_phi_prime_scf];
+000476:     pvecback[pba->index_bg_phi_scf] = phi; // value of the scalar field phi
+000477:     pvecback[pba->index_bg_phi_prime_scf] = phi_prime; // value of the scalar field phi derivative wrt conformal time
+000478:     pvecback[pba->index_bg_V_scf] = V_scf(pba,phi); //V_scf(pba,phi); //write here potential as function of phi
+000479:     pvecback[pba->index_bg_dV_scf] = dV_scf(pba,phi); // dV_scf(pba,phi); //potential' as function of phi
+000480:     pvecback[pba->index_bg_ddV_scf] = ddV_scf(pba,phi); // ddV_scf(pba,phi); //potential'' as function of phi
+000481:     pvecback[pba->index_bg_rho_scf] = (phi_prime*phi_prime/(2*a*a) + V_scf(pba,phi))/3.; // energy of the scalar field. The field units are set automatically by setting the initial conditions
+000482:     pvecback[pba->index_bg_p_scf] =(phi_prime*phi_prime/(2*a*a) - V_scf(pba,phi))/3.; // pressure of the scalar field
+000483:     rho_tot += pvecback[pba->index_bg_rho_scf];
+000484:     p_tot += pvecback[pba->index_bg_p_scf];
+000485:     dp_dloga += 0.0; /** <-- This depends on a_prime_over_a, so we cannot add it now! */
+000486:     //divide relativistic & nonrelativistic (not very meaningful for oscillatory models)
+000487:     rho_r += 3.*pvecback[pba->index_bg_p_scf]; //field pressure contributes radiation
+000488:     rho_m += pvecback[pba->index_bg_rho_scf] - 3.* pvecback[pba->index_bg_p_scf]; //the rest contributes matter
+000489:     //printf(" a= %e, Omega_scf = %f, \n ",a, pvecback[pba->index_bg_rho_scf]/rho_tot );
+000490:   }
+000491: 
+000492:   /* ncdm */
+...
+000589: 
+000590:   /* Derivative of total pressure w.r.t. conformal time */
+000591:   pvecback[pba->index_bg_p_tot_prime] = a*pvecback[pba->index_bg_H]*dp_dloga;
+000592:   if (pba->has_scf == _TRUE_) {
+000593:     /** The contribution of scf was not added to dp_dloga, add p_scf_prime here: */
+000594:     pvecback[pba->index_bg_p_prime_scf] = pvecback[pba->index_bg_phi_prime_scf]*
+000595:       (-pvecback[pba->index_bg_phi_prime_scf]*pvecback[pba->index_bg_H]/a-2./3.*pvecback[pba->index_bg_dV_scf]);
+...
+000946:       free(pba->ncdm_psd_parameters);
+000947:   }
+000948: 
+000949:   if (pba->Omega0_scf != 0.) {
+000950:     if (pba->scf_parameters != NULL)
+000951:       free(pba->scf_parameters);
+000952:   }
+000953:   return _SUCCESS_;
+000954: }
+...
+000980:   pba->has_ncdm = _FALSE_;
+000981:   pba->has_dcdm = _FALSE_;
+000982:   pba->has_dr = _FALSE_;
+000983:   pba->has_scf = _FALSE_;
+000984:   pba->has_lambda = _FALSE_;
+000985:   pba->has_fld = _FALSE_;
+000986:   pba->has_ur = _FALSE_;
+...
+001003:       pba->has_dr = _TRUE_;
+001004:   }
+001005: 
+001006:   if (pba->Omega0_scf != 0.)
+001007:     pba->has_scf = _TRUE_;
+001008: 
+001009:   if (pba->Omega0_lambda != 0.)
+001010:     pba->has_lambda = _TRUE_;
+...
+001064:   class_define_index(pba->index_bg_rho_dr,pba->has_dr,index_bg,1);
+001065: 
+001066:   /* - indices for scalar field */
+001067:   class_define_index(pba->index_bg_phi_scf,pba->has_scf,index_bg,1);
+001068:   class_define_index(pba->index_bg_phi_prime_scf,pba->has_scf,index_bg,1);
+001069:   class_define_index(pba->index_bg_V_scf,pba->has_scf,index_bg,1);
+001070:   class_define_index(pba->index_bg_dV_scf,pba->has_scf,index_bg,1);
+001071:   class_define_index(pba->index_bg_ddV_scf,pba->has_scf,index_bg,1);
+001072:   class_define_index(pba->index_bg_rho_scf,pba->has_scf,index_bg,1);
+001073:   class_define_index(pba->index_bg_p_scf,pba->has_scf,index_bg,1);
+001074:   class_define_index(pba->index_bg_p_prime_scf,pba->has_scf,index_bg,1);
+001075: 
+001076:   /* - index for Lambda */
+001077:   class_define_index(pba->index_bg_rho_lambda,pba->has_lambda,index_bg,1);
+...
+001166:   class_define_index(pba->index_bi_rho_fld,pba->has_fld,index_bi,1);
+001167: 
+001168:   /* -> scalar field and its derivative wrt conformal time (Zuma) */
+001169:   class_define_index(pba->index_bi_phi_scf,pba->has_scf,index_bi,1);
+001170:   class_define_index(pba->index_bi_phi_prime_scf,pba->has_scf,index_bi,1);
+001171: 
+001172:   /* End of {B} variables */
+001173:   pba->bi_B_size = index_bi;
+...
+002072:              pba->Omega0_dr+pba->Omega0_dcdm,pba->Omega0_dcdmdr);
+002073:       printf("     -> Omega_ini_dcdm/Omega_b = %f\n",pba->Omega_ini_dcdm/pba->Omega0_b);
+002074:     }
+002075:     if (pba->has_scf == _TRUE_) {
+002076:       printf("    Scalar field details:\n");
+002077:       printf("     -> Omega_scf = %g, wished %g\n",
+002078:              pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_rho_scf]/pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_rho_crit], pba->Omega0_scf);
+002079:       if (pba->has_lambda == _TRUE_) {
+002080:         printf("     -> Omega_Lambda = %g, wished %g\n",
+002081:                pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_rho_lambda]/pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_rho_crit], pba->Omega0_lambda);
+002082:       }
+002083:       printf("     -> parameters: [lambda, alpha, A, B] = \n");
+002084:       printf("                    [");
+002085:       for (index_scf=0; index_scf<pba->scf_parameters_size-1; index_scf++) {
+002086:         printf("%.3f, ",pba->scf_parameters[index_scf]);
+002087:       }
+002088:       printf("%.3f]\n",pba->scf_parameters[pba->scf_parameters_size-1]);
+002089:     }
+002090:   }
+002091: 
+...
+002264:    * - Check equations and signs. Sign of phi_prime?
+002265:    * - is rho_ur all there is early on?
+002266:    */
+002267:   if (pba->has_scf == _TRUE_) {
+002268:     scf_lambda = pba->scf_parameters[0];
+002269:     if (pba->attractor_ic_scf == _TRUE_) {
+002270:       pvecback_integration[pba->index_bi_phi_scf] = -1/scf_lambda*
+002271:         log(rho_rad*4./(3*pow(scf_lambda,2)-12))*pba->phi_ini_scf;
+002272:       if (3.*pow(scf_lambda,2)-12. < 0) {
+002273:         /** - --> If there is no attractor solution for scf_lambda, assign some value. Otherwise would give a nan.*/
+002274:         pvecback_integration[pba->index_bi_phi_scf] = 1./scf_lambda;//seems to do the work
+002275:         if (pba->background_verbose > 0) {
+002276:           printf(" No attractor IC for lambda = %.3e ! \n ",scf_lambda);
+002277:         }
+002278:       }
+002279:       pvecback_integration[pba->index_bi_phi_prime_scf] = 2.*a*sqrt(V_scf(pba,pvecback_integration[pba->index_bi_phi_scf]))*pba->phi_prime_ini_scf;
+002280:     }
+002281:     else {
+002282:       printf("Not using attractor initial conditions\n");
+002283:       /** - --> If no attractor initial conditions are assigned, gets the provided ones. */
+002284:       pvecback_integration[pba->index_bi_phi_scf] = pba->phi_ini_scf;
+002285:       pvecback_integration[pba->index_bi_phi_prime_scf] = pba->phi_prime_ini_scf;
+002286:     }
+002287:     class_test(!isfinite(pvecback_integration[pba->index_bi_phi_scf]) ||
+002288:                !isfinite(pvecback_integration[pba->index_bi_phi_scf]),
+002289:                pba->error_message,
+002290:                "initial phi = %e phi_prime = %e -> check initial conditions",
+002291:                pvecback_integration[pba->index_bi_phi_scf],
+002292:                pvecback_integration[pba->index_bi_phi_scf]);
+002293:   }
+002294: 
+002295:   /* Infer pvecback from pvecback_integration */
+...
+002458:   class_store_columntitle(titles,"(.)rho_dcdm",pba->has_dcdm);
+002459:   class_store_columntitle(titles,"(.)rho_dr",pba->has_dr);
+002460: 
+002461:   class_store_columntitle(titles,"(.)rho_scf",pba->has_scf);
+002462:   class_store_columntitle(titles,"(.)p_scf",pba->has_scf);
+002463:   class_store_columntitle(titles,"(.)p_prime_scf",pba->has_scf);
+002464:   class_store_columntitle(titles,"phi_scf",pba->has_scf);
+002465:   class_store_columntitle(titles,"phi'_scf",pba->has_scf);
+002466:   class_store_columntitle(titles,"V_scf",pba->has_scf);
+002467:   class_store_columntitle(titles,"V'_scf",pba->has_scf);
+002468:   class_store_columntitle(titles,"V''_scf",pba->has_scf);
+002469: 
+002470:   class_store_columntitle(titles,"(.)rho_tot",_TRUE_);
+002471:   class_store_columntitle(titles,"(.)p_tot",_TRUE_);
+...
+002534:     class_store_double(dataptr,pvecback[pba->index_bg_rho_dcdm],pba->has_dcdm,storeidx);
+002535:     class_store_double(dataptr,pvecback[pba->index_bg_rho_dr],pba->has_dr,storeidx);
+002536: 
+002537:     class_store_double(dataptr,pvecback[pba->index_bg_rho_scf],pba->has_scf,storeidx);
+002538:     class_store_double(dataptr,pvecback[pba->index_bg_p_scf],pba->has_scf,storeidx);
+002539:     class_store_double(dataptr,pvecback[pba->index_bg_p_prime_scf],pba->has_scf,storeidx);
+002540:     class_store_double(dataptr,pvecback[pba->index_bg_phi_scf],pba->has_scf,storeidx);
+002541:     class_store_double(dataptr,pvecback[pba->index_bg_phi_prime_scf],pba->has_scf,storeidx);
+002542:     class_store_double(dataptr,pvecback[pba->index_bg_V_scf],pba->has_scf,storeidx);
+002543:     class_store_double(dataptr,pvecback[pba->index_bg_dV_scf],pba->has_scf,storeidx);
+002544:     class_store_double(dataptr,pvecback[pba->index_bg_ddV_scf],pba->has_scf,storeidx);
+002545: 
+002546:     class_store_double(dataptr,pvecback[pba->index_bg_rho_tot],_TRUE_,storeidx);
+002547:     class_store_double(dataptr,pvecback[pba->index_bg_p_tot],_TRUE_,storeidx);
+...
+002660:     dy[pba->index_bi_rho_fld] = -3.*(1.+pvecback[pba->index_bg_w_fld])*y[pba->index_bi_rho_fld];
+002661:   }
+002662: 
+002663:   if (pba->has_scf == _TRUE_) {
+002664:     /** - Scalar field equation: \f$ \phi'' + 2 a H \phi' + a^2 dV = 0 \f$  (note H is wrt cosmological time)
+002665:         written as \f$ d\phi/dlna = phi' / (aH) \f$ and \f$ d\phi'/dlna = -2*phi' - (a/H) dV \f$ */
+002666:     dy[pba->index_bi_phi_scf] = y[pba->index_bi_phi_prime_scf]/a/H;
+002667:     dy[pba->index_bi_phi_prime_scf] = - 2*y[pba->index_bi_phi_prime_scf] - a*dV_scf(pba,y[pba->index_bi_phi_scf])/H ;
+002668:   }
+002669: 
+002670:   return _SUCCESS_;
+...
+002844:       budget_radiation+=pba->Omega0_idr;
+002845:     }
+002846: 
+002847:     if ((pba->has_lambda == _TRUE_) || (pba->has_fld == _TRUE_) || (pba->has_scf == _TRUE_) || (pba->has_curvature == _TRUE_)) {
+002848:       printf(" ---> Other Content \n");
+002849:     }
+002850:     if (pba->has_lambda == _TRUE_) {
+...
+002855:       class_print_species("Dark Energy Fluid",fld);
+002856:       budget_other+=pba->Omega0_fld;
+002857:     }
+002858:     if (pba->has_scf == _TRUE_) {
+002859:       class_print_species("Scalar Field",scf);
+002860:       budget_other+=pba->Omega0_scf;
+002861:     }
+002862:     if (pba->has_curvature == _TRUE_) {
+002863:       class_print_species("Spatial Curvature",k);
+...
+002871:       printf(" - Non-Free-Streaming Matter      Omega = %-15g , omega = %-15g \n",pba->Omega0_nfsm,pba->Omega0_nfsm*pba->h*pba->h);
+002872:       printf(" - Non-Cold Dark Matter           Omega = %-15g , omega = %-15g \n",budget_neutrino,budget_neutrino*pba->h*pba->h);
+002873:     }
+002874:     if ((pba->has_lambda == _TRUE_) || (pba->has_fld == _TRUE_) || (pba->has_scf == _TRUE_) || (pba->has_curvature == _TRUE_)) {
+002875:       printf(" Other Content                    Omega = %-15g , omega = %-15g \n",budget_other,budget_other*pba->h*pba->h);
+002876:     }
+002877:     printf(" TOTAL                            Omega = %-15g , omega = %-15g \n",budget_radiation+budget_matter+budget_other,(budget_radiation+budget_matter+budget_other)*pba->h*pba->h);
+...
+002910: double V_e_scf(struct background *pba,
+002911:                double phi
+002912:                ) {
+002913:   double scf_lambda = pba->scf_parameters[0];
+002914:   //  double scf_alpha  = pba->scf_parameters[1];
+002915:   //  double scf_A      = pba->scf_parameters[2];
+002916:   //  double scf_B      = pba->scf_parameters[3];
+002917: 
+002918:   return  exp(-scf_lambda*phi);
+002919: }
+...
+002921: double dV_e_scf(struct background *pba,
+002922:                 double phi
+002923:                 ) {
+002924:   double scf_lambda = pba->scf_parameters[0];
+002925:   //  double scf_alpha  = pba->scf_parameters[1];
+002926:   //  double scf_A      = pba->scf_parameters[2];
+002927:   //  double scf_B      = pba->scf_parameters[3];
+002928: 
+002929:   return -scf_lambda*V_e_scf(pba,phi);
+002930: }
+...
+002932: double ddV_e_scf(struct background *pba,
+002933:                  double phi
+002934:                  ) {
+002935:   double scf_lambda = pba->scf_parameters[0];
+002936:   //  double scf_alpha  = pba->scf_parameters[1];
+002937:   //  double scf_A      = pba->scf_parameters[2];
+002938:   //  double scf_B      = pba->scf_parameters[3];
+002939: 
+002940:   return pow(-scf_lambda,2)*V_e_scf(pba,phi);
+002941: }
+...
+002954: double V_p_scf(
+002955:                struct background *pba,
+002956:                double phi) {
+002957:   //  double scf_lambda = pba->scf_parameters[0];
+002958:   double scf_alpha  = pba->scf_parameters[1];
+002959:   double scf_A      = pba->scf_parameters[2];
+002960:   double scf_B      = pba->scf_parameters[3];
+002961: 
+002962:   return  pow(phi - scf_B,  scf_alpha) +  scf_A;
+002963: }
+...
+002966:                 struct background *pba,
+002967:                 double phi) {
+002968: 
+002969:   //  double scf_lambda = pba->scf_parameters[0];
+002970:   double scf_alpha  = pba->scf_parameters[1];
+002971:   //  double scf_A      = pba->scf_parameters[2];
+002972:   double scf_B      = pba->scf_parameters[3];
+002973: 
+002974:   return   scf_alpha*pow(phi -  scf_B,  scf_alpha - 1);
+002975: }
+...
+002977: double ddV_p_scf(
+002978:                  struct background *pba,
+002979:                  double phi) {
+002980:   //  double scf_lambda = pba->scf_parameters[0];
+002981:   double scf_alpha  = pba->scf_parameters[1];
+002982:   //  double scf_A      = pba->scf_parameters[2];
+002983:   double scf_B      = pba->scf_parameters[3];
+002984: 
+002985:   return  scf_alpha*(scf_alpha - 1.)*pow(phi -  scf_B,  scf_alpha - 2);
+002986: }
+...
+002988: /** Fianlly we can obtain the overall potential \f$ V = V_p*V_e \f$
+002989:  */
+002990: 
+002991: double V_scf(
+002992:              struct background *pba,
+002993:              double phi) {
+002994:   return  V_e_scf(pba,phi)*V_p_scf(pba,phi);
+002995: }
+002996: 
+002997: double dV_scf(
+002998:               struct background *pba,
+002999:               double phi) {
+003000:   return dV_e_scf(pba,phi)*V_p_scf(pba,phi) + V_e_scf(pba,phi)*dV_p_scf(pba,phi);
+003001: }
+003002: 
+003003: double ddV_scf(
+003004:                struct background *pba,
+003005:                double phi) {
+003006:   return ddV_e_scf(pba,phi)*V_p_scf(pba,phi) + 2*dV_e_scf(pba,phi)*dV_p_scf(pba,phi) + V_e_scf(pba,phi)*ddV_p_scf(pba,phi);
+
+===== source/input.c =====
+001235:       /* *
+001236:        * This guess is arbitrary, something nice using WKB should be implemented.
+001237:        * Version 2 uses a fit
+001238:        * xguess[index_guess] = 1.77835*pow(ba.Omega0_scf,-2./7.);
+001239:        * dxdy[index_guess] = -0.5081*pow(ba.Omega0_scf,-9./7.)`;
+001240:        * Version 3: use attractor solution
+001241:        * */
+001242:       if (ba.scf_tuning_index == 0){
+001243:         xguess[index_guess] = sqrt(3.0/ba.Omega0_scf);
+001244:         dxdy[index_guess] = -0.5*sqrt(3.0)*pow(ba.Omega0_scf,-1.5);
+001245:       }
+001246:       else{
+001247:         /* Default: take the passed value as xguess and set dxdy to 1. */
+001248:         xguess[index_guess] = ba.scf_parameters[ba.scf_tuning_index];
+001249:         dxdy[index_guess] = 1.;
+001250:       }
+001251:       break;
+...
+001478:       output[i] = (rho_dcdm_today+rho_dr_today)/(ba.H0*ba.H0)-pfzw->target_value[i]/ba.h/ba.h;
+001479:       break;
+001480:     case Omega_scf:
+001481:       /** In case scalar field is used to fill, pba->Omega0_scf is not equal to pfzw->target_value[i].*/
+001482:       output[i] = ba.background_table[(ba.bt_size-1)*ba.bg_size+ba.index_bg_rho_scf]/(ba.H0*ba.H0)-ba.Omega0_scf;
+001483:       break;
+001484:     case Omega_ini_dcdm:
+001485:     case omega_ini_dcdm:
+...
+003267: 
+003268:   /** 8) Dark energy
+003269:       Omega_0_lambda (cosmological constant), Omega0_fld (dark energy
+003270:       fluid), Omega0_scf (scalar field) */
+003271:   /* Read */
+003272:   class_call(parser_read_double(pfc,"Omega_Lambda",&param1,&flag1,errmsg),
+003273:              errmsg,
+...
+003314:     Omega_tot += pba->Omega0_fld;
+003315:   }
+003316:   if ((flag3 == _TRUE_) && (param3 >= 0.)){
+003317:     pba->Omega0_scf = param3;
+003318:     Omega_tot += pba->Omega0_scf;
+003319:   }
+003320:   /* Step 2 */
+003321:   if (flag1 == _FALSE_) {
+...
+003334:   }
+003335:   else if ((flag3 == _TRUE_) && (param3 < 0.)){
+003336:     /* Fill up with scalar field */
+003337:     pba->Omega0_scf = 1. - pba->Omega0_k - Omega_tot;
+003338:     if (input_verbose > 0){
+003339:       printf(" -> matched budget equations by adjusting Omega_scf = %g\n",pba->Omega0_scf);
+003340:     }
+003341:   }
+003342: 
+...
+003394:   }
+003395: 
+003396:   /** 8.b) If Omega scalar field (SCF) is different from 0 */
+003397:   if (pba->Omega0_scf != 0.){
+003398: 
+003399:     /** 8.b.1) Additional SCF parameters */
+003400:     /* Read */
+003401:     class_call(parser_read_list_of_doubles(pfc,
+003402:                                            "scf_parameters",
+003403:                                            &(pba->scf_parameters_size),
+003404:                                            &(pba->scf_parameters),
+003405:                                            &flag1,
+003406:                                            errmsg),
+003407:                errmsg,errmsg);
+...
+003423:       else {
+003424:         pba->attractor_ic_scf = _FALSE_;
+003425:         /* Test */
+003426:         class_test(pba->scf_parameters_size<2,
+003427:                    errmsg,
+003428:                    "Since you are not using attractor initial conditions, you must specify phi and its derivative phi' as the last two entries in scf_parameters. See explanatory.ini for more details.");
+003429:         pba->phi_ini_scf = pba->scf_parameters[pba->scf_parameters_size-2];
+003430:         pba->phi_prime_ini_scf = pba->scf_parameters[pba->scf_parameters_size-1];
+003431:       }
+003432:     }
+003433: 
+...
+003435:     /* Read */
+003436:     class_read_int("scf_tuning_index",pba->scf_tuning_index);
+003437:     /* Test */
+003438:     class_test(pba->scf_tuning_index >= pba->scf_parameters_size,
+003439:                errmsg,
+003440:                "Tuning index 'scf_tuning_index' (%d) is larger than the number of entries (%d) in 'scf_parameters'.",
+003441:                pba->scf_tuning_index,pba->scf_parameters_size);
+003442: 
+003443:     /** 8.b.4) Shooting parameter */
+003444:     /* Read */
+003445:     class_read_double("scf_shooting_parameter",pba->scf_parameters[pba->scf_tuning_index]);
+003446:     /* Complete set of parameters */
+003447:     scf_lambda = pba->scf_parameters[0];
+003448:     if ((fabs(scf_lambda) < 3.)&&(pba->background_verbose>1)){
+003449:       printf("'scf_lambda' = %e < 3 won't be tracking (for exp quint) unless overwritten by tuning function.",scf_lambda);
+003450:     }
+...
+006028: 
+006029:   /** 9) Dark energy contributions */
+006030:   pba->Omega0_fld = 0.;
+006031:   pba->Omega0_scf = 0.;
+006032:   pba->Omega0_lambda = 1.-pba->Omega0_k-pba->Omega0_g-pba->Omega0_ur-pba->Omega0_b-pba->Omega0_cdm-pba->Omega0_ncdm_tot-pba->Omega0_dcdmdr - pba->Omega0_idr -pba->Omega0_idm;
+006033:   /** 8.a) Omega fluid */
+006034:   /** 8.a.1) PPF approximation */
+...
+006044:   pba->Omega_EDE = 0.;
+006045:   /** 9.b) Omega scalar field */
+006046:   /** 9.b.1) Potential parameters and initial conditions */
+006047:   pba->scf_parameters = NULL;
+006048:   pba->scf_parameters_size = 0;
+006049:   /** 9.b.2) Initial conditions from attractor solution */
+006050:   pba->attractor_ic_scf = _TRUE_;
+006051:   pba->phi_ini_scf = 1;                // MZ: initial conditions are as multiplicative
+006052:   pba->phi_prime_ini_scf = 1;          //     factors of the radiation attractor values
+006053:   /** 9.b.3) Tuning parameter */
+006054:   pba->scf_tuning_index = 0;
+006055: 
+
+===== include/perturbations.h =====
+000547:   int index_pt_delta_fld;  /**< dark energy density in true fluid case */
+000548:   int index_pt_theta_fld;  /**< dark energy velocity in true fluid case */
+000549:   int index_pt_Gamma_fld;  /**< unique dark energy dynamical variable in PPF case */
+000550:   int index_pt_phi_scf;  /**< scalar field density */
+000551:   int index_pt_phi_prime_scf;  /**< scalar field velocity */
+000552: 
+000553:   /* Boltzmann hierarchy for ultra-relativistic species. For scalar
+000554:      modes the code uses (delta_ur, theta_ur, shear_ur), connected to
+
+===== source/perturbations.c =====
+000584:         }
+000585:         class_store_columntitle(titles,"d_dcdm",pba->has_dcdm);
+000586:         class_store_columntitle(titles,"d_dr",pba->has_dr);
+000587:         class_store_columntitle(titles,"d_scf",pba->has_scf);
+000588:         class_store_columntitle(titles,"d_m",ppt->has_source_delta_m);
+000589:         class_store_columntitle(titles,"d_tot",ppt->has_source_delta_tot);
+000590:         class_store_columntitle(titles,"phi",ppt->has_source_phi);
+...
+000613:         }
+000614:         class_store_columntitle(titles,"t_dcdm",pba->has_dcdm);
+000615:         class_store_columntitle(titles,"t_dr",pba->has_dr);
+000616:         class_store_columntitle(titles,"t_scf",pba->has_scf);
+000617:         class_store_columntitle(titles,"t_tot",_TRUE_);
+000618:       }
+000619:     }
+...
+001410:           ppt->has_source_delta_dcdm = _TRUE_;
+001411:         if (pba->has_fld == _TRUE_)
+001412:           ppt->has_source_delta_fld = _TRUE_;
+001413:         if (pba->has_scf == _TRUE_)
+001414:           ppt->has_source_delta_scf = _TRUE_;
+001415:         if (pba->has_ur == _TRUE_)
+001416:           ppt->has_source_delta_ur = _TRUE_;
+...
+001441:           ppt->has_source_theta_dcdm = _TRUE_;
+001442:         if (pba->has_fld == _TRUE_)
+001443:           ppt->has_source_theta_fld = _TRUE_;
+001444:         if (pba->has_scf == _TRUE_)
+001445:           ppt->has_source_theta_scf = _TRUE_;
+001446:         if (pba->has_ur == _TRUE_)
+001447:           ppt->has_source_theta_ur = _TRUE_;
+...
+003369:       class_store_columntitle(ppt->scalar_titles, "theta_dr", pba->has_dr);
+003370:       class_store_columntitle(ppt->scalar_titles, "shear_dr", pba->has_dr);
+003371:       /* Scalar field scf */
+003372:       class_store_columntitle(ppt->scalar_titles, "delta_scf", pba->has_scf);
+003373:       class_store_columntitle(ppt->scalar_titles, "theta_scf", pba->has_scf);
+003374:       /** Fluid */
+003375:       class_store_columntitle(ppt->scalar_titles, "delta_rho_fld", pba->has_fld);
+003376:       class_store_columntitle(ppt->scalar_titles, "rho_plus_p_theta_fld", pba->has_fld);
+...
+004082: 
+004083:     /* scalar field */
+004084: 
+004085:     class_define_index(ppv->index_pt_phi_scf,pba->has_scf,index_pt,1); /* scalar field density */
+004086:     class_define_index(ppv->index_pt_phi_prime_scf,pba->has_scf,index_pt,1); /* scalar field velocity */
+004087: 
+004088:     /* perturbed recombination: the indices are defined once tca is off. */
+004089:     if ( (ppt->has_perturbed_recombination == _TRUE_) && (ppw->approx[ppw->index_ap_tca] == (int)tca_off) ){
+...
+004731:         }
+004732:       }
+004733: 
+004734:       if (pba->has_scf == _TRUE_) {
+004735: 
+004736:         ppv->y[ppv->index_pt_phi_scf] =
+004737:           ppw->pv->y[ppw->pv->index_pt_phi_scf];
+004738: 
+004739:         ppv->y[ppv->index_pt_phi_prime_scf] =
+004740:           ppw->pv->y[ppw->pv->index_pt_phi_prime_scf];
+004741:       }
+004742: 
+004743:       if (ppt->gauge == synchronous)
+...
+005949:         /* if use_ppf == _TRUE_, y[ppw->pv->index_pt_Gamma_fld] will be automatically set to zero, and this is what we want (although one could probably work out some small nonzero initial conditions: TODO) */
+005950:       }
+005951: 
+005952:       if (pba->has_scf == _TRUE_) {
+005953:         /** - ---> Canonical field (solving for the perturbations):
+005954:          *  initial perturbations set to zero, they should reach the attractor soon enough.
+005955:          *  - --->  TODO: Incorporate the attractor IC from 1004.5509.
+...
+005959:          *  with \f$ c_s^2 = 1 \f$ and w = 1/3 (ASSUMES radiation TRACKING)
+005960:          */
+005961: 
+005962:         ppw->pv->y[ppw->pv->index_pt_phi_scf] = 0.;
+005963:         /*  a*a/k/k/ppw->pvecback[pba->index_bg_phi_prime_scf]*k*ktau_three/4.*1./(4.-6.*(1./3.)+3.*1.) * (ppw->pvecback[pba->index_bg_rho_scf] + ppw->pvecback[pba->index_bg_p_scf])* ppr->curvature_ini * s2_squared; */
+005964: 
+005965:         ppw->pv->y[ppw->pv->index_pt_phi_prime_scf] = 0.;
+005966:         /* delta_fld expression * rho_scf with the w = 1/3, c_s = 1
+005967:            a*a/ppw->pvecback[pba->index_bg_phi_prime_scf]*( - ktau_two/4.*(1.+1./3.)*(4.-3.*1.)/(4.-6.*(1/3.)+3.*1.)*ppw->pvecback[pba->index_bg_rho_scf] - ppw->pvecback[pba->index_bg_dV_scf]*ppw->pv->y[ppw->pv->index_pt_phi_scf])* ppr->curvature_ini * s2_squared; */
+005968:       }
+005969: 
+005970:       /* all relativistic relics: ur, early ncdm, dr */
+...
+006228:       }
+006229: 
+006230:       /* scalar field: check */
+006231:       if (pba->has_scf == _TRUE_) {
+006232:         alpha_prime = 0.0;
+006233:         /* - 2. * a_prime_over_a * alpha + eta
+006234:            - 4.5 * (a2/k2) * ppw->rho_plus_p_shear; */
+006235: 
+006236:         ppw->pv->y[ppw->pv->index_pt_phi_scf] += alpha*ppw->pvecback[pba->index_bg_phi_prime_scf];
+006237:         ppw->pv->y[ppw->pv->index_pt_phi_prime_scf] +=
+006238:           (-2.*a_prime_over_a*alpha*ppw->pvecback[pba->index_bg_phi_prime_scf]
+006239:            -a*a* dV_scf(pba,ppw->pvecback[pba->index_bg_phi_scf])*alpha
+006240:            +ppw->pvecback[pba->index_bg_phi_prime_scf]*alpha_prime);
+006241:       }
+006242: 
+...
+007463:   double gwncdm,pincdm;
+007464:   double rho_relativistic, rho_fs;
+007465:   double rho_dr_over_f;
+007466:   double delta_rho_scf, delta_p_scf, psi;
+007467:   /** Variables used for FLD and PPF */
+007468:   double c_gamma_k_H_square;
+007469:   double Gamma_prime_plus_a_prime_over_a_Gamma, s2sq=1.;
+...
+007812:        from rho_plus_p_shear. So the contribution from the scalar field must be below all
+007813:        species with non-zero shear.
+007814:     */
+007815:     if (pba->has_scf == _TRUE_) {
+007816: 
+007817:       if (ppt->gauge == synchronous){
+007818:         delta_rho_scf =  1./3.*
+007819:           (1./a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_prime_scf]
+007820:            + ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]);
+007821:         delta_p_scf = 1./3.*
+007822:           (1./a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_prime_scf]
+007823:            - ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]);
+007824:       }
+007825:       else{
+007826:         /* equation for psi */
+007827:         psi = y[ppw->pv->index_pt_phi] - 4.5 * (a2/k/k) * ppw->rho_plus_p_shear;
+007828: 
+007829:         delta_rho_scf =  1./3.*
+007830:           (1./a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_prime_scf]
+007831:            + ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]
+007832:            - 1./a2*pow(ppw->pvecback[pba->index_bg_phi_prime_scf],2)*psi);
+007833:         delta_p_scf =  1./3.*
+007834:           (1./a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_prime_scf]
+007835:            - ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]
+007836:            - 1./a2*pow(ppw->pvecback[pba->index_bg_phi_prime_scf],2)*psi);
+007837:       }
+007838: 
+007839:       ppw->delta_rho += delta_rho_scf;
+007840: 
+007841:       ppw->rho_plus_p_theta +=  1./3.*
+007842:         k*k/a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_scf];
+007843: 
+007844:       ppw->delta_p += delta_p_scf;
+007845: 
+007846:       ppw->rho_plus_p_tot += ppw->pvecback[pba->index_bg_rho_scf]+ppw->pvecback[pba->index_bg_p_scf];
+007847: 
+007848:     }
+007849: 
+...
+008255:   double * pvecthermo;
+008256:   double * pvecmetric;
+008257: 
+008258:   double delta_g, delta_rho_scf, rho_plus_p_theta_scf;
+008259:   double a_prime_over_a=0.;  /* (a'/a) */
+008260:   double a_prime_over_a_prime=0.;  /* (a'/a)' */
+008261:   double w_fld,dw_over_da_fld,integral_fld;
+...
+008681:     /* delta_scf */
+008682:     if (ppt->has_source_delta_scf == _TRUE_) {
+008683:       if (ppt->gauge == synchronous){
+008684:         delta_rho_scf =  1./3.*
+008685:           (1./a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_prime_scf]
+008686:            + ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf])
+008687:           + 3.*a_prime_over_a*(1.+pvecback[pba->index_bg_p_scf]/pvecback[pba->index_bg_rho_scf])*theta_over_k2; // N-body gauge correction
+008688:       }
+008689:       else{
+008690:         delta_rho_scf =  1./3.*
+008691:           (1./a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_prime_scf]
+008692:            + ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]
+008693:            - 1./a2*pow(ppw->pvecback[pba->index_bg_phi_prime_scf],2)*ppw->pvecmetric[ppw->index_mt_psi])
+008694:           + 3.*a_prime_over_a*(1.+pvecback[pba->index_bg_p_scf]/pvecback[pba->index_bg_rho_scf])*theta_over_k2; // N-body gauge correction
+008695:       }
+008696:       _set_source_(ppt->index_tp_delta_scf) = delta_rho_scf/pvecback[pba->index_bg_rho_scf];
+008697:     }
+008698: 
+008699:     /* delta_dr */
+...
+008800:     /* theta_scf */
+008801:     if (ppt->has_source_theta_scf == _TRUE_) {
+008802: 
+008803:       rho_plus_p_theta_scf = 1./3.*
+008804:         k*k/a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_scf];
+008805: 
+008806:       _set_source_(ppt->index_tp_theta_scf) = rho_plus_p_theta_scf/(pvecback[pba->index_bg_rho_scf]+pvecback[pba->index_bg_p_scf])
+008807:         + theta_shift; // N-body gauge correction
+008808:     }
+008809: 
+...
+009106:   double delta_dr=0.,theta_dr=0.,shear_dr=0., f_dr=1.0;
+009107:   double delta_ur=0.,theta_ur=0.,shear_ur=0.,l0_ur=0.,l2_ur=0.,l4_ur=0.;
+009108:   double delta_idr=0., theta_idr=0., shear_idr=0.;
+009109:   double delta_rho_scf=0., rho_plus_p_theta_scf=0.;
+009110:   double delta_scf=0., theta_scf=0.;
+009111:   /** - ncdm sector begins */
+009112:   int n_ncdm;
+...
+009415:       shear_dr = y[ppw->pv->index_pt_F0_dr+2]*0.5/f_dr;
+009416:     }
+009417: 
+009418:     if (pba->has_scf == _TRUE_){
+009419:       if (ppt->gauge == synchronous){
+009420:         delta_rho_scf =  1./3.*
+009421:           (1./a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_prime_scf]
+009422:            + ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]);
+009423:       }
+009424:       else{
+009425:         delta_rho_scf =  1./3.*
+009426:           (1./a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_prime_scf]
+009427:            + ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]
+009428:            - 1./a2*pow(ppw->pvecback[pba->index_bg_phi_prime_scf],2)*ppw->pvecmetric[ppw->index_mt_psi]);
+009429:       }
+009430: 
+009431:       rho_plus_p_theta_scf =  1./3.*
+009432:         k*k/a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_scf];
+009433: 
+009434:       delta_scf = delta_rho_scf/pvecback[pba->index_bg_rho_scf];
+009435:       theta_scf = rho_plus_p_theta_scf/(pvecback[pba->index_bg_rho_scf]+pvecback[pba->index_bg_p_scf]);
+009436: 
+009437:     }
+009438: 
+...
+009501:         theta_dcdm += k*k*alpha;
+009502:       }
+009503: 
+009504:       if (pba->has_scf == _TRUE_) {
+009505:         delta_scf += alpha*(-3.0*H*(1.0+pvecback[pba->index_bg_p_scf]/pvecback[pba->index_bg_rho_scf]));
+009506:         theta_scf += k*k*alpha;
+009507:       }
+009508: 
+...
+009585:     class_store_double(dataptr, theta_dr, pba->has_dr, storeidx);
+009586:     class_store_double(dataptr, shear_dr, pba->has_dr, storeidx);
+009587:     /* Scalar field scf*/
+009588:     class_store_double(dataptr, delta_scf, pba->has_scf, storeidx);
+009589:     class_store_double(dataptr, theta_scf, pba->has_scf, storeidx);
+009590:     /** Fluid */
+009591:     class_store_double(dataptr, ppw->delta_rho_fld, pba->has_fld, storeidx);
+009592:     class_store_double(dataptr, ppw->rho_plus_p_theta_fld, pba->has_fld, storeidx);
+...
+010817: 
+010818:     /** - ---> scalar field (scf) */
+010819: 
+010820:     if (pba->has_scf == _TRUE_) {
+010821: 
+010822:       /** - ----> field value */
+010823: 
+010824:       dy[pv->index_pt_phi_scf] = y[pv->index_pt_phi_prime_scf];
+010825: 
+010826:       /** - ----> Klein Gordon equation */
+010827: 
+010828:       dy[pv->index_pt_phi_prime_scf] =  - 2.*a_prime_over_a*y[pv->index_pt_phi_prime_scf]
+010829:         - metric_continuity*pvecback[pba->index_bg_phi_prime_scf] //  metric_continuity = h'/2
+010830:         - (k2 + a2*pvecback[pba->index_bg_ddV_scf])*y[pv->index_pt_phi_scf]; //checked
+010831: 
+010832:     }
+010833: 
+
