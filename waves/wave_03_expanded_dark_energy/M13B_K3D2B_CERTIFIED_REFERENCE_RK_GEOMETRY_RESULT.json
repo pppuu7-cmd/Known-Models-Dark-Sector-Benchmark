@@ -1,0 +1,88 @@
+{
+  "schema": "KMDSB.W03.M13b.K3D2BCertifiedReferenceRKGeometryResult.v1",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@64bbab707faf4de4779a9e04edd180fef18d98fa",
+  "protocol": "protocol/W03_M13B_K3D2B_CERTIFIED_REFERENCE_RK_GEOMETRY_v0.1.md",
+  "workflow_run_id": 34790842701,
+  "head_sha": "011c8f870b847547d01a07b26a9d3cc6351a9cc2",
+  "source_guard": {
+    "job_id": 103814636381,
+    "classification": "M13B_K3D2B_CERTIFIED_REFERENCE_GEOMETRY_SOURCE_GUARD_PASS",
+    "all_required_checks_pass": true
+  },
+  "reference_capture": {
+    "job_id": 103814636405,
+    "classification": "M13B_K3D2B_CERTIFIED_REFERENCE_RK_GEOMETRY_CAPTURED",
+    "provider_rc": 1,
+    "certificate": {
+      "ulps": 12,
+      "tau_handoff": 6256.998662974107,
+      "tau_prev": 6256.998662974117,
+      "a_prev": 0.16666666666666666,
+      "tau_cert": 6256.998662974118,
+      "a_cert": 0.1666666666666667,
+      "a_handoff": 0.16666666666666669
+    },
+    "failure_count": 3,
+    "failing_modes": [
+      {
+        "index_k": 55,
+        "k_1_per_Mpc": 0.028049743847427408,
+        "evolver_start": 6256.998662974118,
+        "collapse_tau": 6256.998662980115,
+        "hdid": 5.997616956977442e-09,
+        "hnext": 5.502564697380087e-09,
+        "step_ratio": 8.794255830581514e-13,
+        "minimum_ratio": 1.3893327961365371e-12,
+        "step_index": 1,
+        "rk_native_interval": [6256.998662974118, 6274.824137699295]
+      },
+      {
+        "index_k": 56,
+        "k_1_per_Mpc": 0.032471433585557784,
+        "evolver_start": 6256.998662974118,
+        "collapse_tau": 6256.998662981576,
+        "hdid": 7.457865186167444e-09,
+        "hnext": 7.103821685086331e-09,
+        "step_ratio": 1.1353401315431472e-12,
+        "minimum_ratio": 1.3893327961365371e-12,
+        "step_index": 1,
+        "rk_native_interval": [6256.998662974118, 6272.39681281812]
+      },
+      {
+        "index_k": 57,
+        "k_1_per_Mpc": 0.03570422910416919,
+        "evolver_start": 6256.998662974118,
+        "collapse_tau": 6256.99866297841,
+        "hdid": 4.292289470521242e-09,
+        "hnext": 4.566165318857389e-09,
+        "step_ratio": 7.29769265555024e-13,
+        "minimum_ratio": 1.3893327961365371e-12,
+        "step_index": 1,
+        "rk_native_interval": [6256.998662974118, 6271.002606275659]
+      }
+    ],
+    "K1_failed": false,
+    "K10_failed": false,
+    "collapse_tau_range": [6256.99866297841, 6256.998662981576]
+  },
+  "comparison_to_provisional_seam": {
+    "provisional_reference_failure_count": 133,
+    "certified_reference_failure_count": 3,
+    "global_reference_failure_removed": true,
+    "frozen_K1_recovered": true,
+    "frozen_K10_recovered": true,
+    "residual_failure_k_range_1_per_Mpc": [0.028049743847427408, 0.03570422910416919],
+    "interpretation": "The mapping-certified seam removes the global pre-certified RK failure. The residual numerical blocker is a narrow three-mode explicit-RK first-step stiffness island after tau_cert, not a remaining seam-ownership failure."
+  },
+  "overall": {
+    "classification": "M13B_K3D2B_CERTIFIED_REFERENCE_RK_NUMERICAL_BLOCKER_LOCALIZED",
+    "reference_robustness_established": false,
+    "recommended_next_action": "Prospectively diagnose the three-mode RK first-step error-control island without changing cl_ref.pre thresholds. Compare neighboring passing modes and the three failing modes at identical certified initial state to identify which component controls RK error scaling."
+  },
+  "B1_B2_B3_evaluated": false,
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "physical_falsification": false
+}
