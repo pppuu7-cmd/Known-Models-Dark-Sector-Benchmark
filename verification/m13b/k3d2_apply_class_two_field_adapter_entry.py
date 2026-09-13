@@ -100,7 +100,7 @@ def recovered_patch_input_c(root):
     new_budget_test = """  class_test((flag1 == _TRUE_) && (flag2 == _TRUE_) && ((flag3 == _FALSE_) || (param3 >= 0.)) &&
              !((pba->qcf_U0 != 0.) || (pba->qpf_U0 != 0.)),
              errmsg,
-             "'Omega_Lambda' or 'Omega_fld' must be left unspecified, except for an active KMDSB qcf/qpf dynamic closure or if 'Omega_scf' is set and < 0.");
+             "'Omega_Lambda' or 'Omega_fld' must be left unspecified, except if 'Omega_scf' is set and < 0.");
 """
     if text.count(old_budget_test) != 1:
         raise RuntimeError(f"K3D2 budget recovery: expected one upstream budget guard, found {text.count(old_budget_test)}")
