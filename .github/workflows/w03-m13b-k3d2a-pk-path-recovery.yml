@@ -1,0 +1,121 @@
+name: W03 M13b K3D2-A Pk-path plumbing recovery
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w03-m13b-k3d2a-pk-path-recovery.yml'
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+
+permissions:
+  contents: write
+
+jobs:
+  build_regression_recovery:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build exact baseline then patched adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$CLASS_PIN"
+          mkdir -p lane_result out
+          make -C provider -j2 class > lane_result/baseline_build.log 2>&1
+          cp provider/class lane_result/class_baseline
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest lane_result/patch_manifest.json
+          make -C provider clean > /dev/null 2>&1
+          make -C provider -j2 class > lane_result/patched_build.log 2>&1
+      - name: Run unchanged frozen null controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > lane_result/base.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.12
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = mPk
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          overwrite_root = yes
+          root = $GITHUB_WORKSPACE/out/base_
+          EOF
+          sed "s|root = .*|root = $GITHUB_WORKSPACE/out/patched_|" lane_result/base.ini > lane_result/patched.ini
+          (cd provider && "$GITHUB_WORKSPACE/lane_result/class_baseline" "$GITHUB_WORKSPACE/lane_result/base.ini") > lane_result/base_stdout.txt 2> lane_result/base_stderr.txt
+          (cd provider && ./class "$GITHUB_WORKSPACE/lane_result/patched.ini") > lane_result/patched_stdout.txt 2> lane_result/patched_stderr.txt
+      - name: Fail-closed output discovery and frozen L2 gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib,json,math,os
+          outdir=pathlib.Path('out')
+          base=sorted(outdir.glob('base*_pk.dat'))
+          patched=sorted(outdir.glob('patched*_pk.dat'))
+          assert len(base)==1, [str(p) for p in base]
+          assert len(patched)==1, [str(p) for p in patched]
+          def read(p):
+              rows=[]
+              for line in p.read_text().splitlines():
+                  if line.strip() and not line.lstrip().startswith('#'):
+                      rows.append([float(x) for x in line.split()])
+              assert rows
+              return rows
+          a=read(base[0]); b=read(patched[0]); assert len(a)==len(b)
+          num=den=0.; kg=0.
+          for ra,rb in zip(a,b):
+              ka,pa=ra[:2]; kb,pb=rb[:2]
+              assert all(math.isfinite(v) for v in (ka,pa,kb,pb))
+              kg=max(kg,abs(ka-kb)/max(abs(ka),abs(kb),1e-300))
+              num+=(pa-pb)**2; den+=pa**2
+          l2=math.sqrt(num/max(den,1e-300))
+          checks={
+            'exact_provider_pin':True,
+            'baseline_build_success':True,
+            'patched_build_success':True,
+            'one_baseline_pk_discovered':len(base)==1,
+            'one_patched_pk_discovered':len(patched)==1,
+            'finite_outputs':True,
+            'same_k_grid':kg<=1e-14,
+            'normalized_L2_le_1e_10':l2<=1e-10
+          }
+          assert all(checks.values()),(checks,l2,kg)
+          result={
+            'schema':'KMDSB.W03.M13b.K3D2ABuildRegressionPathRecovery.v0.1',
+            'gate':'K3D2-A','provider_commit':os.environ['CLASS_PIN'],
+            'parent_failed_run':34783988142,
+            'parent_failure_classification':'HARNESS_OUTPUT_PATH_ONLY',
+            'baseline_pk_path':str(base[0]),'patched_pk_path':str(patched[0]),
+            'rows':len(a),'max_k_relative_difference':kg,
+            'normalized_L2':l2,'frozen_threshold':1e-10,
+            'checks':checks,'all_required_checks_pass':True,
+            'physics_parameters_changed_from_parent':False,
+            'threshold_changed_from_parent':False,
+            'physical_falsification':False
+          }
+          pathlib.Path('lane_result/build_regression_recovery.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          pathlib.Path('waves/wave_03_expanded_dark_energy/M13B_K3D2A_BUILD_REGRESSION_RESULT.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: k3d2a-pk-path-recovery
+          path: lane_result/
+          retention-days: 90
+      - name: Persist build-regression result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add waves/wave_03_expanded_dark_energy/M13B_K3D2A_BUILD_REGRESSION_RESULT.json
+          git commit -m 'record M13b K3D2-A build regression recovery'
+          git pull --rebase origin main
+          git push origin HEAD:main
