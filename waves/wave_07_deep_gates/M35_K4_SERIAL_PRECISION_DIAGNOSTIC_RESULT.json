@@ -1,0 +1,50 @@
+{
+  "schema": "KMDSB.M35.K4SerialPrecisionDiagnosticResult.v1",
+  "model_id": "M35",
+  "family_id": "F35",
+  "gate": "K4",
+  "date": "2026-09-13",
+  "classification": "M35_K4_PROVIDER_OR_PRECISION_EXECUTION_BLOCKED",
+  "blocker_subclass": "HOSTED_RUNNER_EXECUTION_CAPACITY_PERSISTENT",
+  "K4_state": "BLOCKED_NUMERICAL",
+  "K4_promoted": false,
+  "physical_falsification": false,
+  "provider": "Michalychforever/CLASS_LVDM",
+  "provider_branch": "LVDM",
+  "provider_commit": "d9a20bd0c7b7a6c8957410fd245ed06b30b915c1",
+  "preregistration": "protocol/W07_M35_K4_SERIAL_PRECISION_DIAGNOSTIC_v0.1.md",
+  "parent_recovery_protocol": "protocol/W07_M35_K4_EXECUTION_TOPOLOGY_RECOVERY_v0.1.md",
+  "workflow": ".github/workflows/w07-m35-k4-serial-precision-diagnostic.yml",
+  "workflow_run_id": 34779425752,
+  "workflow_head_sha": "81f95caee9b118055d5364a5282b81a942d19280",
+  "workflow_conclusion": "failure",
+  "prepare_job": {
+    "job_id": 103783587872,
+    "conclusion": "success",
+    "exact_pin_build": "success",
+    "frozen_case_generation": "success"
+  },
+  "frozen_bundle_artifact": {
+    "artifact_id": 10323514851,
+    "name": "m35-k4-serial-frozen-bundle",
+    "digest": "sha256:af6f0f897f740505f31506f097b22ccecd76b9fddb0a7f6ba8b34c21a0d876a1",
+    "case_output_artifacts_present": false
+  },
+  "precision_jobs": [
+    {"case": "base_permille", "job_id": 103783661268, "conclusion": "failure", "post_case_artifact_upload": "skipped"},
+    {"case": "base_reference", "job_id": 103783661231, "conclusion": "failure", "post_case_artifact_upload": "skipped"},
+    {"case": "gravity_permille", "job_id": 103783661222, "conclusion": "failure", "post_case_artifact_upload": "skipped"},
+    {"case": "gravity_reference", "job_id": 103783661242, "conclusion": "failure", "post_case_artifact_upload": "skipped"},
+    {"case": "Y_permille", "job_id": 103783661263, "conclusion": "failure", "post_case_artifact_upload": "skipped"},
+    {"case": "Y_reference", "job_id": 103783661365, "conclusion": "failure", "post_case_artifact_upload": "skipped"}
+  ],
+  "scientific_interpretation": "The exact pinned provider builds and the frozen configurations are reproducible, but every serialized permille/reference execution is interrupted at the hosted-runner execution layer before a reusable per-case result artifact is produced. Under the prospectively frozen recovery rules this closes the present diagnostic as provider-or-precision execution blocked, specifically a persistent hosted-runner execution-capacity blocker. It is not a provider return-code classification, not a K4 numerical-pass/fail comparison, and not a physical failure of Einstein-Aether/vector-tensor gravity.",
+  "preserved_evidence": {
+    "K0": "PASS_WITH_SCOPE",
+    "K1": "PASS_WITH_SCOPE",
+    "K2": "PARTIAL_LOCAL_RESPONSE_RANK_GE_2",
+    "K2_cross_angle_deg": 38.171364,
+    "complete_covariant_SVT_quotient": "OPEN"
+  },
+  "next_allowed_action": "Do not relax thresholds, retune physical parameters, or reinterpret runner termination as physics. K4 remains blocked until the unchanged frozen precision cases can be executed in an independently adequate compute environment or another preregistered execution-capacity route that preserves the exact provider pin, cases, precision profiles, outputs, and analyzer."
+}
