@@ -6,7 +6,7 @@ sites. Numerical branches, tolerances, states, Jacobians, steps, and equations
 are unchanged.
 """
 from __future__ import annotations
-import argparse, hashlib, json
+import argparse, hashlib, json, re
 from pathlib import Path
 
 
@@ -38,34 +38,41 @@ def main() -> int:
     n=n.replace(old_newton,new_newton,1)
     n=n.replace(old_error,new_error,1)
 
-    rold='''    class_test(fabs(hnext/x1) <= hmin,
-               pgi->error_message,
-               "Step size too small: step:%g, minimum:%g, in interval: [%g:%g]",
-               fabs(hnext/x1),
-               hmin,
-               x1,
-               x2);'''
-    if r.count(rold)!=1:
-        raise RuntimeError(f'expected one RK minimum-step site, found {r.count(rold)}')
-    rnew='''    class_test(fabs(hnext/x1) <= hmin,
-               pgi->error_message,
-               "KMDSB_RK_COLLAPSE x=%.17g step_ratio=%.17g minimum=%.17g hdid=%.17g hnext=%.17g step_index=%d interval=[%.17g:%.17g]",
-               x,
-               fabs(hnext/x1),
-               hmin,
-               hdid,
-               hnext,
-               nstp,
-               x1,
-               x2);'''
-    r=r.replace(rold,rnew,1)
+    # The exact-pin RK site uses tabs in its continuation indentation. Match only
+    # whitespace flexibly while keeping the condition and argument sequence exact.
+    rk_pattern=re.compile(
+        r'(?m)^([ \t]*)class_test\(fabs\(hnext/x1\) <= hmin,\s*\n'
+        r'[ \t]*pgi->error_message,\s*\n'
+        r'[ \t]*"Step size too small: step:%g, minimum:%g, in interval: \[%g:%g\]",\s*\n'
+        r'[ \t]*fabs\(hnext/x1\),\s*\n'
+        r'[ \t]*hmin,\s*\n'
+        r'[ \t]*x1,\s*\n'
+        r'[ \t]*x2\);'
+    )
+    matches=list(rk_pattern.finditer(r))
+    if len(matches)!=1:
+        raise RuntimeError(f'expected one RK minimum-step site, found {len(matches)}')
+    indent=matches[0].group(1)
+    rnew=(indent+'class_test(fabs(hnext/x1) <= hmin,\n'
+          +indent+'           pgi->error_message,\n'
+          +indent+'           "KMDSB_RK_COLLAPSE x=%.17g step_ratio=%.17g minimum=%.17g hdid=%.17g hnext=%.17g step_index=%d interval=[%.17g:%.17g]",\n'
+          +indent+'           x,\n'
+          +indent+'           fabs(hnext/x1),\n'
+          +indent+'           hmin,\n'
+          +indent+'           hdid,\n'
+          +indent+'           hnext,\n'
+          +indent+'           nstp,\n'
+          +indent+'           x1,\n'
+          +indent+'           x2);')
+    r=rk_pattern.sub(lambda _: rnew,r,count=1)
     ndf.write_text(n); rk.write_text(r)
     manifest={
-      'schema':'KMDSB.W03.M13b.K3D2BSolverCollapseGeometryPatch.v0.2',
+      'schema':'KMDSB.W03.M13b.K3D2BSolverCollapseGeometryPatch.v0.3',
       'changed_files':['tools/evolver_ndf15.c','tools/dei_rkck.c'],
       'diagnostic_only':True,
       'ndf15_sites_enriched':2,
       'rk_sites_enriched':1,
+      'rk_matcher_whitespace_robust':True,
       'changes_error_text_only':True,
       'changes_equations':False,
       'changes_tolerances':False,
