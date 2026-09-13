@@ -1,0 +1,438 @@
+{
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "all_required_checks_pass": true,
+  "author_model_reproduced": false,
+  "author_normalization_map_claimed": false,
+  "background_authority": {
+    "K3C1_crossing_z": 1.1978720736725847,
+    "U0_exact_from_K3C1_fine": 0.3362232603714306,
+    "source": "waves/wave_03_expanded_dark_energy/M13B_K3C1_INDEPENDENT_BACKGROUND_CLOSURE_RESULT.json"
+  },
+  "classification": "M13B_K3C2_INDEPENDENT_COSMOLOGY_PERTURBATION_BRIDGE_PASS_WITH_SCOPE",
+  "direct_variable_manifest": {
+    "dark_energy_variables": [
+      "delta_x",
+      "r",
+      "delta_y",
+      "t"
+    ],
+    "forbidden_denominators_absent": [
+      "D",
+      "rho_DE+p_DE",
+      "theta_DE"
+    ]
+  },
+  "family_id": "F13",
+  "full_Boltzmann_hierarchy": false,
+  "gate": "K3C2",
+  "implementation_provenance": "independent_KMDSB_standard_GR_ideal_fluid_perturbation_bridge",
+  "initialization_manifest": {
+    "Phi_i": 1e-05,
+    "Theta_solution": "(2 E2 K2/(3 Cdens))*(W+Phi)",
+    "W_i": 0.0,
+    "adiabatic_density_relation": "delta_r=(4/3)delta_m",
+    "common_velocity_relation": "Theta_r=Theta_m",
+    "delta_m_solution": "-(2 E2/(3 Cdens))*(K2*Phi+3*(W+Phi))",
+    "scalar_perturbations_i": 0.0
+  },
+  "mode_checks": {
+    "khat_1": {
+      "C00_refines_or_floor": true,
+      "C0i_refines_or_floor": true,
+      "background_crossing_matches_K3C1": true,
+      "background_crossing_z_difference_vs_K3C1": 0.0,
+      "background_endpoint_matches_K3C1": true,
+      "background_endpoint_symmetric_relative_differences": {
+        "E": 0.0,
+        "p": 0.0,
+        "q": 0.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "direct_field_crossing_discipline": true,
+      "fine_C00_preserved": true,
+      "fine_C0i_preserved": true,
+      "fine_linear_amplitude_domain": true,
+      "fine_positive_background_and_denominator": true,
+      "finite_execution": true,
+      "initial_C00_constraint": true,
+      "initial_C0i_constraint": true,
+      "max_perturbation_endpoint_difference": 4.136270107245643e-11,
+      "perturbation_endpoint_converged": true,
+      "perturbation_endpoint_symmetric_relative_differences": {
+        "Phi": 4.631744788614933e-13,
+        "Theta_m": 2.2835240011574304e-13,
+        "Theta_r": 1.1203631916353175e-12,
+        "W": 2.4463672913351965e-12,
+        "delta_m": 2.948531527104531e-13,
+        "delta_r": 3.6714670939542685e-13,
+        "delta_x": 4.136270107245643e-11,
+        "delta_y": 4.951560826952156e-14,
+        "r": 1.4006987807614879e-11,
+        "t": 1.1664423281581824e-12
+      },
+      "scalar_perturbations_dynamically_sourced": true,
+      "unique_background_crossing_retained": true
+    },
+    "khat_10": {
+      "C00_refines_or_floor": true,
+      "C0i_refines_or_floor": true,
+      "background_crossing_matches_K3C1": true,
+      "background_crossing_z_difference_vs_K3C1": 0.0,
+      "background_endpoint_matches_K3C1": true,
+      "background_endpoint_symmetric_relative_differences": {
+        "E": 0.0,
+        "p": 0.0,
+        "q": 0.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "direct_field_crossing_discipline": true,
+      "fine_C00_preserved": true,
+      "fine_C0i_preserved": true,
+      "fine_linear_amplitude_domain": true,
+      "fine_positive_background_and_denominator": true,
+      "finite_execution": true,
+      "initial_C00_constraint": true,
+      "initial_C0i_constraint": true,
+      "max_perturbation_endpoint_difference": 3.496675242252953e-10,
+      "perturbation_endpoint_converged": true,
+      "perturbation_endpoint_symmetric_relative_differences": {
+        "Phi": 3.826323338694687e-13,
+        "Theta_m": 1.1788438358034651e-13,
+        "Theta_r": 5.874835549531577e-12,
+        "W": 8.46318035635104e-13,
+        "delta_m": 5.2533367852124676e-14,
+        "delta_r": 2.631372229949711e-13,
+        "delta_x": 1.685091218712557e-11,
+        "delta_y": 1.3296623976078361e-10,
+        "r": 3.496675242252953e-10,
+        "t": 6.115451611905448e-12
+      },
+      "scalar_perturbations_dynamically_sourced": true,
+      "unique_background_crossing_retained": true
+    }
+  },
+  "model_id": "M13b",
+  "modes": {
+    "khat_1": {
+      "coarse": {
+        "crossings": [
+          {
+            "N": -0.7874896680783591,
+            "z": 1.1978721067100082
+          }
+        ],
+        "endpoint": {
+          "D": 0.09639984339213827,
+          "E": 0.9999999999922254,
+          "N": -4.185313120380618e-14,
+          "Phi": 8.083099993045108e-06,
+          "Theta_m": 8.53144428390939e-06,
+          "Theta_r": 3.740857477557874e-06,
+          "W": -3.799823155151027e-06,
+          "delta_m": -4.1987794409723127e-05,
+          "delta_r": -5.1549159202892965e-05,
+          "delta_x": 1.9491236632470254e-06,
+          "delta_y": -4.5224999400480836e-07,
+          "p": 0.31170035328027895,
+          "q": -0.027518481842435296,
+          "r": -5.9801533588980205e-06,
+          "t": 5.88922146975859e-07,
+          "x": 1.391027787269767,
+          "y": 0.7979144626637377,
+          "z": 4.1744385725905886e-14
+        },
+        "endpoint_constraints": {
+          "C00": 7.421025057484376e-17,
+          "C00_norm": 1.7725719423440954e-12,
+          "C0i": 3.0865880597946704e-18,
+          "C0i_norm": 3.603068604495497e-13,
+          "K2": 1.0000000000156328,
+          "dR": -1.3955287004302676e-05
+        },
+        "finite": true,
+        "initial_constraints": {
+          "C00": -6.776263578034403e-21,
+          "C00_norm": 9.604110968372592e-17,
+          "C0i": -3.3881317890172014e-21,
+          "C0i_norm": 1.6940658945086002e-16,
+          "K2": 0.5277932545497406,
+          "dR": -0.0016041705228200208
+        },
+        "initial_manifest": {
+          "C_density": 67.42189439999997,
+          "K2": 0.5277932545497406,
+          "Theta_formula": "(2 E2 K2/(3 Cdens))*(W+Phi)",
+          "delta_m_formula": "-(2 E2/(3 Cdens))*(K2*Phi+3*(W+Phi))",
+          "delta_r_formula": "(4/3)*delta_m"
+        },
+        "initial_state": {
+          "Phi": 1e-05,
+          "Theta_m": 3.5596745261432482e-06,
+          "Theta_r": 3.5596745261432482e-06,
+          "W": 0.0,
+          "delta_m": -2.3793020606968017e-05,
+          "delta_r": -3.172402747595735e-05,
+          "delta_x": 0.0,
+          "delta_y": 0.0,
+          "p": 0.0,
+          "q": 0.0,
+          "r": 0.0,
+          "t": 0.0,
+          "x": 0.92,
+          "y": 1.02
+        },
+        "k_hat": 1.0,
+        "max_C00_norm": 3.579778011916558e-11,
+        "max_C0i_norm": 2.8868481818628046e-12,
+        "max_D": 0.9013133049943024,
+        "max_abs_perturbation_state": 5.173897568999973e-05,
+        "min_D": -0.07255336469195069,
+        "min_E2": 0.9999999999844509,
+        "min_denom": 0.849781115834283,
+        "nsteps": 4000
+      },
+      "fine": {
+        "crossings": [
+          {
+            "N": -0.7874896530468094,
+            "z": 1.1978720736725847
+          }
+        ],
+        "endpoint": {
+          "D": 0.09639984339294122,
+          "E": 0.9999999999923376,
+          "N": -1.3483544792844415e-13,
+          "Phi": 8.083099993041364e-06,
+          "Theta_m": 8.531444283911339e-06,
+          "Theta_r": 3.740857477562065e-06,
+          "W": -3.799823155160323e-06,
+          "delta_m": -4.198779440973551e-05,
+          "delta_r": -5.154915920291189e-05,
+          "delta_x": 1.9491236631664044e-06,
+          "delta_y": -4.5224999400478597e-07,
+          "p": 0.3117003532815687,
+          "q": -0.02751848184245475,
+          "r": -5.980153358981784e-06,
+          "t": 5.889221469765459e-07,
+          "x": 1.3910277872721561,
+          "y": 0.7979144626637236,
+          "z": 1.34781075189494e-13
+        },
+        "endpoint_constraints": {
+          "C00": 4.221612209115433e-18,
+          "C00_norm": 1.0083662695345869e-13,
+          "C0i": 7.792703114739563e-20,
+          "C0i_norm": 9.096660582175589e-15,
+          "K2": 1.0000000000155944,
+          "dR": -1.395528700432368e-05
+        },
+        "finite": true,
+        "initial_constraints": {
+          "C00": -6.776263578034403e-21,
+          "C00_norm": 9.604110968372592e-17,
+          "C0i": -3.3881317890172014e-21,
+          "C0i_norm": 1.6940658945086002e-16,
+          "K2": 0.5277932545497406,
+          "dR": -0.0016041705228200208
+        },
+        "initial_manifest": {
+          "C_density": 67.42189439999997,
+          "K2": 0.5277932545497406,
+          "Theta_formula": "(2 E2 K2/(3 Cdens))*(W+Phi)",
+          "delta_m_formula": "-(2 E2/(3 Cdens))*(K2*Phi+3*(W+Phi))",
+          "delta_r_formula": "(4/3)*delta_m"
+        },
+        "initial_state": {
+          "Phi": 1e-05,
+          "Theta_m": 3.5596745261432482e-06,
+          "Theta_r": 3.5596745261432482e-06,
+          "W": 0.0,
+          "delta_m": -2.3793020606968017e-05,
+          "delta_r": -3.172402747595735e-05,
+          "delta_x": 0.0,
+          "delta_y": 0.0,
+          "p": 0.0,
+          "q": 0.0,
+          "r": 0.0,
+          "t": 0.0,
+          "x": 0.92,
+          "y": 1.02
+        },
+        "k_hat": 1.0,
+        "max_C00_norm": 2.2160517409795537e-12,
+        "max_C0i_norm": 1.5345203856780278e-13,
+        "max_D": 0.9013133050053359,
+        "max_abs_perturbation_state": 5.1739620179457736e-05,
+        "min_D": -0.07255340387002263,
+        "min_E2": 0.9999999999846751,
+        "min_denom": 0.849781115832444,
+        "nsteps": 8000
+      }
+    },
+    "khat_10": {
+      "coarse": {
+        "crossings": [
+          {
+            "N": -0.7874896680783591,
+            "z": 1.1978721067100082
+          }
+        ],
+        "endpoint": {
+          "D": 0.09639984339213827,
+          "E": 0.9999999999922254,
+          "N": -4.185313120380618e-14,
+          "Phi": 7.457953096753277e-06,
+          "Theta_m": 0.0008295843180239965,
+          "Theta_r": 0.0006429914092549784,
+          "W": -3.4604206596330144e-06,
+          "delta_m": -0.0016221745195784088,
+          "delta_r": 0.00041923970236817617,
+          "delta_x": 7.816911758992781e-07,
+          "delta_y": -3.412850749490705e-08,
+          "p": 0.31170035328027895,
+          "q": -0.027518481842435296,
+          "r": 1.4097274459343804e-06,
+          "t": 8.37084457652139e-07,
+          "x": 1.391027787269767,
+          "y": 0.7979144626637377,
+          "z": 4.1744385725905886e-14
+        },
+        "endpoint_constraints": {
+          "C00": 4.3921030007387785e-16,
+          "C00_norm": 2.897976439171145e-13,
+          "C0i": 3.4897757426877174e-18,
+          "C0i_norm": 4.3649123522850024e-13,
+          "K2": 100.00000000156328,
+          "dR": -0.0005051919379907502
+        },
+        "finite": true,
+        "initial_constraints": {
+          "C00": -1.0842021724855044e-19,
+          "C00_norm": 9.718674111259101e-17,
+          "C0i": 1.6940658945086007e-21,
+          "C0i_norm": 8.470329472543005e-17,
+          "K2": 52.779325454974064,
+          "dR": -0.025364170522820025
+        },
+        "initial_manifest": {
+          "C_density": 67.42189439999997,
+          "K2": 52.779325454974064,
+          "Theta_formula": "(2 E2 K2/(3 Cdens))*(W+Phi)",
+          "delta_m_formula": "-(2 E2/(3 Cdens))*(K2*Phi+3*(W+Phi))",
+          "delta_r_formula": "(4/3)*delta_m"
+        },
+        "initial_state": {
+          "Phi": 1e-05,
+          "Theta_m": 0.00035596745261432477,
+          "Theta_r": 0.00035596745261432477,
+          "W": 0.0,
+          "delta_m": -0.0003762007986951496,
+          "delta_r": -0.0005016010649268661,
+          "delta_x": 0.0,
+          "delta_y": 0.0,
+          "p": 0.0,
+          "q": 0.0,
+          "r": 0.0,
+          "t": 0.0,
+          "x": 0.92,
+          "y": 1.02
+        },
+        "k_hat": 10.0,
+        "max_C00_norm": 3.74579778181886e-13,
+        "max_C0i_norm": 1.2293502861682103e-12,
+        "max_D": 0.9013133049943024,
+        "max_abs_perturbation_state": 0.002259102396053787,
+        "min_D": -0.07255336469195069,
+        "min_E2": 0.9999999999844509,
+        "min_denom": 0.849781115834283,
+        "nsteps": 4000
+      },
+      "fine": {
+        "crossings": [
+          {
+            "N": -0.7874896530468094,
+            "z": 1.1978720736725847
+          }
+        ],
+        "endpoint": {
+          "D": 0.09639984339294122,
+          "E": 0.9999999999923376,
+          "N": -1.3483544792844415e-13,
+          "Phi": 7.4579530967504234e-06,
+          "Theta_m": 0.0008295843180240943,
+          "Theta_r": 0.0006429914092587559,
+          "W": -3.460420659630086e-06,
+          "delta_m": -0.001622174519578494,
+          "delta_r": 0.00041923970236806585,
+          "delta_x": 7.816911759124503e-07,
+          "delta_y": -3.412850749036911e-08,
+          "p": 0.3117003532815687,
+          "q": -0.02751848184245475,
+          "r": 1.4097274454414445e-06,
+          "t": 8.370844576470198e-07,
+          "x": 1.3910277872721561,
+          "y": 0.7979144626637236,
+          "z": 1.34781075189494e-13
+        },
+        "endpoint_constraints": {
+          "C00": -3.426078865054194e-17,
+          "C00_norm": 2.260579004636324e-14,
+          "C0i": 1.2197274440461925e-19,
+          "C0i_norm": 1.525600433807679e-14,
+          "K2": 100.00000000155944,
+          "dR": -0.0005051919379909699
+        },
+        "finite": true,
+        "initial_constraints": {
+          "C00": -1.0842021724855044e-19,
+          "C00_norm": 9.718674111259101e-17,
+          "C0i": 1.6940658945086007e-21,
+          "C0i_norm": 8.470329472543005e-17,
+          "K2": 52.779325454974064,
+          "dR": -0.025364170522820025
+        },
+        "initial_manifest": {
+          "C_density": 67.42189439999997,
+          "K2": 52.779325454974064,
+          "Theta_formula": "(2 E2 K2/(3 Cdens))*(W+Phi)",
+          "delta_m_formula": "-(2 E2/(3 Cdens))*(K2*Phi+3*(W+Phi))",
+          "delta_r_formula": "(4/3)*delta_m"
+        },
+        "initial_state": {
+          "Phi": 1e-05,
+          "Theta_m": 0.00035596745261432477,
+          "Theta_r": 0.00035596745261432477,
+          "W": 0.0,
+          "delta_m": -0.0003762007986951496,
+          "delta_r": -0.0005016010649268661,
+          "delta_x": 0.0,
+          "delta_y": 0.0,
+          "p": 0.0,
+          "q": 0.0,
+          "r": 0.0,
+          "t": 0.0,
+          "x": 0.92,
+          "y": 1.02
+        },
+        "k_hat": 10.0,
+        "max_C00_norm": 7.049634293502179e-14,
+        "max_C0i_norm": 4.312762534986636e-14,
+        "max_D": 0.9013133050053359,
+        "max_abs_perturbation_state": 0.0022591023960541368,
+        "min_D": -0.07255340387002263,
+        "min_E2": 0.9999999999846751,
+        "min_denom": 0.849781115832444,
+        "nsteps": 8000
+      }
+    }
+  },
+  "next_authorized_gate": "FULL_INDEPENDENT_EINSTEIN_BOLTZMANN_PROVIDER_BUILD_OR_ADAPTER_PREREGISTRATION",
+  "physical_falsification": false,
+  "protocol": "protocol/W03_M13B_K3C2_INDEPENDENT_COSMOLOGY_PERTURBATION_BRIDGE_v0.1.md",
+  "radiation_anisotropic_stress": false,
+  "schema": "KMDSB.W03.M13b.K3C2IndependentCosmologyPerturbationBridge.v0.1"
+}
