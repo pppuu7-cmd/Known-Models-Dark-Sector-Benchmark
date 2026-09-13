@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - .github/workflows/w03-m13b-k3d2b-solver-collapse-geometry.yml
+      - verification/m13b/k3d2b_apply_solver_collapse_geometry_probe.py
+      - verification/m13b/k3d2b_apply_direct_mode_failure_trace.py
   workflow_dispatch:
 
 permissions:
@@ -159,7 +161,6 @@ jobs:
               if q:
                 rec.update({'collapse_tau':float(q.group(1)),'step_ratio':float(q.group(2)),'minimum':float(q.group(3)),'hdid':float(q.group(4)),'hnext':float(q.group(5)),'step_index':int(q.group(6))})
             rows.append(rec)
-          # one record per worker is expected; keep unique by mode identity
           uniq=[]; seen=set()
           for x in rows:
             key=(x['index_md'],x['index_ic'],x['index_k'],x['k'])
