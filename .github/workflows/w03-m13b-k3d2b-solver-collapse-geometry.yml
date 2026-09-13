@@ -1,0 +1,227 @@
+name: W03 M13b K3D2-B solver-collapse geometry
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/w03-m13b-k3d2b-solver-collapse-geometry.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+
+jobs:
+  source_guard:
+    name: S solver-geometry source guard
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply frozen stack and diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py provider --manifest result/pt_split.json
+          python3 verification/m13b/k3d2b_apply_perturbation_a_ulp_seam.py provider --ulps 1 --manifest result/a_ulp.json
+          python3 verification/m13b/k3d2b_apply_solver_collapse_geometry_probe.py provider --manifest result/solver_geometry_patch.json
+          python3 verification/m13b/k3d2b_apply_direct_mode_failure_trace.py provider --manifest result/fail_trace.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          s=json.loads(Path('result/solver_geometry_patch.json').read_text())
+          f=json.loads(Path('result/fail_trace.json').read_text())
+          checks={
+            'error_text_only':s.get('changes_error_text_only') is True,
+            'ndf15_two_sites':s.get('ndf15_sites_enriched')==2,
+            'rk_one_site':s.get('rk_sites_enriched')==1,
+            'no_solver_logic_change':s.get('changes_solver_logic') is False,
+            'no_tolerance_change':s.get('changes_tolerances') is False,
+            'no_equation_change':s.get('changes_equations') is False,
+            'flat_error_copy':f.get('flattens_copy_of_error_only') is True,
+            'original_error_unchanged':f.get('original_error_buffer_unchanged') is True,
+            'generic_args_preserved':f.get('preserves_generic_evolver_arguments') is True,
+          }
+          ok=all(checks.values())
+          obj={'schema':'KMDSB.W03.M13b.K3D2BSolverCollapseSourceGuard.v0.1','checks':checks,'all_required_checks_pass':ok,'classification':'M13B_K3D2B_SOLVER_COLLAPSE_SOURCE_GUARD_PASS' if ok else 'M13B_K3D2B_SOLVER_COLLAPSE_SOURCE_GUARD_FAIL','B1_B2_B3_evaluated':False,'physical_falsification':False}
+          Path('result/source_guard.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n'); print(json.dumps(obj,indent=2,sort_keys=True)); assert ok,obj
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-collapse-source-guard
+          path: result
+          retention-days: 90
+
+  capture:
+    name: C collapse geometry ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - label: default
+            precision: none
+            expected_failures: 80
+          - label: reference
+            precision: cl_ref.pre
+            expected_failures: 133
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build diagnostic exact-pin provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py provider --manifest result/pt_split.json
+          python3 verification/m13b/k3d2b_apply_perturbation_a_ulp_seam.py provider --ulps 1 --manifest result/a_ulp.json
+          python3 verification/m13b/k3d2b_apply_solver_collapse_geometry_probe.py provider --manifest result/solver_geometry_patch.json
+          python3 verification/m13b/k3d2b_apply_direct_mode_failure_trace.py provider --manifest result/fail_trace.json
+          make -C provider -j2 class > result/build.log 2>&1
+      - name: Execute unchanged ${{ matrix.label }} lane
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > result/enabled.ini <<'EOF'
+          h = 0.6715
+          omega_b = 0.0224
+          Omega_cdm = 0.26172292868512664
+          Omega_g = 5.4572897176151613e-05
+          Omega_ur = 3.772710282384838e-05
+          N_ncdm = 0
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = 0
+          Omega_k = 0
+          qcf_U0 = 0.3362232603714306
+          qcf_phi_ini = 0.92
+          qcf_phi_prime_ini = 0
+          qpf_U0 = 0.3362232603714306
+          qpf_psi_ini = 1.02
+          qpf_psi_prime_ini = 0
+          gauge = synchronous
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = mPk,dTk
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          k_output_values = 0.00022398828992555914,0.0022398828992555913
+          root = ../out/run_
+          EOF
+          set +e
+          if [ '${{ matrix.precision }}' = 'none' ]; then
+            (cd provider && ./class ../result/enabled.ini) > result/stdout.txt 2> result/stderr.txt
+          else
+            (cd provider && ./class ../result/enabled.ini '${{ matrix.precision }}') > result/stdout.txt 2> result/stderr.txt
+          fi
+          rc=$?
+          set -e
+          echo "$rc" > result/provider_rc.txt
+      - name: Parse collapse geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re,statistics
+          lane='${{ matrix.label }}'; expected=int('${{ matrix.expected_failures }}')
+          text=Path('result/stderr.txt').read_text(errors='replace')
+          base=re.compile(r'KMDSB_MODE_FAIL index_md=(\d+) index_ic=(\d+) index_k=(\d+) k=([^ ]+) interval_start=([^ ]+) evolver_start=([^ ]+) interval_end=([^ ]+) error=(.*)')
+          ndf=re.compile(r'KMDSB_NDF15_COLLAPSE reason=(newton|error_control) t=([^| ]+) step=([^| ]+) minimum=([^| ]+) order=(\d+)(?: err=([^| ]+) rtol=([^| ]+))? successful=(\d+) failed=(\d+) fevals=(\d+) jacobians=(\d+) lus=(\d+) linsolves=(\d+) interval=\[([^:]+):([^\]]+)\]')
+          rk=re.compile(r'KMDSB_RK_COLLAPSE x=([^| ]+) step_ratio=([^| ]+) minimum=([^| ]+) hdid=([^| ]+) hnext=([^| ]+) step_index=(\d+) interval=\[([^:]+):([^\]]+)\]')
+          rows=[]
+          for m in base.finditer(text):
+            rec={'index_md':int(m.group(1)),'index_ic':int(m.group(2)),'index_k':int(m.group(3)),'k':float(m.group(4)),'interval_start':float(m.group(5)),'evolver_start':float(m.group(6)),'interval_end':float(m.group(7))}
+            err=m.group(8)
+            if lane=='default':
+              q=ndf.search(err)
+              if q:
+                rec.update({'reason':q.group(1),'collapse_tau':float(q.group(2)),'step':float(q.group(3)),'minimum':float(q.group(4)),'order':int(q.group(5)),'err':None if q.group(6) is None else float(q.group(6)),'rtol':None if q.group(7) is None else float(q.group(7)),'successful_steps':int(q.group(8)),'failed_steps':int(q.group(9)),'fevals':int(q.group(10)),'jacobians':int(q.group(11)),'lus':int(q.group(12)),'linsolves':int(q.group(13))})
+            else:
+              q=rk.search(err)
+              if q:
+                rec.update({'collapse_tau':float(q.group(1)),'step_ratio':float(q.group(2)),'minimum':float(q.group(3)),'hdid':float(q.group(4)),'hnext':float(q.group(5)),'step_index':int(q.group(6))})
+            rows.append(rec)
+          # one record per worker is expected; keep unique by mode identity
+          uniq=[]; seen=set()
+          for x in rows:
+            key=(x['index_md'],x['index_ic'],x['index_k'],x['k'])
+            if key not in seen: seen.add(key); uniq.append(x)
+          parsed=[x for x in uniq if 'collapse_tau' in x]
+          taus=sorted(x['collapse_tau'] for x in parsed)
+          reasons={}
+          for x in parsed:
+            if 'reason' in x: reasons[x['reason']]=reasons.get(x['reason'],0)+1
+          summary={'failure_count':len(uniq),'geometry_parsed_count':len(parsed),'collapse_tau_min':min(taus) if taus else None,'collapse_tau_median':statistics.median(taus) if taus else None,'collapse_tau_max':max(taus) if taus else None,'reason_counts':reasons}
+          rc=int(Path('result/provider_rc.txt').read_text())
+          ok=(rc!=0 and len(uniq)==expected and len(parsed)==expected)
+          obj={'schema':'KMDSB.W03.M13b.K3D2BSolverCollapseGeometryLane.v0.1','lane':lane,'provider_rc':rc,'records':sorted(parsed,key=lambda x:x['k']),'summary':summary,'all_required_checks_pass':ok,'classification':'M13B_K3D2B_SOLVER_COLLAPSE_GEOMETRY_CAPTURED' if ok else 'M13B_K3D2B_SOLVER_COLLAPSE_GEOMETRY_NOT_ESTABLISHED','B1_B2_B3_evaluated':False,'K3_state_ceiling':'PARTIAL','K4_promoted':False,'K5_promoted':False,'physical_falsification':False}
+          Path('result/collapse_geometry.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n'); print(json.dumps({'lane':lane,'summary':summary,'ok':ok},indent=2,sort_keys=True)); assert ok,obj
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-collapse-${{ matrix.label }}
+          path: result
+          retention-days: 90
+
+  synthesize:
+    name: V synthesize solver-collapse geometry
+    needs:
+      - source_guard
+      - capture
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-collapse-default
+          path: default
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-collapse-reference
+          path: reference
+      - name: Synthesize unchanged solver lanes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          d=json.loads(Path('default/collapse_geometry.json').read_text())
+          r=json.loads(Path('reference/collapse_geometry.json').read_text())
+          ds=d['summary']; rs=r['summary']; seam=6256.998662974107
+          obj={
+            'schema':'KMDSB.W03.M13b.K3D2BSolverCollapseGeometrySynthesis.v0.1',
+            'default_summary':ds,
+            'reference_summary':rs,
+            'default_first_collapse_delta_tau':None if ds['collapse_tau_min'] is None else ds['collapse_tau_min']-seam,
+            'reference_first_collapse_delta_tau':None if rs['collapse_tau_min'] is None else rs['collapse_tau_min']-seam,
+            'classification':'M13B_K3D2B_SOLVER_COLLAPSE_GEOMETRY_CAPTURED_BOTH_LANES',
+            'B1_B2_B3_evaluated':False,
+            'K3_state_ceiling':'PARTIAL','K4_promoted':False,'K5_promoted':False,'physical_falsification':False,
+          }
+          Path('synthesis.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n'); print(json.dumps(obj,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m13b-k3d2b-collapse-synthesis
+          path: synthesis.json
+          retention-days: 90
