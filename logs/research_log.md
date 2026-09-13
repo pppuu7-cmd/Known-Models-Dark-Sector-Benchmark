@@ -424,3 +424,12 @@ M25 compile-capacity isolation classification M25_M0_PK_STOCK_CAPACITY_PROVIDER_
 - The implied independent amplitude is `V0/Mp^4=3.489459667969868e-121`; its `3.834571063703152e-113` ratio to the public label is diagnostic only, not a recovered author rescaling. K3C0 author unit/source blocker remains intact.
 - K3 remains `PARTIAL`; K3C2 independent cosmology-scale perturbation bridge is authorized on this exact internally normalized background. K4/K5 remain closed; physical_falsification=false.
 
+## 2026-09-13 — M13b K3C2 independent cosmology perturbation bridge PASS_WITH_SCOPE
+- Canonical classification: `M13B_K3C2_INDEPENDENT_COSMOLOGY_PERTURBATION_BRIDGE_PASS_WITH_SCOPE`; result `waves/wave_03_expanded_dark_energy/M13B_K3C2_INDEPENDENT_PERTURBATION_BRIDGE_RESULT.json`.
+- Run `34782092368`, artifact `10325278852`, digest `sha256:bd7cbf9964be9201ab76c08bc72f4107f7b81a46f2b0ab50cc8994732f35dcc4`.
+- The exact K3C1 background (`U0=0.3362232603714306`, crossing `z=1.1978720736725847`) is unchanged. Direct canonical/phantom perturbations, Phi, pressureless matter and perfect radiation are evolved for `khat=1` and `khat=10`.
+- Both modes satisfy every frozen gate. For `khat=1`, fine max normalized residuals are `C00=2.2160517409795537e-12`, `C0i=1.5345203856780278e-13`; maximum coarse/fine endpoint perturbation mismatch is `4.136270107245643e-11`. For `khat=10`, maximum endpoint mismatch is `3.496675242252953e-10`; all C00/C0i preservation and refinement gates pass. Scalar perturbations are dynamically sourced in both modes.
+- No evolution denominator uses `D`, `rho_DE+p_DE`, or `theta_DE`; the crossing remains represented by direct field variables.
+- Scope boundary: radiation is a perfect fluid with zero anisotropic stress; there is no photon/neutrino hierarchy, recombination, transfer-function prediction, observation operator, or original Goh-Taylor solver/unit reproduction. Therefore K3 remains `PARTIAL`, not PASS; K4/K5 remain closed.
+- Next authorized gate: full independent Einstein-Boltzmann provider/adapter build search using K3C1/K3C2 as regression controls. Physical falsification=false.
+
