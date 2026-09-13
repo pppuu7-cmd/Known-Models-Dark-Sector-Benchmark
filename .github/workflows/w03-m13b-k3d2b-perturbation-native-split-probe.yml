@@ -1,0 +1,238 @@
+name: W03 M13b K3D2-B perturbation native split probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3d2b-perturbation-native-split-probe.yml'
+  workflow_dispatch:
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+  K1: '0.00022398828992555914'
+  K10: '0.0022398828992555913'
+
+permissions:
+  contents: read
+
+jobs:
+  null_control:
+    name: N disabled exact null
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact upstream and fully recovered disabled adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git base
+          git -C base checkout -q "$CLASS_PIN"
+          cp -a base recovered
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py recovered --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py recovered --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py recovered --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py recovered --manifest result/pt_split.json
+          make -C base -j2 class > result/base_build.log 2>&1
+          make -C recovered -j2 class > result/recovered_build.log 2>&1
+      - name: Run identical LambdaCDM controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          for mode in base recovered; do
+            cat > result/${mode}.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.12
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = mPk
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          write_background = yes
+          root = $GITHUB_WORKSPACE/out/${mode}_
+          EOF
+            set +e
+            (cd ${mode} && ./class "$GITHUB_WORKSPACE/result/${mode}.ini") > result/${mode}_stdout.txt 2> result/${mode}_stderr.txt
+            rc=$?
+            set -e
+            echo "$rc" > result/${mode}_rc.txt
+          done
+      - name: Frozen exact-null gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import bisect,json,math,re
+          out=Path('out'); res=Path('result')
+          def one(pat):
+            a=sorted(out.glob(pat)); assert len(a)==1,(pat,a); return a[0]
+          def rows(p): return [[float(x) for x in l.split()] for l in p.read_text().splitlines() if l.strip() and not l.lstrip().startswith('#')]
+          rc0=int((res/'base_rc.txt').read_text()); rc1=int((res/'recovered_rc.txt').read_text()); checks={'base_rc_zero':rc0==0,'recovered_rc_zero':rc1==0}; data={'base_rc':rc0,'recovered_rc':rc1}
+          if rc0==0 and rc1==0:
+            b=rows(one('base*_pk.dat')); r=rows(one('recovered*_pk.dat')); rx=[q[0] for q in r]; ry=[q[1] for q in r]
+            def li(x):
+              i=bisect.bisect_left(rx,x)
+              if i==0:return ry[0]
+              if i>=len(rx):return ry[-1]
+              x0,x1=rx[i-1],rx[i]; y0,y1=ry[i-1],ry[i]; f=(math.log(x)-math.log(x0))/(math.log(x1)-math.log(x0)); return math.exp(math.log(y0)+f*(math.log(y1)-math.log(y0)))
+            common=[q for q in b if rx[0]<=q[0]<=rx[-1]]; l2=math.sqrt(sum((q[1]-li(q[0]))**2 for q in common)/max(sum(q[1]**2 for q in common),1e-300))
+            def H0(p):
+              ls=p.read_text().splitlines(); hs=[l for l in ls if l.lstrip().startswith('#') and 'H [1/Mpc]' in l and 'z' in l]; assert len(hs)==1
+              t={m.group(2).strip():int(m.group(1))-1 for m in re.finditer(r'(\d+):(.+?)(?=\s+\d+:|$)',hs[0].lstrip('#').strip())}; rr=rows(p); q=min(rr,key=lambda x:abs(x[t['z']])); return q[t['H [1/Mpc]']]
+            hb=H0(one('base*_background.dat')); hr=H0(one('recovered*_background.dat')); hd=abs(hb-hr)/max(abs(hb),abs(hr),1e-300)
+            finite=bool(common) and all(q[0]>0 and q[1]>0 and all(math.isfinite(x) for x in q) for q in b+r)
+            checks.update({'finite_positive_pk':finite,'pk_L2_le_1e_10':l2<=1e-10,'H0_rel_le_1e_10':hd<=1e-10}); data.update({'pk_normalized_L2':l2,'H0_relative_difference':hd,'pk_rows_base':len(b),'pk_rows_recovered':len(r)})
+          else: checks.update({'finite_positive_pk':False,'pk_L2_le_1e_10':False,'H0_rel_le_1e_10':False})
+          ok=all(checks.values()); obj={'schema':'KMDSB.W03.M13b.K3D2BPerturbationNativeSplitNull.v0.1','checks':checks,'all_required_checks_pass':ok,'classification':('M13B_K3D2B_PERTURBATION_NATIVE_SPLIT_NULL_PASS' if ok else 'M13B_K3D2B_PERTURBATION_NATIVE_SPLIT_NULL_FAIL'),**data}
+          (res/'null_result.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n'); print(json.dumps(obj,indent=2,sort_keys=True)); assert ok,obj
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-ptsplit-null
+          path: |
+            result/
+            out/
+          retention-days: 90
+
+  enabled:
+    name: E ${{ matrix.label }} enabled perturbations
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: default
+            prefix: default
+            precision: none
+          - label: reference
+            prefix: ref
+            precision: cl_ref.pre
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build fully recovered qfield CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py provider --manifest result/pt_split.json
+          python3 verification/m13b/k3d2b_apply_output_diagnostics.py provider --manifest result/diag.json
+          make -C provider -j2 class > result/build.log 2>&1
+      - name: Run enabled two-mode perturbation probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > result/enabled.ini <<EOF
+          h = 0.6715
+          omega_b = 0.0224
+          Omega_cdm = 0.26172292868512664
+          Omega_g = 5.4572897176151613e-05
+          Omega_ur = 3.772710282384838e-05
+          N_ncdm = 0
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = 0
+          Omega_k = 0
+          qcf_U0 = 0.3362232603714306
+          qcf_phi_ini = 0.92
+          qcf_phi_prime_ini = 0
+          qpf_U0 = 0.3362232603714306
+          qpf_psi_ini = 1.02
+          qpf_psi_prime_ini = 0
+          gauge = synchronous
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = mPk,dTk
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          k_output_values = $K1,$K10
+          write_background = yes
+          root = $GITHUB_WORKSPACE/out/${{ matrix.prefix }}_
+          EOF
+          set +e
+          if [ "${{ matrix.precision }}" = none ]; then
+            (cd provider && ./class "$GITHUB_WORKSPACE/result/enabled.ini") > result/stdout.txt 2> result/stderr.txt
+          else
+            (cd provider && ./class "$GITHUB_WORKSPACE/result/enabled.ini" "${{ matrix.precision }}") > result/stdout.txt 2> result/stderr.txt
+          fi
+          rc=$?
+          set -e
+          echo "$rc" > result/provider_rc.txt
+          find out -maxdepth 1 -type f -printf '%f\n' | sort > result/output_files.txt
+      - name: Frozen enabled implementation gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,math,re
+          res=Path('result'); out=Path('out'); rc=int((res/'provider_rc.txt').read_text()); diag=((res/'stdout.txt').read_text(errors='replace')+'\n'+(res/'stderr.txt').read_text(errors='replace')).lower()
+          checks={'provider_rc_zero':rc==0,'no_minimum_step':('step size too small' not in diag and 'stepsize underflow' not in diag)}; data={'provider_rc':rc}
+          pk=sorted(out.glob('${{ matrix.prefix }}*_pk.dat')); fs=sorted(out.glob('${{ matrix.prefix }}*_perturbations_k*_s.dat')); checks['one_pk']=len(pk)==1; checks['two_trajectories']=len(fs)==2
+          if rc==0 and len(pk)==1 and len(fs)==2:
+            pr=[[float(x) for x in l.split()] for l in pk[0].read_text().splitlines() if l.strip() and not l.lstrip().startswith('#')]; checks['pk_finite_positive']=bool(pr) and all(r[0]>0 and r[1]>0 and all(math.isfinite(x) for x in r) for r in pr)
+            mode=[]; maxfield=0.; hierarchy=True; qnon=True
+            for f in fs:
+              ls=f.read_text().splitlines(); hs=[l for l in ls if l.lstrip().startswith('#') and 'delta_qcf_S' in l and 'delta_qpf_S' in l]; assert len(hs)==1,(f,hs)
+              t={m.group(2).strip():int(m.group(1))-1 for m in re.finditer(r'(\d+):(.+?)(?=\s+\d+:|$)',hs[0].lstrip('#').strip())}; req=['delta_g','theta_g','delta_ur','theta_ur','shear_ur','delta_qcf_S','delta_prime_qcf_S','delta_qpf_S','delta_prime_qpf_S']; hierarchy=hierarchy and all(k in t for k in req)
+              rr=[[float(x) for x in l.split()] for l in ls if l.strip() and not l.lstrip().startswith('#')]; finite=bool(rr) and all(all(math.isfinite(x) for x in r) for r in rr)
+              qcf=max([abs(r[t['delta_qcf_S']]) for r in rr]+[abs(r[t['delta_prime_qcf_S']]) for r in rr]); qpf=max([abs(r[t['delta_qpf_S']]) for r in rr]+[abs(r[t['delta_prime_qpf_S']]) for r in rr]); maxfield=max(maxfield,qcf,qpf); qnon=qnon and qcf>0 and qpf>0; mode.append({'file':f.name,'rows':len(rr),'finite':finite,'qcf_max':qcf,'qpf_max':qpf})
+            checks.update({'hierarchy_columns_present':hierarchy,'all_trajectory_values_finite':all(m['finite'] for m in mode),'qcf_qpf_dynamically_nonzero':qnon,'direct_qfields_below_0p1':maxfield<0.1}); data.update({'modes':mode,'max_direct_qfield_amplitude':maxfield,'pk_rows':len(pr)})
+          else: checks.update({'pk_finite_positive':False,'hierarchy_columns_present':False,'all_trajectory_values_finite':False,'qcf_qpf_dynamically_nonzero':False,'direct_qfields_below_0p1':False})
+          ok=all(checks.values()); obj={'schema':'KMDSB.W03.M13b.K3D2BPerturbationNativeSplitEnabled.v0.1','lane':'${{ matrix.label }}','checks':checks,'all_required_checks_pass':ok,'classification':('M13B_K3D2B_PERTURBATION_NATIVE_SPLIT_ENABLED_PASS' if ok else 'M13B_K3D2B_PERTURBATION_NATIVE_SPLIT_ENABLED_FAIL'),'B1_B2_B3_evaluated':False,'physical_falsification':False,**data}; (res/'enabled_result.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n'); print(json.dumps(obj,indent=2,sort_keys=True)); assert ok,obj
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-ptsplit-${{ matrix.prefix }}
+          path: |
+            result/
+            out/
+          retention-days: 90
+
+  verdict:
+    name: V native split implementation verdict
+    needs: [null_control, enabled]
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-ptsplit-null
+          path: n
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-ptsplit-default
+          path: d
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-ptsplit-ref
+          path: r
+      - name: Frozen verdict
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          N=json.loads(Path('n/result/null_result.json').read_text()); D=json.loads(Path('d/result/enabled_result.json').read_text()); R=json.loads(Path('r/result/enabled_result.json').read_text()); c={'null':N['all_required_checks_pass'],'default':D['all_required_checks_pass'],'reference':R['all_required_checks_pass']}; ok=all(c.values()); o={'schema':'KMDSB.W03.M13b.K3D2BPerturbationNativeSplitVerdict.v0.1','checks':c,'all_required_checks_pass':ok,'classification':('M13B_K3D2B_PERTURBATION_NATIVE_INTERVAL_SPLIT_IMPLEMENTATION_PASS_WITH_SCOPE' if ok else 'M13B_K3D2B_PERTURBATION_NATIVE_INTERVAL_SPLIT_BLOCKED'),'next_authorized_gate':('rerun frozen full B1/B2/B3 regression with native perturbation split' if ok else None),'K3_state_ceiling':'PARTIAL','K4_promoted':False,'K5_promoted':False,'physical_falsification':False}; Path('verdict.json').write_text(json.dumps(o,indent=2,sort_keys=True)+'\n'); print(json.dumps(o,indent=2,sort_keys=True)); assert ok,o
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-ptsplit-verdict
+          path: verdict.json
+          retention-days: 90
