@@ -1,0 +1,89 @@
+name: W03 M13b K3D2-B piecewise restart source audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3d2b-piecewise-restart-source-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    env:
+      CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clone exact-pin CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$CLASS_PIN"
+          mkdir -p result
+      - name: Frozen source-structural audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, math, re
+
+          src = Path('provider/source/background.c').read_text()
+          start = src.index('int background_solve(')
+          tail = src[start:]
+          mnext = re.search(r'\nint\s+[A-Za-z0-9_]+\s*\(', tail[len('int background_solve('):])
+          body = tail if mnext is None else tail[:len('int background_solve(')+mnext.start()]
+
+          calls = [m.start() for m in re.finditer(r'generic_evolver\s*\(\s*background_derivs\s*,', body)]
+          call_match = re.search(r'generic_evolver\s*\(\s*background_derivs\s*,(.*?)\)\s*;', body, re.S)
+          call_text = call_match.group(1) if call_match else ''
+
+          checks = {}
+          checks['one_production_generic_evolver_call'] = len(calls) == 1
+          checks['mutable_loga_bounds_in_call'] = ('loga_ini' in call_text and 'loga_final' in call_text)
+          checks['integration_vector_in_call'] = 'pvecback_integration' in call_text
+          checks['background_sources_callback'] = 'background_sources' in call_text
+          checks['ordinary_background_workspace_present'] = '&bpaw' in call_text
+          checks['no_extra_solver_state_argument_marker'] = all(x not in call_text for x in ['solver_state','integrator_state','history_state'])
+          checks['integration_vector_declared'] = re.search(r'double\s*\*\s*pvecback_integration\s*;', body) is not None
+          checks['loga_ini_assigned'] = re.search(r'loga_ini\s*=', body) is not None
+          checks['loga_final_assigned'] = re.search(r'loga_final\s*=', body) is not None
+
+          # Exact handoff is log(1/6) = -1.791759..., and CLASS background_solve
+          # integrates from an early negative log(a) to log(a)=0. Structural source
+          # evidence must contain the standard final bound at a=1.
+          handoff = math.log(1.0/6.0)
+          final_zero = re.search(r'loga_final\s*=\s*0\.?\s*;', body) is not None
+          early_start = ('a_ini_over_a_today_default' in body or 'a_ini_over_a_today' in body or 'loga_ini' in body)
+          checks['handoff_strictly_before_final_zero'] = handoff < 0.0 and final_zero
+          checks['early_start_source_present'] = early_start
+
+          all_pass = all(checks.values())
+          result = {
+            'schema':'KMDSB.W03.M13b.K3D2BPiecewiseRestartSourceAudit.v0.1',
+            'provider':'lesgourg/class_public',
+            'provider_commit':'64bbab707faf4de4779a9e04edd180fef18d98fa',
+            'handoff_loga':handoff,
+            'generic_evolver_call_count':len(calls),
+            'checks':checks,
+            'all_required_checks_pass':all_pass,
+            'classification':('M13B_K3D2B_EXACT_PIECEWISE_RESTART_STRUCTURALLY_AUTHORIZED_WITH_SCOPE' if all_pass else 'M13B_K3D2B_EXACT_PIECEWISE_RESTART_NOT_ESTABLISHED'),
+            'physical_falsification':False,
+            'next_gate':('separately preregister exact two-segment implementation probe plus null segmentation control' if all_pass else 'keep K3D2-B numerical blocker; seek independent implementation route')
+          }
+          Path('result/piecewise_restart_source_audit.json').write_text(json.dumps(result, indent=2, sort_keys=True)+'\n')
+          print(json.dumps(result, indent=2, sort_keys=True))
+          if not all_pass:
+              raise SystemExit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-piecewise-restart-source-audit
+          path: result/
+          retention-days: 90
