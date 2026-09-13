@@ -1,0 +1,71 @@
+name: W03 M13b K3D2-B perturbation diagnostic source map
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w03-m13b-k3d2b-perturbation-diagnostic-map.yml'
+
+permissions:
+  contents: write
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+
+jobs:
+  map:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch exact source and extract diagnostic writer contexts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$CLASS_PIN"
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest /tmp/manifest.json
+          mkdir -p waves/wave_03_expanded_dark_energy
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re
+          p=Path('provider/source/perturbations.c')
+          lines=p.read_text().splitlines()
+          needles=[
+              'perturbations_print_variables',
+              'scalar_perturbation_data',
+              'index_mt_alpha',
+              'index_mt_alpha_prime',
+              'delta_scf',
+              'theta_scf',
+              'fprintf',
+              'class_store_columntitle',
+          ]
+          # Capture large merged windows around the print function and every scalar diagnostic formatting anchor.
+          hits=[]
+          for i,line in enumerate(lines):
+              if any(n in line for n in needles): hits.append(i)
+          selected=set()
+          for i in hits:
+              for j in range(max(0,i-12),min(len(lines),i+25)): selected.add(j)
+          out=['provider_commit=64bbab707faf4de4779a9e04edd180fef18d98fa','file=source/perturbations.c','']
+          prev=None
+          for j in sorted(selected):
+              if prev is not None and j>prev+1: out.append('...')
+              out.append(f'{j+1:06d}: {lines[j]}')
+              prev=j
+          Path('waves/wave_03_expanded_dark_energy/M13B_K3D2B_PERTURBATION_DIAGNOSTIC_SOURCE_MAP.txt').write_text('\n'.join(out)+'\n')
+          meta={'schema':'KMDSB.W03.M13b.K3D2BPerturbationDiagnosticSourceMap.v0.1','provider_commit':'64bbab707faf4de4779a9e04edd180fef18d98fa','source_file':'source/perturbations.c','match_lines':[i+1 for i in hits],'enabled_qcf_qpf_executed':False,'science_result':False}
+          Path('waves/wave_03_expanded_dark_energy/M13B_K3D2B_PERTURBATION_DIAGNOSTIC_SOURCE_MAP.json').write_text(json.dumps(meta,indent=2,sort_keys=True)+'\n')
+          PY
+      - name: Persist map
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add waves/wave_03_expanded_dark_energy/M13B_K3D2B_PERTURBATION_DIAGNOSTIC_SOURCE_MAP.*
+          git commit -m 'map M13b K3D2-B perturbation diagnostic writer'
+          git pull --rebase origin main
+          git push origin HEAD:main
