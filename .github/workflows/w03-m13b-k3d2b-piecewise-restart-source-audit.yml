@@ -54,9 +54,6 @@ jobs:
           checks['loga_ini_assigned'] = re.search(r'loga_ini\s*=', body) is not None
           checks['loga_final_assigned'] = re.search(r'loga_final\s*=', body) is not None
 
-          # Exact handoff is log(1/6) = -1.791759..., and CLASS background_solve
-          # integrates from an early negative log(a) to log(a)=0. Structural source
-          # evidence must contain the standard final bound at a=1.
           handoff = math.log(1.0/6.0)
           final_zero = re.search(r'loga_final\s*=\s*0\.?\s*;', body) is not None
           early_start = ('a_ini_over_a_today_default' in body or 'a_ini_over_a_today' in body or 'loga_ini' in body)
@@ -87,3 +84,5 @@ jobs:
           name: m13b-k3d2b-piecewise-restart-source-audit
           path: result/
           retention-days: 90
+
+# frozen trigger commit; no science change
