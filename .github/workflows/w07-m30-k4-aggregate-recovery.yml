@@ -1,0 +1,43 @@
+name: W07 M30 K4 aggregate-only recovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w07-m30-k4-aggregate-recovery.yml'
+permissions:
+  actions: read
+  contents: read
+jobs:
+  aggregate-recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install frozen analyzer runtime dependency
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-numpy >/dev/null
+      - name: Download exact source point artifacts from authoritative run
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m30-k4-*
+          path: m30-k4-artifacts
+          merge-multiple: false
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34719607382
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify exact source artifact set and aggregate unchanged frozen gate
+        run: |
+          set -euo pipefail
+          test -f m30-k4-artifacts/m30-k4-base/M30_K4_POINT_base.json
+          test -f m30-k4-artifacts/m30-k4-radial/M30_K4_POINT_radial.json
+          test -f m30-k4-artifacts/m30-k4-cT/M30_K4_POINT_cT.json
+          python3 verification/m30/k4_local_2d_precision.py aggregate m30-k4-artifacts M30_K4_LOCAL_2D_PRECISION_RESULT.json
+          cat M30_K4_LOCAL_2D_PRECISION_RESULT.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m30-k4-local-2d-aggregate-recovery
+          path: M30_K4_LOCAL_2D_PRECISION_RESULT.json
+          retention-days: 30
