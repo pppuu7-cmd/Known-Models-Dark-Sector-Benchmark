@@ -1,0 +1,269 @@
+{
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "all_required_checks_pass": true,
+  "amplitude_boundary_condition": {
+    "U0_frozen_bracket": [
+      0.0001,
+      2.0
+    ],
+    "U_definition": "V/rho_crit0",
+    "observational_likelihood_fit": false,
+    "target": "E(N=0)=H/H0=1",
+    "varied_quantities": [
+      "U0 only"
+    ]
+  },
+  "author_normalization_map_claimed": false,
+  "checks": {
+    "amplitude_coarse_fine_converged": true,
+    "coarse_bracket_straddles": true,
+    "coarse_finite_positive_background": true,
+    "coarse_flat_scalar_closure": true,
+    "coarse_root_closure": true,
+    "crossing_redshift_coarse_fine_converged": true,
+    "endpoint_coarse_fine_converged": true,
+    "fine_bracket_straddles": true,
+    "fine_exactly_one_later_crossing": true,
+    "fine_finite_positive_background": true,
+    "fine_flat_scalar_closure": true,
+    "fine_phantom_phase_develops": true,
+    "fine_quintessence_phase_survives_today": true,
+    "fine_root_closure": true,
+    "no_author_amplitude_reassignment": true,
+    "no_promotion_leakage": true
+  },
+  "classification": "M13B_K3C1_INDEPENDENT_CRITICAL_DENSITY_BACKGROUND_CLOSURE_PASS_WITH_SCOPE",
+  "family_id": "F13",
+  "gate": "K3C1",
+  "implementation_provenance": "independent_KMDSB_critical_density_normalized_background",
+  "lanes": {
+    "coarse": {
+      "bracket_ok": true,
+      "final_bracket_width": 1.1640949315605553e-10,
+      "hi": {
+        "crossings": [
+          {
+            "N": -1.1619098269186452,
+            "z": 2.1960313178041573
+          }
+        ],
+        "endpoint": {
+          "D": 0.008444966285893045,
+          "E": 2.0778761243480264,
+          "E2": 4.317569188135574,
+          "N": -4.185313120380618e-14,
+          "Omega_DE": 4.006076888135534,
+          "p": 0.09329724621652044,
+          "q": -0.016106205813070682,
+          "x": 1.5193478991354636,
+          "y": 0.6910978101358831,
+          "z": 4.1744385725905886e-14
+        },
+        "finite": true,
+        "max_D": 1.1415915383514847,
+        "min_D": -0.2624139868433595,
+        "min_E2": 4.317569188135574,
+        "min_denom": 0.8097347436080858,
+        "nsteps": 4000,
+        "u0": 2.0
+      },
+      "iterations": 35,
+      "lo": {
+        "crossings": [],
+        "endpoint": {
+          "D": -2.1359467913849895e-05,
+          "E": 0.5583370320521627,
+          "E2": 0.3117402413608177,
+          "N": -4.185313120380618e-14,
+          "Omega_DE": 0.00024794136077854696,
+          "p": 0.00023558718291811045,
+          "q": -0.004627631060770207,
+          "x": 0.9200774230860009,
+          "y": 1.018497220765522,
+          "z": 4.1744385725905886e-14
+        },
+        "finite": true,
+        "max_D": 0.0,
+        "min_D": -2.1359467913849895e-05,
+        "min_E2": 0.3117402413608177,
+        "min_denom": 1.0,
+        "nsteps": 4000,
+        "u0": 0.0001
+      },
+      "root": {
+        "crossings": [
+          {
+            "N": -0.7874896680783591,
+            "z": 1.1978721067100082
+          }
+        ],
+        "endpoint": {
+          "D": 0.09639984339213827,
+          "E": 0.9999999999922254,
+          "E2": 0.9999999999844509,
+          "N": -4.185313120380618e-14,
+          "Omega_DE": 0.6885076999844117,
+          "p": 0.31170035328027895,
+          "q": -0.027518481842435296,
+          "x": 1.391027787269767,
+          "y": 0.7979144626637377,
+          "z": 4.1744385725905886e-14
+        },
+        "finite": true,
+        "max_D": 0.9013133049943024,
+        "min_D": -0.07255336469195069,
+        "min_E2": 0.9999999999844509,
+        "min_denom": 0.849781115834283,
+        "nsteps": 4000,
+        "u0": 0.3362232603714306
+      }
+    },
+    "fine": {
+      "bracket_ok": true,
+      "final_bracket_width": 1.1640949315605553e-10,
+      "hi": {
+        "crossings": [
+          {
+            "N": -1.161909726344651,
+            "z": 2.196030996366538
+          }
+        ],
+        "endpoint": {
+          "D": 0.008444966286031894,
+          "E": 2.077876124348071,
+          "E2": 4.31756918813576,
+          "N": -1.3483544792844415e-13,
+          "Omega_DE": 4.006076888135635,
+          "p": 0.09329724621727026,
+          "q": -0.01610620581310367,
+          "x": 1.5193478991406715,
+          "y": 0.6910978101355808,
+          "z": 1.34781075189494e-13
+        },
+        "finite": true,
+        "max_D": 1.141595987072478,
+        "min_D": -0.2624145674191291,
+        "min_E2": 4.31756918813576,
+        "min_denom": 0.809734002154587,
+        "nsteps": 8000,
+        "u0": 2.0
+      },
+      "iterations": 35,
+      "lo": {
+        "crossings": [],
+        "endpoint": {
+          "D": -2.1359467913839595e-05,
+          "E": 0.5583370320522404,
+          "E2": 0.3117402413609045,
+          "N": -1.3483544792844415e-13,
+          "Omega_DE": 0.0002479413607785584,
+          "p": 0.00023558718291805157,
+          "q": -0.00462763106076909,
+          "x": 0.9200774230860012,
+          "y": 1.018497220765517,
+          "z": 1.34781075189494e-13
+        },
+        "finite": true,
+        "max_D": 0.0,
+        "min_D": -2.1359467913839595e-05,
+        "min_E2": 0.3117402413609045,
+        "min_denom": 1.0,
+        "nsteps": 8000,
+        "u0": 0.0001
+      },
+      "root": {
+        "crossings": [
+          {
+            "N": -0.7874896530468094,
+            "z": 1.1978720736725847
+          }
+        ],
+        "endpoint": {
+          "D": 0.09639984339294122,
+          "E": 0.9999999999923376,
+          "E2": 0.9999999999846751,
+          "N": -1.3483544792844415e-13,
+          "Omega_DE": 0.6885076999845492,
+          "p": 0.3117003532815687,
+          "q": -0.02751848184245475,
+          "x": 1.3910277872721561,
+          "y": 0.7979144626637236,
+          "z": 1.34781075189494e-13
+        },
+        "finite": true,
+        "max_D": 0.9013133050053359,
+        "min_D": -0.07255340387002263,
+        "min_E2": 0.9999999999846751,
+        "min_denom": 0.849781115832444,
+        "nsteps": 8000,
+        "u0": 0.3362232603714306
+      }
+    }
+  },
+  "model_id": "M13b",
+  "next_authorized_gate": "K3C2_INDEPENDENT_COSMOLOGY_SCALE_PERTURBATION_BRIDGE_PREREGISTRATION",
+  "numerics": {
+    "U0_symmetric_relative_difference": 0.0,
+    "coarse_E0": 0.9999999999922254,
+    "coarse_Omega_DE0": 0.6885076999844117,
+    "coarse_U0": 0.3362232603714306,
+    "coarse_crossings": [
+      {
+        "N": -0.7874896680783591,
+        "z": 1.1978721067100082
+      }
+    ],
+    "crossing_redshift_absolute_difference": 3.303742346361105e-08,
+    "endpoint_symmetric_relative_differences": {
+      "E": 1.1213252548800001e-13,
+      "p": 4.137775508204112e-12,
+      "q": 7.06913599775409e-13,
+      "x": 1.7175788800586248e-12,
+      "y": 1.767085705611722e-14
+    },
+    "fine_E0": 0.9999999999923376,
+    "fine_Omega_DE0": 0.6885076999845492,
+    "fine_U0": 0.3362232603714306,
+    "fine_crossings": [
+      {
+        "N": -0.7874896530468094,
+        "z": 1.1978720736725847
+      }
+    ],
+    "fine_endpoint": {
+      "D": 0.09639984339294122,
+      "E": 0.9999999999923376,
+      "E2": 0.9999999999846751,
+      "N": -1.3483544792844415e-13,
+      "Omega_DE": 0.6885076999845492,
+      "p": 0.3117003532815687,
+      "q": -0.02751848184245475,
+      "x": 1.3910277872721561,
+      "y": 0.7979144626637236,
+      "z": 1.34781075189494e-13
+    },
+    "fine_final_D": 0.09639984339294122,
+    "fine_min_1_minus_D_over_6": 0.849781115832444,
+    "fine_min_D": -0.07255340387002263,
+    "fine_min_E2": 0.9999999999846751,
+    "implied_independent_V0_over_Mp4": 3.489459667969868e-121,
+    "implied_to_public_V0_label_ratio_report_only": 3.834571063703152e-113,
+    "max_endpoint_symmetric_relative_difference": 4.137775508204112e-12,
+    "target_Omega_DE0": 0.6885077
+  },
+  "original_provider_reproduced": false,
+  "physical_falsification": false,
+  "protocol": "protocol/W03_M13B_K3C1_INDEPENDENT_CRITICAL_DENSITY_BACKGROUND_CLOSURE_v0.1.md",
+  "public_shape_seed_only": {
+    "p_start": 0.0,
+    "q_start": 0.0,
+    "s_hat": 29.0,
+    "x_start_phi_over_Mp": 0.92,
+    "y_start_psi_over_Mp": 1.02,
+    "z_start": 5.0
+  },
+  "published_V0_reproduced": false,
+  "schema": "KMDSB.W03.M13b.K3C1IndependentCriticalDensityBackground.v0.1"
+}
