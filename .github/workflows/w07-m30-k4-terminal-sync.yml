@@ -1,0 +1,63 @@
+name: W07 M30 K4 terminal sync
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w07-m30-k4-terminal-sync.yml'
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Synchronize canonical M30 K4 result into ledgers and recovery
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv, pathlib
+          result='waves/wave_07_deep_gates/M30_K4_LOCAL_2D_PRECISION_RESULT.json'
+          marker='M30_K4_NUMERICAL_ROBUSTNESS_NOT_ESTABLISHED_LOCAL_2D'
+          prov='scientific run 34750957481; analysis-only recovery run 34753465928; job 103713787171; artifact 10316702998; canonical repository result '+result
+
+          p=pathlib.Path('matrices/model_family_census.csv')
+          rows=list(csv.DictReader(p.open(newline=''))); fields=list(rows[0].keys())
+          for r in rows:
+              if r['family_id']=='F30':
+                  r['status']='K0_K1_PASS_K2_PARTIAL_K4_NUMERICAL_NOT_ESTABLISHED_K3_K9_OPEN'
+                  add=(' W07 K4 local-2D provider-precision ladder is NOT_ESTABLISHED: all base/radial/cT default/permille/reference executions were finite, but the unchanged frozen analyzer fails every TT/EE/TE/P(k) refinement gate because R_fine is not <=1e-4 and contracting as required. '+prov+'. No physical falsification; do not relax thresholds or post-hoc retune physics.')
+                  if marker not in r['notes']:
+                      r['notes'] += add
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields);w.writeheader();w.writerows(rows)
+
+          p=pathlib.Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(p.open(newline=''))); fields=list(rows[0].keys())
+          for r in rows:
+              if r['family_id']=='F30':
+                  r['K4_numerical_robustness']='BLOCKED_NUMERICAL'
+                  r['coverage_state']='K0_K1_PASS_K2_PARTIAL_K4_NUMERICAL_NOT_ESTABLISHED_K3_K9_OPEN'
+                  add=(' W07 M30 K4: '+marker+'. Frozen provider-precision criterion requires R_fine<=1e-4 and contraction relative to R_coarse; all three local points fail across mandatory TT/EE/TE/P(k) blocks despite finite executions. '+prov+'. physical_falsification=false.')
+                  if marker not in r['notes']:
+                      r['notes'] += add
+          with p.open('w',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields);w.writeheader();w.writerows(rows)
+
+          block='''\n\n## 2026-09-13 — M30 K4 local-2D provider precision terminal NOT_ESTABLISHED\n- Canonical classification: `M30_K4_NUMERICAL_ROBUSTNESS_NOT_ESTABLISHED_LOCAL_2D`; `K4_promoted=false`; `physical_falsification=false`.\n- Exact provider pin: `0009f51d89e6465c79e570b496c66fc90058fa77`.\n- Provenance: scientific run `34750957481`; analysis-only recovery run `34753465928`; job `103713787171`; authoritative artifact `10316702998`; canonical result `waves/wave_07_deep_gates/M30_K4_LOCAL_2D_PRECISION_RESULT.json`.\n- All base/radial/cT default/permille/reference executions are finite, but every mandatory TT/EE/TE/P(k) block fails the prospectively frozen refinement gate (`R_fine <= 1e-4` plus contraction rule). This is numerical robustness not established, not a Horndeski-family physical failure. No threshold relaxation or post-hoc retuning is permitted.\n- F30 remains nonterminal; K3 and K5-K9 remain open. Strict census terminal/represented count is unchanged.\n'''
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+              q=pathlib.Path(fn); txt=q.read_text()
+              if marker not in txt:
+                  q.write_text(txt.rstrip()+block+'\n')
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          if git diff --cached --quiet; then
+            echo 'No sync changes needed.'
+          else
+            git commit -m 'sync M30 K4 numerical-not-established terminal result'
+            git push
+          fi
