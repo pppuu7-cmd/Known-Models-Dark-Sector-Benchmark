@@ -1,0 +1,83 @@
+name: W03 M13b K3B2 local embedding ledger sync
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3b2-ledger-sync.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify canonical K3B2 result and synchronize ledgers
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv,json,pathlib
+          root=pathlib.Path('.')
+          rp=root/'waves/wave_03_expanded_dark_energy/M13B_K3B2_INDEPENDENT_DYNAMICAL_EMBEDDING_RESULT.json'
+          r=json.loads(rp.read_text())
+          cls='M13B_K3B2_INDEPENDENT_STANDARD_GR_DYNAMICAL_EMBEDDING_PASS_WITH_SCOPE'
+          assert r['classification']==cls
+          assert r['all_required_checks_pass'] is True
+          assert r['implementation_provenance']=='independent_KMDSB_standard_GR_verification'
+          assert r['original_provider_reproduced'] is False
+          assert r['K3_canonical_state_ceiling']=='PARTIAL'
+          assert r['K4_promoted'] is False and r['K5_promoted'] is False
+          assert r['physical_falsification'] is False
+          marker='M13B_K3B2_LOCAL_STANDARD_GR_EMBEDDING_PASS_2026_09_13'
+
+          p=root/'matrices/mandatory_properties_matrix.csv'
+          rows=list(csv.DictReader(p.open(newline='',encoding='utf-8'))); fields=list(rows[0].keys())
+          for row in rows:
+              if row['family_id']=='F13':
+                  row['K3_conservation_gauge_closure']='PARTIAL'
+                  row['coverage_state']='K0_K1_PASS_K2_PARTIAL_K3_PARTIAL_LOCAL_STANDARD_GR_DYNAMICAL_EMBEDDING_PASS_COSMOLOGY_SCALE_K3_OPEN'
+                  add=(' '+marker+': prospectively frozen independent standard-GR two-field K3B2 embedding passes all local crossing/constraint/refinement gates. '
+                       'Exact anchor q=0 with q_prime=0.314579093186371; fine backward/forward endpoints have q=-0.01706756303318397 and +0.014498255685305973. '
+                       'Fine max normalized Einstein residuals are C00=1.7327326168201567e-15 and Cij=2.8562435140246887e-16; max coarse/fine endpoint mismatch is 3.6821146154203376e-15. '
+                       'All states remain finite with positive rho and Hc. This establishes a local independent same-realization Einstein+canonical+phantom perturbation embedding through an exact transverse w=-1 crossing. '
+                       'It does not reproduce the unavailable Goh-Taylor code, does not close cosmology-scale Einstein-Boltzmann K3, and does not promote K4/K5. '
+                       'Run 34781365151; artifact 10325256729; sha256:55864bca6020aebd7341e17017663d064ac513a515c5a42647b13d27111656e1.')
+                  if marker not in row['notes']:
+                      row['notes'] += add
+          with p.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          p=root/'matrices/model_family_census.csv'
+          rows=list(csv.DictReader(p.open(newline='',encoding='utf-8'))); fields=list(rows[0].keys())
+          for row in rows:
+              if row['family_id']=='F13':
+                  row['status']='K1_BACKGROUND_TRUE_CROSSING_PASS_K3_PARTIAL_LOCAL_STANDARD_GR_DYNAMICAL_EMBEDDING_PASS_COSMOLOGY_SCALE_OPEN'
+                  add=(' '+marker+': independent K3B2 standard-GR local dynamical embedding crosses w=-1 transversely with machine-level preserved 00/ij constraints and converged coarse/fine trajectories. This is independent verification only; original modified Boltzmann source remains unavailable and cosmology-scale K3 closure is still open.')
+                  if marker not in row['notes']:
+                      row['notes'] += add
+          with p.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          block='''\n\n## 2026-09-13 — M13b K3B2 independent local standard-GR embedding PASS_WITH_SCOPE\n- Canonical result: `M13B_K3B2_INDEPENDENT_STANDARD_GR_DYNAMICAL_EMBEDDING_PASS_WITH_SCOPE`; result file `waves/wave_03_expanded_dark_energy/M13B_K3B2_INDEPENDENT_DYNAMICAL_EMBEDDING_RESULT.json`.\n- Actions run `34781365151`, artifact `10325256729`, digest `sha256:55864bca6020aebd7341e17017663d064ac513a515c5a42647b13d27111656e1`.\n- Exact frozen crossing anchor has `q=u^2-v^2=0`, prospectively predicted `q_prime=0.314579093186371`, and executed fine-grid endpoints `q_backward=-0.01706756303318397`, `q_forward=0.014498255685305973`.\n- Independent Einstein constraints are preserved: fine max normalized `C00=1.7327326168201567e-15`, `Cij=2.8562435140246887e-16`. Coarse/fine endpoint symmetric relative mismatch is at most `3.6821146154203376e-15`. All stored states are finite; rho and Hc stay positive.\n- Interpretation: a local same-realization standard-GR canonical+phantom perturbation solution crosses effective `w=-1` without dividing by `rho+p` or using singular `theta_DE`. This materially strengthens K3 evidence.\n- Boundary: K3 remains `PARTIAL`, because this is an independent dimensionless local realization rather than the unavailable Goh-Taylor author code or a cosmology-scale Einstein-Boltzmann implementation. K4/K5 remain unpromoted. Next authorized gate: cosmology-scale independent Einstein-Boltzmann preregistration. Physical falsification=false.\n'''
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+              q=root/fn; txt=q.read_text(encoding='utf-8')
+              if marker not in txt:
+                  q.write_text(txt.rstrip()+block+'\n',encoding='utf-8')
+          PY
+      - name: Commit synchronized K3B2 state
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          if git diff --cached --quiet; then
+            echo 'M13b K3B2 state already synchronized.'
+          else
+            git commit -m 'sync M13b K3B2 local embedding pass'
+            git push
+          fi
