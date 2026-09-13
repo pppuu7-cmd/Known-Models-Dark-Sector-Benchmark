@@ -1,0 +1,81 @@
+name: W03 M13b K3B authority-boundary ledger sync
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3b-authority-ledger-sync.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify K3B0/K3B1 results and synchronize ledgers
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv,json,pathlib
+          root=pathlib.Path('.')
+          b0p=root/'waves/wave_03_expanded_dark_energy/M13B_K3B0_EINSTEIN_TRACE_AUDIT_RESULT.json'
+          b1p=root/'waves/wave_03_expanded_dark_energy/M13B_K3B1_COVARIANT_KG_AUDIT_RESULT.json'
+          b0=json.loads(b0p.read_text()); b1=json.loads(b1p.read_text())
+          c0='M13B_K3B0_PUBLISHED_EINSTEIN_TRACE_FORM_NOT_LITERAL_IMPLEMENTATION_AUTHORITY'
+          c1='M13B_K3B1_PUBLISHED_PERTURBED_KG_NOT_LITERAL_COVARIANT_IMPLEMENTATION_AUTHORITY'
+          assert b0['classification']==c0 and b0['all_required_checks_pass'] is True
+          assert b1['classification']==c1 and b1['all_required_checks_pass'] is True
+          assert b0['physical_falsification'] is False and b1['physical_falsification'] is False
+          marker='M13B_K3B_AUTHORITY_BOUNDARY_2026_09_13'
+
+          p=root/'matrices/mandatory_properties_matrix.csv'
+          rows=list(csv.DictReader(p.open(newline='',encoding='utf-8'))); fields=list(rows[0].keys())
+          for row in rows:
+              if row['family_id']=='F13':
+                  row['K3_conservation_gauge_closure']='PARTIAL'
+                  row['coverage_state']='K0_K1_PASS_K2_PARTIAL_K3_PARTIAL_INDEPENDENT_EQUATION_CLOSURE_PUBLISHED_EINSTEIN_KG_AUTHORITY_AMBIGUOUS_K3B2_OPEN'
+                  add=(' '+marker+': K3B0 and K3B1 independently localize a reproduction/convention boundary in the published perturbation equations. '
+                       'K3B0 matter-era audit: standard Newtonian-gauge GR trace admits constant Phi while the literal printed trace leaves residual -8 Phi/tau^2 and uses a delta-p prefactor one third of the standard physical-pressure trace. '
+                       'K3B1 covariant audit: literal printed perturbed KG forms differ from standard minimally coupled Newtonian-gauge equations by phip*Phi_prime-2 a^2 V_phi Phi and psip*Phi_prime+2 a^2 V_psi Phi, with exact canonical/phantom mass signs verified. '
+                       'These are equation-authority ambiguities only; they do not show what the nonpublic author code implemented and do not falsify quintom. Independent K3B2 must use explicitly independent standard-GR/covariant closure. K3 remains PARTIAL; K4/K5 remain closed. '
+                       'K3B0 run 34780923216 artifact 10325456725 sha256:a32d1eecd00495af2b57ed0f723630a6520b0fcc266526bf0618663864eb459d; '
+                       'K3B1 run 34781190138 artifact 10325052833 sha256:ca34c92c7e64e71fdaf06f0c06d1fe97ababfeeec8714b60bf928ef5b5661165.')
+                  if marker not in row['notes']:
+                      row['notes'] += add
+          with p.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          p=root/'matrices/model_family_census.csv'
+          rows=list(csv.DictReader(p.open(newline='',encoding='utf-8'))); fields=list(rows[0].keys())
+          for row in rows:
+              if row['family_id']=='F13':
+                  row['status']='K1_BACKGROUND_TRUE_CROSSING_PASS_K3_PARTIAL_INDEPENDENT_COVARIANT_CLOSURE_K3B2_OPEN'
+                  add=(' '+marker+': independent K3B0/K3B1 audits show that the literal published Einstein trace and perturbed KG equations cannot be silently treated as standard-GR implementation authority. The original modified Boltzmann source remains unavailable. This is a provenance/convention boundary, not a physical failure. Independent standard-GR two-field K3B2 embedding is now the next authorized gate; K4/K5 remain unpromoted.')
+                  if marker not in row['notes']:
+                      row['notes'] += add
+          with p.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          block='''\n\n## 2026-09-13 — M13b K3B equation-authority boundary localized\n- K3B0 canonical classification: `M13B_K3B0_PUBLISHED_EINSTEIN_TRACE_FORM_NOT_LITERAL_IMPLEMENTATION_AUTHORITY`; run `34780923216`, artifact `10325456725`, digest `sha256:a32d1eecd00495af2b57ed0f723630a6520b0fcc266526bf0618663864eb459d`. In the frozen pressureless matter-era test, the standard Newtonian-gauge trace admits constant nonzero Phi exactly while the literal printed trace leaves `-8 Phi/tau^2`; the printed physical-pressure RHS prefactor is one third of the standard trace coefficient.\n- K3B1 canonical classification: `M13B_K3B1_PUBLISHED_PERTURBED_KG_NOT_LITERAL_COVARIANT_IMPLEMENTATION_AUTHORITY`; run `34781190138`, artifact `10325052833`, digest `sha256:ca34c92c7e64e71fdaf06f0c06d1fe97ababfeeec8714b60bf928ef5b5661165`. Literal-minus-covariant differences are `phip*Phi_prime - 2 a^2 V_phi Phi` and `psip*Phi_prime + 2 a^2 V_psi Phi`; exact canonical/phantom mass-term signs pass.\n- Interpretation is fail-closed: this establishes an equation/convention/reproduction ambiguity in the public article, not a quintom-family physical failure and not evidence that the unavailable author code used the literal printed forms.\n- F13 K3 remains `PARTIAL`. The next authorized gate is `K3B2_INDEPENDENT_STANDARD_GR_TWO_FIELD_DYNAMICAL_EMBEDDING`, explicitly labelled independent verification. K4/K5 remain closed.\n'''
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+              q=root/fn; txt=q.read_text(encoding='utf-8')
+              if marker not in txt:
+                  q.write_text(txt.rstrip()+block+'\n',encoding='utf-8')
+          PY
+      - name: Commit synchronized K3B authority state
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          if git diff --cached --quiet; then
+            echo 'M13b K3B authority state already synchronized.'
+          else
+            git commit -m 'sync M13b K3B equation-authority boundary'
+            git push
+          fi
