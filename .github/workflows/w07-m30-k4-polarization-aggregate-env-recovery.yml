@@ -1,0 +1,35 @@
+name: W07 M30 K4 polarization aggregate env recovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w07-m30-k4-polarization-aggregate-env-recovery.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  aggregate-recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install frozen analysis dependency only
+        run: python3 -m pip install --user --disable-pip-version-check numpy==2.3.3
+      - name: Download immutable parent artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m30-k4-polarization-recovery-*
+          path: m30-k4-artifacts
+          github-token: ${{ github.token }}
+          run-id: 34750957481
+      - name: Apply unchanged frozen aggregate analyzer
+        run: |
+          set -euo pipefail
+          python3 verification/m30/k4_local_2d_precision.py aggregate m30-k4-artifacts M30_K4_LOCAL_2D_PRECISION_RESULT.json
+          cat M30_K4_LOCAL_2D_PRECISION_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m30-k4-polarization-aggregate-env-recovery
+          path: M30_K4_LOCAL_2D_PRECISION_RESULT.json
+          retention-days: 30
