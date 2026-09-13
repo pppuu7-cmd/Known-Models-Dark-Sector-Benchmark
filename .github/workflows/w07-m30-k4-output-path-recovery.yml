@@ -1,4 +1,5 @@
 name: W07 M30 K4 output-path recovery
+# Trigger commit after workflow became present on the default branch; no science change.
 on:
   workflow_dispatch:
   push:
