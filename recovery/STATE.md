@@ -314,3 +314,10 @@ Seven-lane provider reconnaissance run `34650903154` returned zero provider-grad
 - `hi_class@0009f51d89e6465c79e570b496c66fc90058fa77` and `mochi_class@2b0b16e4601effe416714ad330d2ee8cad289e4c` are lower-priority adapter bases because their extra scalar machinery is single-field Horndeski/MG rather than the minimally coupled canonical+phantom pair.
 - K3 remains PARTIAL; K3D1 exact-pin CLASS build/structure audit is the next gate. K4/K5 remain closed and author normalization/source blockers are unchanged.
 
+## 2026-09-13 — M13b K3D1 exact-pin CLASS adapter base PASS_WITH_SCOPE
+- Canonical result: `M13B_K3D1_CLASS_ADAPTER_BASE_PASS_WITH_SCOPE`; file `waves/wave_03_expanded_dark_energy/M13B_K3D1_CLASS_ADAPTER_BASE_AUDIT_RESULT.json`.
+- Provider: `lesgourg/class_public@64bbab707faf4de4779a9e04edd180fef18d98fa`. Parent run `34782356655` built exact pin successfully. The first control harness failed only because it asserted `k3d1_pk.dat`; recovery run `34782491941` records provider rc=0 and finite frozen-control matter power at `control/k3d1_00_pk.dat` with 114 numeric rows. Classification of parent failure: `HARNESS_OUTPUT_PATH_ONLY`.
+- Source audit passes every frozen check: exactly one direct canonical `scf` background field pair, one perturbation pair, canonical positive kinetic density/pressure signs, no second scf core species, and intact photon/ultrarelativistic hierarchy plus thermodynamics, perturbations and output modules.
+- CLASS is therefore a validated `ADAPTER_GRADE` full-Boltzmann base, not a native quintom provider. Protected subsystems for the first adapter remain photon/polarization/neutrino hierarchy dynamics, thermodynamics/recombination, primordial and nonlinear modules.
+- K3 remains `PARTIAL`; K3D2 independent two-field species adapter is authorized. Author source/unit normalization blockers remain; K4/K5 remain closed; physical_falsification=false.
+
