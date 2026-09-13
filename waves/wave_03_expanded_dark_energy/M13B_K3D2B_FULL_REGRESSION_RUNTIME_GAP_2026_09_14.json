@@ -1,0 +1,38 @@
+{
+  "schema": "KMDSB.W03.M13b.K3D2BFullRegressionRuntimeGap.v0.1",
+  "family_id": "F13",
+  "model_id": "M13b",
+  "provider": "lesgourg/class_public",
+  "provider_commit": "64bbab707faf4de4779a9e04edd180fef18d98fa",
+  "run_id": 34788012803,
+  "head_sha": "32ab3508411dfd3de1caf8ae682dd9c35b049c59",
+  "source_audit_pass": true,
+  "background_recovery": "authorized U1 post-handoff seam",
+  "B1_B2_B3_evaluated": false,
+  "classification": "M13B_K3D2B_FULL_REGRESSION_RUNTIME_GAP_PERTURBATION_HANDOFF",
+  "default": {
+    "job_id": 103806930813,
+    "provider_rc": 1,
+    "solver": "evolver_ndf15",
+    "failure": "Step size too small",
+    "reported_interval": [558.061, 13984.9],
+    "artifact_id": 10327367377,
+    "artifact_digest": "sha256:e3fcd07bbddfa1152e86a1ecf15800ee11a0c2eef70abff6d9a55bcaa440c12f"
+  },
+  "reference": {
+    "job_id": 103806930819,
+    "provider_rc": 1,
+    "solver": "evolver_rk via cl_ref.pre",
+    "failure": "Step size too small",
+    "reported_interval": [6252.6, 6263.39],
+    "artifact_id": 10327387502,
+    "artifact_digest": "sha256:e51029e66303c28fd9c9721b48fab385bd4ff1c0a0af082e273f7ead8746c88b"
+  },
+  "interpretation": "Both independent precision/solver lanes reached perturbation integration after the background U1 recovery and failed before B1/B2/B3 verification. The common failure class is consistent with crossing the hard qfield z=5 perturbation handoff inside a native CLASS perturbation interval. This is an implementation/numerical blocker, not a physical falsification and not a frozen B1/B2/B3 failure.",
+  "next_authorized_route": "protocol/W03_M13B_K3D2B_PERTURBATION_NATIVE_INTERVAL_SPLIT_PROBE_v0.1.md",
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "physical_falsification": false,
+  "author_model_reproduced": false
+}
