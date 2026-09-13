@@ -1,0 +1,309 @@
+name: W03 M13b K3D2-B perturbation a-ULP seam recovery
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3d2b-perturbation-a-ulp-recovery.yml'
+  workflow_dispatch:
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+  K1: '0.00022398828992555914'
+  K10: '0.0022398828992555913'
+
+permissions:
+  contents: read
+
+jobs:
+  null_control:
+    name: N a-ULP disabled exact null
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build upstream and A1-recovered disabled adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git base
+          git -C base checkout -q "$CLASS_PIN"
+          cp -a base recovered
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py recovered --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py recovered --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py recovered --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py recovered --a-ulps 1 --manifest result/pt_split.json
+          make -C base -j2 class > result/base_build.log 2>&1
+          make -C recovered -j2 class > result/recovered_build.log 2>&1
+      - name: Run identical LambdaCDM controls and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          for mode in base recovered; do
+            cat > result/${mode}.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.12
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = mPk
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          write_background = yes
+          root = $GITHUB_WORKSPACE/out/${mode}_
+          EOF
+            set +e
+            (cd ${mode} && ./class "$GITHUB_WORKSPACE/result/${mode}.ini") > result/${mode}_stdout.txt 2> result/${mode}_stderr.txt
+            rc=$?; set -e; echo "$rc" > result/${mode}_rc.txt
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import bisect,json,math,re
+          O=Path('out'); R=Path('result')
+          def one(p): a=sorted(O.glob(p)); assert len(a)==1,(p,a); return a[0]
+          def rows(p): return [[float(x) for x in l.split()] for l in p.read_text().splitlines() if l.strip() and not l.lstrip().startswith('#')]
+          rc0=int((R/'base_rc.txt').read_text()); rc1=int((R/'recovered_rc.txt').read_text()); c={'base_rc_zero':rc0==0,'recovered_rc_zero':rc1==0}; d={}
+          if rc0==0 and rc1==0:
+            a=rows(one('base*_pk.dat')); b=rows(one('recovered*_pk.dat')); bx=[r[0] for r in b]; by=[r[1] for r in b]
+            def li(x):
+              i=bisect.bisect_left(bx,x)
+              if i==0:return by[0]
+              if i>=len(bx):return by[-1]
+              x0,x1=bx[i-1],bx[i]; y0,y1=by[i-1],by[i]; f=(math.log(x)-math.log(x0))/(math.log(x1)-math.log(x0)); return math.exp(math.log(y0)+f*(math.log(y1)-math.log(y0)))
+            common=[r for r in a if bx[0]<=r[0]<=bx[-1]]; l2=math.sqrt(sum((r[1]-li(r[0]))**2 for r in common)/max(sum(r[1]**2 for r in common),1e-300)); finite=bool(common) and all(r[0]>0 and r[1]>0 and all(math.isfinite(x) for x in r) for r in a+b)
+            def H0(p):
+              ls=p.read_text().splitlines(); h=[l for l in ls if l.lstrip().startswith('#') and 'H [1/Mpc]' in l and 'z' in l]; assert len(h)==1
+              t={m.group(2).strip():int(m.group(1))-1 for m in re.finditer(r'(\d+):(.+?)(?=\s+\d+:|$)',h[0].lstrip('#').strip())}; rr=rows(p); q=min(rr,key=lambda z:abs(z[t['z']])); return q[t['H [1/Mpc]']]
+            hb=H0(one('base*_background.dat')); hr=H0(one('recovered*_background.dat')); hd=abs(hb-hr)/max(abs(hb),abs(hr),1e-300)
+            c.update({'finite_positive_pk':finite,'pk_L2_le_1e_10':l2<=1e-10,'H0_rel_le_1e_10':hd<=1e-10}); d={'pk_normalized_L2':l2,'H0_relative_difference':hd}
+          else: c.update({'finite_positive_pk':False,'pk_L2_le_1e_10':False,'H0_rel_le_1e_10':False})
+          ok=all(c.values()); o={'schema':'KMDSB.W03.M13b.K3D2BPerturbationAULPNull.v0.1','checks':c,'all_required_checks_pass':ok,**d}; (R/'null_result.json').write_text(json.dumps(o,indent=2,sort_keys=True)+'\n'); print(json.dumps(o,indent=2,sort_keys=True)); assert ok,o
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-aulp-null
+          path: result/
+          retention-days: 90
+
+  enabled:
+    name: A${{ matrix.aulps }} ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - aulps: 1
+            label: default
+            prefix: a1d
+            precision: none
+          - aulps: 1
+            label: reference
+            prefix: a1r
+            precision: cl_ref.pre
+          - aulps: 2
+            label: default
+            prefix: a2d
+            precision: none
+          - aulps: 2
+            label: reference
+            prefix: a2r
+            precision: cl_ref.pre
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build recovered CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py provider --a-ulps ${{ matrix.aulps }} --manifest result/pt_split.json
+          python3 verification/m13b/k3d2b_apply_output_diagnostics.py provider --manifest result/diag.json
+          make -C provider -j2 class > result/build.log 2>&1
+      - name: Execute two-mode enabled probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > result/enabled.ini <<EOF
+          h = 0.6715
+          omega_b = 0.0224
+          Omega_cdm = 0.26172292868512664
+          Omega_g = 5.4572897176151613e-05
+          Omega_ur = 3.772710282384838e-05
+          N_ncdm = 0
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = 0
+          Omega_k = 0
+          qcf_U0 = 0.3362232603714306
+          qcf_phi_ini = 0.92
+          qcf_phi_prime_ini = 0
+          qpf_U0 = 0.3362232603714306
+          qpf_psi_ini = 1.02
+          qpf_psi_prime_ini = 0
+          gauge = synchronous
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = mPk,dTk
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          k_output_values = $K1,$K10
+          write_background = yes
+          root = $GITHUB_WORKSPACE/out/${{ matrix.prefix }}_
+          EOF
+          set +e
+          if [ "${{ matrix.precision }}" = none ]; then
+            (cd provider && ./class "$GITHUB_WORKSPACE/result/enabled.ini") > result/stdout.txt 2> result/stderr.txt
+          else
+            (cd provider && ./class "$GITHUB_WORKSPACE/result/enabled.ini" "${{ matrix.precision }}") > result/stdout.txt 2> result/stderr.txt
+          fi
+          rc=$?; set -e; echo "$rc" > result/provider_rc.txt
+      - name: Frozen lane gates and compact diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,math,re
+          R=Path('result'); O=Path('out'); rc=int((R/'provider_rc.txt').read_text()); diag=((R/'stdout.txt').read_text(errors='replace')+'\n'+(R/'stderr.txt').read_text(errors='replace')).lower(); p='${{ matrix.prefix }}'
+          c={'provider_rc_zero':rc==0,'no_minimum_step':('step size too small' not in diag and 'stepsize underflow' not in diag)}; d={'provider_rc':rc,'a_ulps':${{ matrix.aulps }},'solver_lane':'${{ matrix.label }}'}
+          pk=sorted(O.glob(p+'*_pk.dat')); fs=sorted(O.glob(p+'*_perturbations_k*_s.dat')); bg=sorted(O.glob(p+'*_background.dat')); c.update({'one_pk':len(pk)==1,'two_trajectories':len(fs)==2,'one_background':len(bg)==1})
+          modes=[]; maxraw=0.
+          if rc==0 and len(pk)==1 and len(fs)==2 and len(bg)==1:
+            def rows(q): return [[float(x) for x in l.split()] for l in q.read_text().splitlines() if l.strip() and not l.lstrip().startswith('#')]
+            pr=rows(pk[0]); c['pk_finite_positive']=bool(pr) and all(r[0]>0 and r[1]>0 and all(math.isfinite(x) for x in r) for r in pr)
+            hierarchy=True; finiteall=True; nonzero=True
+            for f in fs:
+              ls=f.read_text().splitlines(); hs=[l for l in ls if l.lstrip().startswith('#') and 'delta_qcf_S' in l and 'delta_qpf_S' in l]; assert len(hs)==1,(f,hs)
+              t={m.group(2).strip():int(m.group(1))-1 for m in re.finditer(r'(\d+):(.+?)(?=\s+\d+:|$)',hs[0].lstrip('#').strip())}; req=['a','phi','delta_g','theta_g','delta_ur','theta_ur','shear_ur','delta_qcf_S','delta_prime_qcf_S','delta_qpf_S','delta_prime_qpf_S']; hierarchy=hierarchy and all(k in t for k in req); rr=rows(f); finite=bool(rr) and all(all(math.isfinite(x) for x in r) for r in rr); finiteall=finiteall and finite
+              qcf=max([abs(r[t['delta_qcf_S']]) for r in rr]+[abs(r[t['delta_prime_qcf_S']]) for r in rr]); qpf=max([abs(r[t['delta_qpf_S']]) for r in rr]+[abs(r[t['delta_prime_qpf_S']]) for r in rr]); nonzero=nonzero and qcf>0 and qpf>0; maxraw=max(maxraw,qcf,qpf); last=rr[-1]
+              modes.append({'file':f.name,'rows':len(rr),'qcf_max':qcf,'qpf_max':qpf,'today_raw':{'PhiS':last[t['phi']],'dqcf':last[t['delta_qcf_S']],'dqcfp':last[t['delta_prime_qcf_S']],'dqpf':last[t['delta_qpf_S']],'dqpfp':last[t['delta_prime_qpf_S']]}})
+            c.update({'hierarchy_columns_present':hierarchy,'all_trajectory_values_finite':finiteall,'qcf_qpf_nonzero':nonzero,'direct_qfields_below_0p1':maxraw<0.1}); d.update({'modes':modes,'max_raw_direct_qfield':maxraw,'pk_rows':len(pr)})
+          else: c.update({'pk_finite_positive':False,'hierarchy_columns_present':False,'all_trajectory_values_finite':False,'qcf_qpf_nonzero':False,'direct_qfields_below_0p1':False})
+          ok=all(c.values()); o={'schema':'KMDSB.W03.M13b.K3D2BPerturbationAULPLane.v0.1','checks':c,'all_required_checks_pass':ok,'classification':('M13B_K3D2B_PERTURBATION_A_ULP_LANE_PASS' if ok else 'M13B_K3D2B_PERTURBATION_A_ULP_LANE_FAIL'),'B1_B2_B3_evaluated':False,'physical_falsification':False,**d}; (R/'lane_result.json').write_text(json.dumps(o,indent=2,sort_keys=True)+'\n'); print(json.dumps(o,indent=2,sort_keys=True)); assert ok,o
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-a${{ matrix.aulps }}-${{ matrix.label }}
+          path: |
+            result/
+            out/
+          retention-days: 90
+
+  sensitivity:
+    name: S A1 versus A2 default sensitivity
+    needs: enabled
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-a1-default
+          path: a1
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-a2-default
+          path: a2
+      - name: Frozen A1/A2 sensitivity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import bisect,json,math,re
+          r1=json.loads(Path('a1/result/lane_result.json').read_text()); r2=json.loads(Path('a2/result/lane_result.json').read_text()); c={'A1_pass':r1['all_required_checks_pass'],'A2_pass':r2['all_required_checks_pass']}; d={}
+          if c['A1_pass'] and c['A2_pass']:
+            def one(root,pat): q=sorted(Path(root).glob(pat)); assert len(q)==1,(pat,q); return q[0]
+            def rows(p): return [[float(x) for x in p.read_text().splitlines() if False]]
+            def table(p): return [[float(x) for x in l.split()] for l in p.read_text().splitlines() if l.strip() and not l.lstrip().startswith('#')]
+            P1=table(one('a1/out','a1d*_pk.dat')); P2=table(one('a2/out','a2d*_pk.dat')); x2=[r[0] for r in P2]; y2=[r[1] for r in P2]
+            def li(x):
+              i=bisect.bisect_left(x2,x)
+              if i==0:return y2[0]
+              if i>=len(x2):return y2[-1]
+              x0,x1=x2[i-1],x2[i]; y0,y1=y2[i-1],y2[i]; f=(math.log(x)-math.log(x0))/(math.log(x1)-math.log(x0)); return math.exp(math.log(y0)+f*(math.log(y1)-math.log(y0)))
+            common=[r for r in P1 if x2[0]<=r[0]<=x2[-1]]; pkl2=math.sqrt(sum((r[1]-li(r[0]))**2 for r in common)/max(sum(r[1]**2 for r in common),1e-300))
+            def bg_today(root,pat):
+              p=one(root,pat); ls=p.read_text().splitlines(); hs=[l for l in ls if l.lstrip().startswith('#') and 'phi_qcf' in l and 'psi_qpf' in l]; assert len(hs)==1; t={m.group(2).strip():int(m.group(1))-1 for m in re.finditer(r'(\d+):(.+?)(?=\s+\d+:|$)',hs[0].lstrip('#').strip())}; rr=table(p); q=min(rr,key=lambda z:abs(z[t['z']])); return {k:q[t[k]] for k in ['H [1/Mpc]','phi_qcf','psi_qpf',"phi'_qcf","psi'_qpf"]}
+            b1=bg_today('a1/out','a1d*_background.dat'); b2=bg_today('a2/out','a2d*_background.dat'); hd=abs(b1['H [1/Mpc]']-b2['H [1/Mpc]'])/max(abs(b1['H [1/Mpc]']),abs(b2['H [1/Mpc]']),1e-300); bgmax=max(abs(b1[k]-b2[k]) for k in ['phi_qcf','psi_qpf',"phi'_qcf","psi'_qpf"])
+            # Same B3-style normalization per mode using Phi(z5); compare normalized direct qfield variables today.
+            def traj(root,pat):
+              fs=sorted(Path(root).glob(pat)); assert len(fs)==2; out=[]
+              for f in fs:
+                ls=f.read_text().splitlines(); hs=[l for l in ls if l.lstrip().startswith('#') and 'delta_qcf_S' in l and 'delta_qpf_S' in l]; assert len(hs)==1; t={m.group(2).strip():int(m.group(1))-1 for m in re.finditer(r'(\d+):(.+?)(?=\s+\d+:|$)',hs[0].lstrip('#').strip())}; rr=table(f); xs=[r[t['a']] for r in rr]
+                def interp(a,key):
+                  i=bisect.bisect_left(xs,a)
+                  if i==0:return rr[0][t[key]]
+                  if i>=len(xs):return rr[-1][t[key]]
+                  u,v=rr[i-1],rr[i]; f0=(a-u[t['a']])/(v[t['a']]-u[t['a']]); return u[t[key]]+f0*(v[t[key]]-u[t[key]])
+                scale=1e-5/interp(1/6,'phi'); out.append([scale*interp(1,k) for k in ['delta_qcf_S','delta_prime_qcf_S','delta_qpf_S','delta_prime_qpf_S']])
+              return out
+            T1=traj('a1/out','a1d*_perturbations_k*_s.dat'); T2=traj('a2/out','a2d*_perturbations_k*_s.dat'); tmax=max(abs(x-y) for u,v in zip(T1,T2) for x,y in zip(u,v))
+            c.update({'pk_L2_le_1e_7':pkl2<=1e-7,'H0_rel_le_1e_10':hd<=1e-10,'background_today_le_1e_8':bgmax<=1e-8,'normalized_direct_today_le_1e_7':tmax<=1e-7}); d={'pk_normalized_L2':pkl2,'H0_relative_difference':hd,'max_background_today_abs_difference':bgmax,'max_normalized_direct_today_abs_difference':tmax}
+          else: c.update({'pk_L2_le_1e_7':False,'H0_rel_le_1e_10':False,'background_today_le_1e_8':False,'normalized_direct_today_le_1e_7':False})
+          ok=all(c.values()); o={'schema':'KMDSB.W03.M13b.K3D2BPerturbationAULPSensitivity.v0.1','checks':c,'all_required_checks_pass':ok,'classification':('M13B_K3D2B_PERTURBATION_A_ULP_SEAM_IMPLEMENTATION_PASS_WITH_SCOPE' if ok else 'M13B_K3D2B_PERTURBATION_A_ULP_SEAM_BLOCKED'),'authorized_a_ulps':(1 if ok else None),'K3_state_ceiling':'PARTIAL','K4_promoted':False,'K5_promoted':False,'physical_falsification':False,**d}; Path('sensitivity_result.json').write_text(json.dumps(o,indent=2,sort_keys=True)+'\n'); print(json.dumps(o,indent=2,sort_keys=True)); assert ok,o
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-aulp-sensitivity
+          path: sensitivity_result.json
+          retention-days: 90
+
+  verdict:
+    name: V a-ULP recovery verdict
+    needs: [null_control, enabled, sensitivity]
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-aulp-null
+          path: n
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-a1-default
+          path: a1d
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-a1-reference
+          path: a1r
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-a2-default
+          path: a2d
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-a2-reference
+          path: a2r
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-aulp-sensitivity
+          path: s
+      - name: Frozen verdict
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          files={'null':'n/result/null_result.json','A1_default':'a1d/result/lane_result.json','A1_reference':'a1r/result/lane_result.json','A2_default':'a2d/result/lane_result.json','A2_reference':'a2r/result/lane_result.json','sensitivity':'s/sensitivity_result.json'}; c={k:json.loads(Path(v).read_text())['all_required_checks_pass'] for k,v in files.items()}; ok=all(c.values()); o={'schema':'KMDSB.W03.M13b.K3D2BPerturbationAULPVerdict.v0.1','checks':c,'all_required_checks_pass':ok,'classification':('M13B_K3D2B_PERTURBATION_A_ULP_SEAM_IMPLEMENTATION_PASS_WITH_SCOPE' if ok else 'M13B_K3D2B_PERTURBATION_A_ULP_SEAM_BLOCKED'),'authorized_a_ulps':(1 if ok else None),'next_authorized_gate':('rerun frozen full B1/B2/B3 regression with A1 perturbation seam' if ok else None),'K3_state_ceiling':'PARTIAL','K4_promoted':False,'K5_promoted':False,'physical_falsification':False}; Path('verdict.json').write_text(json.dumps(o,indent=2,sort_keys=True)+'\n'); print(json.dumps(o,indent=2,sort_keys=True)); assert ok,o
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-aulp-verdict
+          path: verdict.json
+          retention-days: 90
