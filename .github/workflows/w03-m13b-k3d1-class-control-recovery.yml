@@ -1,0 +1,159 @@
+name: W03 M13b K3D1 CLASS control-output recovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3d1-class-control-recovery.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  recovery:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch and build unchanged exact CLASS pin
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$CLASS_PIN"
+          make -C provider -j2 class
+      - name: Execute unchanged control and capture provider rc/output map
+        run: |
+          set -euo pipefail
+          mkdir -p control
+          cat > control/k3d1_lcdm.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.12
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = mPk
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          root = $GITHUB_WORKSPACE/control/k3d1_
+          EOF
+          set +e
+          (cd provider && ./class "$GITHUB_WORKSPACE/control/k3d1_lcdm.ini") > control/stdout.txt 2> control/stderr.txt
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > control/provider.rc
+          {
+            echo '# control files'
+            find control -maxdepth 2 -type f -printf '%p %s bytes\n' | sort
+            echo '# provider output files'
+            find provider/output -maxdepth 2 -type f -printf '%p %s bytes\n' 2>/dev/null | sort || true
+          } > control/file_map.txt
+          cat control/file_map.txt
+          echo "provider_rc=$rc"
+      - name: Classify recovery and, when authorized, execute frozen source audit
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,math,pathlib,re
+          repo=pathlib.Path('.')
+          provider=repo/'provider'
+          control=repo/'control'
+          rc=int((control/'provider.rc').read_text().strip())
+          candidates=[]
+          for base in [control,provider/'output']:
+            if not base.exists(): continue
+            for p in base.rglob('*'):
+              if p.is_file() and p.stat().st_size>0 and 'pk' in p.name.lower() and p.suffix.lower()=='.dat':
+                candidates.append(p)
+          finite=[]
+          for p in candidates:
+            try:
+              rows=[]
+              for line in p.read_text(errors='replace').splitlines():
+                if not line.strip() or line.lstrip().startswith('#'): continue
+                vals=[float(x) for x in line.split()]
+                if vals: rows.append(vals)
+              if rows and all(all(math.isfinite(x) for x in row) for row in rows):
+                finite.append((p,len(rows)))
+            except Exception:
+              pass
+
+          result={
+            'schema':'KMDSB.W03.M13b.K3D1ClassAdapterBaseAudit.v0.1',
+            'model_id':'M13b','family_id':'F13','gate':'K3D1',
+            'protocol':'protocol/W03_M13B_K3D1_CLASS_ADAPTER_BASE_STRUCTURAL_AUDIT_v0.1.md',
+            'recovery_protocol':'protocol/W03_M13B_K3D1_CLASS_CONTROL_OUTPUT_RECOVERY_v0.1.md',
+            'provider':'lesgourg/class_public','provider_commit':'64bbab707faf4de4779a9e04edd180fef18d98fa',
+            'parent_run':34782356655,
+            'provider_rc':rc,
+            'pk_candidates':[str(p) for p,_ in finite],
+            'pk_finite_row_counts':{str(p):n for p,n in finite},
+            'author_model_reproduced':False,'author_normalization_map_claimed':False,
+            'K3_state_ceiling':'PARTIAL','K4_promoted':False,'K5_promoted':False,'physical_falsification':False,
+          }
+          if rc!=0:
+            result.update(classification='M13B_K3D1_CLASS_ADAPTER_BASE_IMPLEMENTATION_BLOCKED',all_required_checks_pass=False,control_recovery='PROVIDER_CONTROL_EXECUTION_BLOCKED',next_authorized_gate='NONE')
+          elif not finite:
+            result.update(classification='M13B_K3D1_CLASS_ADAPTER_BASE_NOT_ESTABLISHED',all_required_checks_pass=False,control_recovery='CONTROL_OUTPUT_NOT_ESTABLISHED',next_authorized_gate='NONE')
+          else:
+            bh=(provider/'include/background.h').read_text(errors='replace')
+            ph=(provider/'include/perturbations.h').read_text(errors='replace')
+            bc=(provider/'source/background.c').read_text(errors='replace')
+            files=[str(x.relative_to(provider)) for x in provider.rglob('*') if x.is_file()]
+            compact=lambda s: re.sub(r'\s+','',s)
+            cbc=compact(bc)
+            checks={
+              'one_background_phi_declaration':len(re.findall(r'\bint\s+index_bi_phi_scf\s*;',bh))==1,
+              'one_background_phi_prime_declaration':len(re.findall(r'\bint\s+index_bi_phi_prime_scf\s*;',bh))==1,
+              'one_Omega0_scf_declaration':len(re.findall(r'\bdouble\s+Omega0_scf\s*;',bh))==1,
+              'one_perturbation_phi_declaration':len(re.findall(r'\bint\s+index_pt_phi_scf\s*;',ph))==1,
+              'one_perturbation_phi_prime_declaration':len(re.findall(r'\bint\s+index_pt_phi_prime_scf\s*;',ph))==1,
+              'no_second_scf_core_symbols':not re.search(r'(phi2_scf|psi_scf|scf2|index_bi_phi_2|index_pt_phi_2)',bh+ph,re.I),
+              'canonical_rho_scf_sign':'phi_prime*phi_prime/(2*a*a)+V_scf(pba,phi)' in cbc,
+              'canonical_p_scf_sign':'phi_prime*phi_prime/(2*a*a)-V_scf(pba,phi)' in cbc,
+              'single_background_scf_family_active':'index_bi_phi_scf' in bc and 'index_bi_phi_prime_scf' in bc and 'V_scf(pba,phi)' in cbc,
+              'photon_hierarchy_present':all(x in ph for x in ['index_pt_delta_g','index_pt_theta_g']),
+              'ultrarelativistic_hierarchy_present':'Boltzmann hierarchy for ultra-relativistic species' in ph and 'index_pt_delta_ur' in ph,
+              'thermodynamics_module_present':'source/thermodynamics.c' in files and 'include/thermodynamics.h' in files,
+              'perturbations_module_present':'source/perturbations.c' in files and 'include/perturbations.h' in files,
+              'output_module_present':'source/output.c' in files,
+              'standard_control_pk_finite':True,
+            }
+            passed=all(checks.values())
+            result.update(
+              classification=('M13B_K3D1_CLASS_ADAPTER_BASE_PASS_WITH_SCOPE' if passed else 'M13B_K3D1_CLASS_ADAPTER_BASE_NOT_ESTABLISHED'),
+              all_required_checks_pass=passed,checks=checks,
+              control_recovery=('HARNESS_OUTPUT_PATH_ONLY' if not any(str(p).endswith('control/k3d1_pk.dat') for p,_ in finite) else 'EXPECTED_PATH_CONFIRMED'),
+              observed_architecture={'existing_direct_scalar_species':'single canonical scf','existing_native_two_field_quintom':False,'full_boltzmann_base':True,'standard_control_output':'finite mPk'},
+              planned_adapter_touch_set=['include/background.h','source/background.c','include/input.h','source/input.c','include/perturbations.h','source/perturbations.c','source/output.c (only if regression output needed)','python exposure (only if regression output needed)'],
+              protected_subsystems=['photon hierarchy dynamics','polarization hierarchy dynamics','massless/massive neutrino hierarchy dynamics','thermodynamics/recombination equations','primordial module','nonlinear module'],
+              next_authorized_gate=('K3D2_INDEPENDENT_CLASS_TWO_FIELD_SPECIES_ADAPTER_PREREGISTRATION' if passed else 'NONE_REVIEW_ADAPTER_BASE')
+            )
+          out=repo/'waves/wave_03_expanded_dark_energy/M13B_K3D1_CLASS_ADAPTER_BASE_AUDIT_RESULT.json'
+          out.parent.mkdir(parents=True,exist_ok=True)
+          out.write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(result,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d1-class-control-recovery
+          path: |
+            waves/wave_03_expanded_dark_energy/M13B_K3D1_CLASS_ADAPTER_BASE_AUDIT_RESULT.json
+            control/
+          retention-days: 90
+      - name: Persist canonical recovery result
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add waves/wave_03_expanded_dark_energy/M13B_K3D1_CLASS_ADAPTER_BASE_AUDIT_RESULT.json
+          if git diff --cached --quiet; then echo 'K3D1 recovery result already canonical.'; else git commit -m 'record M13b K3D1 CLASS adapter-base recovery result'; git push; fi
