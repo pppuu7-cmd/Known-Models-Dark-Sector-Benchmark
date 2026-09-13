@@ -1,0 +1,56 @@
+{
+  "schema": "KMDSB.W03.M13b.K3D2BSolverCollapseGeometryResult.v1",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@64bbab707faf4de4779a9e04edd180fef18d98fa",
+  "protocol": "protocol/W03_M13B_K3D2B_SOLVER_COLLAPSE_GEOMETRY_v0.1.md",
+  "workflow_run_id": 34790469637,
+  "head_sha": "d551a21dfa3d555ba72a57cdc14b8da1622b488d",
+  "source_guard": {
+    "job_id": 103813610941,
+    "all_required_checks_pass": true,
+    "diagnostic_changes_error_text_only": true
+  },
+  "mapping_certificate": {
+    "tau_handoff": 6256.998662974107,
+    "tau_cert": 6256.998662974118,
+    "minimal_right_owned_tau_ulps": 12
+  },
+  "default_ndf15": {
+    "job_id": 103813611112,
+    "classification": "M13B_K3D2B_SOLVER_COLLAPSE_GEOMETRY_CAPTURED",
+    "failure_count": 80,
+    "geometry_parsed_count": 80,
+    "reason_counts": {"error_control": 80, "newton": 0},
+    "collapse_tau_min": 6256.998662974108,
+    "collapse_tau_median": 6256.998662974108,
+    "collapse_tau_max": 6256.998662974108,
+    "all_failed_modes_successful_steps": 0,
+    "bdf_order_at_failure": 1,
+    "first_failing_k_1_per_Mpc": 0.01796125219837715,
+    "interpretation": "Every default high-k failure is an immediate BDF1 local-error-control failure at the provisional one-tau-ULP evolver start. No Newton/Jacobian failure is observed."
+  },
+  "reference_rk": {
+    "job_id": 103813611090,
+    "classification": "M13B_K3D2B_SOLVER_COLLAPSE_GEOMETRY_CAPTURED",
+    "failure_count": 133,
+    "geometry_parsed_count": 133,
+    "collapse_tau_min": 6256.998662974109,
+    "collapse_tau_median": 6256.99866297411,
+    "collapse_tau_max": 6256.998662974117,
+    "all_collapse_before_tau_cert": true,
+    "interpretation": "All reference RK modes collapse inside the representable-tau band above the provisional A1 start but below the first background_at_tau-certified right-owned point."
+  },
+  "joint_interpretation": {
+    "classification": "M13B_K3D2B_PRECERTIFIED_TAU_TRANSITION_BAND_NUMERICAL_BLOCKER",
+    "default_collapse_before_tau_cert": true,
+    "reference_collapse_before_tau_cert": true,
+    "solver_independent_geometric_localization": true,
+    "note": "The two solver families fail by different adaptive mechanisms but both failures are confined to the pre-certified interpolation-transition band. This motivates the already-preregistered minimal mapping-certified tau implementation probe; it does not itself establish that the certified implementation passes."
+  },
+  "B1_B2_B3_evaluated": false,
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "physical_falsification": false,
+  "next_action": "Evaluate protocol/W03_M13B_K3D2B_MAPPING_CERTIFIED_TAU_IMPLEMENTATION_v0.1.md without changing any threshold, solver, or equation."
+}
