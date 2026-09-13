@@ -226,3 +226,12 @@ M25 compile-capacity isolation classification M25_M0_PK_STOCK_CAPACITY_PROVIDER_
 - Interpretation: a local same-realization standard-GR canonical+phantom perturbation solution crosses effective `w=-1` without dividing by `rho+p` or using singular `theta_DE`. This materially strengthens K3 evidence.
 - Boundary: K3 remains `PARTIAL`, because this is an independent dimensionless local realization rather than the unavailable Goh-Taylor author code or a cosmology-scale Einstein-Boltzmann implementation. K4/K5 remain unpromoted. Next authorized gate: cosmology-scale independent Einstein-Boltzmann preregistration. Physical falsification=false.
 
+## 2026-09-13 — M13b K3C0 public unit-binding blocker
+- Canonical classification: `M13B_K3C0_PUBLIC_UNIT_BINDING_NOT_ESTABLISHED_LITERAL_PLANCK_READING_INCONSISTENT`; canonical result `waves/wave_03_expanded_dark_energy/M13B_K3C0_PUBLIC_UNIT_BINDING_AUDIT_RESULT.json`.
+- Actions run `34781661143`, artifact `10325517733`, digest `sha256:c42a9e4c42b43698ee946aa6216d1e47b417da142e4f7495e2b24030491f7511`.
+- Frozen public anchor uses the 2025 tanh example: H0=67.15 km/s/Mpc, Omega_m0=0.3114, Omega_r0=9.23e-5, reduced Planck mass labels, V0=0.91e-8 Mp^4, s=29 Mp^-1, phi_ini=0.92 Mp, psi_ini=1.02 Mp and equal canonical/phantom initial speeds.
+- Literal calculation gives `V_total/Mp^4=2.2369655790026962e-08`, `rho_m+r(z=5)/Mp^4=6.993176012514982e-119`, `rho_DE,ref/Mp^4=7.145608687461422e-121`, hence `R5=3.1987834640504174e110`, `R0=3.130545873478848e112`. Frozen threshold is only 1e50.
+- Diagnostic missing-scale magnitudes `S5=3.126188475207894e-111`, `S0=3.1943310860630855e-113` are reported only; no guessed rescale is adopted.
+- Interpretation: public scalar numerical labels are insufficient to bind the unavailable modified-Boltzmann implementation to a literal physical Planck-unit cosmology. At least one unexposed normalization/rescaling/table convention or correction is needed. This does not invalidate the local independent K3B2 solution and is not a quintom physical falsification.
+- F13 K3 remains `PARTIAL`; cosmology-scale numerical reproduction is blocked on unit/provenance binding. Allowed next paths: obtain explicit normalization authority, or preregister a fully independent dimensionless cosmology-scale mechanism test that makes no Table/Figure reproduction claim. K4/K5 remain closed.
+
