@@ -1,0 +1,172 @@
+name: W03 M13b K3D2-B post-handoff ULP seam recovery
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3d2b-ulp-seam-recovery.yml'
+  workflow_dispatch:
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+
+permissions:
+  contents: read
+
+jobs:
+  enabled:
+    name: U${{ matrix.ulps }} enabled seam
+    strategy:
+      fail-fast: false
+      matrix:
+        ulps: [1, 2]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build U${{ matrix.ulps }} exact-pin adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter_manifest.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/restart_manifest.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps ${{ matrix.ulps }} --manifest result/ulp_manifest.json
+          make -C provider -j2 class > result/build.log 2>&1
+      - name: Run frozen enabled background
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > result/enabled.ini <<EOF
+          h = 0.6715
+          omega_b = 0.0224
+          Omega_cdm = 0.26172292868512664
+          Omega_g = 5.4572897176151613e-05
+          Omega_ur = 3.772710282384838e-05
+          N_ncdm = 0
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = 0
+          Omega_k = 0
+          qcf_U0 = 0.3362232603714306
+          qcf_phi_ini = 0.92
+          qcf_phi_prime_ini = 0
+          qpf_U0 = 0.3362232603714306
+          qpf_psi_ini = 1.02
+          qpf_psi_prime_ini = 0
+          gauge = synchronous
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          write_background = yes
+          root = $GITHUB_WORKSPACE/out/u${{ matrix.ulps }}_
+          EOF
+          set +e
+          (cd provider && ./class "$GITHUB_WORKSPACE/result/enabled.ini") > result/stdout.txt 2> result/stderr.txt
+          rc=$?
+          set -e
+          echo "$rc" > result/provider_rc.txt
+      - name: Frozen per-lane gates and compact trajectory
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,math,re
+          U=${{ matrix.ulps }}
+          res=Path('result'); out=Path('out'); rc=int((res/'provider_rc.txt').read_text())
+          diag=((res/'stdout.txt').read_text(errors='replace')+'\n'+(res/'stderr.txt').read_text(errors='replace')).lower()
+          checks={'provider_rc_zero':rc==0,'no_minimum_step':('step size too small' not in diag and 'stepsize underflow' not in diag)}
+          files=sorted(out.glob(f'u{U}_*_background.dat')); checks['background_file_present']=len(files)==1
+          data={'provider_rc':rc,'ulps':U}; traj=[]
+          if rc==0 and len(files)==1:
+            ls=files[0].read_text().splitlines(); hs=[l for l in ls if l.lstrip().startswith('#') and 'phi_qcf' in l and 'psi_qpf' in l]; assert len(hs)==1
+            t={m.group(2).strip():int(m.group(1))-1 for m in re.finditer(r'(\d+):(.+?)(?=\s+\d+:|$)',hs[0].lstrip('#').strip())}
+            rr=[[float(x) for x in l.split()] for l in ls if l.strip() and not l.lstrip().startswith('#')]
+            for r in rr:
+              z=r[t['z']]; a=1/(1+z); H=r[t['H [1/Mpc]']]
+              traj.append({'a':a,'H':H,'phi':r[t['phi_qcf']],'dphi':r[t["phi'_qcf"]]/(a*H),'psi':r[t['psi_qpf']],'dpsi':r[t["psi'_qpf"]]/(a*H)})
+            traj.sort(key=lambda d:d['a'])
+            finite=bool(traj) and all(all(math.isfinite(v) for v in d.values()) and d['H']>0 for d in traj)
+            def ai(a,key):
+              for p,q in zip(traj[:-1],traj[1:]):
+                if p['a']<=a<=q['a']:
+                  f=(a-p['a'])/(q['a']-p['a']); return p[key]+f*(q[key]-p[key])
+              raise AssertionError((a,traj[0]['a'],traj[-1]['a']))
+            z5={k:ai(1/6,k) for k in ['phi','dphi','psi','dpsi']}
+            checks.update({'finite_positive_background':finite,'samples_below':any(d['a']<1/6 for d in traj),'samples_above':any(d['a']>1/6 for d in traj),'z5_phi':abs(z5['phi']-.92)<=2e-4,'z5_psi':abs(z5['psi']-1.02)<=2e-4,'z5_dphi':abs(z5['dphi'])<=2e-3,'z5_dpsi':abs(z5['dpsi'])<=2e-3})
+            data.update({'background_rows':len(traj),'z5_interpolated':z5})
+          else:
+            checks.update({'finite_positive_background':False,'samples_below':False,'samples_above':False,'z5_phi':False,'z5_psi':False,'z5_dphi':False,'z5_dpsi':False})
+          ok=all(checks.values())
+          result={'schema':'KMDSB.W03.M13b.K3D2BULPSeamLane.v0.1','checks':checks,'all_required_checks_pass':ok,'classification':('M13B_K3D2B_ULP_SEAM_LANE_PASS' if ok else 'M13B_K3D2B_ULP_SEAM_LANE_FAIL'),'B1_B2_B3_evaluated':False,'physical_falsification':False,**data}
+          (res/'lane_result.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          (res/'trajectory.json').write_text(json.dumps(traj,separators=(',',':'))+'\n')
+          print(json.dumps(result,indent=2,sort_keys=True))
+          if not ok: raise SystemExit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-ulp-${{ matrix.ulps }}
+          path: result/
+          retention-days: 90
+
+  sensitivity:
+    name: U1 versus U2 frozen sensitivity
+    needs: enabled
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-ulp-1
+          path: u1
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-ulp-2
+          path: u2
+      - name: Frozen U1/U2 comparison
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import bisect,json,math
+          r1=json.loads(Path('u1/lane_result.json').read_text()); r2=json.loads(Path('u2/lane_result.json').read_text())
+          checks={'u1_lane_pass':r1['all_required_checks_pass'],'u2_lane_pass':r2['all_required_checks_pass']}
+          data={}
+          if checks['u1_lane_pass'] and checks['u2_lane_pass']:
+            A=json.loads(Path('u1/trajectory.json').read_text()); B=json.loads(Path('u2/trajectory.json').read_text())
+            def interp(arr,a,key):
+              xs=[d['a'] for d in arr]; i=bisect.bisect_left(xs,a)
+              if i==0:return arr[0][key]
+              if i>=len(arr):return arr[-1][key]
+              p,q=arr[i-1],arr[i]; f=(a-p['a'])/(q['a']-p['a']); return p[key]+f*(q[key]-p[key])
+            amin=max(1/6,A[0]['a'],B[0]['a']); amax=min(A[-1]['a'],B[-1]['a'])
+            grid=[math.exp(math.log(amin)+(math.log(amax)-math.log(amin))*i/256) for i in range(257)]
+            maxstate=0.; maxh=0.
+            for a in grid:
+              x=[interp(A,a,k) for k in ['phi','psi','dphi','dpsi']]; y=[interp(B,a,k) for k in ['phi','psi','dphi','dpsi']]
+              dn=math.sqrt(sum((p-q)**2 for p,q in zip(x,y))); norm=max(1.,math.sqrt(sum(p*p for p in x))); maxstate=max(maxstate,dn/norm)
+              h1=interp(A,a,'H'); h2=interp(B,a,'H'); maxh=max(maxh,abs(h1-h2)/max(abs(h1),abs(h2),1e-300))
+            enddiff={k:abs(interp(A,1.,k)-interp(B,1.,k)) for k in ['phi','psi','dphi','dpsi']}
+            hend=abs(interp(A,1.,'H')-interp(B,1.,'H'))/max(abs(interp(A,1.,'H')),abs(interp(B,1.,'H')),1e-300)
+            checks.update({'H_today_rel_le_1e_10':hend<=1e-10,'endpoint_fields_le_1e_8':max(enddiff.values())<=1e-8,'trajectory_state_le_1e_7':maxstate<=1e-7,'trajectory_H_rel_le_1e_8':maxh<=1e-8})
+            data={'H_today_relative_difference':hend,'endpoint_absolute_differences':enddiff,'max_normalized_state_distance':maxstate,'max_relative_H_distance':maxh,'comparison_grid_size':257}
+          else:
+            checks.update({'H_today_rel_le_1e_10':False,'endpoint_fields_le_1e_8':False,'trajectory_state_le_1e_7':False,'trajectory_H_rel_le_1e_8':False})
+          ok=all(checks.values())
+          out={'schema':'KMDSB.W03.M13b.K3D2BULPSeamSensitivity.v0.1','checks':checks,'all_required_checks_pass':ok,'classification':('M13B_K3D2B_POST_HANDOFF_ULP_SEAM_IMPLEMENTATION_PASS_WITH_SCOPE' if ok else 'M13B_K3D2B_POST_HANDOFF_ULP_SEAM_BLOCKED'),'authorized_full_regression_ulps':(1 if ok else None),'K3_state_ceiling':'PARTIAL','K4_promoted':False,'K5_promoted':False,'physical_falsification':False,**data}
+          Path('ulp_sensitivity_result.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps(out,indent=2,sort_keys=True)); assert ok,out
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-ulp-sensitivity
+          path: ulp_sensitivity_result.json
+          retention-days: 90
