@@ -218,3 +218,11 @@ M25 compile-capacity isolation classification M25_M0_PK_STOCK_CAPACITY_PROVIDER_
 - Interpretation is fail-closed: this establishes an equation/convention/reproduction ambiguity in the public article, not a quintom-family physical failure and not evidence that the unavailable author code used the literal printed forms.
 - F13 K3 remains `PARTIAL`. The next authorized gate is `K3B2_INDEPENDENT_STANDARD_GR_TWO_FIELD_DYNAMICAL_EMBEDDING`, explicitly labelled independent verification. K4/K5 remain closed.
 
+## 2026-09-13 — M13b K3B2 independent local standard-GR embedding PASS_WITH_SCOPE
+- Canonical result: `M13B_K3B2_INDEPENDENT_STANDARD_GR_DYNAMICAL_EMBEDDING_PASS_WITH_SCOPE`; result file `waves/wave_03_expanded_dark_energy/M13B_K3B2_INDEPENDENT_DYNAMICAL_EMBEDDING_RESULT.json`.
+- Actions run `34781365151`, artifact `10325256729`, digest `sha256:55864bca6020aebd7341e17017663d064ac513a515c5a42647b13d27111656e1`.
+- Exact frozen crossing anchor has `q=u^2-v^2=0`, prospectively predicted `q_prime=0.314579093186371`, and executed fine-grid endpoints `q_backward=-0.01706756303318397`, `q_forward=0.014498255685305973`.
+- Independent Einstein constraints are preserved: fine max normalized `C00=1.7327326168201567e-15`, `Cij=2.8562435140246887e-16`. Coarse/fine endpoint symmetric relative mismatch is at most `3.6821146154203376e-15`. All stored states are finite; rho and Hc stay positive.
+- Interpretation: a local same-realization standard-GR canonical+phantom perturbation solution crosses effective `w=-1` without dividing by `rho+p` or using singular `theta_DE`. This materially strengthens K3 evidence.
+- Boundary: K3 remains `PARTIAL`, because this is an independent dimensionless local realization rather than the unavailable Goh-Taylor author code or a cosmology-scale Einstein-Boltzmann implementation. K4/K5 remain unpromoted. Next authorized gate: cosmology-scale independent Einstein-Boltzmann preregistration. Physical falsification=false.
+
