@@ -371,3 +371,10 @@ M25 compile-capacity isolation classification M25_M0_PK_STOCK_CAPACITY_PROVIDER_
 - Omega_smg=0.001 is rejected by pinned provider stability_tests_smg with Ghost instability (minimum D=-1.11467e-106 at a=1e-14). This is a stability/reference-path boundary, not infrastructure and not family-level falsification. K1 remains unpromoted.
 - Next gate: analysis-only immutable-artifact/source audit preregistered in W06_M33_GALILEON_REFERENCE_PATH_STABILITY_AUDIT_v0.1.md; no retuning or stability-check disabling permitted.
 
+## 2026-09-13 — M30 K4 local-2D provider precision terminal NOT_ESTABLISHED
+- Canonical classification: `M30_K4_NUMERICAL_ROBUSTNESS_NOT_ESTABLISHED_LOCAL_2D`; `K4_promoted=false`; `physical_falsification=false`.
+- Exact provider pin: `0009f51d89e6465c79e570b496c66fc90058fa77`.
+- Provenance: scientific run `34750957481`; analysis-only recovery run `34753465928`; job `103713787171`; authoritative artifact `10316702998`; canonical result `waves/wave_07_deep_gates/M30_K4_LOCAL_2D_PRECISION_RESULT.json`.
+- All base/radial/cT default/permille/reference executions are finite, but every mandatory TT/EE/TE/P(k) block fails the prospectively frozen refinement gate (`R_fine <= 1e-4` plus contraction rule). This is numerical robustness not established, not a Horndeski-family physical failure. No threshold relaxation or post-hoc retuning is permitted.
+- F30 remains nonterminal; K3 and K5-K9 remain open. Strict census terminal/represented count is unchanged.
+
