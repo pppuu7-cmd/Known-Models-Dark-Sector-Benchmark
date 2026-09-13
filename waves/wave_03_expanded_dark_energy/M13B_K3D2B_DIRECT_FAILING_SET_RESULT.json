@@ -1,0 +1,59 @@
+{
+  "schema": "KMDSB.W03.M13b.K3D2BDirectFailingSetResult.v1",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@64bbab707faf4de4779a9e04edd180fef18d98fa",
+  "protocol": "protocol/W03_M13B_K3D2B_DIRECT_FAILING_WORKER_CAPTURE_v0.1.md",
+  "workflow_run_id": 34790126691,
+  "head_sha": "4ed69baeb2bef685559a8c01edc038aeaed526c9",
+  "source_guard": {
+    "job_id": 103812674451,
+    "classification": "M13B_K3D2B_DIRECT_FAILURE_SOURCE_GUARD_PASS",
+    "all_required_checks_pass": true
+  },
+  "default_ndf15": {
+    "job_id": 103812674363,
+    "classification": "M13B_K3D2B_DIRECT_FAILING_WORKERS_CAPTURED",
+    "provider_rc": 1,
+    "internal_k_mode_count": 116,
+    "passed_post_handoff_mode_count": 36,
+    "failed_post_handoff_mode_count": 80,
+    "passing_index_k_range": [0, 35],
+    "failing_index_k_range": [36, 115],
+    "largest_passing_k_1_per_Mpc": 0.014267228152127612,
+    "smallest_failing_k_1_per_Mpc": 0.01796125219837715,
+    "largest_failing_k_1_per_Mpc": 1.1344594848845995,
+    "failure_set_contiguous_in_index_k": true,
+    "frozen_K1_0p00022398828992555914_failed": false,
+    "frozen_K10_0p0022398828992555913_failed": false,
+    "raw_failure": "evolver_ndf15 minimum-step collapse in the recovered post-handoff interval"
+  },
+  "reference_rk": {
+    "job_id": 103812674429,
+    "classification": "M13B_K3D2B_DIRECT_FAILING_WORKERS_CAPTURED",
+    "provider_rc": 1,
+    "internal_k_mode_count": 133,
+    "failed_post_handoff_mode_count": 133,
+    "smallest_failing_k_1_per_Mpc": 1.4301105403209492e-7,
+    "largest_failing_k_1_per_Mpc": 1.137153813692206,
+    "all_internal_k_modes_failed": true,
+    "frozen_K1_0p00022398828992555914_failed": true,
+    "frozen_K10_0p0022398828992555913_failed": true,
+    "raw_failure": "reference RK minimum-step collapse in the recovered post-handoff interval"
+  },
+  "comparison": {
+    "classification": "M13B_K3D2B_SOLVER_DEPENDENT_FAILING_SET",
+    "common_physical_failure_count_at_rel_1e_12": 0,
+    "interpretation": "The remaining perturbation numerical blocker is not a single common physical k-mode. Default NDF15 exhibits a sharp high-k threshold while reference RK fails globally on its denser internal k grid."
+  },
+  "mapping_certificate_preserved": {
+    "classification": "M13B_K3D2B_MAPPING_CERTIFICATE_PASS_WITH_SCOPE",
+    "minimal_right_owned_tau_ulps": 12,
+    "a1_first_rhs_already_right_owned": true
+  },
+  "B1_B2_B3_evaluated": false,
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "physical_falsification": false,
+  "next_action": "Diagnose solver-collapse geometry separately: NDF15 failure reason/time across the k-threshold and RK failure time/error-control geometry across representative low/K1/K10/high k modes. Do not change tolerances or physics."
+}
