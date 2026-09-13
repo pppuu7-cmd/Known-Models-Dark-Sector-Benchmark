@@ -1,0 +1,78 @@
+name: W03 M13b K3C0 unit-binding ledger sync
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3c0-ledger-sync.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify canonical K3C0 result and synchronize ledgers
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv,json,pathlib
+          root=pathlib.Path('.')
+          rp=root/'waves/wave_03_expanded_dark_energy/M13B_K3C0_PUBLIC_UNIT_BINDING_AUDIT_RESULT.json'
+          r=json.loads(rp.read_text())
+          cls='M13B_K3C0_PUBLIC_UNIT_BINDING_NOT_ESTABLISHED_LITERAL_PLANCK_READING_INCONSISTENT'
+          assert r['classification']==cls
+          assert r['all_required_checks_pass'] is True
+          assert r['guessed_rescale_adopted'] is False
+          assert r['original_provider_reproduced'] is False
+          assert r['K3_state_ceiling']=='PARTIAL'
+          assert r['K4_promoted'] is False and r['K5_promoted'] is False
+          assert r['physical_falsification'] is False
+          marker='M13B_K3C0_PUBLIC_UNIT_BINDING_BLOCKER_2026_09_13'
+
+          p=root/'matrices/mandatory_properties_matrix.csv'
+          rows=list(csv.DictReader(p.open(newline='',encoding='utf-8'))); fields=list(rows[0].keys())
+          for row in rows:
+              if row['family_id']=='F13':
+                  row['K3_conservation_gauge_closure']='PARTIAL'
+                  row['coverage_state']='K0_K1_PASS_K2_PARTIAL_K3_PARTIAL_LOCAL_STANDARD_GR_EMBEDDING_PASS_COSMOLOGY_PUBLIC_UNIT_BINDING_BLOCKED'
+                  add=(' '+marker+': public-number unit audit freezes the 2025 tanh benchmark with explicitly reduced-Planck labels and simultaneously quoted H0/Omega values. Literal binding gives V_literal/Mp^4=2.2369655790026962e-08, while rho_m+r(z=5)/Mp^4=6.993176012514982e-119 and flat-reference rho_DE0/Mp^4=7.145608687461422e-121. Ratios are R5=3.1987834640504174e110 and R0=3.130545873478848e112, far above the prospectively frozen 1e50 normalization threshold. Diagnostic scale magnitudes S5=3.126188475207894e-111 and S0=3.1943310860630855e-113 are recorded but explicitly not adopted. Therefore published scalar labels cannot be inserted literally into an independent physical cosmology without an additional normalization/rescaling convention or correction not established by public authority. This is a provenance/normalization blocker only: local K3B2 remains valid, K3 stays PARTIAL, no original-provider reproduction, K4/K5 closed, physical_falsification=false. Run 34781661143; artifact 10325517733; sha256:c42a9e4c42b43698ee946aa6216d1e47b417da142e4f7495e2b24030491f7511.')
+                  if marker not in row['notes']:
+                      row['notes'] += add
+          with p.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          p=root/'matrices/model_family_census.csv'
+          rows=list(csv.DictReader(p.open(newline='',encoding='utf-8'))); fields=list(rows[0].keys())
+          for row in rows:
+              if row['family_id']=='F13':
+                  row['status']='K1_BACKGROUND_TRUE_CROSSING_PASS_K3_PARTIAL_LOCAL_STANDARD_GR_EMBEDDING_PASS_COSMOLOGY_PUBLIC_UNIT_BINDING_BLOCKED'
+                  add=(' '+marker+': literal reduced-Planck interpretation of the public tanh benchmark is incompatible by >110 decades with the simultaneously quoted late-time cosmological density scale under the authors stated frozen-through-z~5 behavior. No rescale is inferred or adopted. Seek an explicit author/source normalization map or proceed only with a separately declared independent dimensionless cosmology benchmark. Not a physical family failure.')
+                  if marker not in row['notes']:
+                      row['notes'] += add
+          with p.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+
+          block='''\n\n## 2026-09-13 — M13b K3C0 public unit-binding blocker\n- Canonical classification: `M13B_K3C0_PUBLIC_UNIT_BINDING_NOT_ESTABLISHED_LITERAL_PLANCK_READING_INCONSISTENT`; canonical result `waves/wave_03_expanded_dark_energy/M13B_K3C0_PUBLIC_UNIT_BINDING_AUDIT_RESULT.json`.\n- Actions run `34781661143`, artifact `10325517733`, digest `sha256:c42a9e4c42b43698ee946aa6216d1e47b417da142e4f7495e2b24030491f7511`.\n- Frozen public anchor uses the 2025 tanh example: H0=67.15 km/s/Mpc, Omega_m0=0.3114, Omega_r0=9.23e-5, reduced Planck mass labels, V0=0.91e-8 Mp^4, s=29 Mp^-1, phi_ini=0.92 Mp, psi_ini=1.02 Mp and equal canonical/phantom initial speeds.\n- Literal calculation gives `V_total/Mp^4=2.2369655790026962e-08`, `rho_m+r(z=5)/Mp^4=6.993176012514982e-119`, `rho_DE,ref/Mp^4=7.145608687461422e-121`, hence `R5=3.1987834640504174e110`, `R0=3.130545873478848e112`. Frozen threshold is only 1e50.\n- Diagnostic missing-scale magnitudes `S5=3.126188475207894e-111`, `S0=3.1943310860630855e-113` are reported only; no guessed rescale is adopted.\n- Interpretation: public scalar numerical labels are insufficient to bind the unavailable modified-Boltzmann implementation to a literal physical Planck-unit cosmology. At least one unexposed normalization/rescaling/table convention or correction is needed. This does not invalidate the local independent K3B2 solution and is not a quintom physical falsification.\n- F13 K3 remains `PARTIAL`; cosmology-scale numerical reproduction is blocked on unit/provenance binding. Allowed next paths: obtain explicit normalization authority, or preregister a fully independent dimensionless cosmology-scale mechanism test that makes no Table/Figure reproduction claim. K4/K5 remain closed.\n'''
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+              q=root/fn; txt=q.read_text(encoding='utf-8')
+              if marker not in txt:
+                  q.write_text(txt.rstrip()+block+'\n',encoding='utf-8')
+          PY
+      - name: Commit synchronized K3C0 state
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          if git diff --cached --quiet; then
+            echo 'M13b K3C0 state already synchronized.'
+          else
+            git commit -m 'sync M13b K3C0 public unit-binding blocker'
+            git push
+          fi
