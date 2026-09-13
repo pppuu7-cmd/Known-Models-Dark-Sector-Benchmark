@@ -1,0 +1,62 @@
+name: W03 M13b independent K3A equation closure
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-independent-k3a-equation-closure.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  k3a-equation-closure:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install frozen symbolic dependency
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check 'sympy==1.14.0'
+      - name: Execute prospectively frozen K3A verifier
+        run: |
+          set -euo pipefail
+          python3 verification/m13b/k3a_equation_closure.py \
+            --output waves/wave_03_expanded_dark_energy/M13B_INDEPENDENT_K3A_EQUATION_CLOSURE_RESULT.json
+      - name: Verify result schema and provenance guardrails
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('waves/wave_03_expanded_dark_energy/M13B_INDEPENDENT_K3A_EQUATION_CLOSURE_RESULT.json')
+          r=json.loads(p.read_text())
+          assert r['schema']=='KMDSB.W03.M13b.IndependentK3AEquationClosure.v0.1'
+          assert r['implementation_provenance']=='independent_KMDSB_verification'
+          assert r['original_provider_reproduced'] is False
+          assert r['K3_canonical_promotion'] is False
+          assert r['K4_promoted'] is False
+          assert r['K5_promoted'] is False
+          assert r['physical_falsification'] is False
+          print(r['classification'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m13b-independent-k3a-equation-closure
+          path: waves/wave_03_expanded_dark_energy/M13B_INDEPENDENT_K3A_EQUATION_CLOSURE_RESULT.json
+          retention-days: 90
+      - name: Persist immutable K3A result
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add waves/wave_03_expanded_dark_energy/M13B_INDEPENDENT_K3A_EQUATION_CLOSURE_RESULT.json
+          if git diff --cached --quiet; then
+            echo 'K3A result already canonical.'
+          else
+            git commit -m 'record M13b independent K3A equation closure result'
+            git push
+          fi
