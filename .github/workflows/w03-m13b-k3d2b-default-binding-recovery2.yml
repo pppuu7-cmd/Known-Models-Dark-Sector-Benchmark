@@ -1,0 +1,162 @@
+name: W03 M13b K3D2-B default enabled binding recovery2
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w03-m13b-k3d2b-default-binding-recovery2.yml'
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+  K1: '0.00022398828992555914'
+  K10: '0.0022398828992555913'
+
+permissions:
+  contents: write
+
+jobs:
+  default_enabled:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply recovered adapter and audit budget binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$CLASS_PIN"
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/patch_manifest.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          t=Path('provider/source/input.c').read_text()
+          marker='KMDSB K3D2_DYNAMIC_BUDGET: direct-field inputs must be known before species budget.'
+          species='input_read_parameters_species(pfc,ppr,pba,pth,ppt,'
+          budget='!((pba->qcf_U0 != 0.) || (pba->qpf_U0 != 0.))'
+          checks={
+            'reads_before_species':t.count(marker)==1 and t.index(marker)<t.index(species),
+            'single_qcf_read':t.count('class_read_double("qcf_U0",pba->qcf_U0);')==1,
+            'single_qpf_read':t.count('class_read_double("qpf_U0",pba->qpf_U0);')==1,
+            'conditional_budget_exemption':t.count(budget)==1,
+            'original_scf_error_text_preserved':"'Omega_Lambda' or 'Omega_fld' must be left unspecified, except if 'Omega_scf' is set and < 0." in t,
+          }
+          assert all(checks.values()),checks
+          Path('result/binding_audit.json').write_text(json.dumps({'schema':'KMDSB.W03.M13b.K3D2BBindingRecovery2Audit.v0.1','checks':checks,'all_required_checks_pass':True},indent=2,sort_keys=True)+'\n')
+          PY
+          make -C provider -j2 class > result/build.log 2>&1
+      - name: Run first enabled full-Boltzmann realization
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > result/enabled.ini <<EOF
+          h = 0.6715
+          omega_b = 0.0224
+          Omega_cdm = 0.26172292868512664
+          Omega_g = 5.4572897176151613e-05
+          Omega_ur = 3.772710282384838e-05
+          N_ncdm = 0
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = 0
+          Omega_k = 0
+          qcf_U0 = 0.3362232603714306
+          qcf_phi_ini = 0.92
+          qcf_phi_prime_ini = 0
+          qpf_U0 = 0.3362232603714306
+          qpf_psi_ini = 1.02
+          qpf_psi_prime_ini = 0
+          gauge = synchronous
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = tCl,pCl,lCl,mPk,dTk
+          lensing = yes
+          l_max_scalars = 1200
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          k_output_values = $K1,$K10
+          write_background = yes
+          root = $GITHUB_WORKSPACE/out/default_
+          EOF
+          set +e
+          (cd provider && ./class "$GITHUB_WORKSPACE/result/enabled.ini") > result/stdout.txt 2> result/stderr.txt
+          rc=$?
+          set -e
+          echo "$rc" > result/provider_rc.txt
+          find out -maxdepth 1 -type f -printf '%f\n' | sort > result/output_files.txt
+          if [ "$rc" -ne 0 ]; then
+            echo 'ENABLED STDERR:'; cat result/stderr.txt
+            echo 'ENABLED STDOUT:'; cat result/stdout.txt
+            exit "$rc"
+          fi
+      - name: Evaluate prospectively frozen B1 and default B2 gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib,re,math,json,os
+          root=pathlib.Path('out')
+          def one(pat):
+              a=sorted(root.glob(pat)); assert len(a)==1,(pat,[str(x) for x in a]); return a[0]
+          bg=one('default*_background.dat'); pk=one('default*_pk.dat'); cl=one('default*_cl.dat')
+          lines=bg.read_text().splitlines()
+          hs=[l for l in lines if l.lstrip().startswith('#') and 'phi_qcf' in l and 'psi_qpf' in l]
+          assert len(hs)==1,hs
+          titles={m.group(2).strip():int(m.group(1))-1 for m in re.finditer(r'(\d+):(.+?)(?=\s+\d+:|$)',hs[0].lstrip('#').strip())}
+          need=['z','H [1/Mpc]','phi_qcf',"phi'_qcf",'psi_qpf',"psi'_qpf",'(.)rho_qcf','(.)rho_qpf']
+          assert all(k in titles for k in need),(need,titles)
+          rows=[[float(x) for x in l.split()] for l in lines if l.strip() and not l.lstrip().startswith('#')]
+          H0=67.15/299792.458
+          pts=[]
+          for r in rows:
+              z=r[titles['z']]; a=1/(1+z); H=r[titles['H [1/Mpc]']]
+              p=r[titles["phi'_qcf"]]/(a*H); q=r[titles["psi'_qpf"]]/(a*H)
+              pts.append({'z':z,'H':H,'E':H/H0,'x':r[titles['phi_qcf']],'p':p,'y':r[titles['psi_qpf']],'q':q,'D':p*p-q*q,'rqcf':r[titles['(.)rho_qcf']],'rqpf':r[titles['(.)rho_qpf']]})
+          assert pts and all(all(math.isfinite(v) for v in d.values()) and d['H']>0 for d in pts)
+          pts.sort(key=lambda d:d['z'])
+          def interp(z,key):
+              for a,b in zip(pts[:-1],pts[1:]):
+                  if a['z']<=z<=b['z']:
+                      f=(z-a['z'])/(b['z']-a['z']) if b['z']!=a['z'] else 0
+                      return a[key]+f*(b[key]-a[key])
+              raise AssertionError((z,pts[0]['z'],pts[-1]['z']))
+          z5={k:interp(5,k) for k in ['x','p','y','q','D','E']}; d49=interp(4.9,'D')
+          today=min(pts,key=lambda d:abs(d['z']))
+          evo=sorted([d for d in pts if 0<=d['z']<=5],key=lambda d:d['z'],reverse=True)
+          crosses=[]
+          for a,b in zip(evo[:-1],evo[1:]):
+              if a['D']<0<=b['D']:
+                  f=-a['D']/(b['D']-a['D']); crosses.append(a['z']+f*(b['z']-a['z']))
+          omega=(today['rqcf']+today['rqpf'])/(today['H']**2)
+          ref={'zx':1.1978720736725847,'x':1.3910277872721561,'p':0.3117003532815687,'y':0.7979144626637236,'q':-0.02751848184245475,'OmegaDE':0.6885076999845492}
+          def data(p): return [[float(x) for x in l.split()] for l in p.read_text().splitlines() if l.strip() and not l.lstrip().startswith('#')]
+          pr=data(pk); cr=data(cl)
+          checks={
+            'provider_rc_zero':pathlib.Path('result/provider_rc.txt').read_text().strip()=='0',
+            'finite_positive_background':True,
+            'z5_x':abs(z5['x']-.92)<=2e-4,'z5_y':abs(z5['y']-1.02)<=2e-4,
+            'z5_p':abs(z5['p'])<=2e-3,'z5_q':abs(z5['q'])<=2e-3,
+            'one_crossing':len(crosses)==1,'crossing_match':len(crosses)==1 and abs(crosses[0]-ref['zx'])<=.02,
+            'today_x':abs(today['x']-ref['x'])<=5e-3,'today_y':abs(today['y']-ref['y'])<=5e-3,
+            'today_p':abs(today['p']-ref['p'])<=5e-3,'today_q':abs(today['q']-ref['q'])<=2e-3,
+            'E0':abs(today['E']-1)<=3e-3,'OmegaDE0':abs(omega-ref['OmegaDE'])<=3e-3,
+            'phantom_after_start':d49<0,'quintessence_today':today['D']>0,
+            'pk_positive_finite':bool(pr) and all(len(r)>=2 and r[0]>0 and r[1]>0 and all(math.isfinite(x) for x in r) for r in pr),
+            'cl_finite':bool(cr) and all(all(math.isfinite(x) for x in r) for r in cr),
+            'cl_tt_ee_nonnegative':all((len(r)<3) or (r[1]>=-1e-30 and r[2]>=-1e-30) for r in cr),
+          }
+          res={'schema':'KMDSB.W03.M13b.K3D2BDefaultBindingRecovery2.v0.1','provider_commit':os.environ['CLASS_PIN'],'checks':checks,'all_required_checks_pass':all(checks.values()),'failed':[k for k,v in checks.items() if not v],'z5':z5,'D_z4p9':d49,'today':today,'crossings_z':crosses,'Omega_DE0':omega,'pk_rows':len(pr),'cl_rows':len(cr),'background_file':str(bg),'pk_file':str(pk),'cl_file':str(cl)}
+          pathlib.Path('result/default_result.json').write_text(json.dumps(res,indent=2,sort_keys=True)+'\n')
+          assert res['all_required_checks_pass'],res
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k3d2b-default-binding-recovery2
+          path: |
+            result/
+            out/
+          retention-days: 90
