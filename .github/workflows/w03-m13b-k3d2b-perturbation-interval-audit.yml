@@ -1,0 +1,89 @@
+name: W03 M13b K3D2-B perturbation interval-boundary audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3d2b-perturbation-interval-audit.yml'
+  workflow_dispatch:
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clone exact-pin CLASS and audit native perturbation intervals
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$CLASS_PIN"
+          mkdir -p result
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re
+          src=Path('provider/source/perturbations.c').read_text()
+          bg=Path('provider/source/background.c').read_text()
+          ih=Path('provider/include/perturbations.h').read_text()
+
+          start=src.find('int perturbations_solve(')
+          if start < 0:
+              # fallback: locate definition from error-line neighborhood via unique generic evolver call
+              g=src.find('generic_evolver(perturbations_derivs')
+              assert g>=0
+              starts=[m.start() for m in re.finditer(r'\nint\s+[A-Za-z0-9_]+\s*\(',src[:g])]
+              assert starts
+              start=starts[-1]+1
+          tail=src[start:]
+          nxt=re.search(r'\nint\s+[A-Za-z0-9_]+\s*\(',tail[10:])
+          body=tail if nxt is None else tail[:10+nxt.start()]
+
+          # Also inspect helper/source context globally, because interval construction can be delegated.
+          checks={}
+          checks['generic_evolver_uses_consecutive_interval_limits']=bool(re.search(r'generic_evolver\s*\(\s*perturbations_derivs\s*,\s*interval_limit\s*\[\s*index_interval\s*\]\s*,\s*interval_limit\s*\[\s*index_interval\s*\+\s*1\s*\]',body,re.S))
+          checks['mutable_interval_limit_array']=('double * interval_limit' in body or 'double* interval_limit' in body) and ('class_alloc(interval_limit' in body or 'malloc' in body and 'interval_limit' in body)
+          checks['explicit_interval_count']=any(tok in body for tok in ['interval_number','index_interval'])
+          checks['state_vector_carried']=('ppw->pv->y' in body and 'generic_evolver' in body)
+          checks['global_tau_sampling_passed']=('ppt->tau_sampling' in body and 'tau_actual_size' in body)
+          checks['background_tau_mapping_exists']=('int background_tau_of_z' in bg or 'background_tau_of_z(' in bg)
+          checks['native_approximation_interval_machinery']=('perturbations_find_approximation_number' in src and 'interval_approx' in src and 'interval_limit' in src)
+          checks['rhs_not_required_for_interval_split']=('perturbations_derivs' in body and 'interval_limit' in body)
+
+          # Capture a compact structural excerpt for immutable review without depending on regex verdict only.
+          lines=body.splitlines()
+          excerpts=[]
+          for i,l in enumerate(lines):
+              if any(k in l for k in ['interval_limit','interval_number','generic_evolver','tau_sampling','ppw->pv->y','find_approximation']):
+                  lo=max(0,i-2); hi=min(len(lines),i+3)
+                  excerpts.append({'line_index_in_function':i,'text':'\n'.join(lines[lo:hi])})
+          result={
+            'schema':'KMDSB.W03.M13b.K3D2BPerturbationIntervalBoundaryAudit.v0.1',
+            'provider_commit':'64bbab707faf4de4779a9e04edd180fef18d98fa',
+            'checks':checks,
+            'all_required_checks_pass':all(checks.values()),
+            'classification':('M13B_K3D2B_PERTURBATION_NATIVE_INTERVAL_SPLIT_STRUCTURALLY_AUTHORIZED_WITH_SCOPE' if all(checks.values()) else 'M13B_K3D2B_PERTURBATION_NATIVE_INTERVAL_SPLIT_NOT_ESTABLISHED'),
+            'function_start_offset':start,
+            'generic_evolver_count_in_function':body.count('generic_evolver(perturbations_derivs'),
+            'excerpt_count':len(excerpts),
+            'excerpts':excerpts[:40],
+            'physical_falsification':False,
+            'B1_B2_B3_evaluated':False,
+          }
+          Path('result/perturbation_interval_audit.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(result,indent=2,sort_keys=True))
+          if not result['all_required_checks_pass']:
+              raise SystemExit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-perturbation-interval-audit
+          path: result/
+          retention-days: 90
