@@ -1,0 +1,94 @@
+name: W07 M30 K4 output-path recovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w07-m30-k4-output-path-recovery.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  recover-point:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        point: [base, radial, cT]
+    runs-on: ubuntu-latest
+    env:
+      PARENT_RUN: '34719607382'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download immutable parent point artifact
+        shell: bash
+        env:
+          POINT: ${{ matrix.point }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          case "$POINT" in
+            base) AID=10305654365 ;;
+            radial) AID=10305053424 ;;
+            cT) AID=10305993667 ;;
+            *) exit 2 ;;
+          esac
+          mkdir -p parent recovered
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${AID}/zip" -o parent.zip
+          unzip -q parent.zip -d parent
+          find parent -type f | sort
+      - name: Expose byte-identical hi_class outputs under frozen analyzer names
+        shell: bash
+        env:
+          POINT: ${{ matrix.point }}
+        run: |
+          set -euo pipefail
+          srcdir="$(find parent -type f -name 'status.json' -printf '%h\n' | head -1)"
+          test -n "$srcdir"
+          cp "$srcdir/status.json" recovered/status.json
+          for prof in default permille reference; do
+            cl="$(find "$srcdir" -maxdepth 1 -type f -name "${prof}_00_cl.dat" | head -1)"
+            pk="$(find "$srcdir" -maxdepth 1 -type f -name "${prof}_00_pk.dat" | head -1)"
+            test -s "$cl"; test -s "$pk"
+            cp "$cl" "recovered/${prof}_cl.dat"
+            cp "$pk" "recovered/${prof}_pk.dat"
+            cmp -s "$cl" "recovered/${prof}_cl.dat"
+            cmp -s "$pk" "recovered/${prof}_pk.dat"
+          done
+          python3 - <<'PY'
+          import json
+          s=json.load(open('recovered/status.json'))
+          assert all(s.get(k)==0 for k in ('build','default','permille','reference')),s
+          PY
+      - name: Apply unchanged preregistered point gate
+        shell: bash
+        env:
+          POINT: ${{ matrix.point }}
+        run: |
+          set -euo pipefail
+          python3 verification/m30/k4_local_2d_precision.py point recovered recovered/status.json "$POINT" "M30_K4_POINT_${POINT}.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m30-k4-path-recovery-${{ matrix.point }}
+          path: M30_K4_POINT_${{ matrix.point }}.json
+          retention-days: 30
+  aggregate:
+    needs: recover-point
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m30-k4-path-recovery-*
+          path: recovered-points
+      - name: Apply unchanged aggregate gate after barrier
+        run: |
+          set -euo pipefail
+          python3 verification/m30/k4_local_2d_precision.py aggregate recovered-points M30_K4_LOCAL_2D_PRECISION_RESULT.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m30-k4-output-path-recovery-aggregate
+          path: M30_K4_LOCAL_2D_PRECISION_RESULT.json
+          retention-days: 30
