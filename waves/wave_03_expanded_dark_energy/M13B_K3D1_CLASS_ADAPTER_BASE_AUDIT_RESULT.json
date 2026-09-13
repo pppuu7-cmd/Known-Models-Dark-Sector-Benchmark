@@ -1,0 +1,71 @@
+{
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "all_required_checks_pass": true,
+  "author_model_reproduced": false,
+  "author_normalization_map_claimed": false,
+  "checks": {
+    "canonical_p_scf_sign": true,
+    "canonical_rho_scf_sign": true,
+    "no_second_scf_core_symbols": true,
+    "one_Omega0_scf_declaration": true,
+    "one_background_phi_declaration": true,
+    "one_background_phi_prime_declaration": true,
+    "one_perturbation_phi_declaration": true,
+    "one_perturbation_phi_prime_declaration": true,
+    "output_module_present": true,
+    "perturbations_module_present": true,
+    "photon_hierarchy_present": true,
+    "single_background_scf_family_active": true,
+    "standard_control_pk_finite": true,
+    "thermodynamics_module_present": true,
+    "ultrarelativistic_hierarchy_present": true
+  },
+  "classification": "M13B_K3D1_CLASS_ADAPTER_BASE_PASS_WITH_SCOPE",
+  "control_recovery": "HARNESS_OUTPUT_PATH_ONLY",
+  "family_id": "F13",
+  "gate": "K3D1",
+  "model_id": "M13b",
+  "next_authorized_gate": "K3D2_INDEPENDENT_CLASS_TWO_FIELD_SPECIES_ADAPTER_PREREGISTRATION",
+  "observed_architecture": {
+    "existing_direct_scalar_species": "single canonical scf",
+    "existing_native_two_field_quintom": false,
+    "full_boltzmann_base": true,
+    "standard_control_output": "finite mPk"
+  },
+  "parent_run": 34782356655,
+  "physical_falsification": false,
+  "pk_candidates": [
+    "control/k3d1_00_pk.dat",
+    "provider/output/explanatory00_pk.dat"
+  ],
+  "pk_finite_row_counts": {
+    "control/k3d1_00_pk.dat": 114,
+    "provider/output/explanatory00_pk.dat": 556
+  },
+  "planned_adapter_touch_set": [
+    "include/background.h",
+    "source/background.c",
+    "include/input.h",
+    "source/input.c",
+    "include/perturbations.h",
+    "source/perturbations.c",
+    "source/output.c (only if regression output needed)",
+    "python exposure (only if regression output needed)"
+  ],
+  "protected_subsystems": [
+    "photon hierarchy dynamics",
+    "polarization hierarchy dynamics",
+    "massless/massive neutrino hierarchy dynamics",
+    "thermodynamics/recombination equations",
+    "primordial module",
+    "nonlinear module"
+  ],
+  "protocol": "protocol/W03_M13B_K3D1_CLASS_ADAPTER_BASE_STRUCTURAL_AUDIT_v0.1.md",
+  "provider": "lesgourg/class_public",
+  "provider_commit": "64bbab707faf4de4779a9e04edd180fef18d98fa",
+  "provider_rc": 0,
+  "recovery_protocol": "protocol/W03_M13B_K3D1_CLASS_CONTROL_OUTPUT_RECOVERY_v0.1.md",
+  "schema": "KMDSB.W03.M13b.K3D1ClassAdapterBaseAudit.v0.1"
+}
