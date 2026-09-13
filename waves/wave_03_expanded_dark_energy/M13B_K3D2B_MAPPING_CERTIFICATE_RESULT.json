@@ -1,5 +1,5 @@
 {
-  "schema": "KMDSB.W03.M13b.K3D2BMappingCertificateResult.v1",
+  "schema": "KMDSB.W03.M13b.K3D2BMappingCertificateResult.v1.1",
   "date": "2026-09-14",
   "provider": "lesgourg/class_public@64bbab707faf4de4779a9e04edd180fef18d98fa",
   "protocol": "protocol/W03_M13B_K3D2B_MAPPING_CERTIFIED_PERTURBATION_SEAM_v0.1.md",
@@ -29,16 +29,30 @@
   "first_rhs_diagnostic": {
     "default_job_id": 103811682112,
     "reference_job_id": 103811681967,
-    "default_first_tau": 6256.998662974136,
-    "default_first_a": 0.16666666666666763,
-    "default_first_dy_qcf_prime": -3.0534646444354208e-17,
-    "default_first_dy_qpf_prime": 5.856456002748686e-16,
-    "note": "The previous A1 implementation already enters the right-owned branch beyond tau_cert, so spline boundary ownership is not sufficient to explain the remaining perturbation solver failure."
+    "first_traced_right_owned_tau": 6256.998662974136,
+    "first_traced_right_owned_a": 0.16666666666666763,
+    "first_traced_dy_qcf_prime": -3.0534646444354208e-17,
+    "first_traced_dy_qpf_prime": 5.856456002748686e-16,
+    "interpretation_corrected_after_direct_collapse_geometry": true,
+    "correction": "The first traced qfield RHS was not the numerical evolver start. NDF15 calls the RHS at its start and again at t+tdel during initial-step estimation; the trace hook, placed in the right-owned qfield branch, first appeared at the latter call."
+  },
+  "a1_direct_collapse_reconciliation": {
+    "workflow_run_id": 34790469637,
+    "default_job_id": 103813611112,
+    "actual_evolver_start": 6256.998662974108,
+    "actual_evolver_start_is_below_tau_cert": true,
+    "actual_evolver_start_minus_tau_handoff": 9.094947017729282e-13,
+    "tau_cert_minus_tau_handoff": 1.0913936421275139e-11,
+    "ndf15_failure_count": 80,
+    "ndf15_reason_counts": {"error_control": 80},
+    "successful_steps_per_failed_mode": 0,
+    "collapse_tau": 6256.998662974108,
+    "interpretation": "A1 starts one local tau ULP above the exact interval boundary, still below the 12-ULP mapping-certified right-owned point. The next NDF15 probe can enter the right-owned branch, creating an immediate RHS discontinuity inside initial-step estimation."
   },
   "B1_B2_B3_evaluated": false,
   "K3_state_ceiling": "PARTIAL",
   "K4_promoted": false,
   "K5_promoted": false,
   "physical_falsification": false,
-  "next_action": "Localize the exact failing k/index in default NDF15 and reference RK before authorizing any further seam or solver change."
+  "next_action": "Prospectively test the algorithmically minimal mapping-certified tau start in unchanged default and reference solver lanes, with strict disabled-null reduction. Do not use a manually enlarged epsilon."
 }
