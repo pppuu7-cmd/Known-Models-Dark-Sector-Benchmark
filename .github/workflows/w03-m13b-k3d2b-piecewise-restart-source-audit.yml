@@ -25,7 +25,7 @@ jobs:
           git -C provider checkout -q "$CLASS_PIN"
           test "$(git -C provider rev-parse HEAD)" = "$CLASS_PIN"
           mkdir -p result
-      - name: Frozen source-structural audit
+      - name: Frozen source-structural audit with harness recovery
         shell: bash
         run: |
           set -euo pipefail
@@ -51,8 +51,11 @@ jobs:
           checks['ordinary_background_workspace_present'] = '&bpaw' in call_text
           checks['no_extra_solver_state_argument_marker'] = all(x not in call_text for x in ['solver_state','integrator_state','history_state'])
           checks['integration_vector_declared'] = re.search(r'double\s*\*\s*pvecback_integration\s*;', body) is not None
-          checks['loga_ini_assigned'] = re.search(r'loga_ini\s*=', body) is not None
-          checks['loga_final_assigned'] = re.search(r'loga_final\s*=', body) is not None
+          explicit_loga_ini = re.search(r'loga_ini\s*=', body) is not None
+          output_arg_loga_ini = re.search(r'background_initial_conditions\s*\([^;]*&\s*\(?\s*loga_ini\s*\)?\s*\)', body, re.S) is not None
+          checks['loga_ini_established'] = explicit_loga_ini or output_arg_loga_ini
+          checks['loga_ini_via_background_initial_conditions_output'] = output_arg_loga_ini
+          checks['loga_final_assigned'] = re.search(r'loga_final\s*=\s*0\.?\s*;', body) is not None
 
           handoff = math.log(1.0/6.0)
           final_zero = re.search(r'loga_final\s*=\s*0\.?\s*;', body) is not None
@@ -62,9 +65,12 @@ jobs:
 
           all_pass = all(checks.values())
           result = {
-            'schema':'KMDSB.W03.M13b.K3D2BPiecewiseRestartSourceAudit.v0.1',
+            'schema':'KMDSB.W03.M13b.K3D2BPiecewiseRestartSourceAuditRecovery.v0.1',
             'provider':'lesgourg/class_public',
             'provider_commit':'64bbab707faf4de4779a9e04edd180fef18d98fa',
+            'protocol':'protocol/W03_M13B_K3D2B_PIECEWISE_BACKGROUND_RESTART_SOURCE_AUDIT_v0.1.md',
+            'recovery_protocol':'protocol/W03_M13B_K3D2B_PIECEWISE_RESTART_SOURCE_AUDIT_RECOVERY_v0.1.md',
+            'parent_run':34785693083,
             'handoff_loga':handoff,
             'generic_evolver_call_count':len(calls),
             'checks':checks,
@@ -85,4 +91,4 @@ jobs:
           path: result/
           retention-days: 90
 
-# frozen trigger commit; no science change
+# recovery trigger; no science or solver change
