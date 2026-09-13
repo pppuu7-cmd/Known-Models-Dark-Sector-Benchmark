@@ -386,3 +386,10 @@ M25 compile-capacity isolation classification M25_M0_PK_STOCK_CAPACITY_PROVIDER_
 - Preserved frontier: K0 PASS_WITH_SCOPE; K1 PASS_WITH_SCOPE; K2 PARTIAL with local response-rank>=2 and 38.171364 deg cross-angle evidence. Complete covariant SVT quotient, K3 and K5-K9 remain open.
 - Next allowed K4 action is an independently adequate compute/execution route preserving the exact provider pin, frozen cases, precision profiles, outputs and unchanged analyzer. Do not relax thresholds or retune physics. Canonical result: `waves/wave_07_deep_gates/M35_K4_SERIAL_PRECISION_DIAGNOSTIC_RESULT.json`.
 
+## 2026-09-13 — M13b independent K3A equation closure PASS_WITH_SCOPE
+- Renewed public-provider reconnaissance found no immutable public Goh-Taylor quintom CLASS source and no alternative source-complete public two-field perturbation provider; background-only code hits remain insufficient for K3.
+- Independent-verification protocol: `protocol/W03_M13B_INDEPENDENT_K3A_EQUATION_CLOSURE_PREREGISTRATION_v0.1.md`. This implementation is explicitly not the authors' original provider.
+- Actions run `34780696853`, job `103787057577`, artifact `10325027180` (`sha256:cca8c7883551c8f37a314e8b669b3a7e90fbce17d72bdad348e3c39fd22619b0`) passes every frozen identity. Canonical result: `waves/wave_03_expanded_dark_energy/M13B_INDEPENDENT_K3A_EQUATION_CLOSURE_RESULT.json`.
+- Key crossing result: `rho_DE+p_DE=(phi_prime^2-psi_prime^2)/a^2`; at equal nonzero kinetic magnitudes the direct field KG system remains finite while the effective-fluid `theta_DE` denominator vanishes. Therefore direct field variables, not `theta_DE`, are the required crossing coordinates.
+- Canonical M13/F13 K3 is now `PARTIAL` only for independent equation/sign/continuity closure. No original-provider reproduction and no Einstein-Boltzmann K3 PASS are claimed. K3B is the next authorized gate; K4/K5 remain closed. Physical falsification=false.
+
