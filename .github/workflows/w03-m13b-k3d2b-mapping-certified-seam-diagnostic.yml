@@ -1,0 +1,306 @@
+name: W03 M13b K3D2-B mapping-certified seam diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3d2b-mapping-certified-seam-diagnostic.yml'
+  workflow_dispatch:
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+  K1: '0.00022398828992555914'
+  K10: '0.0022398828992555913'
+
+permissions:
+  contents: read
+
+jobs:
+  source_audit:
+    name: S remap and native-interval audit
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply exact frozen source stack and audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py provider --manifest result/pt_split.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          s=Path('provider/source/perturbations.c').read_text()
+          checks={
+            'native_interval_inserted':'new_interval_limit_kmdsb[insert_index_kmdsb+1] = tau_handoff_kmdsb;' in s,
+            'duplicate_approximation_row':'src_interval_kmdsb = insert_index_kmdsb;' in s,
+            'previous_approx_used':'previous_approx=interval_approx[index_interval-1];' in s,
+            'qcf_value_copied':'ppv->y[ppv->index_pt_phi_qcf] = ppw->pv->y[ppw->pv->index_pt_phi_qcf];' in s,
+            'qcf_prime_copied':'ppv->y[ppv->index_pt_phi_prime_qcf] = ppw->pv->y[ppw->pv->index_pt_phi_prime_qcf];' in s,
+            'qpf_value_copied':'ppv->y[ppv->index_pt_psi_qpf] = ppw->pv->y[ppw->pv->index_pt_psi_qpf];' in s,
+            'qpf_prime_copied':'ppv->y[ppv->index_pt_psi_prime_qpf] = ppw->pv->y[ppw->pv->index_pt_psi_prime_qpf];' in s,
+            'same_state_vector_into_evolver':'ppw->pv->y' in s and 'generic_evolver(perturbations_derivs' in s,
+          }
+          ok=all(checks.values())
+          out={'schema':'KMDSB.W03.M13b.K3D2BRemapAudit.v0.1','provider_commit':'64bbab707faf4de4779a9e04edd180fef18d98fa','checks':checks,'all_required_checks_pass':ok,'classification':'M13B_K3D2B_REMAP_AUDIT_PASS_WITH_SCOPE' if ok else 'M13B_K3D2B_REMAP_AUDIT_NOT_ESTABLISHED','B1_B2_B3_evaluated':False,'physical_falsification':False}
+          Path('result/remap_audit.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          assert ok,out
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-remap-audit
+          path: result/
+          retention-days: 90
+
+  mapping:
+    name: M minimal representable tau mapping certificate
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact-pin diagnostic provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py provider --manifest result/pt_split.json
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('provider/source/perturbations.c'); s=p.read_text()
+          anchor='  /** - fill the structure containing all fixed parameters, indices\n      and workspaces needed by perturbations_derivs */'
+          assert s.count(anchor)==1
+          block=r'''  /* KMDSB mapping-certificate diagnostic: no equation changes. */
+          if ((inserted_handoff_kmdsb == _TRUE_) && (index_k == 0) && (index_ic == 0)) {
+            const unsigned long long max_ulps_kmdsb = 1073741824ULL;
+            double a_handoff_cert_kmdsb = exp(log(1./6.));
+            double tau_ulp_cert_kmdsb = nextafter(tau_handoff_kmdsb,tau_handoff_kmdsb+1.)-tau_handoff_kmdsb;
+            unsigned long long lo_ulps_kmdsb = 0ULL;
+            unsigned long long hi_ulps_kmdsb = 1ULL;
+            unsigned long long mid_ulps_kmdsb;
+            double tau_try_kmdsb = tau_handoff_kmdsb;
+            double a_try_kmdsb = -1.;
+            double * pvecback_cert_kmdsb;
+            int last_cert_kmdsb = 0;
+            int found_cert_kmdsb = _FALSE_;
+            class_alloc(pvecback_cert_kmdsb,pba->bg_size_normal*sizeof(double),ppt->error_message);
+            while (hi_ulps_kmdsb <= max_ulps_kmdsb) {
+              tau_try_kmdsb = tau_handoff_kmdsb + ((double)hi_ulps_kmdsb)*tau_ulp_cert_kmdsb;
+              last_cert_kmdsb = 0;
+              class_call(background_at_tau(pba,tau_try_kmdsb,normal_info,inter_normal,&last_cert_kmdsb,pvecback_cert_kmdsb),pba->error_message,ppt->error_message);
+              a_try_kmdsb = pvecback_cert_kmdsb[pba->index_bg_a];
+              if (a_try_kmdsb > a_handoff_cert_kmdsb) { found_cert_kmdsb = _TRUE_; break; }
+              lo_ulps_kmdsb = hi_ulps_kmdsb;
+              hi_ulps_kmdsb *= 2ULL;
+            }
+            if (found_cert_kmdsb == _TRUE_) {
+              while (hi_ulps_kmdsb-lo_ulps_kmdsb > 1ULL) {
+                mid_ulps_kmdsb = lo_ulps_kmdsb + (hi_ulps_kmdsb-lo_ulps_kmdsb)/2ULL;
+                tau_try_kmdsb = tau_handoff_kmdsb + ((double)mid_ulps_kmdsb)*tau_ulp_cert_kmdsb;
+                last_cert_kmdsb = 0;
+                class_call(background_at_tau(pba,tau_try_kmdsb,normal_info,inter_normal,&last_cert_kmdsb,pvecback_cert_kmdsb),pba->error_message,ppt->error_message);
+                a_try_kmdsb = pvecback_cert_kmdsb[pba->index_bg_a];
+                if (a_try_kmdsb > a_handoff_cert_kmdsb) hi_ulps_kmdsb = mid_ulps_kmdsb;
+                else lo_ulps_kmdsb = mid_ulps_kmdsb;
+              }
+              double tau_cert_kmdsb = tau_handoff_kmdsb + ((double)hi_ulps_kmdsb)*tau_ulp_cert_kmdsb;
+              double tau_prev_kmdsb = nextafter(tau_cert_kmdsb,tau_handoff_kmdsb);
+              double a_cert_kmdsb, a_prev_kmdsb, z_cert_kmdsb, z_prev_kmdsb;
+              last_cert_kmdsb = 0;
+              class_call(background_at_tau(pba,tau_cert_kmdsb,normal_info,inter_normal,&last_cert_kmdsb,pvecback_cert_kmdsb),pba->error_message,ppt->error_message);
+              a_cert_kmdsb = pvecback_cert_kmdsb[pba->index_bg_a];
+              class_call(background_z_of_tau(pba,tau_cert_kmdsb,&z_cert_kmdsb),pba->error_message,ppt->error_message);
+              last_cert_kmdsb = 0;
+              class_call(background_at_tau(pba,tau_prev_kmdsb,normal_info,inter_normal,&last_cert_kmdsb,pvecback_cert_kmdsb),pba->error_message,ppt->error_message);
+              a_prev_kmdsb = pvecback_cert_kmdsb[pba->index_bg_a];
+              class_call(background_z_of_tau(pba,tau_prev_kmdsb,&z_prev_kmdsb),pba->error_message,ppt->error_message);
+              fprintf(stderr,"KMDSB_MAP_CERT found=1 ulps=%llu tau0=%.17g tau_ulp=%.17g tau_prev=%.17g a_prev=%.17g z_prev=%.17g tau_cert=%.17g a_cert=%.17g z_cert=%.17g a_handoff=%.17g\n",hi_ulps_kmdsb,tau_handoff_kmdsb,tau_ulp_cert_kmdsb,tau_prev_kmdsb,a_prev_kmdsb,z_prev_kmdsb,tau_cert_kmdsb,a_cert_kmdsb,z_cert_kmdsb,a_handoff_cert_kmdsb);
+            }
+            else {
+              fprintf(stderr,"KMDSB_MAP_CERT found=0 max_ulps=%llu tau0=%.17g tau_ulp=%.17g a_last=%.17g a_handoff=%.17g\n",max_ulps_kmdsb,tau_handoff_kmdsb,tau_ulp_cert_kmdsb,a_try_kmdsb,a_handoff_cert_kmdsb);
+            }
+            free(pvecback_cert_kmdsb);
+          }
+
+'''
+          p.write_text(s.replace(anchor,block+anchor,1))
+          PY
+          make -C provider -j2 class > result/build.log 2>&1
+      - name: Run mapping diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > result/enabled.ini <<EOF
+          h = 0.6715
+          omega_b = 0.0224
+          Omega_cdm = 0.26172292868512664
+          Omega_g = 5.4572897176151613e-05
+          Omega_ur = 3.772710282384838e-05
+          N_ncdm = 0
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = 0
+          Omega_k = 0
+          qcf_U0 = 0.3362232603714306
+          qcf_phi_ini = 0.92
+          qcf_phi_prime_ini = 0
+          qpf_U0 = 0.3362232603714306
+          qpf_psi_ini = 1.02
+          qpf_psi_prime_ini = 0
+          gauge = synchronous
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = mPk,dTk
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          k_output_values = $K1,$K10
+          root = $GITHUB_WORKSPACE/out/map_
+          EOF
+          set +e
+          (cd provider && ./class "$GITHUB_WORKSPACE/result/enabled.ini") > result/stdout.txt 2> result/stderr.txt
+          rc=$?
+          set -e
+          echo "$rc" > result/provider_rc.txt
+      - name: Freeze mapping certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re
+          text=(Path('result/stdout.txt').read_text(errors='replace')+'\n'+Path('result/stderr.txt').read_text(errors='replace'))
+          m=re.search(r'KMDSB_MAP_CERT found=1 ulps=(\d+) tau0=([^ ]+) tau_ulp=([^ ]+) tau_prev=([^ ]+) a_prev=([^ ]+) z_prev=([^ ]+) tau_cert=([^ ]+) a_cert=([^ ]+) z_cert=([^ ]+) a_handoff=([^\s]+)',text)
+          rc=int(Path('result/provider_rc.txt').read_text())
+          if m:
+            ulps=int(m.group(1)); vals=list(map(float,m.groups()[1:])); tau0,tulp,tprev,aprev,zprev,tcert,acert,zcert,ah=vals
+            checks={'finite_positive_ulp_count':ulps>=1,'tau_cert_gt_handoff':tcert>tau0,'immediate_predecessor_lt_cert':tprev<tcert,'predecessor_not_right_owned':aprev<=ah,'certificate_right_owned':acert>ah}
+            data={'ulps':ulps,'tau_handoff':tau0,'tau_ulp':tulp,'tau_prev':tprev,'a_prev':aprev,'z_prev':zprev,'tau_cert':tcert,'a_cert':acert,'z_cert':zcert,'a_handoff':ah,'provider_rc_after_diagnostic':rc}
+          else:
+            checks={'finite_positive_ulp_count':False,'tau_cert_gt_handoff':False,'immediate_predecessor_lt_cert':False,'predecessor_not_right_owned':False,'certificate_right_owned':False}; data={'provider_rc_after_diagnostic':rc}
+          ok=all(checks.values())
+          obj={'schema':'KMDSB.W03.M13b.K3D2BMappingCertificate.v0.1','checks':checks,'all_required_checks_pass':ok,'classification':'M13B_K3D2B_MAPPING_CERTIFICATE_PASS_WITH_SCOPE' if ok else 'M13B_K3D2B_MAPPING_CERTIFICATE_NOT_ESTABLISHED','B1_B2_B3_evaluated':False,'K3_state_ceiling':'PARTIAL','K4_promoted':False,'K5_promoted':False,'physical_falsification':False,**data}
+          Path('result/mapping_certificate.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n'); print(json.dumps(obj,indent=2,sort_keys=True)); assert ok,obj
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-mapping-certificate
+          path: result/
+          retention-days: 90
+
+  rhs_trace:
+    name: R first-RHS trace ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - {label: default, precision: none, prefix: rd}
+          - {label: reference, precision: cl_ref.pre, prefix: rr}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build traced A1 provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py provider --manifest result/pt_split.json
+          python3 verification/m13b/k3d2b_apply_perturbation_a_ulp_seam.py provider --ulps 1 --manifest result/a_ulp.json
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('provider/source/perturbations.c'); s=p.read_text()
+          start=s.index('int perturbations_derivs(double tau,')
+          nxt=s.find('\nint ',start+10)
+          body=s[start:] if nxt<0 else s[start:nxt]
+          anchor='''  class_call(background_at_tau(pba,tau, normal_info, (interpolation_method)ppw->inter_mode, &(ppw->last_index_back), ppw->pvecback),\n             pba->error_message,\n             ppt->error_message);\n'''
+          assert body.count(anchor)==1
+          injected=anchor+'''\n  static int kmdsb_rhs_trace_count = 0;\n  int kmdsb_rhs_trace_this = _FALSE_;\n  if ((kmdsb_rhs_trace_count < 24) && (ppaw->index_k == 0) && (ppaw->index_ic == 0) && ((pba->has_qcf == _TRUE_) || (pba->has_qpf == _TRUE_))) {\n    double tau_handoff_trace_kmdsb = -1.;\n    class_call(background_tau_of_z(pba,5.,&tau_handoff_trace_kmdsb),pba->error_message,ppt->error_message);\n    if (tau >= tau_handoff_trace_kmdsb) kmdsb_rhs_trace_this = _TRUE_;\n  }\n'''
+          body=body.replace(anchor,injected,1)
+          ret='  return _SUCCESS_;'
+          pos=body.rfind(ret); assert pos>=0
+          trace='''  if (kmdsb_rhs_trace_this == _TRUE_) {\n    fprintf(stderr,"KMDSB_RHS_TRACE tau=%.17g a=%.17g yqcf=%.17g yqcfp=%.17g dyqcf=%.17g dyqcfp=%.17g yqpf=%.17g yqpfp=%.17g dyqpf=%.17g dyqpfp=%.17g\\n",tau,ppw->pvecback[pba->index_bg_a],y[pv->index_pt_phi_qcf],y[pv->index_pt_phi_prime_qcf],dy[pv->index_pt_phi_qcf],dy[pv->index_pt_phi_prime_qcf],y[pv->index_pt_psi_qpf],y[pv->index_pt_psi_prime_qpf],dy[pv->index_pt_psi_qpf],dy[pv->index_pt_psi_prime_qpf]);\n    kmdsb_rhs_trace_count++;\n  }\n\n'''
+          body=body[:pos]+trace+body[pos:]
+          p.write_text(s[:start]+body+(s[nxt:] if nxt>=0 else ''))
+          PY
+          make -C provider -j2 class > result/build.log 2>&1
+      - name: Run frozen A1 trace lane
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > result/enabled.ini <<EOF
+          h = 0.6715
+          omega_b = 0.0224
+          Omega_cdm = 0.26172292868512664
+          Omega_g = 5.4572897176151613e-05
+          Omega_ur = 3.772710282384838e-05
+          N_ncdm = 0
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = 0
+          Omega_k = 0
+          qcf_U0 = 0.3362232603714306
+          qcf_phi_ini = 0.92
+          qcf_phi_prime_ini = 0
+          qpf_U0 = 0.3362232603714306
+          qpf_psi_ini = 1.02
+          qpf_psi_prime_ini = 0
+          gauge = synchronous
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = mPk,dTk
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          k_output_values = $K1,$K10
+          root = $GITHUB_WORKSPACE/out/${{ matrix.prefix }}_
+          EOF
+          set +e
+          if [ '${{ matrix.precision }}' = none ]; then
+            (cd provider && ./class "$GITHUB_WORKSPACE/result/enabled.ini") > result/stdout.txt 2> result/stderr.txt
+          else
+            (cd provider && ./class "$GITHUB_WORKSPACE/result/enabled.ini" '${{ matrix.precision }}') > result/stdout.txt 2> result/stderr.txt
+          fi
+          rc=$?
+          set -e
+          echo "$rc" > result/provider_rc.txt
+          grep 'KMDSB_RHS_TRACE' result/stderr.txt > result/rhs_trace.txt || true
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re,math
+          lines=Path('result/rhs_trace.txt').read_text().splitlines() if Path('result/rhs_trace.txt').exists() else []
+          rows=[]
+          rx=re.compile(r'KMDSB_RHS_TRACE tau=([^ ]+) a=([^ ]+) yqcf=([^ ]+) yqcfp=([^ ]+) dyqcf=([^ ]+) dyqcfp=([^ ]+) yqpf=([^ ]+) yqpfp=([^ ]+) dyqpf=([^ ]+) dyqpfp=([^ ]+)')
+          for line in lines:
+            m=rx.search(line)
+            if m: rows.append(list(map(float,m.groups())))
+          finite=bool(rows) and all(math.isfinite(x) for r in rows for x in r)
+          obj={'schema':'KMDSB.W03.M13b.K3D2BFirstRHSTrace.v0.1','lane':'${{ matrix.label }}','provider_rc':int(Path('result/provider_rc.txt').read_text()),'trace_rows':len(rows),'finite_trace':finite,'first_trace':rows[0] if rows else None,'last_trace':rows[-1] if rows else None,'B1_B2_B3_evaluated':False,'physical_falsification':False}
+          Path('result/rhs_trace_summary.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n'); print(json.dumps(obj,indent=2,sort_keys=True)); assert rows and finite,obj
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-rhs-trace-${{ matrix.label }}
+          path: result/
+          retention-days: 90
