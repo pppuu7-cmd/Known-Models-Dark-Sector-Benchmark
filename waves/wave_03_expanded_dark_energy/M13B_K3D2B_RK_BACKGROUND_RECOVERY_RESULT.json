@@ -1,0 +1,41 @@
+{
+  "schema": "KMDSB.W03.M13b.K3D2BRKBackgroundRecoveryResult.v0.1",
+  "model_id": "M13b",
+  "family_id": "F13",
+  "gate": "K3D2-B",
+  "provider": "lesgourg/class_public",
+  "provider_commit": "64bbab707faf4de4779a9e04edd180fef18d98fa",
+  "actions_run": 34785222496,
+  "classification": "M13B_K3D2B_RK_RECOVERY_NUMERICAL_BLOCKED_NO_B1_B2_B3_EVALUATION",
+  "R0_solver_control": {
+    "job": 103799354521,
+    "artifact_id": 10326371582,
+    "artifact_digest": "sha256:173d40ffa7a7cd840327c8a38c520589f8f95829ae84421bc9b526f259b2e97b",
+    "ndf15_rc_zero": true,
+    "rk_rc_zero": true,
+    "pk_normalized_L2": 4.552348621941601e-8,
+    "pk_L2_threshold": 1.0e-8,
+    "pk_gate_pass": false,
+    "H0_ndf15": 0.0002234879437828,
+    "H0_rk": 0.0002234879437828,
+    "H0_relative_difference": 0.0,
+    "H0_relative_threshold": 1.0e-10,
+    "H0_gate_pass": true,
+    "all_required_checks_pass": false
+  },
+  "R1_enabled_hard_handoff_rk": {
+    "job": 103799354638,
+    "artifact_id": 10326093416,
+    "artifact_digest": "sha256:8e044703340a9ca7c09dbc2026ffe9f608df8922a943fb9a100bfe3e698321d1",
+    "provider_rc": 1,
+    "background_completed": false,
+    "first_causal_failure": "RK stepsize underflow at x=-1.791759e+00, coincident with log(a=1/6)",
+    "B1_B2_B3_evaluated": false
+  },
+  "interpretation": "The prospectively frozen RK substitution is not validated: its disabled-adapter P(k) equivalence misses the frozen 1e-8 threshold, and the enabled hard-handoff realization independently underflows at the exact discontinuity. This is numerical implementation evidence only, not physical falsification of the two-field quintom family.",
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "physical_falsification": false,
+  "next_authorized_action": "prospective source-structural audit for an exact piecewise background integration restart at a=1/6; no smoothing, retuning, threshold relaxation, or equation change"
+}
