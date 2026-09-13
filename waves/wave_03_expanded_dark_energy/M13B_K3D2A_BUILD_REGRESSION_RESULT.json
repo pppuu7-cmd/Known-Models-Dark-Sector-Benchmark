@@ -1,0 +1,30 @@
+{
+  "all_required_checks_pass": true,
+  "baseline_pk_path": "out/base_00_pk.dat",
+  "checks": {
+    "baseline_rc_zero": true,
+    "finite_outputs": true,
+    "normalized_L2_le_1e_10": true,
+    "one_baseline_pk": true,
+    "one_patched_pk": true,
+    "patched_rc_zero": true,
+    "same_k_grid": true
+  },
+  "frozen_threshold": 1e-10,
+  "gate": "K3D2-A",
+  "max_k_relative_difference": 0.0,
+  "max_pointwise_Pk_relative_difference": 0.0,
+  "normalized_L2": 0.0,
+  "patched_pk_path": "out/patched_00_pk.dat",
+  "physical_falsification": false,
+  "physics_parameters_changed_from_parent": false,
+  "prior_failure_classification": "HARNESS_ONLY_NO_L2_EVALUATED",
+  "prior_failures": [
+    34783988142,
+    34784114113
+  ],
+  "provider_commit": "64bbab707faf4de4779a9e04edd180fef18d98fa",
+  "rows": 114,
+  "schema": "KMDSB.W03.M13b.K3D2ABuildRegressionRuntimeRecovery.v0.1",
+  "threshold_changed_from_parent": false
+}
