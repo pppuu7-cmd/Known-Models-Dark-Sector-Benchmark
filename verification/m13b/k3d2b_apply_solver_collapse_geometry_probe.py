@@ -19,26 +19,24 @@ def main() -> int:
     root=Path(args.root)
     ndf=root/'tools/evolver_ndf15.c'; rk=root/'tools/dei_rkck.c'
     n0=ndf.read_text(); r0=rk.read_text(); n=n0; r=r0
-    old='''            class_test(absh <= hmin, error_message,
+    old_newton='''            class_test(absh <= hmin, error_message,
                        "Step size too small: step:%g, minimum:%g, in interval: [%g:%g]\\n",
                        absh,hmin,t0,tfinal);'''
-    if n.count(old)!=2:
-        raise RuntimeError(f'expected two NDF15 minimum-step sites, found {n.count(old)}')
+    old_error='''          class_test(absh <= hmin, error_message,
+                     "Step size too small: step:%g, minimum:%g, in interval: [%g:%g]\\n",
+                     absh,hmin,t0,tfinal);'''
+    if n.count(old_newton)!=1:
+        raise RuntimeError(f'expected one NDF15 Newton minimum-step site, found {n.count(old_newton)}')
+    if n.count(old_error)!=1:
+        raise RuntimeError(f'expected one NDF15 error-control minimum-step site, found {n.count(old_error)}')
     new_newton='''            class_test(absh <= hmin, error_message,
                        "KMDSB_NDF15_COLLAPSE reason=newton t=%.17g step=%.17g minimum=%.17g order=%d successful=%d failed=%d fevals=%d jacobians=%d lus=%d linsolves=%d interval=[%.17g:%.17g]\\n",
                        t,absh,hmin,k,stepstat[0],stepstat[1],stepstat[2],stepstat[3],stepstat[4],stepstat[5],t0,tfinal);'''
     new_error='''          class_test(absh <= hmin, error_message,
                      "KMDSB_NDF15_COLLAPSE reason=error_control t=%.17g step=%.17g minimum=%.17g order=%d err=%.17g rtol=%.17g successful=%d failed=%d fevals=%d jacobians=%d lus=%d linsolves=%d interval=[%.17g:%.17g]\\n",
                      t,absh,hmin,k,err,rtol,stepstat[0],stepstat[1],stepstat[2],stepstat[3],stepstat[4],stepstat[5],t0,tfinal);'''
-    # First occurrence is the Newton-convergence branch; second is local error control.
-    n=n.replace(old,new_newton,1)
-    # indentation differs by two spaces at the second site after first replacement
-    old2='''          class_test(absh <= hmin, error_message,
-                     "Step size too small: step:%g, minimum:%g, in interval: [%g:%g]\\n",
-                     absh,hmin,t0,tfinal);'''
-    if n.count(old2)!=1:
-        raise RuntimeError(f'expected one remaining NDF15 error-control site, found {n.count(old2)}')
-    n=n.replace(old2,new_error,1)
+    n=n.replace(old_newton,new_newton,1)
+    n=n.replace(old_error,new_error,1)
 
     rold='''    class_test(fabs(hnext/x1) <= hmin,
                pgi->error_message,
@@ -63,7 +61,7 @@ def main() -> int:
     r=r.replace(rold,rnew,1)
     ndf.write_text(n); rk.write_text(r)
     manifest={
-      'schema':'KMDSB.W03.M13b.K3D2BSolverCollapseGeometryPatch.v0.1',
+      'schema':'KMDSB.W03.M13b.K3D2BSolverCollapseGeometryPatch.v0.2',
       'changed_files':['tools/evolver_ndf15.c','tools/dei_rkck.c'],
       'diagnostic_only':True,
       'ndf15_sites_enriched':2,
