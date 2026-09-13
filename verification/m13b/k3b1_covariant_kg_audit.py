@@ -44,6 +44,8 @@ def main(output):
 
     source_rhs_phi = sp.expand(4*phip*Phip - 2*a**2*Vphi*Phi)
     source_rhs_psi = sp.expand(4*psip*Phip + 2*a**2*Vpsi*Phi)
+    phi_mass_coeff = sp.expand(cov_phi).coeff(dphi, 1)
+    psi_mass_coeff = sp.expand(cov_psi).coeff(dpsi, 1)
 
     checks = {
         "canonical_literal_minus_covariant_exact": zero(diff_phi - expected_phi),
@@ -54,8 +56,8 @@ def main(output):
         "phantom_no_metric_special_case_coincides": zero(diff_psi.subs({Phi:0,Phip:0})),
         "canonical_covariant_rhs_source_structure": zero((common_phi - cov_phi) - source_rhs_phi),
         "phantom_covariant_rhs_source_structure": zero((common_psi - cov_psi) - source_rhs_psi),
-        "canonical_covariant_mass_sign_positive": sp.expand(cov_phi).coeff(dphi,1).has(Vphiphi),
-        "phantom_covariant_mass_sign_negative": sp.expand(cov_psi).coeff(dpsi,1).has(Vpsipsi),
+        "canonical_covariant_mass_sign_positive": zero(phi_mass_coeff - (k**2 + a**2*Vphiphi)),
+        "phantom_covariant_mass_sign_negative": zero(psi_mass_coeff - (k**2 - a**2*Vpsipsi)),
     }
     passed = all(bool(v) for v in checks.values())
     classification = (
@@ -75,6 +77,7 @@ def main(output):
         "phantom_literal_minus_covariant": str(diff_psi),
         "generic_nonzero_probe": {"canonical": str(generic_phi), "phantom": str(generic_psi)},
         "covariant_rhs_sources": {"canonical": str(source_rhs_phi), "phantom": str(source_rhs_psi)},
+        "mass_term_coefficients": {"canonical": str(phi_mass_coeff), "phantom": str(psi_mass_coeff)},
         "implementation_authority": "independent_covariant_standard_GR" if passed else "UNRESOLVED",
         "original_provider_reproduced": False,
         "K3_state_ceiling": "PARTIAL",
