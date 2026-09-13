@@ -1,0 +1,218 @@
+name: W03 M13b K3D2-B conditional restart floating-boundary recovery
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3d2b-conditional-restart-recovery.yml'
+  workflow_dispatch:
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+
+permissions:
+  contents: read
+
+jobs:
+  null_control:
+    name: N conditional disabled-adapter exact null
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact upstream and recovered-disabled adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git base
+          git -C base checkout -q "$CLASS_PIN"
+          cp -a base recovered
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py recovered --manifest result/adapter_manifest.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py recovered --conditional-qfields --recover-handoff-boundary --manifest result/restart_manifest.json
+          make -C base -j2 class > result/base_build.log 2>&1
+          make -C recovered -j2 class > result/recovered_build.log 2>&1
+      - name: Source branch audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          bg=Path('recovered/source/background.c').read_text()
+          mf=json.loads(Path('result/restart_manifest.json').read_text())
+          checks={
+            'conditional_manifest':mf['conditional_qfields'],
+            'original_call_retained':mf['disabled_branch_preserves_original_call'],
+            'three_textual_calls':mf['generic_evolver_calls_after_textual']==3,
+            'qfields_false_branch':'(pba->has_qcf == _FALSE_) && (pba->has_qpf == _FALSE_)' in bg,
+            'floating_boundary_four':bg.count('a <= exp(log(1./6.))')==4,
+            'no_literal_le_boundary':'a <= 1./6.' not in bg,
+          }
+          out={'schema':'KMDSB.W03.M13b.K3D2BConditionalRestartSourceAudit.v0.1','checks':checks,'all_required_checks_pass':all(checks.values())}
+          Path('result/source_audit.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          assert out['all_required_checks_pass'],out
+          PY
+      - name: Run identical LambdaCDM controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          for mode in base recovered; do
+            cat > result/${mode}.ini <<EOF
+          h = 0.67
+          omega_b = 0.0224
+          omega_cdm = 0.12
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = mPk
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          write_background = yes
+          root = $GITHUB_WORKSPACE/out/${mode}_
+          EOF
+            set +e
+            (cd ${mode} && ./class "$GITHUB_WORKSPACE/result/${mode}.ini") > result/${mode}_stdout.txt 2> result/${mode}_stderr.txt
+            rc=$?
+            set -e
+            echo "$rc" > result/${mode}_rc.txt
+          done
+      - name: Frozen exact-null gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import bisect,json,math,re
+          out=Path('out'); res=Path('result')
+          rc0=int((res/'base_rc.txt').read_text()); rc1=int((res/'recovered_rc.txt').read_text())
+          checks={'base_rc_zero':rc0==0,'recovered_rc_zero':rc1==0}
+          data={'base_rc':rc0,'recovered_rc':rc1}
+          if rc0==0 and rc1==0:
+            def one(pat):
+              a=sorted(out.glob(pat)); assert len(a)==1,(pat,a); return a[0]
+            def rows(p): return [[float(x) for x in l.split()] for l in p.read_text().splitlines() if l.strip() and not l.lstrip().startswith('#')]
+            b=rows(one('base*_pk.dat')); s=rows(one('recovered*_pk.dat')); sx=[r[0] for r in s]; sy=[r[1] for r in s]
+            def li(x):
+              i=bisect.bisect_left(sx,x)
+              if i==0:return sy[0]
+              if i>=len(sx):return sy[-1]
+              x0,x1=sx[i-1],sx[i]; y0,y1=sy[i-1],sy[i]
+              f=(math.log(x)-math.log(x0))/(math.log(x1)-math.log(x0)); return math.exp(math.log(y0)+f*(math.log(y1)-math.log(y0)))
+            common=[r for r in b if sx[0]<=r[0]<=sx[-1]]
+            finite=bool(common) and all(r[0]>0 and r[1]>0 and all(math.isfinite(v) for v in r) for r in b+s)
+            l2=math.sqrt(sum((r[1]-li(r[0]))**2 for r in common)/max(sum(r[1]**2 for r in common),1e-300))
+            def H0(path):
+              ls=path.read_text().splitlines(); hs=[l for l in ls if l.lstrip().startswith('#') and 'H [1/Mpc]' in l and 'z' in l]; assert len(hs)==1
+              t={m.group(2).strip():int(m.group(1))-1 for m in re.finditer(r'(\d+):(.+?)(?=\s+\d+:|$)',hs[0].lstrip('#').strip())}; rr=rows(path); r=min(rr,key=lambda q:abs(q[t['z']])); return r[t['H [1/Mpc]']]
+            hb=H0(one('base*_background.dat')); hr=H0(one('recovered*_background.dat')); hrel=abs(hb-hr)/max(abs(hb),abs(hr),1e-300)
+            checks.update({'finite_positive_pk':finite,'pk_L2_le_1e_10':l2<=1e-10,'H0_rel_le_1e_10':hrel<=1e-10})
+            data.update({'pk_normalized_L2':l2,'H0_relative_difference':hrel,'pk_rows_base':len(b),'pk_rows_recovered':len(s)})
+          else:
+            checks.update({'finite_positive_pk':False,'pk_L2_le_1e_10':False,'H0_rel_le_1e_10':False})
+          ok=all(checks.values())
+          result={'schema':'KMDSB.W03.M13b.K3D2BConditionalRestartNullControl.v0.1','checks':checks,'all_required_checks_pass':ok,'classification':('M13B_K3D2B_CONDITIONAL_RESTART_NULL_PASS' if ok else 'M13B_K3D2B_CONDITIONAL_RESTART_NULL_FAIL'),**data}
+          (res/'null_result.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n'); print(json.dumps(result,indent=2,sort_keys=True)); assert ok,result
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-conditional-null
+          path: |
+            result/
+            out/
+          retention-days: 90
+
+  enabled_background:
+    name: E conditional qcf+qpf background
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build recovered enabled CLASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter_manifest.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/restart_manifest.json
+          make -C provider -j2 class > result/build.log 2>&1
+      - name: Run frozen enabled background
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > result/enabled.ini <<EOF
+          h = 0.6715
+          omega_b = 0.0224
+          Omega_cdm = 0.26172292868512664
+          Omega_g = 5.4572897176151613e-05
+          Omega_ur = 3.772710282384838e-05
+          N_ncdm = 0
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = 0
+          Omega_k = 0
+          qcf_U0 = 0.3362232603714306
+          qcf_phi_ini = 0.92
+          qcf_phi_prime_ini = 0
+          qpf_U0 = 0.3362232603714306
+          qpf_psi_ini = 1.02
+          qpf_psi_prime_ini = 0
+          gauge = synchronous
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          write_background = yes
+          root = $GITHUB_WORKSPACE/out/enabled_
+          EOF
+          set +e
+          (cd provider && ./class "$GITHUB_WORKSPACE/result/enabled.ini") > result/stdout.txt 2> result/stderr.txt
+          rc=$?
+          set -e
+          echo "$rc" > result/provider_rc.txt
+          find out -maxdepth 1 -type f -printf '%f\n' | sort > result/output_files.txt
+      - name: Frozen enabled recovery gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,math,re
+          res=Path('result'); out=Path('out'); rc=int((res/'provider_rc.txt').read_text())
+          diag=((res/'stdout.txt').read_text(errors='replace')+'\n'+(res/'stderr.txt').read_text(errors='replace')).lower()
+          checks={'provider_rc_zero':rc==0,'no_minimum_step_diagnostic':('step size too small' not in diag and 'stepsize underflow' not in diag)}
+          data={'provider_rc':rc}
+          files=sorted(out.glob('enabled*_background.dat')); checks['background_file_present']=len(files)==1
+          if rc==0 and len(files)==1:
+            p=files[0]; ls=p.read_text().splitlines(); hs=[l for l in ls if l.lstrip().startswith('#') and 'phi_qcf' in l and 'psi_qpf' in l]; assert len(hs)==1
+            t={m.group(2).strip():int(m.group(1))-1 for m in re.finditer(r'(\d+):(.+?)(?=\s+\d+:|$)',hs[0].lstrip('#').strip())}
+            rr=[[float(x) for x in l.split()] for l in ls if l.strip() and not l.lstrip().startswith('#')]; pts=[]
+            for r in rr:
+              z=r[t['z']]; a=1/(1+z); H=r[t['H [1/Mpc]']]; pts.append({'a':a,'H':H,'x':r[t['phi_qcf']],'p':r[t["phi'_qcf"]]/(a*H),'y':r[t['psi_qpf']],'q':r[t["psi'_qpf"]]/(a*H)})
+            pts.sort(key=lambda d:d['a']); finite=bool(pts) and all(all(math.isfinite(v) for v in d.values()) and d['H']>0 for d in pts)
+            def ai(a,key):
+              for u,v in zip(pts[:-1],pts[1:]):
+                if u['a']<=a<=v['a']:
+                  f=(a-u['a'])/(v['a']-u['a']); return u[key]+f*(v[key]-u[key])
+              raise AssertionError((a,pts[0]['a'],pts[-1]['a']))
+            z5={k:ai(1/6,k) for k in ['x','p','y','q']}
+            checks.update({'finite_positive_background':finite,'samples_below':any(d['a']<1/6 for d in pts),'samples_above':any(d['a']>1/6 for d in pts),'z5_phi':abs(z5['x']-.92)<=2e-4,'z5_psi':abs(z5['y']-1.02)<=2e-4,'z5_dphi':abs(z5['p'])<=2e-3,'z5_dpsi':abs(z5['q'])<=2e-3})
+            data.update({'background_rows':len(pts),'z5_interpolated':z5})
+          else:
+            checks.update({'finite_positive_background':False,'samples_below':False,'samples_above':False,'z5_phi':False,'z5_psi':False,'z5_dphi':False,'z5_dpsi':False})
+          ok=all(checks.values())
+          result={'schema':'KMDSB.W03.M13b.K3D2BConditionalRestartEnabledBackground.v0.1','checks':checks,'all_required_checks_pass':ok,'classification':('M13B_K3D2B_CONDITIONAL_RESTART_ENABLED_PASS' if ok else 'M13B_K3D2B_CONDITIONAL_RESTART_ENABLED_FAIL'),'B1_B2_B3_evaluated':False,'physical_falsification':False,**data}
+          (res/'enabled_result.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n'); print(json.dumps(result,indent=2,sort_keys=True)); assert ok,result
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-conditional-enabled
+          path: |
+            result/
+            out/
+          retention-days: 90
