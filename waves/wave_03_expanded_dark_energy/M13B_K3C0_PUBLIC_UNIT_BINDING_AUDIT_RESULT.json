@@ -1,0 +1,75 @@
+{
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "all_required_checks_pass": true,
+  "checks": {
+    "R0_above_frozen_normalization_threshold": true,
+    "R5_above_frozen_normalization_threshold": true,
+    "all_expected_quantities_finite_positive": true,
+    "initial_canonical_phantom_kinetic_cancel_exactly": true,
+    "literal_tanh_potential_sum_positive": true,
+    "missing_scale_factors_report_only_not_adopted": true,
+    "no_physical_falsification_or_promotion": true
+  },
+  "classification": "M13B_K3C0_PUBLIC_UNIT_BINDING_NOT_ESTABLISHED_LITERAL_PLANCK_READING_INCONSISTENT",
+  "conversion": {
+    "H0_over_reduced_Planck_energy_natural_units": 5.8817232573700524e-61,
+    "H0_s_inverse": 2.176183292861891e-18,
+    "Omega_DE_flat_reference": 0.6885077,
+    "reduced_Planck_energy_J": 390181834.2783719,
+    "reduced_Planck_mass_kg": 4.341358397809341e-09,
+    "rho_DE_reference_over_Mp4": 7.145608687461422e-121,
+    "rho_crit0_over_Mp4": 1.0378400542886333e-120,
+    "rho_matter_plus_radiation_z5_over_Mp4": 6.993176012514982e-119
+  },
+  "family_id": "F13",
+  "frozen_constants_SI": {
+    "G_m3_kg_s2": 6.6743e-11,
+    "Mpc_m": 3.085677581491367e+22,
+    "c_m_s": 299792458.0,
+    "hbar_J_s": 1.054571817e-34
+  },
+  "gate": "K3C0",
+  "guessed_rescale_adopted": false,
+  "literal_tanh_evaluation": {
+    "V_phi_over_Mp4": 1.8025911200167934e-08,
+    "V_psi_over_Mp4": 4.3437445898590274e-09,
+    "V_total_over_Mp4": 2.2369655790026962e-08,
+    "argument_phi": 2.319999999999999,
+    "argument_psi": -0.5800000000000005,
+    "factor_phi": 1.9808693626558167,
+    "factor_psi": 0.4773345703141788,
+    "initial_kinetic_canonical_over_Mp4": 5.000000000000001e-11,
+    "initial_kinetic_phantom_over_Mp4": -5.000000000000001e-11,
+    "initial_kinetic_total_over_Mp4": 0.0
+  },
+  "model_id": "M13b",
+  "next_authorized_gate": "AUTHOR_OR_SOURCE_NORMALIZATION_MAP_SEARCH_OR_INDEPENDENT_DIMENSIONLESS_COSMOLOGY_PREREGISTRATION",
+  "normalization_diagnostic": {
+    "R0_Vliteral_over_rho_DE_reference": 3.130545873478848e+112,
+    "R5_Vliteral_over_rho_mr_z5": 3.1987834640504174e+110,
+    "S0_rho_DE_reference_over_Vliteral_report_only": 3.1943310860630855e-113,
+    "S5_rho_mr_z5_over_Vliteral_report_only": 3.126188475207894e-111,
+    "interpretation": "The public Planck-unit labels cannot be inserted literally into an ordinary physical cosmology with the simultaneously quoted H0/Omega values and frozen-through-z~5 behavior. A normalization/rescaling convention or correction not established by the public numerical labels is required. The reported S factors are diagnostic magnitudes only and are not adopted model parameters.",
+    "log10_R0": 112.49562007210541,
+    "log10_R5": 110.50498484228764,
+    "threshold_ratio": 1e+50
+  },
+  "original_provider_reproduced": false,
+  "physical_falsification": false,
+  "protocol": "protocol/W03_M13B_K3C0_PUBLIC_UNIT_BINDING_AUDIT_v0.1.md",
+  "public_anchor": {
+    "H0_km_s_Mpc": 67.15,
+    "Omega_m0": 0.3114,
+    "Omega_r0": 9.23e-05,
+    "V0_Mp4": 9.1e-09,
+    "dotphi_ini_Mp2": 1e-05,
+    "dotpsi_ini_Mp2": 1e-05,
+    "phi_ini_Mp": 0.92,
+    "psi_ini_Mp": 1.02,
+    "s_Mp_inverse": 29.0,
+    "z_compare": 5.0
+  },
+  "schema": "KMDSB.W03.M13b.K3C0PublicUnitBindingAudit.v0.1"
+}
