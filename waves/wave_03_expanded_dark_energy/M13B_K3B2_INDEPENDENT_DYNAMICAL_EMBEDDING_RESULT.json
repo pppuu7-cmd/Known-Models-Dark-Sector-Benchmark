@@ -1,0 +1,194 @@
+{
+  "K3_canonical_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "all_required_checks_pass": true,
+  "anchor": {
+    "C00_initial": 0.0,
+    "Hc0": 0.816496580927726,
+    "Phi_prime0": -8.829931618554518e-07,
+    "q0": 0.0,
+    "qprime0": 0.314579093186371,
+    "rho0": 2.0,
+    "state": {
+      "Phi": 2e-06,
+      "a": 1.0,
+      "delta_phi": 1e-05,
+      "delta_phi_prime": 0.0,
+      "delta_psi": -5e-06,
+      "delta_psi_prime": 1.7019959493451282e-05,
+      "phi": 0.5,
+      "psi": 1.5,
+      "u": 0.1,
+      "v": 0.1
+    }
+  },
+  "checks": {
+    "C00_refinement_or_floor": true,
+    "Cij_refinement_or_floor": true,
+    "all_states_and_diagnostics_finite": true,
+    "anchor_C00_solved": true,
+    "anchor_q_zero": true,
+    "direct_variables_no_crossing_denominator": true,
+    "endpoint_resolution_stability": true,
+    "executed_crossing_backward_negative": true,
+    "executed_crossing_forward_positive": true,
+    "fine_C00_normalized_max": true,
+    "fine_Cij_normalized_max": true,
+    "no_promotion_leakage": true,
+    "rho_and_Hc_positive_throughout": true,
+    "transverse_crossing_prediction_positive": true
+  },
+  "classification": "M13B_K3B2_INDEPENDENT_STANDARD_GR_DYNAMICAL_EMBEDDING_PASS_WITH_SCOPE",
+  "direct_variable_manifest": {
+    "evolved": [
+      "a",
+      "phi",
+      "u",
+      "psi",
+      "v",
+      "delta_phi",
+      "delta_phi_prime",
+      "delta_psi",
+      "delta_psi_prime",
+      "Phi"
+    ],
+    "forbidden_denominators_absent": [
+      "q",
+      "rho_plus_p",
+      "u2_minus_v2",
+      "theta_DE"
+    ],
+    "metric_equation": "Phi_prime=-Hc*Phi+(u*delta_phi-v*delta_psi)/2"
+  },
+  "family_id": "F13",
+  "gate": "K3B2",
+  "implementation_provenance": "independent_KMDSB_standard_GR_verification",
+  "model_id": "M13b",
+  "next_authorized_gate": "M13B_COSMOLOGY_SCALE_INDEPENDENT_EINSTEIN_BOLTZMANN_PREREGISTRATION",
+  "numerics": {
+    "coarse_max_C00_norm": 3.3715990879605926e-15,
+    "coarse_max_Cij_norm": 2.728513204910552e-16,
+    "coarse_steps_per_half": 500,
+    "endpoint_stability_backward": {
+      "Phi": 1.0365952833185954e-15,
+      "a": 9.244350571784057e-16,
+      "delta_phi": 1.0157931744726093e-15,
+      "delta_psi": 4.3126764289240173e-16,
+      "phi": 2.239368452656706e-16,
+      "psi": 2.2296498547153173e-15,
+      "u": 2.0093164632207975e-15,
+      "v": 5.634645928918329e-16
+    },
+    "endpoint_stability_forward": {
+      "Phi": 3.6821146154203376e-15,
+      "a": 2.9817249895261925e-15,
+      "delta_phi": 1.8622530013812506e-15,
+      "delta_psi": 1.2132212405364225e-15,
+      "phi": 1.9755495860264303e-15,
+      "psi": 7.382701890939436e-16,
+      "u": 4.2229623401758716e-16,
+      "v": 2.763159009483843e-15
+    },
+    "fine_max_C00_norm": 1.7327326168201567e-15,
+    "fine_max_Cij_norm": 2.8562435140246887e-16,
+    "fine_steps_per_half": 1000,
+    "half_interval_T": 0.05,
+    "max_endpoint_symmetric_relative_difference": 3.6821146154203376e-15,
+    "method": "fixed_step_classical_RK4_binary64",
+    "runs": {
+      "1000": {
+        "backward": {
+          "endpoint": {
+            "Phi": 2.042824622312037e-06,
+            "a": 0.9607796813883875,
+            "delta_phi": 1.000636312832961e-05,
+            "delta_phi_prime": -2.5282389210351557e-07,
+            "delta_psi": -5.892162056769203e-06,
+            "delta_psi_prime": 1.8677656104845178e-05,
+            "phi": 0.4957750580562248,
+            "psi": 1.4938081272410062,
+            "u": 0.06906720798758254,
+            "v": 0.14777632507402516
+          },
+          "endpoint_q": -0.01706756303318397,
+          "finite": true,
+          "max_C00_norm": 1.7327326168201567e-15,
+          "max_Cij_norm": 2.6657105840237815e-16,
+          "min_Hc": 0.7842683493660196,
+          "min_rho": 1.9989549741114656,
+          "positive_background": true
+        },
+        "forward": {
+          "endpoint": {
+            "Phi": 1.9553383866731293e-06,
+            "a": 1.042559082366748,
+            "delta_phi": 1.0006548425897586e-05,
+            "delta_phi_prime": 2.63978069110954e-07,
+            "delta_psi": -4.1890114628051865e-06,
+            "delta_psi_prime": 1.5431455130708032e-05,
+            "phi": 0.5057836711516848,
+            "psi": 1.5038166798901882,
+            "u": 0.13145073708837754,
+            "v": 0.05273557239446427
+          },
+          "endpoint_q": 0.014498255685305973,
+          "finite": true,
+          "max_C00_norm": 1.4725313459685808e-15,
+          "max_Cij_norm": 2.8562435140246887e-16,
+          "min_Hc": 0.816496580927726,
+          "min_rho": 1.9991123501212549,
+          "positive_background": true
+        }
+      },
+      "500": {
+        "backward": {
+          "endpoint": {
+            "Phi": 2.0428246223120392e-06,
+            "a": 0.9607796813883884,
+            "delta_phi": 1.00063631283296e-05,
+            "delta_phi_prime": -2.5282389210351557e-07,
+            "delta_psi": -5.8921620567692055e-06,
+            "delta_psi_prime": 1.8677656104845256e-05,
+            "phi": 0.4957750580562247,
+            "psi": 1.4938081272410029,
+            "u": 0.0690672079875824,
+            "v": 0.14777632507402508
+          },
+          "endpoint_q": -0.017067563033183967,
+          "finite": true,
+          "max_C00_norm": 2.617321186297999e-15,
+          "max_Cij_norm": 2.728513204910552e-16,
+          "min_Hc": 0.7842683493660209,
+          "min_rho": 1.9989549741114685,
+          "positive_background": true
+        },
+        "forward": {
+          "endpoint": {
+            "Phi": 1.955338386673122e-06,
+            "a": 1.0425590823667512,
+            "delta_phi": 1.0006548425897567e-05,
+            "delta_phi_prime": 2.639780691109553e-07,
+            "delta_psi": -4.189011462805181e-06,
+            "delta_psi_prime": 1.543145513070805e-05,
+            "phi": 0.5057836711516858,
+            "psi": 1.5038166798901893,
+            "u": 0.1314507370883776,
+            "v": 0.052735572394464414
+          },
+          "endpoint_q": 0.014498255685305972,
+          "finite": true,
+          "max_C00_norm": 3.3715990879605926e-15,
+          "max_Cij_norm": 2.6431445773915673e-16,
+          "min_Hc": 0.816496580927726,
+          "min_rho": 1.9991123501212533,
+          "positive_background": true
+        }
+      }
+    }
+  },
+  "original_provider_reproduced": false,
+  "physical_falsification": false,
+  "protocol": "protocol/W03_M13B_K3B2_INDEPENDENT_STANDARD_GR_DYNAMICAL_EMBEDDING_v0.1.md",
+  "schema": "KMDSB.W03.M13b.K3B2IndependentStandardGRDynamicalEmbedding.v0.1"
+}
