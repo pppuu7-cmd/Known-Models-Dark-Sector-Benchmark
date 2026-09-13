@@ -1,0 +1,61 @@
+name: W03 M13b K3B0 Einstein trace audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3b0-einstein-trace-audit.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  trace-audit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install frozen symbolic dependency
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check 'sympy==1.14.0'
+      - name: Execute frozen Einstein-trace convention audit
+        run: |
+          set -euo pipefail
+          python3 verification/m13b/k3b0_einstein_trace_audit.py \
+            --output waves/wave_03_expanded_dark_energy/M13B_K3B0_EINSTEIN_TRACE_AUDIT_RESULT.json
+      - name: Verify fail-closed guardrails
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('waves/wave_03_expanded_dark_energy/M13B_K3B0_EINSTEIN_TRACE_AUDIT_RESULT.json')
+          r=json.loads(p.read_text())
+          assert r['schema']=='KMDSB.W03.M13b.K3B0EinsteinTraceAudit.v0.1'
+          assert r['original_provider_reproduced'] is False
+          assert r['K3_state_ceiling']=='PARTIAL'
+          assert r['K4_promoted'] is False
+          assert r['K5_promoted'] is False
+          assert r['physical_falsification'] is False
+          print(r['classification'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m13b-k3b0-einstein-trace-audit
+          path: waves/wave_03_expanded_dark_energy/M13B_K3B0_EINSTEIN_TRACE_AUDIT_RESULT.json
+          retention-days: 90
+      - name: Persist immutable K3B0 result
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add waves/wave_03_expanded_dark_energy/M13B_K3B0_EINSTEIN_TRACE_AUDIT_RESULT.json
+          if git diff --cached --quiet; then
+            echo 'K3B0 result already canonical.'
+          else
+            git commit -m 'record M13b K3B0 Einstein trace audit result'
+            git push
+          fi
