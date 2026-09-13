@@ -26,23 +26,42 @@ jobs:
           git -C provider checkout -q "$PROVIDER_COMMIT"
           test "$(git -C provider rev-parse HEAD)" = "$PROVIDER_COMMIT"
           make -C provider -j2 class
-      - name: Freeze three local physical points and precision profiles
+      - name: Freeze three local physical points and parser-compatible precision profiles
         run: |
           set -euo pipefail
           BASE="$GITHUB_WORKSPACE/m35k4"; mkdir -p "$BASE"
           python3 - "$BASE" <<'PY'
           import pathlib,re,sys
-          b=pathlib.Path(sys.argv[1]);src=pathlib.Path('provider/Misha.ini').read_text()
+          b=pathlib.Path(sys.argv[1]); src=pathlib.Path('provider/Misha.ini').read_text()
           specs={'base':(0.100,0.000),'gravity':(0.102,0.000),'Y':(0.100,0.002)}
+          protected={'alpha','beta','lambda','Y_dm'}
+          def key(line):
+              s=line.strip()
+              if not s or s[0] in '#>*-': return None
+              m=re.match(r'^([A-Za-z0-9_ ]+?)\s*=.*$',s)
+              return m.group(1).strip() if m else None
           for point,(q,y) in specs.items():
             t=src
-            for key,val in {'alpha':0.05*q,'beta':0.25*q,'lambda':-0.10*q,'Y_dm':y}.items():
-              t=re.sub(rf'(?m)^\s*{re.escape(key)}\s*=.*$',f'{key} = {val:.16g}',t)
-            for prof in ['default','permille','reference']:
-              u=re.sub(r'(?m)^\s*root\s*=.*$',f'root = {b}/{point}_{prof}_',t)
-              (b/f'{point}_{prof}.ini').write_text(u)
+            for k,v in {'alpha':0.05*q,'beta':0.25*q,'lambda':-0.10*q,'Y_dm':y}.items():
+              t=re.sub(rf'(?m)^\s*{re.escape(k)}\s*=.*$',f'{k} = {v:.16g}',t)
+            t=re.sub(r'(?m)^\s*output\s*=.*$','output = tCl,pCl,lCl,mPk',t)
+            t=re.sub(r'(?m)^\s*root\s*=.*$',f'root = {b}/{point}_default_',t)
+            (b/f'{point}_default.ini').write_text(t)
+            for prof,pre_name in [('permille','cl_permille.pre'),('reference','cl_ref.pre')]:
+              pre=pathlib.Path('provider',pre_name).read_text()
+              prekeys={k for line in pre.splitlines() if (k:=key(line))}
+              overlap=protected & prekeys
+              if overlap: raise RuntimeError(f'precision profile overlaps protected physical keys: {sorted(overlap)}')
+              kept=[]
+              for line in t.splitlines():
+                k=key(line)
+                if k in prekeys: continue
+                if k=='root': line=f'root = {b}/{point}_{prof}_'
+                kept.append(line)
+              merged='\n'.join(kept)+'\n\n# exact provider precision profile merged parser-compatibly\n'+pre+'\n'
+              (b/f'{point}_{prof}.ini').write_text(merged)
           PY
-      - name: Execute nine frozen solver cases
+      - name: Execute nine frozen solver cases from provider working directory
         shell: bash
         run: |
           set +e
@@ -50,13 +69,7 @@ jobs:
           echo '{"build":0}' > "$BASE/status.json"
           for point in base gravity Y; do
             for prof in default permille reference; do
-              if [ "$prof" = default ]; then
-                ./provider/class "$BASE/${point}_${prof}.ini" > "$BASE/${point}_${prof}.stdout" 2> "$BASE/${point}_${prof}.stderr"
-              elif [ "$prof" = permille ]; then
-                ./provider/class "$BASE/${point}_${prof}.ini" provider/cl_permille.pre > "$BASE/${point}_${prof}.stdout" 2> "$BASE/${point}_${prof}.stderr"
-              else
-                ./provider/class "$BASE/${point}_${prof}.ini" provider/cl_ref.pre > "$BASE/${point}_${prof}.stdout" 2> "$BASE/${point}_${prof}.stderr"
-              fi
+              (cd provider && ./class "$BASE/${point}_${prof}.ini") > "$BASE/${point}_${prof}.stdout" 2> "$BASE/${point}_${prof}.stderr"
               rc=$?
               python3 - "$BASE/status.json" "${point}_${prof}" "$rc" <<'PY'
           import json,sys
@@ -66,7 +79,7 @@ jobs:
           done
           cat "$BASE/status.json"
           exit 0
-      - name: Analyze preregistered local 2D precision gate
+      - name: Analyze unchanged preregistered local 2D precision gate
         run: |
           set -euo pipefail
           BASE="$GITHUB_WORKSPACE/m35k4"
