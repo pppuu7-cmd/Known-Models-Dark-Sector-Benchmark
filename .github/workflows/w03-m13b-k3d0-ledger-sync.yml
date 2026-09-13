@@ -1,0 +1,66 @@
+name: W03 M13b K3D0 provider-recon ledger sync
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3d0-ledger-sync.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify K3D0 and synchronize F13 frontier
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv,json,pathlib
+          root=pathlib.Path('.')
+          r=json.loads((root/'waves/wave_03_expanded_dark_energy/M13B_K3D0_FULL_BOLTZMANN_PROVIDER_RECON_RESULT.json').read_text())
+          cls='M13B_K3D0_NO_DIRECT_FULL_BOLTZMANN_PROVIDER_ADAPTER_BASE_REQUIRED'
+          assert r['classification']==cls and r['direct_provider_found'] is False
+          assert r['selected_adapter_base']['repository']=='lesgourg/class_public'
+          assert r['selected_adapter_base']['commit']=='64bbab707faf4de4779a9e04edd180fef18d98fa'
+          assert r['K3_state_ceiling']=='PARTIAL' and r['K4_promoted'] is False and r['K5_promoted'] is False
+          marker='M13B_K3D0_FULL_BOLTZMANN_PROVIDER_RECON_2026_09_13'
+
+          p=root/'matrices/mandatory_properties_matrix.csv'
+          rows=list(csv.DictReader(p.open(newline='',encoding='utf-8'))); fields=list(rows[0].keys())
+          for row in rows:
+              if row['family_id']=='F13':
+                  row['K3_conservation_gauge_closure']='PARTIAL'
+                  row['coverage_state']='K0_K1_PASS_K2_PARTIAL_K3_PARTIAL_COSMOLOGY_BRIDGE_PASS_NO_DIRECT_FULL_BOLTZMANN_PROVIDER_CLASS_ADAPTER_SELECTED'
+                  add=(' '+marker+': frozen public provider tranche finds no DIRECT_PROVIDER_GRADE public two-field canonical+phantom full Einstein-Boltzmann implementation. Goh-Taylor 2026 reports modified CLASS but immutable public source remains unavailable. Selected independent ADAPTER_GRADE base is official lesgourg/class_public@64bbab707faf4de4779a9e04edd180fef18d98fa because it has the complete Boltzmann/recombination/output stack and one direct canonical scf species; unmodified CLASS is not quintom and has no native second phantom field. hi_class@0009f51d89e6465c79e570b496c66fc90058fa77 and mochi_class@2b0b16e4601effe416714ad330d2ee8cad289e4c are secondary adapter bases with extra single-scalar Horndeski machinery. Background-only sources remain non-grade. K3D1 exact-pin CLASS structural/build audit is next; K3 stays PARTIAL, author unit/source blockers remain, K4/K5 closed.')
+                  if marker not in row['notes']: row['notes'] += add
+          with p.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields);w.writeheader();w.writerows(rows)
+
+          p=root/'matrices/model_family_census.csv'
+          rows=list(csv.DictReader(p.open(newline='',encoding='utf-8'))); fields=list(rows[0].keys())
+          for row in rows:
+              if row['family_id']=='F13':
+                  row['status']='K1_BACKGROUND_CROSSING_PASS_K3_PARTIAL_COSMOLOGY_BRIDGE_PASS_NO_DIRECT_FULL_BOLTZMANN_PROVIDER_CLASS_ADAPTER_SELECTED'
+                  add=(' '+marker+': no public direct full-Boltzmann two-field quintom provider in the frozen search tranche; standard CLASS exact pin 64bbab707faf4de4779a9e04edd180fef18d98fa selected as minimal independent adapter base. This is provider architecture evidence, not a K3 PASS or physical verdict.')
+                  if marker not in row['notes']: row['notes'] += add
+          with p.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields);w.writeheader();w.writerows(rows)
+
+          block='''\n\n## 2026-09-13 — M13b K3D0 full Boltzmann provider reconnaissance\n- Canonical classification: `M13B_K3D0_NO_DIRECT_FULL_BOLTZMANN_PROVIDER_ADAPTER_BASE_REQUIRED`; result `waves/wave_03_expanded_dark_energy/M13B_K3D0_FULL_BOLTZMANN_PROVIDER_RECON_RESULT.json`; detailed audit `models/quintom/m13b_k3d0_full_boltzmann_provider_recon_2026-09-13.md`.\n- No public DIRECT_PROVIDER_GRADE solver was found in the prospectively frozen quintom/two-field CLASS/Boltzmann search tranche. The Goh-Taylor modified CLASS remains source-provenance blocked.\n- Selected adapter base: `lesgourg/class_public@64bbab707faf4de4779a9e04edd180fef18d98fa`. Current source has the complete CLASS hierarchy/recombination/output architecture plus a single canonical direct `scf`; it is not natively a two-field/phantom provider.\n- `hi_class@0009f51d89e6465c79e570b496c66fc90058fa77` and `mochi_class@2b0b16e4601effe416714ad330d2ee8cad289e4c` are lower-priority adapter bases because their extra scalar machinery is single-field Horndeski/MG rather than the minimally coupled canonical+phantom pair.\n- K3 remains PARTIAL; K3D1 exact-pin CLASS build/structure audit is the next gate. K4/K5 remain closed and author normalization/source blockers are unchanged.\n'''
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+              q=root/fn; txt=q.read_text(encoding='utf-8')
+              if marker not in txt: q.write_text(txt.rstrip()+block+'\n',encoding='utf-8')
+          PY
+      - name: Commit synchronized K3D0 state
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          if git diff --cached --quiet; then echo 'K3D0 state already synchronized.'; else git commit -m 'sync M13b K3D0 provider reconnaissance'; git push; fi
