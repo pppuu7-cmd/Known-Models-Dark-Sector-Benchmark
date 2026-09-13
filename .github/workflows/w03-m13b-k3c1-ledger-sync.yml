@@ -1,0 +1,78 @@
+name: W03 M13b K3C1 background-bridge ledger sync
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3c1-ledger-sync.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify canonical K3C1 result and synchronize ledgers
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv,json,pathlib
+          root=pathlib.Path('.')
+          rp=root/'waves/wave_03_expanded_dark_energy/M13B_K3C1_INDEPENDENT_BACKGROUND_CLOSURE_RESULT.json'
+          r=json.loads(rp.read_text())
+          cls='M13B_K3C1_INDEPENDENT_CRITICAL_DENSITY_BACKGROUND_CLOSURE_PASS_WITH_SCOPE'
+          assert r['classification']==cls and r['all_required_checks_pass'] is True
+          assert r['author_normalization_map_claimed'] is False
+          assert r['published_V0_reproduced'] is False
+          assert r['original_provider_reproduced'] is False
+          assert r['K3_state_ceiling']=='PARTIAL'
+          assert r['K4_promoted'] is False and r['K5_promoted'] is False
+          assert r['physical_falsification'] is False
+          marker='M13B_K3C1_INDEPENDENT_BACKGROUND_BRIDGE_PASS_2026_09_13'
+
+          p=root/'matrices/mandatory_properties_matrix.csv'
+          rows=list(csv.DictReader(p.open(newline='',encoding='utf-8'))); fields=list(rows[0].keys())
+          for row in rows:
+              if row['family_id']=='F13':
+                  row['K3_conservation_gauge_closure']='PARTIAL'
+                  row['coverage_state']='K0_K1_PASS_K2_PARTIAL_K3_PARTIAL_INDEPENDENT_COSMOLOGY_BACKGROUND_BRIDGE_PASS_AUTHOR_UNIT_BINDING_BLOCKED_K3C2_OPEN'
+                  add=(' '+marker+': independent critical-density normalized no-Lambda FRW benchmark solves only U0 from E(a=1)=1, using the public tanh shape seed but no public V0 amplitude. Coarse/fine independently return U0=0.3362232603714306, with unique phantom-to-quintessence crossing z=1.1978721067100082 / 1.1978720736725847 and crossing-z difference 3.303742346361105e-08. Max coarse/fine endpoint mismatch is 4.137775508204112e-12; final Omega_DE=0.6885076999845492 and E0=0.9999999999923376. Implied independent V0/Mp4=3.489459667969868e-121; the ratio 3.834571063703152e-113 to the public label is report-only and is not an author normalization map. This establishes an independent cosmology-scale background bridge and authorizes K3C2 perturbations on exactly this normalization. Original-model unit/source reproduction remains blocked; K3 remains PARTIAL; K4/K5 closed. Run 34781919844 artifact 10325373427 sha256:bc2bcc5d8b168bbb7b55006250f9e960bb4d33c15ccb150f858253342203c867.')
+                  if marker not in row['notes']:
+                      row['notes'] += add
+          with p.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields);w.writeheader();w.writerows(rows)
+
+          p=root/'matrices/model_family_census.csv'
+          rows=list(csv.DictReader(p.open(newline='',encoding='utf-8'))); fields=list(rows[0].keys())
+          for row in rows:
+              if row['family_id']=='F13':
+                  row['status']='K1_BACKGROUND_TRUE_CROSSING_PASS_K3_PARTIAL_INDEPENDENT_COSMOLOGY_BACKGROUND_BRIDGE_PASS_AUTHOR_UNIT_BINDING_BLOCKED_K3C2_OPEN'
+                  add=(' '+marker+': a separately declared critical-density normalized FRW realization from z=5 to today is finite, flat-closure converged and contains one phantom-to-quintessence crossing. It is not a Goh-Taylor parameter reproduction. K3C2 perturbation bridge is now authorized; author unit/source map remains blocked.')
+                  if marker not in row['notes']:
+                      row['notes'] += add
+          with p.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields);w.writeheader();w.writerows(rows)
+
+          block='''\n\n## 2026-09-13 — M13b K3C1 independent cosmology background bridge PASS_WITH_SCOPE\n- Canonical classification: `M13B_K3C1_INDEPENDENT_CRITICAL_DENSITY_BACKGROUND_CLOSURE_PASS_WITH_SCOPE`; result `waves/wave_03_expanded_dark_energy/M13B_K3C1_INDEPENDENT_BACKGROUND_CLOSURE_RESULT.json`.\n- Run `34781919844`, artifact `10325373427`, digest `sha256:bc2bcc5d8b168bbb7b55006250f9e960bb4d33c15ccb150f858253342203c867`.\n- The public V0 label is not used. Each RK4 lane independently solves only `U0=V0/rho_crit0` from the flat no-Lambda boundary condition `E(a=1)=1`, starting at z=5 with the tanh shape seed and frozen p=q=0. Both lanes give `U0=0.3362232603714306`.\n- The unique phantom-to-quintessence crossing converges at `z=1.1978720736725847` (fine); coarse/fine z difference is `3.303742346361105e-08`, and maximum endpoint symmetric-relative difference is `4.137775508204112e-12`. Present `Omega_DE=0.6885076999845492`, `E0=0.9999999999923376`.\n- The implied independent amplitude is `V0/Mp^4=3.489459667969868e-121`; its `3.834571063703152e-113` ratio to the public label is diagnostic only, not a recovered author rescaling. K3C0 author unit/source blocker remains intact.\n- K3 remains `PARTIAL`; K3C2 independent cosmology-scale perturbation bridge is authorized on this exact internally normalized background. K4/K5 remain closed; physical_falsification=false.\n'''
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+              q=root/fn; txt=q.read_text(encoding='utf-8')
+              if marker not in txt:
+                  q.write_text(txt.rstrip()+block+'\n',encoding='utf-8')
+          PY
+      - name: Commit synchronized K3C1 state
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          if git diff --cached --quiet; then
+            echo 'M13b K3C1 state already synchronized.'
+          else
+            git commit -m 'sync M13b K3C1 independent background bridge pass'
+            git push
+          fi
