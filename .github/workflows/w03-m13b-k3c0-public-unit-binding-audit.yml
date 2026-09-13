@@ -1,0 +1,60 @@
+name: W03 M13b K3C0 public unit-binding audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3c0-public-unit-binding-audit.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  unit-binding-audit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Execute prospectively frozen K3C0 unit-binding audit
+        run: |
+          set -euo pipefail
+          python3 verification/m13b/k3c0_public_unit_binding_audit.py \
+            --output waves/wave_03_expanded_dark_energy/M13B_K3C0_PUBLIC_UNIT_BINDING_AUDIT_RESULT.json
+      - name: Verify fail-closed guardrails
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('waves/wave_03_expanded_dark_energy/M13B_K3C0_PUBLIC_UNIT_BINDING_AUDIT_RESULT.json')
+          r=json.loads(p.read_text())
+          assert r['schema']=='KMDSB.W03.M13b.K3C0PublicUnitBindingAudit.v0.1'
+          assert r['original_provider_reproduced'] is False
+          assert r['K3_state_ceiling']=='PARTIAL'
+          assert r['K4_promoted'] is False
+          assert r['K5_promoted'] is False
+          assert r['physical_falsification'] is False
+          assert r['guessed_rescale_adopted'] is False
+          print(r['classification'])
+          print('log10 R5=',r['normalization_diagnostic']['log10_R5'])
+          print('log10 R0=',r['normalization_diagnostic']['log10_R0'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m13b-k3c0-public-unit-binding-audit
+          path: waves/wave_03_expanded_dark_energy/M13B_K3C0_PUBLIC_UNIT_BINDING_AUDIT_RESULT.json
+          retention-days: 90
+      - name: Persist immutable K3C0 result
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add waves/wave_03_expanded_dark_energy/M13B_K3C0_PUBLIC_UNIT_BINDING_AUDIT_RESULT.json
+          if git diff --cached --quiet; then
+            echo 'K3C0 result already canonical.'
+          else
+            git commit -m 'record M13b K3C0 public unit-binding audit result'
+            git push
+          fi
