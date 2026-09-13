@@ -1,0 +1,70 @@
+name: W03 M13b K3D2-B output-only diagnostic audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w03-m13b-k3d2b-output-diagnostic-audit.yml'
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply adapter then diagnostic-only patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter_manifest.json
+          cp provider/source/perturbations.c result/perturbations_before_diagnostics.c
+          python3 verification/m13b/k3d2b_apply_output_diagnostics.py provider --manifest result/diagnostic_manifest.json
+          cp provider/source/perturbations.c result/perturbations_after_diagnostics.c
+      - name: Prove insertion-only output surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          before=Path('result/perturbations_before_diagnostics.c').read_text().splitlines()
+          after=Path('result/perturbations_after_diagnostics.c').read_text().splitlines()
+          # Every pre-diagnostic line must remain in exact order; changes are insertions only.
+          i=0; added=[]
+          for line in after:
+              if i<len(before) and line==before[i]: i+=1
+              else: added.append(line)
+          assert i==len(before),(i,len(before))
+          nonblank=[x.strip() for x in added if x.strip()]
+          allowed_prefixes=(
+              '/* KMDSB K3D2-B output-only direct-field diagnostics. */',
+              'class_store_columntitle(ppt->scalar_titles,',
+              'class_store_double(dataptr,'
+          )
+          assert nonblank and all(x.startswith(allowed_prefixes) for x in nonblank),nonblank
+          assert len([x for x in nonblank if x.startswith('class_store_columntitle')])==6
+          assert len([x for x in nonblank if x.startswith('class_store_double')])==6
+          assert len([x for x in nonblank if x.startswith('/* KMDSB')])==2
+          # No qcf/qpf RHS or stress-energy line was touched because no old line was removed/replaced.
+          m=json.loads(Path('result/diagnostic_manifest.json').read_text())
+          checks={
+            'insertion_only':True,'six_titles':True,'six_data_columns':True,
+            'changes_state_vector':m['changes_state_vector'] is False,
+            'changes_rhs':m['changes_rhs'] is False,
+            'changes_einstein_sources':m['changes_einstein_sources'] is False,
+            'changes_boltzmann_hierarchy':m['changes_boltzmann_hierarchy'] is False,
+            'changes_background':m['changes_background'] is False,
+            'output_only':m['output_only'] is True,
+          }
+          assert all(checks.values())
+          Path('result/audit.json').write_text(json.dumps({'schema':'KMDSB.W03.M13b.K3D2BOutputDiagnosticAudit.v0.1','checks':checks,'added_nonblank_lines':nonblank,'all_required_checks_pass':True},indent=2,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: k3d2b-output-diagnostic-audit
+          path: result/
+          retention-days: 90
