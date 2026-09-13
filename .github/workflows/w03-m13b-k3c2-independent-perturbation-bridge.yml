@@ -1,0 +1,59 @@
+name: W03 M13b K3C2 independent cosmology perturbation bridge
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3c2-independent-perturbation-bridge.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  k3c2-bridge:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Execute prospectively frozen K3C2 bridge
+        run: |
+          set -euo pipefail
+          python3 verification/m13b/k3c2_independent_cosmology_perturbation_bridge.py \
+            --output waves/wave_03_expanded_dark_energy/M13B_K3C2_INDEPENDENT_PERTURBATION_BRIDGE_RESULT.json
+      - name: Verify fail-closed scope guardrails
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('waves/wave_03_expanded_dark_energy/M13B_K3C2_INDEPENDENT_PERTURBATION_BRIDGE_RESULT.json')
+          r=json.loads(p.read_text())
+          assert r['schema']=='KMDSB.W03.M13b.K3C2IndependentCosmologyPerturbationBridge.v0.1'
+          assert r['full_Boltzmann_hierarchy'] is False
+          assert r['author_model_reproduced'] is False
+          assert r['author_normalization_map_claimed'] is False
+          assert r['K3_state_ceiling']=='PARTIAL'
+          assert r['K4_promoted'] is False
+          assert r['K5_promoted'] is False
+          assert r['physical_falsification'] is False
+          print(r['classification'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m13b-k3c2-independent-perturbation-bridge
+          path: waves/wave_03_expanded_dark_energy/M13B_K3C2_INDEPENDENT_PERTURBATION_BRIDGE_RESULT.json
+          retention-days: 90
+      - name: Persist immutable K3C2 result
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add waves/wave_03_expanded_dark_energy/M13B_K3C2_INDEPENDENT_PERTURBATION_BRIDGE_RESULT.json
+          if git diff --cached --quiet; then
+            echo 'K3C2 result already canonical.'
+          else
+            git commit -m 'record M13b K3C2 independent perturbation bridge result'
+            git push
+          fi
