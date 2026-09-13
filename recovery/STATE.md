@@ -290,3 +290,11 @@ Seven-lane provider reconnaissance run `34650903154` returned zero provider-grad
 - Interpretation: public scalar numerical labels are insufficient to bind the unavailable modified-Boltzmann implementation to a literal physical Planck-unit cosmology. At least one unexposed normalization/rescaling/table convention or correction is needed. This does not invalidate the local independent K3B2 solution and is not a quintom physical falsification.
 - F13 K3 remains `PARTIAL`; cosmology-scale numerical reproduction is blocked on unit/provenance binding. Allowed next paths: obtain explicit normalization authority, or preregister a fully independent dimensionless cosmology-scale mechanism test that makes no Table/Figure reproduction claim. K4/K5 remain closed.
 
+## 2026-09-13 — M13b K3C1 independent cosmology background bridge PASS_WITH_SCOPE
+- Canonical classification: `M13B_K3C1_INDEPENDENT_CRITICAL_DENSITY_BACKGROUND_CLOSURE_PASS_WITH_SCOPE`; result `waves/wave_03_expanded_dark_energy/M13B_K3C1_INDEPENDENT_BACKGROUND_CLOSURE_RESULT.json`.
+- Run `34781919844`, artifact `10325373427`, digest `sha256:bc2bcc5d8b168bbb7b55006250f9e960bb4d33c15ccb150f858253342203c867`.
+- The public V0 label is not used. Each RK4 lane independently solves only `U0=V0/rho_crit0` from the flat no-Lambda boundary condition `E(a=1)=1`, starting at z=5 with the tanh shape seed and frozen p=q=0. Both lanes give `U0=0.3362232603714306`.
+- The unique phantom-to-quintessence crossing converges at `z=1.1978720736725847` (fine); coarse/fine z difference is `3.303742346361105e-08`, and maximum endpoint symmetric-relative difference is `4.137775508204112e-12`. Present `Omega_DE=0.6885076999845492`, `E0=0.9999999999923376`.
+- The implied independent amplitude is `V0/Mp^4=3.489459667969868e-121`; its `3.834571063703152e-113` ratio to the public label is diagnostic only, not a recovered author rescaling. K3C0 author unit/source blocker remains intact.
+- K3 remains `PARTIAL`; K3C2 independent cosmology-scale perturbation bridge is authorized on this exact internally normalized background. K4/K5 remain closed; physical_falsification=false.
+
