@@ -307,3 +307,10 @@ Seven-lane provider reconnaissance run `34650903154` returned zero provider-grad
 - Scope boundary: radiation is a perfect fluid with zero anisotropic stress; there is no photon/neutrino hierarchy, recombination, transfer-function prediction, observation operator, or original Goh-Taylor solver/unit reproduction. Therefore K3 remains `PARTIAL`, not PASS; K4/K5 remain closed.
 - Next authorized gate: full independent Einstein-Boltzmann provider/adapter build search using K3C1/K3C2 as regression controls. Physical falsification=false.
 
+## 2026-09-13 — M13b K3D0 full Boltzmann provider reconnaissance
+- Canonical classification: `M13B_K3D0_NO_DIRECT_FULL_BOLTZMANN_PROVIDER_ADAPTER_BASE_REQUIRED`; result `waves/wave_03_expanded_dark_energy/M13B_K3D0_FULL_BOLTZMANN_PROVIDER_RECON_RESULT.json`; detailed audit `models/quintom/m13b_k3d0_full_boltzmann_provider_recon_2026-09-13.md`.
+- No public DIRECT_PROVIDER_GRADE solver was found in the prospectively frozen quintom/two-field CLASS/Boltzmann search tranche. The Goh-Taylor modified CLASS remains source-provenance blocked.
+- Selected adapter base: `lesgourg/class_public@64bbab707faf4de4779a9e04edd180fef18d98fa`. Current source has the complete CLASS hierarchy/recombination/output architecture plus a single canonical direct `scf`; it is not natively a two-field/phantom provider.
+- `hi_class@0009f51d89e6465c79e570b496c66fc90058fa77` and `mochi_class@2b0b16e4601effe416714ad330d2ee8cad289e4c` are lower-priority adapter bases because their extra scalar machinery is single-field Horndeski/MG rather than the minimally coupled canonical+phantom pair.
+- K3 remains PARTIAL; K3D1 exact-pin CLASS build/structure audit is the next gate. K4/K5 remain closed and author normalization/source blockers are unchanged.
+
