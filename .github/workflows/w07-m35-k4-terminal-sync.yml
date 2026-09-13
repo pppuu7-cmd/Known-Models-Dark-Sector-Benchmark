@@ -1,0 +1,64 @@
+name: W07 M35 K4 terminal sync
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w07-m35-k4-terminal-sync.yml'
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Synchronize canonical M35 K4 hosted-runner blocker
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv, pathlib
+          result='waves/wave_07_deep_gates/M35_K4_SERIAL_PRECISION_DIAGNOSTIC_RESULT.json'
+          marker='M35_K4_PROVIDER_OR_PRECISION_EXECUTION_BLOCKED'
+          run='34779425752'
+          bundle='10323514851'
+
+          p=pathlib.Path('matrices/model_family_census.csv')
+          rows=list(csv.DictReader(p.open(newline='',encoding='utf-8'))); fields=list(rows[0].keys())
+          for r in rows:
+              if r['family_id']=='F35':
+                  r['status']='K0_K1_PASS_K2_PARTIAL_K4_EXECUTION_CAPACITY_BLOCKED_K3_K9_OPEN'
+                  add=(' W07 K4 serialized provider-precision diagnostic is execution-blocked: exact-pin build/configuration passed, but all six permille/reference case jobs in run '+run+' were externally terminated before reusable per-case result artifacts were produced; only frozen bundle artifact '+bundle+' exists. Canonical result '+result+'. K4 is BLOCKED_NUMERICAL under the frozen taxonomy, not a provider return-code verdict and not physical falsification. K0/K1 and K2 local rank>=2 evidence are preserved; complete covariant SVT quotient and K3/K5-K9 remain open.')
+                  if marker not in r['notes']:
+                      r['notes'] += add
+          with p.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n');w.writeheader();w.writerows(rows)
+
+          p=pathlib.Path('matrices/mandatory_properties_matrix.csv')
+          rows=list(csv.DictReader(p.open(newline='',encoding='utf-8'))); fields=list(rows[0].keys())
+          for r in rows:
+              if r['family_id']=='F35':
+                  r['K4_numerical_robustness']='BLOCKED_NUMERICAL'
+                  r['coverage_state']='K0_K1_PASS_K2_PARTIAL_K4_EXECUTION_CAPACITY_BLOCKED_K3_K9_OPEN'
+                  add=(' W07 M35 K4: '+marker+'. Serialized precision diagnostic run '+run+' preserved the exact provider pin and frozen science. Prepare/build/config generation passed; all six permille/reference executions ended at hosted-runner execution layer and their if:always() artifact uploads were skipped. Only frozen bundle artifact '+bundle+' remains. This is persistent execution-capacity/numerical blockage, not provider rc evidence and physical_falsification=false. Canonical result: '+result+'.')
+                  if marker not in r['notes']:
+                      r['notes'] += add
+          with p.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\n');w.writeheader();w.writerows(rows)
+
+          block='''\n\n## 2026-09-13 — M35 K4 serialized provider-precision diagnostic terminal execution blocker\n- Canonical classification: `M35_K4_PROVIDER_OR_PRECISION_EXECUTION_BLOCKED`; blocker subclass `HOSTED_RUNNER_EXECUTION_CAPACITY_PERSISTENT`; `K4=BLOCKED_NUMERICAL`; `K4_promoted=false`; `physical_falsification=false`.\n- Exact provider pin remains `Michalychforever/CLASS_LVDM@d9a20bd0c7b7a6c8957410fd245ed06b30b915c1`; physical points, output channels and provider precision profiles were unchanged.\n- Run `34779425752`: prepare job `103783587872` passed exact-pin build and frozen case generation. All six serialized permille/reference jobs (`103783661268`, `103783661231`, `103783661222`, `103783661242`, `103783661263`, `103783661365`) terminated with job-level failure before post-case artifact upload; only frozen bundle artifact `10323514851` exists.\n- This matches the prospectively frozen infrastructure branch: persistent hosted-runner execution interruption. It is not a CLASS_LVDM provider return code, not a failed K4 refinement comparison, and not a physical failure of Einstein-Aether/vector-tensor gravity.\n- Preserved frontier: K0 PASS_WITH_SCOPE; K1 PASS_WITH_SCOPE; K2 PARTIAL with local response-rank>=2 and 38.171364 deg cross-angle evidence. Complete covariant SVT quotient, K3 and K5-K9 remain open.\n- Next allowed K4 action is an independently adequate compute/execution route preserving the exact provider pin, frozen cases, precision profiles, outputs and unchanged analyzer. Do not relax thresholds or retune physics. Canonical result: `waves/wave_07_deep_gates/M35_K4_SERIAL_PRECISION_DIAGNOSTIC_RESULT.json`.\n'''
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+              q=pathlib.Path(fn); txt=q.read_text(encoding='utf-8')
+              if marker not in txt:
+                  q.write_text(txt.rstrip()+block+'\n',encoding='utf-8')
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          if git diff --cached --quiet; then
+            echo 'No sync changes needed.'
+          else
+            git commit -m 'sync M35 K4 hosted-runner execution blocker'
+            git push
+          fi
