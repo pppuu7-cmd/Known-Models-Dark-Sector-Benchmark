@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""K3D2 adapter entrypoint with one exact-pin anchor recovery.
+"""K3D2 adapter entrypoint with exact-pin implementation-only recoveries.
 
 The parent transformer remains the source of all physics/source edits. This
-entrypoint changes only the matching strategy for the upstream SCF initial-
-condition documentation block discovered by the first fail-closed CI run.
+entrypoint changes only matching/guard mechanics discovered by fail-closed CI.
 No frozen equation, sign, parameter, threshold, or scope gate is changed.
 """
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 from pathlib import Path
 
@@ -44,5 +44,16 @@ def recovered_replace_once(root, rel, old, new, label):
     path.write_text(text.replace(marker, insertion + marker, 1), encoding="utf-8")
 
 
+def protected_upstream_scf_digest(root, rel):
+    """Hash old upstream SCF-bearing lines, excluding newly added KMDSB marker lines."""
+    text = (Path(root) / rel).read_text(encoding="utf-8")
+    payload = "\n".join(
+        line for line in text.splitlines()
+        if "scf" in line and "KMDSB K3D2" not in line
+    ) + "\n"
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
 mod.replace_once = recovered_replace_once
+mod.digest_scf_lines = protected_upstream_scf_digest
 mod.main()
