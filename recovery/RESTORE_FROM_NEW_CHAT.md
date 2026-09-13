@@ -197,3 +197,11 @@ M25 compile-capacity isolation classification M25_M0_PK_STOCK_CAPACITY_PROVIDER_
 - All base/radial/cT default/permille/reference executions are finite, but every mandatory TT/EE/TE/P(k) block fails the prospectively frozen refinement gate (`R_fine <= 1e-4` plus contraction rule). This is numerical robustness not established, not a Horndeski-family physical failure. No threshold relaxation or post-hoc retuning is permitted.
 - F30 remains nonterminal; K3 and K5-K9 remain open. Strict census terminal/represented count is unchanged.
 
+## 2026-09-13 — M35 K4 serialized provider-precision diagnostic terminal execution blocker
+- Canonical classification: `M35_K4_PROVIDER_OR_PRECISION_EXECUTION_BLOCKED`; blocker subclass `HOSTED_RUNNER_EXECUTION_CAPACITY_PERSISTENT`; `K4=BLOCKED_NUMERICAL`; `K4_promoted=false`; `physical_falsification=false`.
+- Exact provider pin remains `Michalychforever/CLASS_LVDM@d9a20bd0c7b7a6c8957410fd245ed06b30b915c1`; physical points, output channels and provider precision profiles were unchanged.
+- Run `34779425752`: prepare job `103783587872` passed exact-pin build and frozen case generation. All six serialized permille/reference jobs (`103783661268`, `103783661231`, `103783661222`, `103783661242`, `103783661263`, `103783661365`) terminated with job-level failure before post-case artifact upload; only frozen bundle artifact `10323514851` exists.
+- This matches the prospectively frozen infrastructure branch: persistent hosted-runner execution interruption. It is not a CLASS_LVDM provider return code, not a failed K4 refinement comparison, and not a physical failure of Einstein-Aether/vector-tensor gravity.
+- Preserved frontier: K0 PASS_WITH_SCOPE; K1 PASS_WITH_SCOPE; K2 PARTIAL with local response-rank>=2 and 38.171364 deg cross-angle evidence. Complete covariant SVT quotient, K3 and K5-K9 remain open.
+- Next allowed K4 action is an independently adequate compute/execution route preserving the exact provider pin, frozen cases, precision profiles, outputs and unchanged analyzer. Do not relax thresholds or retune physics. Canonical result: `waves/wave_07_deep_gates/M35_K4_SERIAL_PRECISION_DIAGNOSTIC_RESULT.json`.
+
