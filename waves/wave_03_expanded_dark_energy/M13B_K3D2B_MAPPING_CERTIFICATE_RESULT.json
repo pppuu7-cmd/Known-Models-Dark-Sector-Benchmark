@@ -1,0 +1,44 @@
+{
+  "schema": "KMDSB.W03.M13b.K3D2BMappingCertificateResult.v1",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@64bbab707faf4de4779a9e04edd180fef18d98fa",
+  "protocol": "protocol/W03_M13B_K3D2B_MAPPING_CERTIFIED_PERTURBATION_SEAM_v0.1.md",
+  "workflow_run_id": 34789757233,
+  "head_sha": "09807ee1cab50810f1fd375d40d13c2203772136",
+  "source_remap_audit": {
+    "classification": "M13B_K3D2B_REMAP_AUDIT_PASS_WITH_SCOPE",
+    "job_id": 103811682075,
+    "all_required_checks_pass": true
+  },
+  "mapping_certificate": {
+    "classification": "M13B_K3D2B_MAPPING_CERTIFICATE_PASS_WITH_SCOPE",
+    "job_id": 103811682067,
+    "all_required_checks_pass": true,
+    "ulps": 12,
+    "tau_handoff": 6256.998662974107,
+    "tau_ulp": 9.094947017729282e-13,
+    "tau_prev": 6256.998662974117,
+    "tau_cert": 6256.998662974118,
+    "a_prev": 0.16666666666666666,
+    "a_handoff": 0.16666666666666669,
+    "a_cert": 0.1666666666666667,
+    "z_prev": 4.999999999999997,
+    "z_cert": 4.999999999999996,
+    "provider_rc_after_diagnostic": 1
+  },
+  "first_rhs_diagnostic": {
+    "default_job_id": 103811682112,
+    "reference_job_id": 103811681967,
+    "default_first_tau": 6256.998662974136,
+    "default_first_a": 0.16666666666666763,
+    "default_first_dy_qcf_prime": -3.0534646444354208e-17,
+    "default_first_dy_qpf_prime": 5.856456002748686e-16,
+    "note": "The previous A1 implementation already enters the right-owned branch beyond tau_cert, so spline boundary ownership is not sufficient to explain the remaining perturbation solver failure."
+  },
+  "B1_B2_B3_evaluated": false,
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "physical_falsification": false,
+  "next_action": "Localize the exact failing k/index in default NDF15 and reference RK before authorizing any further seam or solver change."
+}
