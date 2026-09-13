@@ -1,0 +1,98 @@
+name: W07 M35 K4 serialized precision diagnostic
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w07-m35-k4-serial-precision-diagnostic.yml'
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      PROVIDER_COMMIT: d9a20bd0c7b7a6c8957410fd245ed06b30b915c1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact pinned CLASS_LVDM
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential gfortran python3-numpy >/dev/null
+          git clone -q --branch LVDM https://github.com/Michalychforever/CLASS_LVDM.git provider
+          git -C provider checkout -q "$PROVIDER_COMMIT"
+          test "$(git -C provider rev-parse HEAD)" = "$PROVIDER_COMMIT"
+          make -C provider -j2 class
+          rm -rf provider/.git
+      - name: Freeze unchanged precision-only cases
+        run: |
+          set -euo pipefail
+          BASE="$GITHUB_WORKSPACE/m35k4"; mkdir -p "$BASE"
+          python3 - "$BASE" <<'PY'
+          import pathlib,re,sys
+          b=pathlib.Path(sys.argv[1]); src=pathlib.Path('provider/Misha.ini').read_text()
+          specs={'base':(0.100,0.000),'gravity':(0.102,0.000),'Y':(0.100,0.002)}
+          protected={'alpha','beta','lambda','Y_dm'}
+          def key(line):
+              s=line.strip()
+              if not s or s[0] in '#>*-': return None
+              m=re.match(r'^([A-Za-z0-9_ ]+?)\s*=.*$',s)
+              return m.group(1).strip() if m else None
+          for point,(q,y) in specs.items():
+            t=src
+            for k,v in {'alpha':0.05*q,'beta':0.25*q,'lambda':-0.10*q,'Y_dm':y}.items():
+              t=re.sub(rf'(?m)^\s*{re.escape(k)}\s*=.*$',f'{k} = {v:.16g}',t)
+            t=re.sub(r'(?m)^\s*output\s*=.*$','output = tCl,pCl,lCl,mPk',t)
+            for prof,pre_name in [('permille','cl_permille.pre'),('reference','cl_ref.pre')]:
+              pre=pathlib.Path('provider',pre_name).read_text(); prekeys={k for line in pre.splitlines() if (k:=key(line))}
+              overlap=protected & prekeys
+              if overlap: raise RuntimeError(f'precision profile overlaps protected physical keys: {sorted(overlap)}')
+              kept=[]
+              for line in t.splitlines():
+                k=key(line)
+                if k in prekeys: continue
+                if k=='root': line=f'root = {b}/{point}_{prof}_'
+                kept.append(line)
+              (b/f'{point}_{prof}.ini').write_text('\n'.join(kept)+'\n\n# exact provider precision profile merged parser-compatibly\n'+pre+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m35-k4-serial-frozen-bundle
+          path: |
+            provider/
+            m35k4/*.ini
+          retention-days: 30
+  precision:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        case: [base_permille, base_reference, gravity_permille, gravity_reference, Y_permille, Y_reference]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: m35-k4-serial-frozen-bundle
+          path: .
+      - name: Execute one unchanged frozen precision case
+        shell: bash
+        env:
+          CASE: ${{ matrix.case }}
+        run: |
+          set +e
+          mkdir -p m35k4
+          chmod +x provider/class
+          (cd provider && ./class "$GITHUB_WORKSPACE/m35k4/${CASE}.ini") > "m35k4/${CASE}.stdout" 2> "m35k4/${CASE}.stderr"
+          rc=$?
+          printf '%s\n' "$rc" > "m35k4/${CASE}.rc"
+          echo "case=$CASE rc=$rc"
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m35-k4-serial-${{ matrix.case }}
+          path: m35k4/${{ matrix.case }}*
+          retention-days: 30
