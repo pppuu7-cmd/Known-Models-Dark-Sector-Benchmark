@@ -1,0 +1,34 @@
+{
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "all_required_checks_pass": true,
+  "checks": {
+    "matter_background_Hc": true,
+    "matter_background_Hc_prime": true,
+    "published_literal_constant_Phi_matter_residual_nonzero": true,
+    "published_literal_rhs_is_one_third_standard_pressure_prefactor": true,
+    "published_literal_trace_coefficient_is_minus_8_over_tau2": true,
+    "standard_constant_Phi_matter_residual_zero": true,
+    "standard_trace_coefficient_vanishes": true
+  },
+  "classification": "M13B_K3B0_PUBLISHED_EINSTEIN_TRACE_FORM_NOT_LITERAL_IMPLEMENTATION_AUTHORITY",
+  "family_id": "F13",
+  "gate": "K3B0",
+  "interpretation": "The literal printed trace equation cannot be used as independent numerical authority under the stated physical-pressure interpretation because it fails the pressureless matter-era constant-potential limit. This establishes a reproduction/convention ambiguity only; it does not establish a physical failure and does not determine what the nonpublic author code implemented.",
+  "matter_era_probe": {
+    "Hc": "2/tau",
+    "Hc_prime": "-2/tau**2",
+    "published_literal_constant_Phi_residual": "-8*Phi/tau**2",
+    "published_literal_trace_coefficient": "-8/tau**2",
+    "published_to_standard_delta_p_prefactor_ratio": "1/3",
+    "standard_constant_Phi_residual": "0",
+    "standard_trace_coefficient": "0"
+  },
+  "model_id": "M13b",
+  "next_authorized_gate": "K3B1_INDEPENDENT_STANDARD_GR_TWO_FIELD_DYNAMICAL_EMBEDDING",
+  "original_provider_reproduced": false,
+  "physical_falsification": false,
+  "protocol": "protocol/W03_M13B_K3B0_EINSTEIN_TRACE_CONVENTION_AUDIT_v0.1.md",
+  "schema": "KMDSB.W03.M13b.K3B0EinsteinTraceAudit.v0.1"
+}
