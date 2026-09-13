@@ -1,0 +1,114 @@
+name: W04 M22 K4 tail precision transition
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m22-k4-tail-precision-transition.yml'
+permissions:
+  contents: read
+env:
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  OMP_NUM_THREADS: '1'
+jobs:
+  permille:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+          make -C class -j2 > build.log 2>&1
+          python3 verification/m22/k4_tail_precision_transition.py prepare m22k4tail permille
+          mkdir -p class/output logs
+          set +e
+          echo '{"build":0}' > status_permille.json
+          for tag in zero p4; do
+            (cd class && ./class "../m22k4tail/permille_${tag}.ini" cl_permille.pre > "../logs/permille_${tag}.log" 2>&1)
+            rc=$?
+            python3 - "$tag" "$rc" <<'PY'
+          import json,sys
+          tag,rc=sys.argv[1],int(sys.argv[2]);p='status_permille.json';d=json.load(open(p));d['permille_'+tag]=rc;json.dump(d,open(p,'w'),indent=2,sort_keys=True)
+          PY
+          done
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m22-k4-tail-p4-permille
+          path: |
+            class/output/permille_*.dat
+            status_permille.json
+            logs/permille_*.log
+            build.log
+          retention-days: 30
+  reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+          make -C class -j2 > build.log 2>&1
+          python3 verification/m22/k4_tail_precision_transition.py prepare m22k4tail reference
+          mkdir -p class/output logs
+          set +e
+          echo '{"build":0}' > status_reference.json
+          for tag in zero p4; do
+            (cd class && ./class "../m22k4tail/reference_${tag}.ini" cl_ref.pre > "../logs/reference_${tag}.log" 2>&1)
+            rc=$?
+            python3 - "$tag" "$rc" <<'PY'
+          import json,sys
+          tag,rc=sys.argv[1],int(sys.argv[2]);p='status_reference.json';d=json.load(open(p));d['reference_'+tag]=rc;json.dump(d,open(p,'w'),indent=2,sort_keys=True)
+          PY
+          done
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m22-k4-tail-p4-reference
+          path: |
+            class/output/reference_*.dat
+            status_reference.json
+            logs/reference_*.log
+            build.log
+          retention-days: 30
+  aggregate:
+    needs: [permille, reference]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m22-k4-tail-p4-*
+          path: merged
+          merge-multiple: true
+      - run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib
+          d={'build':0}
+          for prof in ['permille','reference']:
+              p=pathlib.Path('merged')/f'status_{prof}.json'
+              if not p.exists(): d['build']=1; continue
+              q=json.loads(p.read_text())
+              if q.get('build')!=0: d['build']=1
+              d.update({k:v for k,v in q.items() if k!='build'})
+          pathlib.Path('merged_status.json').write_text(json.dumps(d,indent=2,sort_keys=True)+'\n')
+          PY
+          python3 verification/m22/k4_tail_precision_transition.py analyze merged/class merged_status.json M22_K4_TAIL_PRECISION_TRANSITION_RESULT.json
+          cat M22_K4_TAIL_PRECISION_TRANSITION_RESULT.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m22-k4-tail-precision-transition-aggregate
+          path: |
+            M22_K4_TAIL_PRECISION_TRANSITION_RESULT.json
+            merged_status.json
+          retention-days: 30
