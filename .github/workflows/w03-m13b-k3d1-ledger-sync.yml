@@ -1,0 +1,77 @@
+name: W03 M13b K3D1 CLASS adapter-base ledger sync
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-m13b-k3d1-ledger-sync.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify canonical K3D1 result and synchronize ledgers
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv,json,pathlib
+          root=pathlib.Path('.')
+          rp=root/'waves/wave_03_expanded_dark_energy/M13B_K3D1_CLASS_ADAPTER_BASE_AUDIT_RESULT.json'
+          r=json.loads(rp.read_text())
+          cls='M13B_K3D1_CLASS_ADAPTER_BASE_PASS_WITH_SCOPE'
+          assert r['classification']==cls and r['all_required_checks_pass'] is True
+          assert r['provider']=='lesgourg/class_public'
+          assert r['provider_commit']=='64bbab707faf4de4779a9e04edd180fef18d98fa'
+          assert r['provider_rc']==0
+          assert r['control_recovery']=='HARNESS_OUTPUT_PATH_ONLY'
+          assert r['observed_architecture']['existing_direct_scalar_species']=='single canonical scf'
+          assert r['observed_architecture']['existing_native_two_field_quintom'] is False
+          assert r['observed_architecture']['full_boltzmann_base'] is True
+          assert r['K3_state_ceiling']=='PARTIAL'
+          assert r['K4_promoted'] is False and r['K5_promoted'] is False
+          assert r['physical_falsification'] is False
+          marker='M13B_K3D1_CLASS_ADAPTER_BASE_PASS_2026_09_13'
+
+          p=root/'matrices/mandatory_properties_matrix.csv'
+          rows=list(csv.DictReader(p.open(newline='',encoding='utf-8'))); fields=list(rows[0].keys())
+          for row in rows:
+              if row['family_id']=='F13':
+                  row['K3_conservation_gauge_closure']='PARTIAL'
+                  row['coverage_state']='K0_K1_PASS_K2_PARTIAL_K3_PARTIAL_COSMOLOGY_BRIDGE_PASS_CLASS_ADAPTER_BASE_PASS_K3D2_AUTHORIZED_AUTHOR_UNIT_BINDING_BLOCKED'
+                  add=(' '+marker+': exact-pin official CLASS adapter-base audit passes after an infrastructure-only output-path recovery. Provider build succeeds and the unchanged LambdaCDM control returns rc=0 with finite P(k) at control/k3d1_00_pk.dat (114 numeric rows); the parent harness had only assumed the wrong filename k3d1_pk.dat. Mechanical source audit confirms exactly one direct canonical scf background pair, one scf perturbation pair, canonical rho/p kinetic signs, no second scf core species, and intact photon/ultrarelativistic hierarchy plus thermodynamics/perturbations/output modules. Therefore lesgourg/class_public@64bbab707faf4de4779a9e04edd180fef18d98fa is a validated independent full-Boltzmann adapter base. It is not natively quintom and does not close K3. K3D2 two-field species adapter is authorized with photon/polarization/neutrino hierarchy, thermodynamics/recombination, primordial and nonlinear modules protected. Parent run 34782356655; recovery run 34782491941. K3 stays PARTIAL; author normalization/source blockers remain; K4/K5 closed.')
+                  if marker not in row['notes']:
+                      row['notes'] += add
+          with p.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields);w.writeheader();w.writerows(rows)
+
+          p=root/'matrices/model_family_census.csv'
+          rows=list(csv.DictReader(p.open(newline='',encoding='utf-8'))); fields=list(rows[0].keys())
+          for row in rows:
+              if row['family_id']=='F13':
+                  row['status']='K1_BACKGROUND_CROSSING_PASS_K3_PARTIAL_COSMOLOGY_BRIDGE_PASS_CLASS_ADAPTER_BASE_PASS_K3D2_AUTHORIZED_AUTHOR_UNIT_MAP_OPEN'
+                  add=(' '+marker+': official CLASS exact pin builds, returns rc=0 for unchanged LambdaCDM mPk control, and passes the frozen single-canonical-scf/full-Boltzmann structural audit. Initial failure was harness filename-only. Independent K3D2 species adapter is authorized; no author-code reproduction or K3 promotion yet.')
+                  if marker not in row['notes']:
+                      row['notes'] += add
+          with p.open('w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields);w.writeheader();w.writerows(rows)
+
+          block='''\n\n## 2026-09-13 — M13b K3D1 exact-pin CLASS adapter base PASS_WITH_SCOPE\n- Canonical result: `M13B_K3D1_CLASS_ADAPTER_BASE_PASS_WITH_SCOPE`; file `waves/wave_03_expanded_dark_energy/M13B_K3D1_CLASS_ADAPTER_BASE_AUDIT_RESULT.json`.\n- Provider: `lesgourg/class_public@64bbab707faf4de4779a9e04edd180fef18d98fa`. Parent run `34782356655` built exact pin successfully. The first control harness failed only because it asserted `k3d1_pk.dat`; recovery run `34782491941` records provider rc=0 and finite frozen-control matter power at `control/k3d1_00_pk.dat` with 114 numeric rows. Classification of parent failure: `HARNESS_OUTPUT_PATH_ONLY`.\n- Source audit passes every frozen check: exactly one direct canonical `scf` background field pair, one perturbation pair, canonical positive kinetic density/pressure signs, no second scf core species, and intact photon/ultrarelativistic hierarchy plus thermodynamics, perturbations and output modules.\n- CLASS is therefore a validated `ADAPTER_GRADE` full-Boltzmann base, not a native quintom provider. Protected subsystems for the first adapter remain photon/polarization/neutrino hierarchy dynamics, thermodynamics/recombination, primordial and nonlinear modules.\n- K3 remains `PARTIAL`; K3D2 independent two-field species adapter is authorized. Author source/unit normalization blockers remain; K4/K5 remain closed; physical_falsification=false.\n'''
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+              q=root/fn; txt=q.read_text(encoding='utf-8')
+              if marker not in txt:
+                  q.write_text(txt.rstrip()+block+'\n',encoding='utf-8')
+          PY
+      - name: Commit synchronized K3D1 state
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          if git diff --cached --quiet; then echo 'K3D1 state already synchronized.'; else git commit -m 'sync M13b K3D1 CLASS adapter-base pass'; git push; fi
