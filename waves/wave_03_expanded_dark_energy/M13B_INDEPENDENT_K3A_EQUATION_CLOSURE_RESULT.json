@@ -1,0 +1,61 @@
+{
+  "K3_canonical_promotion": false,
+  "K3_independent_contribution": "PARTIAL_EQUATION_CLOSURE",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "all_required_checks_pass": true,
+  "checks": {
+    "canonical_background_continuity_exact": true,
+    "canonical_drho_minus_dp_potential": true,
+    "canonical_drho_plus_dp_sign": true,
+    "crossing_rho_plus_p_identity": true,
+    "direct_kg_coefficients_finite_at_nontrivial_crossing": true,
+    "direct_kg_coefficients_have_no_crossing_denominator": true,
+    "effective_theta_denominator_vanishes_at_crossing": true,
+    "effective_theta_numerator_can_remain_nonzero_at_crossing": true,
+    "phantom_background_continuity_exact": true,
+    "phantom_drho_minus_dp_potential": true,
+    "phantom_drho_plus_dp_sign": true,
+    "phi_kg_has_no_direct_psi_perturbation": true,
+    "potential_first_derivative_exact": true,
+    "potential_second_derivative_exact": true,
+    "psi_kg_has_no_direct_phi_perturbation": true
+  },
+  "classification": "M13B_INDEPENDENT_K3A_EQUATION_CLOSURE_PASS_WITH_SCOPE",
+  "crossing": {
+    "condition": "phip**2 == psip**2 with nonzero finite field velocities",
+    "direct_kg_coefficient_probe": [
+      0.4,
+      -1.1829,
+      -9e-05,
+      0.4,
+      1.1831,
+      -9e-05
+    ],
+    "effective_theta_denominator_at_crossing": "0",
+    "effective_theta_numerator_probe": "4",
+    "interpretation": "direct field perturbations are the fundamental crossing variables; theta_DE is diagnostic and is singular/ill-conditioned at exact kinetic cancellation",
+    "rho_DE_plus_p_DE": "(phip**2 - psip**2)/a**2"
+  },
+  "family_id": "F13",
+  "frozen_equation_manifest": {
+    "V": "V0*(tanh(s*(1 - x)) + 1)",
+    "V_x": "-V0*s*sech(s*(1 - x))**2",
+    "V_xx": "-2*V0*s**2*tanh(s*(1 - x))*sech(s*(1 - x))**2",
+    "delta_p_phi": "-Vphi*dphi + (-Psi*phip**2 + dphip*phip)/a**2",
+    "delta_p_psi": "-Vpsi*dpsi - (-Psi*psip**2 + dpsip*psip)/a**2",
+    "delta_phi_KG_LHS": "2*Hc*dphip - 3*Phip*phip + dphi*(Vphiphi*a**2 + k**2) + dphipp",
+    "delta_psi_KG_LHS": "2*Hc*dpsip - 3*Phip*psip + dpsi*(-Vpsipsi*a**2 + k**2) + dpsipp",
+    "delta_rho_phi": "Vphi*dphi + (-Psi*phip**2 + dphip*phip)/a**2",
+    "delta_rho_psi": "Vpsi*dpsi - (-Psi*psip**2 + dpsip*psip)/a**2"
+  },
+  "gate": "K3A",
+  "implementation_provenance": "independent_KMDSB_verification",
+  "model_id": "M13b",
+  "next_authorized_gate": "K3B_INDEPENDENT_METRIC_EINSTEIN_TWO_FIELD_DYNAMICAL_EMBEDDING_PREREGISTRATION",
+  "original_provider_reproduced": false,
+  "physical_falsification": false,
+  "protocol": "protocol/W03_M13B_INDEPENDENT_K3A_EQUATION_CLOSURE_PREREGISTRATION_v0.1.md",
+  "schema": "KMDSB.W03.M13b.IndependentK3AEquationClosure.v0.1",
+  "scientific_authority": "Goh&Taylor2026 arXiv:2606.27049 MNRAS551:stag1403"
+}
