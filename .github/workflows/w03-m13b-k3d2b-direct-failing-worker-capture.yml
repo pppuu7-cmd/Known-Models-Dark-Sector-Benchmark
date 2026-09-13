@@ -1,0 +1,203 @@
+name: W03 M13b K3D2-B direct failing-worker capture
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/w03-m13b-k3d2b-direct-failing-worker-capture.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+
+jobs:
+  source_guard:
+    name: S direct-failure wrapper source guard
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply frozen stack and direct-failure tracer
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py provider --manifest result/pt_split.json
+          python3 verification/m13b/k3d2b_apply_perturbation_a_ulp_seam.py provider --ulps 1 --manifest result/a_ulp.json
+          python3 verification/m13b/k3d2b_apply_direct_mode_failure_trace.py provider --manifest result/fail_trace.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          s=Path('provider/source/perturbations.c').read_text()
+          m=json.loads(Path('result/fail_trace.json').read_text())
+          checks={
+            'one_direct_status_call':s.count('int kmdsb_evolver_status = generic_evolver(perturbations_derivs,')==1,
+            'failure_identity_printed':s.count('KMDSB_MODE_FAIL index_md=%d index_ic=%d index_k=%d')==1,
+            'raw_error_preserved':'interval_limit[index_interval+1],ppt->error_message);' in s,
+            'manifest_preserves_arguments':m.get('preserves_generic_evolver_arguments') is True,
+            'no_equation_change':m.get('changes_equations') is False,
+            'no_tolerance_change':m.get('changes_tolerances') is False,
+            'no_solver_change':m.get('changes_solver_family') is False,
+            'no_state_change':m.get('changes_state_vector') is False,
+          }
+          ok=all(checks.values())
+          obj={'schema':'KMDSB.W03.M13b.K3D2BDirectFailureSourceGuard.v0.1','checks':checks,'all_required_checks_pass':ok,'classification':'M13B_K3D2B_DIRECT_FAILURE_SOURCE_GUARD_PASS' if ok else 'M13B_K3D2B_DIRECT_FAILURE_SOURCE_GUARD_FAIL','B1_B2_B3_evaluated':False,'physical_falsification':False}
+          Path('result/source_guard.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(obj,indent=2,sort_keys=True)); assert ok,obj
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-direct-fail-source-guard
+          path: result
+          retention-days: 90
+
+  capture:
+    name: C direct failing worker ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - label: default
+            precision: none
+            prefix: d
+          - label: reference
+            precision: cl_ref.pre
+            prefix: r
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact traced A1 provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py provider --manifest result/pt_split.json
+          python3 verification/m13b/k3d2b_apply_perturbation_a_ulp_seam.py provider --ulps 1 --manifest result/a_ulp.json
+          python3 verification/m13b/k3d2b_apply_direct_mode_failure_trace.py provider --manifest result/fail_trace.json
+          make -C provider -j2 class > result/build.log 2>&1
+      - name: Execute unchanged ${{ matrix.label }} lane
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > result/enabled.ini <<'EOF'
+          h = 0.6715
+          omega_b = 0.0224
+          Omega_cdm = 0.26172292868512664
+          Omega_g = 5.4572897176151613e-05
+          Omega_ur = 3.772710282384838e-05
+          N_ncdm = 0
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = 0
+          Omega_k = 0
+          qcf_U0 = 0.3362232603714306
+          qcf_phi_ini = 0.92
+          qcf_phi_prime_ini = 0
+          qpf_U0 = 0.3362232603714306
+          qpf_psi_ini = 1.02
+          qpf_psi_prime_ini = 0
+          gauge = synchronous
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = mPk,dTk
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          k_output_values = 0.00022398828992555914,0.0022398828992555913
+          root = ../out/run_
+          EOF
+          set +e
+          if [ '${{ matrix.precision }}' = 'none' ]; then
+            (cd provider && ./class ../result/enabled.ini) > result/stdout.txt 2> result/stderr.txt
+          else
+            (cd provider && ./class ../result/enabled.ini '${{ matrix.precision }}') > result/stdout.txt 2> result/stderr.txt
+          fi
+          rc=$?
+          set -e
+          echo "$rc" > result/provider_rc.txt
+      - name: Freeze direct failing workers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re
+          lane='${{ matrix.label }}'
+          text=Path('result/stderr.txt').read_text(errors='replace')
+          rx=re.compile(r'KMDSB_MODE_FAIL index_md=(\d+) index_ic=(\d+) index_k=(\d+) k=([^ ]+) interval_start=([^ ]+) evolver_start=([^ ]+) interval_end=([^ ]+) error=(.*)')
+          rows=[]
+          for m in rx.finditer(text):
+            rows.append({'index_md':int(m.group(1)),'index_ic':int(m.group(2)),'index_k':int(m.group(3)),'k':float(m.group(4)),'interval_start':float(m.group(5)),'evolver_start':float(m.group(6)),'interval_end':float(m.group(7)),'raw_error_first_line':m.group(8).strip()})
+          unique=[]; seen=set()
+          for r in rows:
+            key=(r['index_md'],r['index_ic'],r['index_k'],r['k'])
+            if key not in seen: seen.add(key); unique.append(r)
+          rc=int(Path('result/provider_rc.txt').read_text())
+          ok=(rc!=0 and len(unique)>=1)
+          obj={'schema':'KMDSB.W03.M13b.K3D2BDirectFailingWorkers.v0.1','lane':lane,'provider_rc':rc,'failure_records':unique,'failure_count':len(unique),'all_required_checks_pass':ok,'classification':'M13B_K3D2B_DIRECT_FAILING_WORKERS_CAPTURED' if ok else 'M13B_K3D2B_DIRECT_FAILING_WORKERS_NOT_CAPTURED','B1_B2_B3_evaluated':False,'K3_state_ceiling':'PARTIAL','K4_promoted':False,'K5_promoted':False,'physical_falsification':False}
+          Path('result/direct_failures.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(obj,indent=2,sort_keys=True)); assert ok,obj
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-direct-fail-${{ matrix.label }}
+          path: result
+          retention-days: 90
+
+  compare:
+    name: V compare direct failing workers
+    needs:
+      - capture
+      - source_guard
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-direct-fail-default
+          path: default
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-direct-fail-reference
+          path: reference
+      - name: Compare physical failing modes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          d=json.loads(Path('default/direct_failures.json').read_text())
+          r=json.loads(Path('reference/direct_failures.json').read_text())
+          common=[]
+          for a in d['failure_records']:
+            for b in r['failure_records']:
+              rel=abs(a['k']-b['k'])/max(abs(a['k']),abs(b['k']),1e-300)
+              if a['index_md']==b['index_md'] and a['index_ic']==b['index_ic'] and rel<=1e-12:
+                common.append({'index_md':a['index_md'],'index_ic':a['index_ic'],'default_index_k':a['index_k'],'reference_index_k':b['index_k'],'k':a['k'],'relative_k_difference':rel})
+          obj={'schema':'KMDSB.W03.M13b.K3D2BDirectFailureComparison.v0.1','default_failure_count':d['failure_count'],'reference_failure_count':r['failure_count'],'common_physical_failures':common,'common_physical_failure_count':len(common),'classification':'M13B_K3D2B_COMMON_PHYSICAL_FAILING_MODE' if common else 'M13B_K3D2B_SOLVER_DEPENDENT_FAILING_SET','B1_B2_B3_evaluated':False,'K3_state_ceiling':'PARTIAL','K4_promoted':False,'K5_promoted':False,'physical_falsification':False}
+          Path('comparison.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n'); print(json.dumps(obj,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m13b-k3d2b-direct-fail-comparison
+          path: comparison.json
+          retention-days: 90
