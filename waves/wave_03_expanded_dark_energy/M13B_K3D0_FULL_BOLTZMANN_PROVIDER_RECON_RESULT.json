@@ -1,0 +1,78 @@
+{
+  "schema": "KMDSB.W03.M13b.K3D0FullBoltzmannProviderRecon.v0.1",
+  "model_id": "M13b",
+  "family_id": "F13",
+  "gate": "K3D0",
+  "date": "2026-09-13",
+  "protocol": "protocol/W03_M13B_K3D0_FULL_BOLTZMANN_PROVIDER_CAPABILITY_RECON_v0.1.md",
+  "audit": "models/quintom/m13b_k3d0_full_boltzmann_provider_recon_2026-09-13.md",
+  "classification": "M13B_K3D0_NO_DIRECT_FULL_BOLTZMANN_PROVIDER_ADAPTER_BASE_REQUIRED",
+  "direct_provider_found": false,
+  "selected_adapter_base": {
+    "repository": "lesgourg/class_public",
+    "commit": "64bbab707faf4de4779a9e04edd180fef18d98fa",
+    "classification": "ADAPTER_GRADE",
+    "reason": "Full public Einstein-Boltzmann/recombination/output stack plus one direct canonical scalar species; minimal source-layer extension relative to hi_class/mochi_class. Unmodified source is single-field and not phantom/quintom."
+  },
+  "candidates": [
+    {
+      "repository": "lesgourg/class_public",
+      "commit": "64bbab707faf4de4779a9e04edd180fef18d98fa",
+      "grade": "ADAPTER_GRADE",
+      "full_boltzmann": true,
+      "native_two_field_quintom": false,
+      "native_phantom_second_field": false,
+      "source_accessible": true
+    },
+    {
+      "repository": "hiclass-code/hi_class_public",
+      "commit": "0009f51d89e6465c79e570b496c66fc90058fa77",
+      "grade": "ADAPTER_GRADE_SECONDARY",
+      "full_boltzmann": true,
+      "native_two_field_quintom": false,
+      "native_extra_scalar_scope": "single Horndeski/modified-gravity scalar",
+      "source_accessible": true
+    },
+    {
+      "repository": "mcataneo/mochi_class_public",
+      "commit": "2b0b16e4601effe416714ad330d2ee8cad289e4c",
+      "grade": "ADAPTER_GRADE_SECONDARY",
+      "full_boltzmann": true,
+      "native_two_field_quintom": false,
+      "native_extra_scalar_scope": "single Horndeski stable-basis scalar",
+      "source_accessible": true
+    },
+    {
+      "name": "Goh-Taylor modified CLASS 2026",
+      "grade": "RELATED_NOT_GRADE_SOURCE_PROVENANCE_BLOCKED",
+      "scientific_family_match": true,
+      "reported_full_boltzmann_use": true,
+      "immutable_public_source_found": false
+    },
+    {
+      "repository": "ja-vazquez/SimpleMC",
+      "commit": "a268fe5e2545428ddcf76b37b166a55dbf692fb0",
+      "grade": "RELATED_NOT_GRADE_BACKGROUND_ONLY",
+      "full_boltzmann": false
+    },
+    {
+      "repository": "ja-vazquez/Scalar_Fields",
+      "commit": "a4ddce6049f601e090040889b4bb7af371c22921",
+      "grade": "RELATED_NOT_GRADE_BACKGROUND_ONLY",
+      "full_boltzmann": false
+    },
+    {
+      "repository": "igomezv/cosmo_tools",
+      "commit": "6f82a0dd6966ee2ab5abde2eb5c35dd0720b6ea1",
+      "grade": "RELATED_NOT_GRADE_BACKGROUND_ONLY",
+      "full_boltzmann": false
+    }
+  ],
+  "author_model_reproduced": false,
+  "author_normalization_map_claimed": false,
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "physical_falsification": false,
+  "next_authorized_gate": "K3D1_EXACT_PIN_CLASS_ADAPTER_BASE_STRUCTURAL_AUDIT"
+}
