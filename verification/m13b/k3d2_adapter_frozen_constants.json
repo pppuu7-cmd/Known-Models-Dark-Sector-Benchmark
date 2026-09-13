@@ -1,0 +1,28 @@
+{
+  "schema": "KMDSB.W03.M13b.K3D2AdapterFrozenConstants.v0.1",
+  "provider": "lesgourg/class_public",
+  "provider_commit": "64bbab707faf4de4779a9e04edd180fef18d98fa",
+  "implementation_provenance": "independent_KMDSB_qcf_plus_qpf_adapter",
+  "potential_family": "U(x)=U0*(tanh(s*(1-x))+1)",
+  "s": 29.0,
+  "U0": 0.3362232603714306,
+  "normalization_map": "V_class=3*H0^2*U",
+  "qcf": {
+    "kinetic_sign": 1,
+    "field_initial_reduced_planck": 0.92,
+    "field_prime_initial": 0.0
+  },
+  "qpf": {
+    "kinetic_sign": -1,
+    "field_initial_reduced_planck": 1.02,
+    "field_prime_initial": 0.0
+  },
+  "published_V0_reproduced": false,
+  "author_normalization_map_claimed": false,
+  "original_provider_reproduced": false,
+  "runtime_gauge_scope_K3D2A": "synchronous_only_when_qcf_or_qpf_enabled",
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "physical_falsification": false
+}
