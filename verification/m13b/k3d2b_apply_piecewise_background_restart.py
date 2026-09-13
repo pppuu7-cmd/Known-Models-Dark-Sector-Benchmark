@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Apply the prospectively frozen K3D2-B exact two-segment background restart.
 
-This transformer changes only source/background.c.  It can be used in two modes:
+This transformer changes only source/background.c.
 
-* default: split the existing background generic_evolver call at log(a)=log(1/6);
-* --recover-handoff-boundary: additionally assign the exact a=1/6 point to
-  the already-frozen pre-handoff qcf/qpf branch by changing the four
-  background guards from '<' to '<='.
+Modes:
+* default: unconditional split at log(a)=log(1/6), retained for provenance;
+* --conditional-qfields: retain the original single CLASS call when qcf/qpf
+  are absent and use the two-segment restart only when either field is active;
+* --recover-handoff-boundary: assign the isolated handoff endpoint to the
+  frozen pre-handoff branch using the same a=exp(loga) floating map as CLASS.
 
 No equation on any open interval, solver family, tolerance, sampling table,
 or perturbation source is changed here.
@@ -64,7 +66,7 @@ def find_outer_class_call(text: str) -> tuple[int, int, str]:
     raise RuntimeError("unterminated background generic_evolver class_call")
 
 
-def split_call(block: str) -> str:
+def validate_call(block: str) -> None:
     required = {
         "loga_ini": 1,
         "loga_final": 1,
@@ -78,8 +80,26 @@ def split_call(block: str) -> str:
         count = block.count(token)
         if count < minimum:
             raise RuntimeError(f"background call missing required token {token}: {count}")
+
+
+def split_call(block: str, conditional: bool) -> str:
+    validate_call(block)
     first = block.replace("loga_final", "loga_handoff_kmdsb", 1)
     second = block.replace("loga_ini", "loga_handoff_kmdsb", 1)
+    if conditional:
+        return (
+            "  /* KMDSB K3D2-B: preserve byte-semantics of the upstream one-call path when qfields are absent. */\n"
+            "  if ((pba->has_qcf == _FALSE_) && (pba->has_qpf == _FALSE_)) {\n"
+            f"{block}\n"
+            "  }\n"
+            "  else {\n"
+            "    /* Exact two-segment NDF15 restart at the frozen z=5 IVP. */\n"
+            "    double loga_handoff_kmdsb = log(1./6.);\n"
+            f"{first}\n\n"
+            "    /* Restart with the exact endpoint state; evolver history is intentionally rebuilt. */\n"
+            f"{second}\n"
+            "  }"
+        )
     return (
         "  /* KMDSB K3D2-B exact two-segment NDF15 restart at the frozen z=5 IVP. */\n"
         "  double loga_handoff_kmdsb = log(1./6.);\n"
@@ -92,6 +112,7 @@ def split_call(block: str) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("root")
+    ap.add_argument("--conditional-qfields", action="store_true")
     ap.add_argument("--recover-handoff-boundary", action="store_true")
     ap.add_argument("--manifest")
     args = ap.parse_args()
@@ -100,39 +121,54 @@ def main() -> int:
     path = root / "source/background.c"
     before = path.read_text(encoding="utf-8")
     start, end, block = find_outer_class_call(before)
-    replacement = split_call(block)
+
+    if args.conditional_qfields:
+        for token in ("has_qcf", "has_qpf"):
+            if token not in before:
+                raise RuntimeError(f"conditional-qfields mode requires the K3D2 adapter symbol {token}")
+
+    replacement = split_call(block, args.conditional_qfields)
     after = before[:start] + replacement + before[end:]
 
     guard_replacements = 0
+    boundary_expression = None
     if args.recover_handoff_boundary:
         guard_replacements = after.count("a < 1./6.")
         if guard_replacements != 4:
             raise RuntimeError(
                 f"enabled boundary recovery expected exactly four background handoff guards, found {guard_replacements}"
             )
-        after = after.replace("a < 1./6.", "a <= 1./6.")
+        boundary_expression = "a <= exp(log(1./6.))"
+        after = after.replace("a < 1./6.", boundary_expression)
     else:
-        if "a < 1./6." in after or "a <= 1./6." in after:
+        if "a < 1./6." in after or "a <= 1./6." in after or "a <= exp(log(1./6.))" in after:
             raise RuntimeError("segment-only mode found unexpected qcf/qpf handoff guards")
 
-    if after.count("generic_evolver(background_derivs,") != 2:
-        raise RuntimeError("restart transform did not produce exactly two background evolver calls")
+    expected_calls = 3 if args.conditional_qfields else 2
+    if after.count("generic_evolver(background_derivs,") != expected_calls:
+        raise RuntimeError(
+            f"restart transform expected {expected_calls} textual background evolver calls, found "
+            f"{after.count('generic_evolver(background_derivs,')}"
+        )
     if after.count("loga_handoff_kmdsb") < 3:
-        raise RuntimeError("restart handoff token not wired into both calls")
+        raise RuntimeError("restart handoff token not wired into both enabled calls")
 
     path.write_text(after, encoding="utf-8")
     manifest = {
-        "schema": "KMDSB.W03.M13b.K3D2BPiecewiseBackgroundRestartPatch.v0.1",
+        "schema": "KMDSB.W03.M13b.K3D2BPiecewiseBackgroundRestartPatch.v0.2",
         "provider_commit": PIN,
         "handoff_loga": HANDOFF,
         "changed_files": ["source/background.c"],
         "generic_evolver_calls_before": before.count("generic_evolver(background_derivs,"),
-        "generic_evolver_calls_after": after.count("generic_evolver(background_derivs,"),
+        "generic_evolver_calls_after_textual": after.count("generic_evolver(background_derivs,"),
+        "conditional_qfields": bool(args.conditional_qfields),
+        "disabled_branch_preserves_original_call": bool(args.conditional_qfields and block in replacement),
         "same_state_vector_retained": block.count("pvecback_integration") >= 1,
         "same_global_output_grid_retained": block.count("pba->loga_table") >= 1 and block.count("pba->bt_size") >= 1,
         "same_output_callback_retained": block.count("background_sources") >= 1,
         "boundary_recovery_enabled": bool(args.recover_handoff_boundary),
         "boundary_guard_replacements": guard_replacements,
+        "boundary_expression": boundary_expression,
         "background_sha256_before": sha256_text(before),
         "background_sha256_after": sha256_text(after),
         "changes_perturbations": False,
