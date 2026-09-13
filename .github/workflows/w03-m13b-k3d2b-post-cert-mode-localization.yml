@@ -1,0 +1,229 @@
+name: W03 M13b K3D2-B post-cert mode localization
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/w03-m13b-k3d2b-post-cert-mode-localization.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+
+jobs:
+  default:
+    name: D default NDF15 failing-mode localization
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build traced A1 provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py provider --manifest result/pt_split.json
+          python3 verification/m13b/k3d2b_apply_perturbation_a_ulp_seam.py provider --ulps 1 --manifest result/a_ulp.json
+          python3 verification/m13b/k3d2b_apply_mode_interval_trace.py provider --manifest result/mode_trace_patch.json
+          make -C provider -j2 class > result/build.log 2>&1
+      - name: Execute unchanged default lane
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > result/enabled.ini <<'EOF'
+          h = 0.6715
+          omega_b = 0.0224
+          Omega_cdm = 0.26172292868512664
+          Omega_g = 5.4572897176151613e-05
+          Omega_ur = 3.772710282384838e-05
+          N_ncdm = 0
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = 0
+          Omega_k = 0
+          qcf_U0 = 0.3362232603714306
+          qcf_phi_ini = 0.92
+          qcf_phi_prime_ini = 0
+          qpf_U0 = 0.3362232603714306
+          qpf_psi_ini = 1.02
+          qpf_psi_prime_ini = 0
+          gauge = synchronous
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = mPk,dTk
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          k_output_values = 0.00022398828992555914,0.0022398828992555913
+          root = ../out/d_
+          EOF
+          set +e
+          (cd provider && ./class ../result/enabled.ini) > result/stdout.txt 2> result/stderr.txt
+          rc=$?
+          set -e
+          echo "$rc" > result/provider_rc.txt
+      - name: Freeze default failing mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re
+          lines=Path('result/stderr.txt').read_text(errors='replace').splitlines()
+          rx=re.compile(r'KMDSB_MODE_(BEGIN|END) index_k=(\d+) k=([^ ]+) interval_start=([^ ]+) evolver_start=([^ ]+) interval_end=([^ ]+)')
+          current=None; begins=ends=0
+          for line in lines:
+            m=rx.search(line)
+            if not m: continue
+            rec={'index_k':int(m.group(2)),'k':float(m.group(3)),'interval_start':float(m.group(4)),'evolver_start':float(m.group(5)),'interval_end':float(m.group(6))}
+            if m.group(1)=='BEGIN': current=rec; begins+=1
+            else:
+              ends+=1
+              if current and current['index_k']==rec['index_k']: current=None
+          rc=int(Path('result/provider_rc.txt').read_text())
+          ok=(rc!=0 and current is not None and begins==ends+1)
+          obj={'schema':'KMDSB.W03.M13b.K3D2BModeLocalization.v0.1','lane':'default','provider_rc':rc,'begin_count':begins,'end_count':ends,'failing_mode':current,'all_required_checks_pass':ok,'classification':'M13B_K3D2B_FAILING_MODE_LOCALIZED' if ok else 'M13B_K3D2B_FAILING_MODE_NOT_ESTABLISHED','B1_B2_B3_evaluated':False,'physical_falsification':False}
+          Path('result/mode_localization.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n'); print(json.dumps(obj,indent=2,sort_keys=True)); assert ok,obj
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-mode-default
+          path: result
+          retention-days: 90
+
+  reference:
+    name: R reference RK failing-mode localization
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build traced A1 provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py provider --manifest result/pt_split.json
+          python3 verification/m13b/k3d2b_apply_perturbation_a_ulp_seam.py provider --ulps 1 --manifest result/a_ulp.json
+          python3 verification/m13b/k3d2b_apply_mode_interval_trace.py provider --manifest result/mode_trace_patch.json
+          make -C provider -j2 class > result/build.log 2>&1
+      - name: Execute unchanged reference lane
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > result/enabled.ini <<'EOF'
+          h = 0.6715
+          omega_b = 0.0224
+          Omega_cdm = 0.26172292868512664
+          Omega_g = 5.4572897176151613e-05
+          Omega_ur = 3.772710282384838e-05
+          N_ncdm = 0
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = 0
+          Omega_k = 0
+          qcf_U0 = 0.3362232603714306
+          qcf_phi_ini = 0.92
+          qcf_phi_prime_ini = 0
+          qpf_U0 = 0.3362232603714306
+          qpf_psi_ini = 1.02
+          qpf_psi_prime_ini = 0
+          gauge = synchronous
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = mPk,dTk
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          k_output_values = 0.00022398828992555914,0.0022398828992555913
+          root = ../out/r_
+          EOF
+          set +e
+          (cd provider && ./class ../result/enabled.ini cl_ref.pre) > result/stdout.txt 2> result/stderr.txt
+          rc=$?
+          set -e
+          echo "$rc" > result/provider_rc.txt
+      - name: Freeze reference failing mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re
+          lines=Path('result/stderr.txt').read_text(errors='replace').splitlines()
+          rx=re.compile(r'KMDSB_MODE_(BEGIN|END) index_k=(\d+) k=([^ ]+) interval_start=([^ ]+) evolver_start=([^ ]+) interval_end=([^ ]+)')
+          current=None; begins=ends=0
+          for line in lines:
+            m=rx.search(line)
+            if not m: continue
+            rec={'index_k':int(m.group(2)),'k':float(m.group(3)),'interval_start':float(m.group(4)),'evolver_start':float(m.group(5)),'interval_end':float(m.group(6))}
+            if m.group(1)=='BEGIN': current=rec; begins+=1
+            else:
+              ends+=1
+              if current and current['index_k']==rec['index_k']: current=None
+          rc=int(Path('result/provider_rc.txt').read_text())
+          ok=(rc!=0 and current is not None and begins==ends+1)
+          obj={'schema':'KMDSB.W03.M13b.K3D2BModeLocalization.v0.1','lane':'reference','provider_rc':rc,'begin_count':begins,'end_count':ends,'failing_mode':current,'all_required_checks_pass':ok,'classification':'M13B_K3D2B_FAILING_MODE_LOCALIZED' if ok else 'M13B_K3D2B_FAILING_MODE_NOT_ESTABLISHED','B1_B2_B3_evaluated':False,'physical_falsification':False}
+          Path('result/mode_localization.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n'); print(json.dumps(obj,indent=2,sort_keys=True)); assert ok,obj
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-mode-reference
+          path: result
+          retention-days: 90
+
+  compare:
+    name: Compare localized modes
+    needs:
+      - default
+      - reference
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-mode-default
+          path: default
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-mode-reference
+          path: reference
+      - name: Compare default and reference blockers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,math
+          d=json.loads(Path('default/mode_localization.json').read_text())
+          r=json.loads(Path('reference/mode_localization.json').read_text())
+          kd=d['failing_mode']['k'] if d.get('failing_mode') else None
+          kr=r['failing_mode']['k'] if r.get('failing_mode') else None
+          same_index=d.get('failing_mode',{}).get('index_k')==r.get('failing_mode',{}).get('index_k')
+          rel=None if kd is None or kr is None else abs(kd-kr)/max(abs(kd),abs(kr),1e-300)
+          same_k=(rel is not None and rel<=1e-12)
+          obj={'schema':'KMDSB.W03.M13b.K3D2BModeLocalizationComparison.v0.1','default':d.get('failing_mode'),'reference':r.get('failing_mode'),'same_index_k':same_index,'relative_k_difference':rel,'same_k_within_1e-12':same_k,'classification':'M13B_K3D2B_COMMON_FAILING_MODE' if same_index and same_k else 'M13B_K3D2B_SOLVER_DEPENDENT_FAILING_MODE','B1_B2_B3_evaluated':False,'K3_state_ceiling':'PARTIAL','K4_promoted':False,'K5_promoted':False,'physical_falsification':False}
+          Path('comparison.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n'); print(json.dumps(obj,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m13b-k3d2b-mode-comparison
+          path: comparison.json
+          retention-days: 90
