@@ -1,0 +1,52 @@
+{
+  "schema": "KMDSB.W04.M21.CMBPrecisionComponentSerializationRecoveryValidation.v0.2",
+  "date": "2026-09-14",
+  "protocol": "protocol/W04_M21_CMB_PRECISION_COMPONENT_SERIALIZATION_RECOVERY_v0.2.md",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "recovery_run": 34869857740,
+  "recovery_head": "d23fb0f8f9abb6fd395f86fa372b754d31a6db49",
+  "validation_scope": "reference lanes only; scientific G1/G2/G3 classification remains unauthorized until all ref/f2/f3/f4 lanes and aggregate are terminal",
+  "reference_lanes": {
+    "G1": {
+      "artifact": {"id": 10358985758, "digest": "sha256:b74aa97726ee072e156a0f413694b356e86721139371ca663e7212617db327ce"},
+      "provider_rc": 0,
+      "exact_provider_head": true,
+      "duplicate_free_serialization": true,
+      "component_pre_sha256": "ba94f93a50d582154f8f845ae8dbd0ed276f70c9392039a8489bb5169fd61556",
+      "observed_conflicts": {
+        "tol_perturbations_integration": ["1.e-6", "1.e-6"],
+        "perturbations_sampling_stepsize": ["0.01", "0.01"]
+      },
+      "conflicts_match_preregistration": true
+    },
+    "G2": {
+      "artifact": {"id": 10358886229, "digest": "sha256:19f0ba422384dc49fdd4cc76cd3ac42d79b56bde3e596e2551056dd1e60aa1f5"},
+      "provider_rc": 0,
+      "exact_provider_head": true,
+      "duplicate_free_serialization": true,
+      "component_pre_sha256": "8317aabf53ffea45043870738e573beec7781463170b480cb00a9a45745b37be",
+      "observed_conflicts": {
+        "hyper_flat_approximation_nu": ["7000.", "1.e6"]
+      },
+      "conflicts_match_preregistration": true
+    },
+    "G3": {
+      "artifact": {"id": 10358523164, "digest": "sha256:440312b0deebd2cbe614b2409244e70886894017c04b3a10abf542d01127fa83"},
+      "provider_rc": 0,
+      "exact_provider_head": true,
+      "duplicate_free_serialization": true,
+      "component_pre_sha256": "685ede1b4bc4a57debc55e2193dd404c97bf301a09e6a2baa926fafd4c0c8a9d",
+      "observed_conflicts": {
+        "transfer_neglect_delta_k_S_t0": ["0.17", "100."],
+        "transfer_neglect_delta_k_S_t1": ["0.05", "100."],
+        "transfer_neglect_delta_k_S_t2": ["0.17", "100."],
+        "transfer_neglect_delta_k_S_e": ["0.13", "100."]
+      },
+      "conflicts_match_preregistration": true
+    }
+  },
+  "classification": "M21_CMB_PRECISION_COMPONENT_SERIALIZATION_RECOVERY_VALIDATED_WITH_SCOPE",
+  "interpretation": "The v0.2 unique-key materialization removes the parser-layer blocker without changing the frozen parent group values: all three reference lanes reach successful exact-provider cosmological execution, and each merge manifest contains exactly the conflict set frozen before recovery. This validates the implementation recovery only; it is not a G1/G2/G3 scientific result.",
+  "K1_promoted": false,
+  "physical_falsification": false
+}
