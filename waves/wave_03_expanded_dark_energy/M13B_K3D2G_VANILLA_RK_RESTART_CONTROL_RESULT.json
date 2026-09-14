@@ -1,0 +1,36 @@
+{
+  "schema": "KMDSB.W03.M13B.K3D2G.VanillaRestartControlResult.v0.1",
+  "classification": "M13B_K3D2G_GENERIC_CLASS_RK_HARD_RESTART_LAYER_EFFECT_SUPPORTED",
+  "protocol": "protocol/W03_M13B_K3D2G_VANILLA_CLASS_RK_RESTART_LAYER_CONTROL_v0.1.md",
+  "provider": "lesgourg/class_public",
+  "provider_commit": "64bbab707faf4de4779a9e04edd180fef18d98fa",
+  "run_id": 34804815136,
+  "jobs": {
+    "unsplit": 103854493317,
+    "split": 103854493393,
+    "aggregate": 103855342080
+  },
+  "artifacts": {
+    "unsplit": {"id": 10332698308, "sha256": "78f8d9f361e38a0d30afd5c7e5b82ea9ac8c144c3855fb2767d713f9628c758f"},
+    "split": {"id": 10332661832, "sha256": "67ed4d1bbc44f7a72afff7bb8bef5fda3a8bb8295820bf7c938b51089bcc9a2b"},
+    "aggregate": {"id": 10332553557, "sha256": "b97bb642240cdcc52944a34c756d671a25402b8eebea6b1e59a81182d7229f06"}
+  },
+  "unsplit": {
+    "provider_rc": 0,
+    "rk_collapse_count": 0,
+    "ndf15_collapse_count": 0
+  },
+  "split": {
+    "provider_rc": 1,
+    "mode_failure_count": 450,
+    "rk_collapse_mode_count": 450,
+    "rk_collapse_at_shifted_restart_count": 450,
+    "all_rk_collapses_at_shifted_restart": true,
+    "rk_collapse_k_range_1_per_Mpc": [0.013098141392961544, 0.03823966650332846]
+  },
+  "interpretation": "Vanilla unsplit CLASS executes, while the otherwise identical artificial z=5 hard perturbation restart reproduces first-step RK collapse across 450 modes exactly at the shifted restart boundary. This supports a generic CLASS/RK hard-restart-layer numerical mechanism rather than a two-field-specific physical failure.",
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "physical_falsification": false
+}
