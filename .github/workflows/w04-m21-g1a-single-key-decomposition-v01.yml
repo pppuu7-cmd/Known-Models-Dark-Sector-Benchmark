@@ -1,0 +1,76 @@
+name: W04 M21 G1A single-key decomposition v0.1
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'verification/m21/run_g1a_single_key_lane_v01.sh'
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  OMP_NUM_THREADS: '1'
+
+jobs:
+  lane:
+    strategy:
+      fail-fast: false
+      matrix:
+        arm: [A_NZ, A_THERMO, A_HE, A_H]
+        case: [ref, f2, f3, f4]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute preregistered single-key lane
+        run: bash verification/m21/run_g1a_single_key_lane_v01.sh '${{ matrix.arm }}' '${{ matrix.case }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-g1a-${{ matrix.arm }}-${{ matrix.case }}
+          path: |
+            lane_meta.json
+            provider_rc.txt
+            g1a_single_${{ matrix.arm }}.pre
+            m21_cases/${{ matrix.case }}.ini
+            output/${{ matrix.case }}*.dat
+            run_${{ matrix.case }}.log
+            build_${{ matrix.case }}.log
+          retention-days: 90
+
+  aggregate:
+    needs: lane
+    if: always() && needs.lane.result != 'skipped'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-g1a-*-*
+          path: lanes
+      - name: Assemble products and classify
+        run: |
+          set -euo pipefail
+          mkdir -p products meta
+          shopt -s nullglob
+          dirs=(lanes/m21-g1a-*-*)
+          test "${#dirs[@]}" -eq 16
+          for d in "${dirs[@]}"; do
+            b="${d##*/}"; rest="${b#m21-g1a-}"; arm="${rest%-*}"; c="${rest##*-}"; al=$(printf '%s' "$arm" | tr 'A-Z' 'a-z')
+            mkdir -p "products/$al" "meta/$al"
+            cp "$d/lane_meta.json" "meta/$al/$c.json"
+            find "$d" -type f \( -name "${c}_cl.dat" -o -name "${c}_*_cl.dat" -o -name "${c}_pk.dat" -o -name "${c}_*_pk.dat" -o -name "${c}_background.dat" -o -name "${c}_*_background.dat" \) -exec cp {} "products/$al/" \;
+          done
+          python3 verification/m21/cmb_precision_g1a_single_key_decomposition.py products meta M21_G1A_SINGLE_KEY_DECOMPOSITION_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-g1a-single-key-decomposition-v01
+          path: M21_G1A_SINGLE_KEY_DECOMPOSITION_RESULT.json
+          retention-days: 90
