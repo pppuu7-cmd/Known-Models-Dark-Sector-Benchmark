@@ -1,0 +1,42 @@
+{
+  "schema": "KMDSB.W03.M13B.K3D2F.ReferenceRKScaleFloorResult.v0.1",
+  "classification": "M13B_K3D2F_REFERENCE_RK_STANDARD_BOLTZMANN_ABSOLUTE_SCALE_FLOOR_LOCALIZED",
+  "protocol": "protocol/W03_M13B_K3D2F_REFERENCE_RK_ERROR_SCALE_FLOOR_AUDIT_v0.1.md",
+  "provider": "lesgourg/class_public",
+  "provider_commit": "64bbab707faf4de4779a9e04edd180fef18d98fa",
+  "run_id": 34801216990,
+  "job_id": 103844119187,
+  "artifact": {
+    "id": 10331557427,
+    "sha256": "d4a3099c4d742769c959e019cf398f6499f58270e5234d990fc6381555aefe83"
+  },
+  "parent_run": 34797701252,
+  "parent_artifact": 10329419715,
+  "strict_clean_required_fields": 349,
+  "floor_fraction": 1.0,
+  "nearzero_y_fraction": 1.0,
+  "nearzero_start_dydx_fraction": 1.0,
+  "joint_floor_nearzero_fraction": 1.0,
+  "joint_component_distribution": {
+    "photon_temperature_hierarchy_l3plus": 335,
+    "ur_theta": 14
+  },
+  "qfield_floor_dominant_count": 0,
+  "joint_k_range_1_per_Mpc": [0.015586127194346362, 0.03824049129868911],
+  "final_raw_ratio": {
+    "min": 4.903087827052588e-08,
+    "median": 7.395169768071997e-07,
+    "max": 9.995270318492325e-07
+  },
+  "final_errmax": {
+    "min": 0.04903087827052588,
+    "median": 0.7395169768071997,
+    "max": 0.9995270318492325
+  },
+  "interpretation": "All strict-clean terminal RK-dominant records are controlled by the absolute error-scale floor of near-zero standard photon/UR Boltzmann variables; no direct qcf/qpf variable is floor-dominant. This localizes the reference blocker to the numerical restart/error-control layer but does not yet establish whether the effect is generic to a hard CLASS perturbation restart or specific to the M13b handoff state.",
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "default_reference_reproducibility_evaluated": false,
+  "physical_falsification": false
+}
