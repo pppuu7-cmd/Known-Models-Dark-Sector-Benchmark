@@ -1,0 +1,99 @@
+name: W04 M21 transfer-l grid-phase factorial v0.1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m21-transfer-l-grid-phase-factorial-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  OMP_NUM_THREADS: '1'
+  PARENT_RUN: '34883823728'
+
+jobs:
+  activation:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      authorized: ${{ steps.gate.outputs.authorized }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: gate
+        name: Enforce terminal unstable-tail parent
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=json.loads(Path('waves/wave_04_dark_matter/M21_G2B_L_SAMPLING_TAIL_CONVERGENCE_TERMINAL.json').read_text())
+          ok=(d.get('classification')=='M21_G2B_L_SAMPLING_TAIL_REMOVAL_NOT_STABLE' and d.get('cross_lane_input_identity') is True and d.get('artifact_digest')=='sha256:df44ad84fb6806c136ef58ba464a814775f640dcdc77a841f10d63662ec5f020')
+          with Path(os.environ['GITHUB_OUTPUT']).open('a') as f: f.write('authorized='+('true' if ok else 'false')+'\n')
+          print(json.dumps({'authorized':ok,'parent_classification':d.get('classification')},indent=2))
+          PY
+
+  phase:
+    needs: activation
+    if: needs.activation.outputs.authorized == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [P400_OFF_TAIL_ON, P400_ON_TAIL_OFF, P400_OFF_TAIL_OFF, P400_EVEN_TAIL_OFF]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute frozen grid-phase lane
+        run: |
+          set -euo pipefail
+          bash verification/m21/run_l_grid_phase_lane_v01.sh '${{ matrix.lane }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-lphase-${{ matrix.lane }}
+          path: |
+            lane_meta.json
+            case_status.tsv
+            lphase_${{ matrix.lane }}.pre
+            lphase_${{ matrix.lane }}_manifest.json
+            m21_cases/*.ini
+            output/*.dat
+            run_*.log
+            build.log
+          retention-days: 90
+
+  aggregate:
+    needs: [activation, phase]
+    if: always() && needs.activation.result == 'success' && needs.activation.outputs.authorized == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Download phase artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-lphase-*
+          path: components
+      - name: Download immutable P0/T4 anchor
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-ltail-LTAIL_T4
+          path: P0
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.PARENT_RUN }}
+      - name: Apply frozen phase classifier
+        run: |
+          set -euo pipefail
+          python3 verification/m21/l_grid_phase_factorial.py components P0 M21_L_GRID_PHASE_FACTORIAL_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l-grid-phase-factorial-v01
+          path: M21_L_GRID_PHASE_FACTORIAL_RESULT.json
+          retention-days: 90
