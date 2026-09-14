@@ -1,0 +1,110 @@
+name: W04 M21 CMB-source after duplicate recovery v0.1
+
+on:
+  workflow_run:
+    workflows:
+      - "W04 M21 perturbation-state duplicate-coordinate recovery v0.1"
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  activation:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      authorized: ${{ steps.gate.outputs.authorized }}
+      recovery_run_id: ${{ steps.parent.outputs.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: parent
+        run: echo "run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+      - name: Download recovery aggregate
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-perturbation-state-duplicate-recovery-v01
+          path: recovery
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ steps.parent.outputs.run_id }}
+      - id: gate
+        name: Enforce frozen successor rule
+        run: |
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=json.loads(Path('recovery/M21_PERTURBATION_STATE_DUPLICATE_RECOVERY_RESULT.json').read_text())
+          ok=(d.get('recovery_classification')=='M21_PERTURBATION_STATE_DUPLICATE_RECOVERY_ROBUST' and d.get('inherited_classification')=='M21_CMB_BRANCH_NOT_LOCALIZED_IN_NATIVE_PERTURBATION_STATES' and d.get('edge_map_identical') is True)
+          with Path(os.environ['GITHUB_OUTPUT']).open('a') as f: f.write('authorized='+('true' if ok else 'false')+'\n')
+          print(json.dumps({'authorized':ok,'recovery':d.get('recovery_classification'),'inherited':d.get('inherited_classification')},indent=2))
+          PY
+
+  source:
+    needs: activation
+    if: needs.activation.outputs.authorized == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [NDF_T1E5, NDF_T1E6, NDF_T1E7, RK_T1E5, RK_T1E6, RK_T1E7]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute frozen direct CMB-source lane
+        run: bash verification/m21/run_cmb_source_lane_v01.sh '${{ matrix.lane }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-cmb-source-recovery-${{ matrix.lane }}
+          retention-days: 90
+          path: |
+            lane_meta.json
+            cmb_source_${{ matrix.lane }}.pre
+            cmb_source_${{ matrix.lane }}_profile_manifest.json
+            source_out/*.npz
+            source_out/lane_sources_meta.json
+            source_extract.log
+            python_deps.log
+            classy_build.log
+
+  aggregate:
+    needs: [activation, source]
+    if: always() && needs.activation.result == 'success' && needs.activation.outputs.authorized == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-cmb-source-recovery-*
+          path: lanes
+          merge-multiple: false
+      - name: Download immutable duplicate recovery
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-perturbation-state-duplicate-recovery-v01
+          path: recovery
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ needs.activation.outputs.recovery_run_id }}
+      - name: Materialize inherited frozen perturbation result
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('recovery/M21_PERTURBATION_STATE_DUPLICATE_RECOVERY_RESULT.json').read_text())
+          Path('M21_PERTURBATION_STATE_BRANCH_SIGNATURE_RESULT.json').write_text(json.dumps(d['first'],indent=2,sort_keys=True)+'\n')
+          PY
+      - name: Apply frozen direct-source classifier
+        run: python3 verification/m21/cmb_source_branch_signature.py lanes verification/m21/m21_perturbation_state_gate_config.json M21_PERTURBATION_STATE_BRANCH_SIGNATURE_RESULT.json M21_CMB_SOURCE_BRANCH_SIGNATURE_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-cmb-source-after-duplicate-recovery-v01
+          retention-days: 90
+          path: |
+            M21_CMB_SOURCE_BRANCH_SIGNATURE_RESULT.json
+            M21_PERTURBATION_STATE_BRANCH_SIGNATURE_RESULT.json
