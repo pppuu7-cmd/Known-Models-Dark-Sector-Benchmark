@@ -1,0 +1,56 @@
+{
+  "schema": "KMDSB.W04.M21.CMBPrecisionComponentCompleteReadout.v0.2",
+  "date": "2026-09-14",
+  "status": "COMPLETE_GROUP_EARLY_READOUT_AGGREGATE_PENDING",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "protocol": "protocol/W04_M21_CONDITIONAL_CMB_PRECISION_COMPONENT_DECOMPOSITION_v0.1.md",
+  "execution_recovery_protocol": "protocol/W04_M21_CMB_PRECISION_COMPONENT_SERIALIZATION_RECOVERY_v0.2.md",
+  "workflow_run": 34869857740,
+  "workflow_head": "d23fb0f8f9abb6fd395f86fa372b754d31a6db49",
+  "group": "G3",
+  "group_label": "scalar CMB transfer/source-support truncation",
+  "source_artifacts": {
+    "ref": {"id": 10358523164, "digest": "sha256:440312b0deebd2cbe614b2409244e70886894017c04b3a10abf542d01127fa83"},
+    "f2": {"id": 10358572388, "digest": "sha256:0be327127dd59587b6cf9ffacaa0e967abd70e7f7052c101fc39381bc3bf198b"},
+    "f3": {"id": 10358353965, "digest": "sha256:133b09678c81837d874d723e30883210f5308f31b1d3f17cd302ccad14b1bef6"},
+    "f4": {"id": 10358601121, "digest": "sha256:126ead494a574de39c3134a8765b9caa067fbfb8a6e5cd53360a7293615de6a7"}
+  },
+  "response_R2": {
+    "f2": {
+      "TT": 0.0000010462188171648678,
+      "EE": 0.0000009931260487825552,
+      "TE": 0.0000009522021879493479,
+      "Pk": 0.0000014813568161197196,
+      "H": 0.0000025351650164300382
+    },
+    "f3": {
+      "TT": 0.00006869995597441678,
+      "EE": 0.0002777169383580108,
+      "TE": 0.0005180935522531906,
+      "Pk": 0.000001472074051568178,
+      "H": 0.0000007605501741102751
+    },
+    "f4": {
+      "TT": 0.0000010767481460949693,
+      "EE": 0.0000009962059065006305,
+      "TE": 0.0000009683580353807303,
+      "Pk": 0.0000014759503382680431,
+      "H": 0.0000002535167916950842
+    }
+  },
+  "excursion_factors": {
+    "TT": 63.803180180592975,
+    "EE": 278.7746353899329,
+    "TE": 535.0227223028012,
+    "Pk": 0.9937336066162256,
+    "H": 0.3000002639596473
+  },
+  "Emax_group": 535.0227223028012,
+  "Emax_parent_RK": 534.8355868817356,
+  "reduction_threshold_Eparent_over_3": 178.27852896057853,
+  "classification": "GROUP_INSUFFICIENT",
+  "aggregate_effect": "G3 must not activate stage-2 subgroup decomposition under the pre-frozen activation rule.",
+  "interpretation": "Applying the full frozen G3 transfer/source-support precision group leaves the isolated f3 CMB excursion essentially unchanged: Emax is approximately 535.02 versus approximately 534.84 in the parent RK baseline. G3 therefore neither removes nor reduces the excursion by the frozen criterion. This rules out G3 as an individually sufficient precision group; it does not prove that G3 parameters have exactly zero effect or that they cannot participate in higher-order interactions.",
+  "K1_promoted": false,
+  "physical_falsification": false
+}
