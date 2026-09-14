@@ -1,0 +1,43 @@
+name: W04 M21 l400 accumulation successor router v0.1
+
+on:
+  workflow_run:
+    workflows: ['W04 M21 l400 analysis successors v0.1']
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  route:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download authorized convolution result
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-l400-convolution-sign-cancellation-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ github.event.workflow_run.id }}
+      - name: Require convolution successor artifact
+        run: |
+          test '${{ steps.download.outcome }}' = 'success'
+          test -f parent/M21_L400_CONVOLUTION_SIGN_CANCELLATION_RESULT.json
+      - name: Route frozen accumulation classification
+        run: |
+          python3 verification/m21/l400_accumulation_successor_router.py \
+            parent/M21_L400_CONVOLUTION_SIGN_CANCELLATION_RESULT.json \
+            M21_L400_ACCUMULATION_SUCCESSOR_ROUTER_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-accumulation-successor-router-v01
+          path: M21_L400_ACCUMULATION_SUCCESSOR_ROUTER_RESULT.json
+          if-no-files-found: error
+          retention-days: 90
