@@ -1,0 +1,21 @@
+{
+  "schema": "KMDSB.W04.M21.G1FullReferenceFractionSlopeContext.v0.1",
+  "date": "2026-09-14",
+  "status": "POST_HOC_CONTEXT_ONLY_NOT_A_GATE",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "fractions": {"f2": 0.01, "f3": 0.003, "f4": 0.001},
+  "definition": "alpha_ab = ln(R2_a/R2_b) / ln(f_a/f_b)",
+  "G1": {
+    "TT": {"alpha_f2_to_f3": 3.03956311264875, "alpha_f3_to_f4": 0.8754322022546212},
+    "EE": {"alpha_f2_to_f3": 3.845646023347114, "alpha_f3_to_f4": 1.0724819404218755},
+    "TE": {"alpha_f2_to_f3": 4.266145628454117, "alpha_f3_to_f4": 0.6421993341495312}
+  },
+  "full_cl_ref": {
+    "TT": {"alpha_f2_to_f3": 0.6772934817447116, "alpha_f3_to_f4": 0.8757318549897525},
+    "EE": {"alpha_f2_to_f3": 1.7394678194025945, "alpha_f3_to_f4": 1.072300846955646},
+    "TE": {"alpha_f2_to_f3": 1.9713459805359455, "alpha_f3_to_f4": 0.6415781660358506}
+  },
+  "interpretation": "G1 reproduces the full-reference low-fraction f3-to-f4 response slope extremely closely in TT, EE and TE, while its f2-to-f3 slope is much steeper than full cl_ref.pre. This localizes the residual mismatch of G1 as a high-fraction/endpoint response distortion rather than a failure of the recovered low-fraction law. The comparison is descriptive and does not create a new pass/fail metric or alter the frozen parent-group classification.",
+  "K1_promoted": false,
+  "physical_falsification": false
+}
