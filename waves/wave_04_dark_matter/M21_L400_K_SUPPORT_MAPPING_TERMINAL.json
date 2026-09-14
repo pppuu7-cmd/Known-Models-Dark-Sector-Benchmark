@@ -1,0 +1,39 @@
+{
+  "schema": "KMDSB.W04.M21.L400KSupportMappingTerminal.v0.1",
+  "date": "2026-09-15",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "protocol": "protocol/W04_M21_CONDITIONAL_L400_K_SUPPORT_MAPPING_v0.1.md",
+  "run_id": 34905488316,
+  "head_sha": "f6799c93b68470881d9ffc8c65f9de54f20bf1f8",
+  "artifact_id": 10372353411,
+  "artifact_digest": "sha256:fb697687ff2b00ed5145e42cdcb57fb7e5862874c8b36c452994a8244db530ed",
+  "parent_transfer_localization_run_id": 34905311127,
+  "parent_diagnostic_run_id": 34904313450,
+  "classification": "M21_L400_K_SUPPORT_MAPPED_WITH_SCOPE",
+  "active_quantity": "Delta_E",
+  "no_class_execution": true,
+  "cross_lane_identical_support": true,
+  "support": {
+    "common_k_min_Mpc_inv": 7.591246689227084e-06,
+    "common_k_max_Mpc_inv": 0.3172125886572476,
+    "common_k_nodes": 1702,
+    "k05_Mpc_inv": 0.03030247505892471,
+    "k50_Mpc_inv": 0.03182575113595699,
+    "k95_Mpc_inv": 0.04401375054733766,
+    "k_peak_Mpc_inv": 0.030913138222910114,
+    "support_width_log10_k95_over_k05": 0.16211027526380956,
+    "fraction_excess_within_factor2_of_k_peak": 0.997189249206765,
+    "total_excess_ln_k": 7.168250134654979e-16,
+    "W_peak": 1.4365122027180146e-14
+  },
+  "response_norms_on_common_grid": {
+    "f2": 3.5996988487451386e-10,
+    "f3": 3.557619129195695e-07,
+    "f4": 4.0686589614772254e-10
+  },
+  "scientific_interpretation": "The f3-specific l=400 scalar-E transfer excess is concentrated in a narrow, layout-independent native-k band: 90% of the frozen non-negative excess measure lies between k=0.0303025 and 0.0440138 Mpc^-1, with median 0.0318258 and peak 0.0309131 Mpc^-1. This is a numerical support localization, not a new physical scale claim.",
+  "K1_promoted": false,
+  "K3_promoted": false,
+  "K4_promoted": false,
+  "physical_falsification": false
+}
