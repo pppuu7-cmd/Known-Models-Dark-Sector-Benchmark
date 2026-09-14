@@ -19,7 +19,7 @@ At the exact provider pin, `cl_permille.pre` contains:
 
 The M21 ncdm-tight overlay changes ncdm background/perturbation accuracy and perturbation sampling, but does not override `transfer_neglect_delta_k_S_e`.
 
-Important correction to an earlier working note: terminal stage-2 subgroup decomposition activated only G1 and G2. G3A was **not** executed in that stage. Therefore the scalar-E transfer-neglect control has not been ruled out by stage-2.
+The full frozen G3 transfer/source-support precision group was executed in run `34869857740` and was `GROUP_INSUFFICIENT`: `Emax=535.0227223028012` versus parent `534.8355868817356`. That full G3 profile includes the reference transfer-neglect controls, including `transfer_neglect_delta_k_S_e=100`, together with other G3 controls. Stage-2 therefore did not activate the G3A/G3B subgroup decomposition. Correct scope: the scalar-E cutoff has **not been individually isolated**, but changing it inside the full G3 reference bundle was not sufficient to remove or materially reduce the excursion.
 
 ## Exact transfer type mapping
 
@@ -53,7 +53,7 @@ For scalar E one exact neglect condition is
 
 With the active `cl_permille.pre`, the scalar-E threshold parameter is exactly `0.13`.
 
-This is a discrete l/k-dependent branch in the transfer path. Its existence makes it a legitimate source-level candidate for any transfer-localized sparse-knot effect. **No causal attribution is made here.** A dedicated prospective test is required before changing or disabling this cutoff.
+This is a discrete l/k-dependent branch in the transfer path. Its existence makes it a legitimate secondary source-level candidate for any transfer-localized sparse-knot effect, but the full-G3 null-reduction result substantially weakens a simple explanation in which the cutoff alone is the sole cause. **No causal attribution is made here.** A dedicated prospective one-factor test would be justified only after k/q support mapping places the excess near this exact branch geometry.
 
 ## Transfer to harmonic EE
 
