@@ -1,0 +1,73 @@
+{
+  "schema": "KMDSB.W04.F19.AxiCLASS.ExactSourceAuthorityResult.v0.1",
+  "date": "2026-09-14",
+  "provider": "PoulinV/AxiCLASS@ae9609e1f96ddebbb6cc8a46de94512514c68781",
+  "protocol": "protocol/W04_F19_AXICLASS_EXACT_SOURCE_AUTHORITY_AUDIT_v0.1.md",
+  "workflow_run_id": 34861348551,
+  "head_sha": "d343225a81203f3ef85f84edf7c66d6f7783b69b",
+  "aggregate_job_id": 104034200196,
+  "aggregate_artifact": {
+    "id": 10353979653,
+    "digest": "sha256:bb907bd03abe050a0a680241873cc9f48a2d00119f418a2f502cc909e1bdc92b"
+  },
+  "lanes": {
+    "S1_identity_example": {
+      "job_id": 104034083132,
+      "artifact_id": 10354504789,
+      "artifact_digest": "sha256:6146cc9a51849f29a46cbcd7aa593cd92d1c385b83a528c206db5d5864c46ea0",
+      "all_required_checks_pass": true,
+      "exact_head": true,
+      "required_files": true,
+      "author_axion_example": true,
+      "author_example_perturbations_enabled": true
+    },
+    "S2_model_background": {
+      "job_id": 104034083121,
+      "artifact_id": 10355380004,
+      "artifact_digest": "sha256:67cae4a68cda10366c0ccda842c8f120090d8b6b605d45693d263cc47f41c155",
+      "all_required_checks_pass": true,
+      "explicit_cosine_potential": true,
+      "first_derivative": true,
+      "second_derivative": true,
+      "background_state": true,
+      "kg_fluid_switch": true
+    },
+    "S3_perturbation_boltzmann": {
+      "job_id": 104034083081,
+      "artifact_id": 10354864228,
+      "artifact_digest": "sha256:093404ae70792112a803e9cb9d4ea64ac19f30490cd48c2316d76b2b691cb951",
+      "all_required_checks_pass": true,
+      "scalar_indices_declared": true,
+      "scalar_indices_used_in_solver": true,
+      "scalar_perturbation_switch": true,
+      "photon_hierarchy_same_solver": true,
+      "ur_hierarchy_same_solver": true,
+      "metric_einstein_workspace": true,
+      "scf_occurrences_in_solver": 818
+    },
+    "S4_lineage_provenance": {
+      "job_id": 104034082805,
+      "artifact_id": 10354164197,
+      "artifact_digest": "sha256:97783a2e6c96afb808059e472ef92b10598e46da3ab7955bc35bc50cb055c4f8",
+      "all_required_checks_pass": true,
+      "origin": "https://github.com/PoulinV/AxiCLASS.git",
+      "exact_head": true,
+      "real_source_tree": true,
+      "not_class_gsf_dependency": true,
+      "class_lineage_not_hidden": true
+    }
+  },
+  "negative_controls_all_pass": true,
+  "classification": "F19_AXICLASS_EXACT_SOURCE_AUTHORITY_PASS_WITH_SCOPE",
+  "author_control_reference": {
+    "run": 34846931382,
+    "artifact": 10348785556,
+    "digest": "sha256:d0d4b2f3e5875d86eaaaeeba7f2bcd59917b38e91d2496ca0490e5da036faf4b"
+  },
+  "authoritative_k0k1_run": 34846931382,
+  "authoritative_k0k1_run_terminal_at_record_time": false,
+  "K0_promoted": false,
+  "K1_promoted": false,
+  "physical_falsification": false,
+  "interpretation": "The exact pinned AxiCLASS repository is a genuine source-complete axion scalar-field Einstein-Boltzmann implementation with an author example, explicit cosine potential and derivative machinery, scalar background/KG-fluid switching, scalar perturbation states in the same solver as photon/UR hierarchies, and independent provenance from the blocked CLASS_GSF provider. This result does not decide the separately frozen F19 C0/Z0 K0/K1 identity gate."
+}
