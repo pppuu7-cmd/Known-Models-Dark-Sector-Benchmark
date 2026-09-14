@@ -1,0 +1,24 @@
+{
+  "schema": "KMDSB.W04.M21.ThermoStateBranchSignatureHarnessBlocked.v0.1",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "protocol": "protocol/W04_M21_THERMODYNAMICS_STATE_BRANCH_SIGNATURE_v0.1.md",
+  "run_id": 34886286903,
+  "aggregate_artifact_id": 10364932639,
+  "aggregate_artifact_digest": "sha256:1c20407593418982772ebecde2c26cc1c0b5d49533ace75cf97779e0240f7c90",
+  "classification": "M21_THERMO_STATE_BRANCH_SIGNATURE_BLOCKED",
+  "blocker_type": "HARNESS_DOWNSTREAM_NONLINEAR_REQUEST_WITHOUT_PERTURBATIONS",
+  "evidence": {
+    "all_six_lane_jobs_failed_before_thermodynamics_output": true,
+    "representative_lane_artifact_id": 10365460417,
+    "representative_lane_artifact_digest": "sha256:ce2542c29472853ebf1e2fca08dd54c59806e54f2afe5bcc0190ea7356552420",
+    "all_representative_case_rc": 1,
+    "parser_error": "You requested non-linear computation but no perturbations. You must set the 'output' field.",
+    "cause": "state derivation removed output=tCl,pCl,mPk but preserved downstream non linear=halofit",
+    "exact_source_order_places_thermodynamics_before_perturbations_and_fourier_nonlinear": true
+  },
+  "authorized_recovery": "protocol/W04_M21_THERMO_STATE_DOWNSTREAM_OUTPUT_RECOVERY_v0.1.md",
+  "scientific_interpretation": "No thermodynamics-state or solver result exists from this run. Input parsing stopped before state computation. Recovery may remove only the already-frozen downstream spectrum request and downstream Halofit request, add write_thermodynamics=yes, and retain the parent 2x3 solver/tolerance map and classifier unchanged.",
+  "K1_promoted": false,
+  "physical_falsification": false
+}
