@@ -1,0 +1,393 @@
+name: W03 M13b K3D2-C self-consistent gauge IVP
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/w03-m13b-k3d2c-self-consistent-gauge-ivp.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+  K1: '0.00022398828992555914'
+  K10: '0.0022398828992555913'
+
+jobs:
+  source_guard:
+    name: S fixed-point source and compile guard
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply exact frozen stack and audit recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$CLASS_PIN"
+          mkdir -p result
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py provider --manifest result/pt_split.json
+          python3 verification/m13b/k3d2b_apply_mapping_certified_tau_seam.py provider --manifest result/cert_tau.json
+          python3 verification/m13b/k3d2c_apply_self_consistent_gauge_ivp.py provider --manifest result/fixed_ivp.json
+          python3 verification/m13b/k3d2b_apply_output_diagnostics.py provider --manifest result/diag.json
+          set +e
+          make -C provider -j2 class > result/build.log 2>&1
+          brc=$?
+          set -e
+          echo "$brc" > result/build_rc.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          R=Path('result')
+          M=json.loads((R/'fixed_ivp.json').read_text())
+          C=json.loads((R/'cert_tau.json').read_text())
+          D=json.loads((R/'diag.json').read_text())
+          P=Path('provider/source/perturbations.c').read_text()
+          brc=int((R/'build_rc.txt').read_text())
+          checks={
+            'build_rc_zero':brc==0,
+            'algorithm_pure_undamped_picard':M.get('algorithm')=='pure_undamped_picard',
+            'max_iterations_16':M.get('max_iterations')==16,
+            'raw_identity_tol_1e_12':M.get('identity_raw_tolerance')==1e-12,
+            'full_overwrite':M.get('full_overwrite_each_iteration') is True,
+            'damping_false':M.get('damping') is False,
+            'relaxation_none':M.get('relaxation_coefficient') is None,
+            'line_search_false':M.get('line_search') is False,
+            'newton_fit_false':M.get('newton_or_jacobian_fit') is False,
+            'endpoint_data_false':M.get('endpoint_data_used') is False,
+            'no_fitted_parameters':M.get('per_mode_fitted_parameters') is False,
+            'no_qfield_rhs_change':M.get('changes_qfield_rhs') is False,
+            'no_stress_change':M.get('changes_qfield_stress_energy') is False,
+            'no_einstein_change':M.get('changes_einstein_equations') is False,
+            'no_hierarchy_change':M.get('changes_boltzmann_hierarchy') is False,
+            'no_solver_change':M.get('changes_solver_family') is False,
+            'no_tolerance_change':M.get('changes_integration_tolerances') is False,
+            'no_model_parameter_change':M.get('changes_model_or_cosmology_parameters') is False,
+            'no_new_free_parameters':M.get('new_free_parameters')==0,
+            'certified_12_ulps_preserved':C.get('expected_certified_tau_ulps')==12 and P.count('expected_cert_ulps_kmdsb = 12')==1,
+            'iter_diagnostic_present':P.count('KMDSB_GAUGE_IVP_FIXED iter=')==1,
+            'final_diagnostic_present':P.count('KMDSB_GAUGE_IVP_FIXED_FINAL')==1,
+            'output_diagnostics_only':D.get('output_only') and not D.get('changes_rhs') and not D.get('changes_state_vector') and not D.get('changes_einstein_sources') and not D.get('changes_boltzmann_hierarchy') and not D.get('changes_background'),
+          }
+          ok=all(checks.values())
+          obj={'schema':'KMDSB.W03.M13b.K3D2CSelfConsistentGaugeIVP.SourceGuard.v0.1','checks':checks,'all_required_checks_pass':ok,'classification':'M13B_K3D2C_FIXED_SOURCE_GUARD_PASS' if ok else 'M13B_K3D2C_FIXED_SOURCE_GUARD_FAIL','physical_falsification':False}
+          (R/'source_guard.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(obj,indent=2,sort_keys=True))
+          assert ok,obj
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2c-fixed-source-guard
+          path: result
+          retention-days: 90
+
+  disabled_null:
+    name: N fixed-point strict disabled exact-null
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact upstream and recovered disabled stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git upstream
+          git -C upstream checkout -q "$CLASS_PIN"
+          cp -a upstream patched
+          mkdir -p result out_up out_patch
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py patched --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py patched --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py patched --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py patched --manifest result/pt_split.json
+          python3 verification/m13b/k3d2b_apply_mapping_certified_tau_seam.py patched --manifest result/cert_tau.json
+          python3 verification/m13b/k3d2c_apply_self_consistent_gauge_ivp.py patched --manifest result/fixed_ivp.json
+          make -C upstream -j2 class > result/build_up.log 2>&1
+          make -C patched -j2 class > result/build_patch.log 2>&1
+      - name: Run identical LambdaCDM controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > result/up.ini <<EOF
+          h = 0.6715
+          omega_b = 0.0224
+          Omega_cdm = 0.26172292868512664
+          Omega_g = 5.4572897176151613e-05
+          Omega_ur = 3.772710282384838e-05
+          N_ncdm = 0
+          Omega_Lambda = 0.6881856997151265
+          Omega_k = 0
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = mPk
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          write_background = yes
+          root = $GITHUB_WORKSPACE/out_up/control_
+          EOF
+          sed 's|out_up/control_|out_patch/control_|' result/up.ini > result/patch.ini
+          set +e
+          (cd upstream && ./class "$GITHUB_WORKSPACE/result/up.ini") > result/up_stdout.txt 2> result/up_stderr.txt
+          rcu=$?
+          (cd patched && ./class "$GITHUB_WORKSPACE/result/patch.ini") > result/patch_stdout.txt 2> result/patch_stderr.txt
+          rcp=$?
+          set -e
+          echo "$rcu" > result/up_rc.txt
+          echo "$rcp" > result/patch_rc.txt
+      - name: Frozen strict-null gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import bisect,json,math,re
+          R=Path('result'); rcu=int((R/'up_rc.txt').read_text()); rcp=int((R/'patch_rc.txt').read_text())
+          up=sorted(Path('out_up').glob('control*_pk.dat')); pa=sorted(Path('out_patch').glob('control*_pk.dat'))
+          ub=sorted(Path('out_up').glob('control*_background.dat')); pb=sorted(Path('out_patch').glob('control*_background.dat'))
+          checks={'upstream_rc_zero':rcu==0,'patched_rc_zero':rcp==0,'one_pk_each':len(up)==len(pa)==1,'one_background_each':len(ub)==len(pb)==1}
+          data={}
+          def rows(p): return [[float(x) for x in l.split()] for l in p.read_text().splitlines() if l.strip() and not l.lstrip().startswith('#')]
+          if all(checks.values()):
+            a=rows(up[0]); b=rows(pa[0]); xb=[r[0] for r in b]; yb=[r[1] for r in b]
+            def li(x):
+              i=bisect.bisect_left(xb,x)
+              if i==0:return yb[0]
+              if i>=len(xb):return yb[-1]
+              x0,x1=xb[i-1],xb[i]; y0,y1=yb[i-1],yb[i]
+              f=(math.log(x)-math.log(x0))/(math.log(x1)-math.log(x0))
+              return math.exp(math.log(y0)+f*(math.log(y1)-math.log(y0)))
+            common=[r for r in a if xb[0]<=r[0]<=xb[-1]]
+            l2=math.sqrt(sum((r[1]-li(r[0]))**2 for r in common)/max(sum(r[1]**2 for r in common),1e-300))
+            checks['pk_finite_positive']=bool(a) and bool(b) and all(r[0]>0 and r[1]>0 and all(math.isfinite(x) for x in r) for r in a+b)
+            def H0(p):
+              ls=p.read_text().splitlines(); h=next(l for l in ls if l.lstrip().startswith('#') and 'z' in l and 'H [1/Mpc]' in l)
+              t={m.group(2).strip():int(m.group(1))-1 for m in re.finditer(r'(\d+):(.+?)(?=\s+\d+:|$)',h.lstrip('#').strip())}
+              rr=rows(p); q=min(rr,key=lambda r:abs(r[t['z']]))
+              return q[t['H [1/Mpc]']]
+            hu,hp=H0(ub[0]),H0(pb[0]); hrel=abs(hu-hp)/max(abs(hu),abs(hp),1e-300)
+            checks['pk_L2_le_1e_10']=l2<=1e-10; checks['H0_rel_le_1e_12']=hrel<=1e-12
+            data={'pk_normalized_L2':l2,'H0_relative_difference':hrel,'upstream_H0':hu,'patched_H0':hp}
+          else:
+            checks.update({'pk_finite_positive':False,'pk_L2_le_1e_10':False,'H0_rel_le_1e_12':False})
+          ok=all(checks.values())
+          obj={'schema':'KMDSB.W03.M13b.K3D2CSelfConsistentGaugeIVP.DisabledNull.v0.1','checks':checks,'all_required_checks_pass':ok,'classification':'M13B_K3D2C_FIXED_DISABLED_NULL_PASS' if ok else 'M13B_K3D2C_FIXED_DISABLED_NULL_FAIL','physical_falsification':False,**data}
+          (R/'null_result.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n'); print(json.dumps(obj,indent=2,sort_keys=True)); assert ok,obj
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2c-fixed-disabled-null
+          path: result
+          retention-days: 90
+
+  default_full:
+    name: D fixed-point enabled default full B1 B2 B3
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact self-consistent scientific provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$CLASS_PIN"
+          mkdir -p result out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py provider --manifest result/pt_split.json
+          python3 verification/m13b/k3d2b_apply_mapping_certified_tau_seam.py provider --manifest result/cert_tau.json
+          python3 verification/m13b/k3d2c_apply_self_consistent_gauge_ivp.py provider --manifest result/fixed_ivp.json
+          python3 verification/m13b/k3d2b_apply_output_diagnostics.py provider --manifest result/diag.json
+          set +e
+          make -C provider -j2 class > result/build.log 2>&1
+          echo "$?" > result/build_rc.txt
+          set -e
+      - name: Run frozen full Boltzmann cosmology
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > result/enabled.ini <<EOF
+          h = 0.6715
+          omega_b = 0.0224
+          Omega_cdm = 0.26172292868512664
+          Omega_g = 5.4572897176151613e-05
+          Omega_ur = 3.772710282384838e-05
+          N_ncdm = 0
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = 0
+          Omega_k = 0
+          qcf_U0 = 0.3362232603714306
+          qcf_phi_ini = 0.92
+          qcf_phi_prime_ini = 0
+          qpf_U0 = 0.3362232603714306
+          qpf_psi_ini = 1.02
+          qpf_psi_prime_ini = 0
+          gauge = synchronous
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = tCl,pCl,lCl,mPk,dTk
+          lensing = yes
+          l_max_scalars = 1200
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          k_output_values = $K1,$K10
+          write_background = yes
+          root = $GITHUB_WORKSPACE/out/default_
+          EOF
+          brc=$(cat result/build_rc.txt)
+          if [ "$brc" -ne 0 ]; then
+            echo 125 > result/provider_rc.txt; : > result/stdout.txt; : > result/stderr.txt; exit 0
+          fi
+          set +e
+          (cd provider && ./class "$GITHUB_WORKSPACE/result/enabled.ini") > result/stdout.txt 2> result/stderr.txt
+          rc=$?
+          set -e
+          echo "$rc" > result/provider_rc.txt
+          find out -maxdepth 1 -type f -printf '%f\n' | sort > result/output_files.txt
+      - name: Fixed-point gate and unchanged B1 B2 B3 verifier
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re,math
+          R=Path('result'); rc=int((R/'provider_rc.txt').read_text())
+          text=(R/'stderr.txt').read_text(errors='replace')+'\n'+(R/'stdout.txt').read_text(errors='replace')
+          finals=[]
+          for m in re.finditer(r'KMDSB_GAUGE_IVP_FIXED_FINAL\s+converged=(\d+)\s+iterations=(\d+)\s+max=([-+0-9.eE]+)\s+tol=([-+0-9.eE]+)',text):
+            finals.append({'converged':int(m.group(1)),'iterations':int(m.group(2)),'max':float(m.group(3)),'tol':float(m.group(4))})
+          iterations=[]
+          for m in re.finditer(r'KMDSB_GAUGE_IVP_FIXED\s+iter=(\d+).*?max=([-+0-9.eE]+)',text):
+            iterations.append({'iteration':int(m.group(1)),'max':float(m.group(2))})
+          checks={
+            'provider_rc_zero':rc==0,
+            'final_diagnostic_present':len(finals)>=1,
+            'all_final_values_finite':bool(finals) and all(math.isfinite(x['max']) and math.isfinite(x['tol']) for x in finals),
+            'fixed_point_converged':bool(finals) and all(x['converged']==1 for x in finals),
+            'iterations_le_16':bool(finals) and all(1<=x['iterations']<=16 for x in finals),
+            'final_max_le_1e_12':bool(finals) and all(x['max']<=1e-12 for x in finals),
+            'frozen_tol_exact':bool(finals) and all(x['tol']==1e-12 for x in finals),
+          }
+          ok=all(checks.values())
+          obj={'schema':'KMDSB.W03.M13b.K3D2CSelfConsistentGaugeIVP.FixedPoint.v0.1','checks':checks,'all_required_checks_pass':ok,'classification':'M13B_K3D2C_FIXED_POINT_PASS' if ok else 'M13B_K3D2C_FIXED_POINT_FAIL','finals':finals,'iteration_trace_first_mode':iterations,'physical_falsification':False}
+          (R/'fixed_point_result.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n'); print(json.dumps(obj,indent=2,sort_keys=True))
+          PY
+          if [ "$(cat result/provider_rc.txt)" -eq 0 ] && python3 - <<'PY'
+          import json,sys
+          o=json.load(open('result/fixed_point_result.json')); sys.exit(0 if o['all_required_checks_pass'] else 1)
+          PY
+          then
+            set +e
+            python3 verification/m13b/k3d2b_verify_full_default.py --out out --result result --canonical waves/wave_03_expanded_dark_energy/M13B_K3C2_INDEPENDENT_PERTURBATION_BRIDGE_RESULT.json --prefix default
+            echo "$?" > result/verifier_rc.txt
+            set -e
+          else
+            echo 125 > result/verifier_rc.txt
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2c-fixed-default-full
+          path: |
+            result
+            out
+          retention-days: 90
+
+  verdict:
+    name: V frozen self-consistent gauge-IVP verdict
+    needs:
+      - source_guard
+      - disabled_null
+      - default_full
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: m13b-k3d2c-fixed-source-guard
+          path: lanes/source
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: m13b-k3d2c-fixed-disabled-null
+          path: lanes/null
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: m13b-k3d2c-fixed-default-full
+          path: lanes/default
+      - name: Assemble robust preregistered verdict
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root=Path('lanes')
+          def load(name):
+            hits=list(root.rglob(name))
+            if len(hits)!=1:
+              return None, [str(x) for x in hits]
+            return json.loads(hits[0].read_text()), [str(hits[0])]
+          S,sp=load('source_guard.json'); N,np=load('null_result.json'); F,fp=load('fixed_point_result.json'); D,dp=load('default_verify.json')
+          s_ok=bool(S and S.get('all_required_checks_pass')); n_ok=bool(N and N.get('all_required_checks_pass')); f_ok=bool(F and F.get('all_required_checks_pass'))
+          guards=s_ok and n_ok and f_ok
+          b1=bool(D and D.get('B1',{}).get('all_required_checks_pass'))
+          b2=bool(D and D.get('B2_default',{}).get('all_required_checks_pass'))
+          b3=bool(D and D.get('B3',{}).get('all_required_checks_pass'))
+          science=b1 and b2 and b3
+          if not guards:
+            cls='M13B_K3D2C_SELF_CONSISTENT_GAUGE_IVP_IMPLEMENTATION_BLOCKED'; ok=False
+          elif science:
+            cls='M13B_K3D2C_SELF_CONSISTENT_GAUGE_IVP_DEFAULT_B123_PASS_WITH_SCOPE'; ok=True
+          else:
+            cls='M13B_K3D2C_SELF_CONSISTENT_GAUGE_IVP_SCIENTIFIC_GAP'; ok=False
+          obj={
+            'schema':'KMDSB.W03.M13b.K3D2CSelfConsistentGaugeIVPVerdict.v0.1',
+            'artifact_discovery':{'source':sp,'null':np,'fixed_point':fp,'default_verify':dp},
+            'checks':{'source_guard':s_ok,'disabled_null':n_ok,'fixed_point_identity':f_ok,'B1':b1,'B2_default':b2,'B3':b3},
+            'all_required_checks_pass':ok,
+            'classification':cls,
+            'same_initial_surface_regression':guards,
+            'default_B1_B2_B3_evaluated':D is not None,
+            'default_B1_B2_B3_pass':science,
+            'historical_parent_B3_rewritten':False,
+            'one_step_blocker_rewritten':False,
+            'reference_precision_robustness_established':False,
+            'full_two_precision_regression_established':False,
+            'K3_state_ceiling':'PARTIAL',
+            'K4_promoted':False,
+            'K5_promoted':False,
+            'author_model_reproduced':False,
+            'published_V0_reproduced':False,
+            'author_normalization_map_claimed':False,
+            'physical_falsification':False,
+          }
+          Path('verdict.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n'); print(json.dumps(obj,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2c-fixed-verdict
+          path: verdict.json
+          retention-days: 90
