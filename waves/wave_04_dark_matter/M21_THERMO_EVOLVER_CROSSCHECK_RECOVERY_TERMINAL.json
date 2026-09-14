@@ -1,0 +1,24 @@
+{
+  "schema": "KMDSB.W04.M21.ThermoEvolverCrosscheckRecoveryTerminal.v0.2",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "parent_protocol": "protocol/W04_M21_CONDITIONAL_THERMO_EVOLVER_CROSSCHECK_v0.1.md",
+  "recovery_protocol": "protocol/W04_M21_THERMO_EVOLVER_ENUM_SERIALIZATION_RECOVERY_v0.1.md",
+  "run_id": 34884124030,
+  "artifact_id": 10364875832,
+  "artifact_digest": "sha256:cef0ef9492f9890b76bc50351ad51e9354f9e24026095b04a2d7e5062f814ceb",
+  "classification": "M21_THERMO_EVOLVER_DEPENDENCE_MIXED",
+  "cross_lane_input_identity": true,
+  "lanes": {
+    "NDF_T1E5": {"solver": "ndf15", "tol": 1e-5, "classification": "REMOVES", "Emax": 0.03431664516144772},
+    "NDF_T1E6": {"solver": "ndf15", "tol": 1e-6, "classification": "INSUFFICIENT", "Emax": 534.8355868817356},
+    "NDF_T1E7": {"solver": "ndf15", "tol": 1e-7, "classification": "REMOVES", "Emax": 1.000009046588933},
+    "RK_T1E5": {"solver": "rk", "tol": 1e-5, "classification": "REMOVES", "Emax": 0.01599261677523812},
+    "RK_T1E6": {"solver": "rk", "tol": 1e-6, "classification": "INSUFFICIENT", "Emax": 431.1545462529807},
+    "RK_T1E7": {"solver": "rk", "tol": 1e-7, "classification": "INSUFFICIENT", "Emax": 431.10945211063756}
+  },
+  "scientific_interpretation": "The thermodynamics numerical response is mixed across solver and tolerance. The 1e-5 removal branch is shared by NDF15 and RK; 1e-6 is excursion-bearing for both; at 1e-7 NDF15 and RK diverge. This does not select a converged thermodynamics reference profile and does not authorize K1-v2 under the prospectively frozen selector.",
+  "k1v2_reference_authorized_by_this_parent": false,
+  "K1_promoted": false,
+  "physical_falsification": false
+}
