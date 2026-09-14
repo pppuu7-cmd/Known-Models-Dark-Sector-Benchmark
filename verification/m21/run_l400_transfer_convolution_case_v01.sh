@@ -20,6 +20,9 @@ git -C class diff --check
 python3 verification/m21/mixed_cold_warm_k1_reference.py prepare m21_cases
 python3 verification/m21/build_l_grid_phase_profile.py "$lane" class/cl_permille.pre verification/m21/m21_ncdm_tight.pre "$profile" "$profile_manifest"
 make -C class -j2 > build.log 2>&1
+# Harness-only recovery: CLASS does not create the relative output/ directory.
+# The frozen INI roots are output/<case>_; create only the parent directory.
+mkdir -p output
 
 set +e
 KMDSB_M21_L400_CONV_DIAG="$(pwd)/$diag" timeout 2700 ./class/class "m21_cases/${case_id}.ini" "$profile" > "run_${case_id}.log" 2>&1
