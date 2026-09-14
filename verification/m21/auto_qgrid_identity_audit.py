@@ -7,9 +7,9 @@ PROTOCOL='protocol/W04_M21_AUTO_QGRID_IDENTITY_AUDIT_v0.1.md'
 
 def patch(root:pathlib.Path, manifest:pathlib.Path):
     p=root/'source/background.c'; before=p.read_text()
-    marker='    class_alloc(pba->dlnf0_dlnq_ncdm[k],\n'
+    marker='    /* If allocated, deallocate interpolation table:  */\n'
     if before.count(marker)!=1: raise RuntimeError(f'anchor count {before.count(marker)}')
-    ins='''    /* KMDSB M21 output-only q-grid audit. */
+    ins='''    /* KMDSB M21 output-only q-grid audit. factor_ncdm is initialized above. */
     fprintf(stdout,"KMDSB_QGRID_BEGIN species=%d strategy=%d qsize=%d deg=%.17g factor=%.17g\\n",
             k,(int)pba->ncdm_quadrature_strategy[k],pba->q_size_ncdm[k],pba->deg_ncdm[k],pba->factor_ncdm[k]);
     for (int kmdsb_qi=0; kmdsb_qi<pba->q_size_ncdm[k]; kmdsb_qi++) {
@@ -21,7 +21,7 @@ def patch(root:pathlib.Path, manifest:pathlib.Path):
 
 '''
     after=before.replace(marker,ins+marker,1); p.write_text(after)
-    m={'schema':'KMDSB.W04.M21.QGridInstrumentation.v0.1','changed_file':'source/background.c','insertions':1,'output_only':True,'changes_arrays':False,'changes_equations':False,'changes_inputs':False,'changes_tolerances':False,'before_sha256':hashlib.sha256(before.encode()).hexdigest(),'after_sha256':hashlib.sha256(after.encode()).hexdigest()}
+    m={'schema':'KMDSB.W04.M21.QGridInstrumentation.v0.2','changed_file':'source/background.c','insertions':1,'anchor':'after_factor_ncdm_before_psd_free','factor_initialized_before_print':True,'output_only':True,'changes_arrays':False,'changes_equations':False,'changes_inputs':False,'changes_tolerances':False,'before_sha256':hashlib.sha256(before.encode()).hexdigest(),'after_sha256':hashlib.sha256(after.encode()).hexdigest()}
     manifest.write_text(json.dumps(m,indent=2,sort_keys=True)+'\n')
 
 def parse_lane(lane:str, log:pathlib.Path, rc:pathlib.Path, manifest:pathlib.Path, out:pathlib.Path):
