@@ -1,0 +1,139 @@
+name: W04 M21 CMB precision stage3 single-parameter decomposition v0.1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m21-cmb-precision-stage3-single-parameter-decomposition-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  PARENT_RUN_ID: '34872522336'
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  OMP_NUM_THREADS: '1'
+
+jobs:
+  activation:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.gate.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download immutable terminal stage2 aggregate
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-cmb-precision-stage2-subgroup-decomposition-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.PARENT_RUN_ID }}
+
+      - id: gate
+        name: Enforce stage3 prospective activation and build full parameter matrix
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path('parent/M21_CMB_PRECISION_STAGE2_SUBGROUP_DECOMPOSITION_RESULT.json')
+          d=json.loads(p.read_text())
+          assert d.get('provider')=='lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540'
+          assert d.get('classification')=='M21_CMB_PRECISION_STAGE2_COMPLETE'
+          assert d['subgroups']['G1A']['classification']=='SUBGROUP_REMOVES_EXCURSION'
+          assert d['subgroups']['G2B']['classification']=='SUBGROUP_REDUCES_EXCURSION'
+          params=[
+            'G1A__recfast_Nz0',
+            'G1A__tol_thermo_integration',
+            'G1A__recfast_x_He0_trigger_delta',
+            'G1A__recfast_x_H0_trigger_delta',
+            'G2B__l_logstep',
+            'G2B__l_linstep',
+            'G2B__hyper_sampling_flat',
+            'G2B__hyper_sampling_curved_low_nu',
+            'G2B__hyper_sampling_curved_high_nu',
+            'G2B__hyper_nu_sampling_step',
+            'G2B__hyper_phi_min_abs',
+            'G2B__hyper_x_tol',
+            'G2B__hyper_flat_approximation_nu',
+          ]
+          matrix={'include':[{'parameter':x} for x in params]}
+          with Path(os.environ['GITHUB_OUTPUT']).open('a') as f:
+              f.write('matrix='+json.dumps(matrix,separators=(',',':'))+'\n')
+          print(json.dumps({'parameter_count':len(params),'parameters':params},indent=2))
+          PY
+
+  parameter:
+    needs: activation
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.activation.outputs.matrix) }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Execute frozen single-parameter lane
+        run: |
+          set -euo pipefail
+          bash verification/m21/run_component_stage3_single_lane_v01.sh '${{ matrix.parameter }}'
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-stage3-${{ matrix.parameter }}
+          path: |
+            lane_meta.json
+            case_status.tsv
+            stage3_${{ matrix.parameter }}.pre
+            stage3_${{ matrix.parameter }}_manifest.json
+            m21_cases/*.ini
+            output/*.dat
+            run_*.log
+            build.log
+          retention-days: 90
+
+  aggregate:
+    needs: [activation, parameter]
+    if: always() && needs.activation.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+
+      - name: Download all stage3 parameter artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-stage3-*
+          path: components
+
+      - name: Download immutable terminal stage2 aggregate
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-cmb-precision-stage2-subgroup-decomposition-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.PARENT_RUN_ID }}
+
+      - name: Apply frozen stage3 classifier
+        run: |
+          set -euo pipefail
+          python3 verification/m21/cmb_precision_stage3_single_parameter_decomposition.py \
+            components \
+            parent/M21_CMB_PRECISION_STAGE2_SUBGROUP_DECOMPOSITION_RESULT.json \
+            M21_CMB_PRECISION_STAGE3_SINGLE_PARAMETER_DECOMPOSITION_RESULT.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-cmb-precision-stage3-single-parameter-decomposition-v01
+          path: M21_CMB_PRECISION_STAGE3_SINGLE_PARAMETER_DECOMPOSITION_RESULT.json
+          retention-days: 90
