@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - .github/workflows/w03-m13b-k3d2e-rk-error-component-audit.yml
+      - verification/m13b/k3d2e_apply_rk_error_component_probe.py
+      - verification/m13b/k3d2e_parse_rk_error_components.py
   workflow_dispatch:
 
 permissions:
