@@ -1,0 +1,30 @@
+{
+  "schema": "KMDSB.W03.F16DiscoveryHitSourceTriageResult.v0.1",
+  "date": "2026-09-14",
+  "parent_run": 34808041442,
+  "aggregate_artifact": 10333817402,
+  "aggregate_digest": "sha256:2359cd93f6fdc0f204edd1d923db754aed5226c133bbac23095a5121bc48eca7",
+  "audited_repository_count": 20,
+  "higher_priority_count": 1,
+  "higher_priority_candidate": {
+    "repository": "GambitBSM/gambit_2.3",
+    "exact_commit": "98c78ed4903881cecc189e8d7159153856bac44d",
+    "matched_path": "config/models.dat"
+  },
+  "manual_source_review": {
+    "classification": "FALSE_POSITIVE_RUNNING_VACUUM_COSMOLOGY",
+    "reason": "The matched GAMBIT model database uses 'running' for renormalization-group running and 'vacuum' for particle-physics vacuum stability. The source contains no running-vacuum cosmology Lambda(H), H^2, dotH, or covariant vacuum-exchange implementation."
+  },
+  "additional_public_candidate_review": {
+    "repository": "DawsonInstitute/cosmological-constant-workbench",
+    "exact_commit": "707b7b979226991565fba2bfc1c2f12bd974d04a",
+    "path": "src/ccw/mechanisms/running_vacuum.py",
+    "classification": "BACKGROUND_TOY_NOT_SOURCE_COMPLETE_PROVIDER",
+    "reason": "The source explicitly labels itself toy/scaffolding, supplies an algebraic H(z) ansatz, does not enforce matter-DE exchange, leaves w undefined, and has no perturbation closure. It may serve only as a provenance lead, not K0/K1 provider authority."
+  },
+  "classification": "F16_SOURCE_TRIAGE_NO_SOURCE_COMPLETE_RUNNING_VACUUM_PROVIDER",
+  "K0_promoted": false,
+  "K1_promoted": false,
+  "physical_falsification": false,
+  "next_gate": "prospectively frozen focused exact-term public-source discovery for genuine Lambda(H)/H^2/dotH running-vacuum implementations; source audit before execution"
+}
