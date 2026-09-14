@@ -46,7 +46,16 @@ Exact `include/precisions.h` confirms active precision fields and documents thei
 - `hyper_x_tol` default `1.e-4`: tolerance used to determine the first x point;
 - `hyper_flat_approximation_nu` default `4000.0`: nu boundary controlling the flat approximation for Bessel functions.
 
-Thus G2B is genuinely a projection/Bessel/hyperspherical-sampling precision family at the exact pin, not a dark-matter-physics parameter family.
+The frozen M21 cosmology has `Omega_k=0`, so `sgnK=0`. Exact `transfer.c` establishes the flat/non-flat split:
+
+- the flat branch creates the Bessel/hyperspherical interpolation structure with `hyper_sampling_flat` and `hyper_phi_min_abs`;
+- `hyper_sampling_curved_low_nu`, `hyper_sampling_curved_high_nu` and `hyper_nu_sampling_step` are used in the curved HIS construction;
+- `hyper_x_tol` is consumed in an open-universe (`sgnK=-1`) branch;
+- `hyper_flat_approximation_nu` controls the flat approximation only when `sgnK != 0` / in curved q-grid logic.
+
+Moreover, the frozen values `hyper_phi_min_abs=1.e-10` and `hyper_x_tol=1.e-4` are already equal to their exact-pin defaults, so those individual stage-3 lanes are no-op controls even before curvature reachability is considered.
+
+Thus for this flat M21 benchmark the source-active, non-default G2B candidates are principally `l_logstep`, `l_linstep`, and `hyper_sampling_flat`. The curved-only and default-identical lanes remain mandatory in the frozen stage-3 matrix as negative controls; they cannot be dropped post hoc.
 
 ## Interpretation ceiling
 
