@@ -321,3 +321,14 @@ Seven-lane provider reconnaissance run `34650903154` returned zero provider-grad
 - CLASS is therefore a validated `ADAPTER_GRADE` full-Boltzmann base, not a native quintom provider. Protected subsystems for the first adapter remain photon/polarization/neutrino hierarchy dynamics, thermodynamics/recombination, primordial and nonlinear modules.
 - K3 remains `PARTIAL`; K3D2 independent two-field species adapter is authorized. Author source/unit normalization blockers remain; K4/K5 remain closed; physical_falsification=false.
 
+## M13b K3D2-C self-consistent gauge-IVP terminal result - 2026-09-14
+
+- Classification: `M13B_K3D2C_SELF_CONSISTENT_GAUGE_IVP_DEFAULT_B123_PASS_WITH_SCOPE`.
+- Canonical result: `waves/wave_03_expanded_dark_energy/M13B_K3D2C_SELF_CONSISTENT_GAUGE_IVP_RESULT.json`.
+- Provider: `lesgourg/class_public@64bbab707faf4de4779a9e04edd180fef18d98fa`.
+- Run `34793433652`; scientific artifact `10328826973` (`sha256:714380b4da09a3ddaf6f27448f844eec2e1d431422812bf84c2c1f3a5d50dbbc`); verdict artifact `10328861652` (`sha256:46330de20588b92575ba0bcbb11590cf31b5a9848ac625dc77d15e06a1eb483e`).
+- Source guard PASS; strict disabled null P(k) L2 `4.2828210457354356e-16`, H0 relative difference `0`.
+- Pure-undamped fixed point: `1.3888839265511165e-07 -> 1.037773556487728e-13` in 2 iterations at unchanged target `1e-12`.
+- Unchanged default B1/B2/B3 verifier PASS; phantom delta_y ratios `0.99857413408469` (khat=1) and `1.0038143961348418` (khat=10), correct signs.
+- Historical synchronous-zero B3 FAIL and one-step blocker remain immutable. K3 remains PARTIAL; reference precision remains OPEN; K4/K5 not promoted; author source/normalization reproduction blocked; physical_falsification=false.
+
