@@ -1,0 +1,35 @@
+{
+  "schema": "KMDSB.W04.M21.FullCMBReferencePrecisionCanonical.v0.1",
+  "date": "2026-09-14",
+  "protocol": "protocol/W04_M21_FULL_CMB_REFERENCE_PRECISION_DIAGNOSTIC_v0.1.md",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "parent_run": 34542162543,
+  "parent_artifact": {
+    "id": 10178334419,
+    "digest": "sha256:640472f79c7e55d9edf4ed39ed35d4ab692fcf4700fad4d50edbad0642f7c65c"
+  },
+  "workflow_run_id": 34864827822,
+  "head_sha": "ab14fb400f3daabf3336187e72d203954b20551a",
+  "aggregate_job_id": 104059123769,
+  "result_artifact": {
+    "id": 10358256663,
+    "digest": "sha256:2e25f8cd134383b8f6b93be747e72feb8e7f8713a205ecc9d02563f38a33e859"
+  },
+  "evidence_ok": true,
+  "finite_outputs": true,
+  "Emax_parent_RK_P2": 534.8355868817356,
+  "Emax_reference_precision": 0.4424433114015791,
+  "excursion_factors": {
+    "TT": 0.4424433114015791,
+    "EE": 0.12315987774713093,
+    "TE": 0.09315905773640556,
+    "Pk": 0.8847753116819013,
+    "H": 0.3000002639596473
+  },
+  "classification": "M21_FULL_CMB_REFERENCE_PRECISION_REMOVES_EXCURSION",
+  "conditional_component_decomposition_authorized": true,
+  "authorized_protocol": "protocol/W04_M21_CONDITIONAL_CMB_PRECISION_COMPONENT_DECOMPOSITION_v0.1.md",
+  "K1_promoted": false,
+  "physical_falsification": false,
+  "interpretation": "Exact CLASS cl_ref.pre removes the previously extreme f3 CMB branch excursion under the same physical cases and RK baseline: the maximum frozen TT/EE/TE excursion factor falls from 534.8355868817356 to 0.4424433114015791. This establishes strong numerical precision sensitivity and authorizes the pre-frozen G1/G2/G3 component decomposition. It does not by itself identify a unique precision component and does not promote K1 or physically falsify mixed WDM."
+}
