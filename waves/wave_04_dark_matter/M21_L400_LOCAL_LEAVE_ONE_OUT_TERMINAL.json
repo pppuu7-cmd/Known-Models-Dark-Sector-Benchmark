@@ -1,0 +1,45 @@
+{
+  "schema": "KMDSB.W04.M21.L400LocalLeaveOneOutTerminal.v0.1",
+  "date": "2026-09-15",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "run_id": 34903783469,
+  "artifact_id": 10372080830,
+  "artifact_digest": "sha256:724130c3a35f97dea9b6c3bcf42bd8070fab0958335b7be8c6ff111191fb8ba2",
+  "classification": "M21_L400_ISOLATED_LOCAL_RESPONSE_SPIKE_SUPPORTED_WITH_SCOPE",
+  "parent_run_id": 34901952566,
+  "factorial_run_id": 34887488405,
+  "pairs": {
+    "A": {
+      "lane": "P400_ON_TAIL_OFF",
+      "neighbors": [399,401],
+      "E400": 178.51538852487005,
+      "Ehat": 1.4213371932224133,
+      "J_resid": 81065.90734035356,
+      "Q_f2": 0.0015348727947410972,
+      "Q_f3": 124.4258557577113,
+      "Q_f4": 0.0013609736767962312,
+      "reference_residual_report_only": 9.988579391795717e-06
+    },
+    "B": {
+      "lane": "P400_EVEN_TAIL_OFF",
+      "neighbors": [398,402],
+      "E400": 178.51538852487005,
+      "Ehat": 1.421909497332294,
+      "J_resid": 126455.0503013637,
+      "Q_f2": 0.00098410581582942,
+      "Q_f3": 124.44515044257386,
+      "Q_f4": 0.0008051838974980644,
+      "reference_residual_report_only": 0.00028729704321411387
+    }
+  },
+  "l400_response": {
+    "f2": 2.486612000026255e-18,
+    "f3": 5.100707699998997e-16,
+    "f4": 2.8572929998628027e-18
+  },
+  "scientific_interpretation": "The f3-specific EE anomaly is an isolated directly computed sparse harmonic knot at l=400. Symmetric direct neighboring knots predict a calm response, and f2/f4 plus the absolute reference curve remain locally smooth. This authorizes a transfer-vs-harmonic diagnostic only; it does not establish a CLASS defect or physical model failure.",
+  "K1_promoted": false,
+  "K3_promoted": false,
+  "K4_promoted": false,
+  "physical_falsification": false
+}
