@@ -1,0 +1,126 @@
+{
+  "schema": "KMDSB.W03.M13b.K3D2CSelfConsistentGaugeIVPResult.v0.1",
+  "date": "2026-09-14",
+  "model_id": "M13b",
+  "family_id": "F13",
+  "gate": "K3D2-C",
+  "provider": "lesgourg/class_public",
+  "provider_commit": "64bbab707faf4de4779a9e04edd180fef18d98fa",
+  "protocol": "protocol/W03_M13B_K3D2C_SELF_CONSISTENT_GAUGE_IVP_RECOVERY_v0.1.md",
+  "transformer": "verification/m13b/k3d2c_apply_self_consistent_gauge_ivp.py",
+  "workflow": ".github/workflows/w03-m13b-k3d2c-self-consistent-gauge-ivp.yml",
+  "workflow_run": 34793433652,
+  "workflow_head_sha": "ba015d77126d9fcc8e6bcbceb7f560bfcdb0c240",
+  "classification": "M13B_K3D2C_SELF_CONSISTENT_GAUGE_IVP_DEFAULT_B123_PASS_WITH_SCOPE",
+  "all_required_checks_pass": true,
+  "same_initial_surface_regression": true,
+  "source_guard": {
+    "job_id": 103821872992,
+    "pass": true,
+    "artifact_id": 10329135829,
+    "artifact_digest": "sha256:e74667a4c2e088a7d31b2bd18469d43bbc1a7ce9c596fe0e508c774db1e81527"
+  },
+  "disabled_null": {
+    "job_id": 103821872849,
+    "pass": true,
+    "classification": "M13B_K3D2C_FIXED_DISABLED_NULL_PASS",
+    "artifact_id": 10329006133,
+    "artifact_digest": "sha256:d32a88c079182f233763c60f2d990c59a20c620d0b51fb4206268b8475b86028",
+    "upstream_rc": 0,
+    "patched_rc": 0,
+    "pk_normalized_L2": 4.2828210457354356e-16,
+    "pk_L2_threshold": 1e-10,
+    "H0_relative_difference": 0.0,
+    "H0_relative_threshold": 1e-12,
+    "upstream_H0_1_per_Mpc": 0.0002239882899256,
+    "patched_H0_1_per_Mpc": 0.0002239882899256
+  },
+  "enabled_default": {
+    "job_id": 103821873019,
+    "artifact_id": 10328826973,
+    "artifact_digest": "sha256:714380b4da09a3ddaf6f27448f844eec2e1d431422812bf84c2c1f3a5d50dbbc",
+    "provider_rc": 0,
+    "fixed_point": {
+      "classification": "M13B_K3D2C_FIXED_POINT_PASS",
+      "algorithm": "pure_undamped_picard",
+      "maximum_iterations_allowed": 16,
+      "iterations_used_first_scalar_mode": 2,
+      "frozen_zero_target_tolerance": 1e-12,
+      "iteration_residuals": [
+        1.3888839265511165e-07,
+        1.037773556487728e-13
+      ],
+      "final_residual": 1.037773556487728e-13,
+      "damping_used": false,
+      "relaxation_or_fit_used": false
+    },
+    "B1": {
+      "pass": true,
+      "crossing_z": 1.197872890416138,
+      "OmegaDE0": 0.6885076999586581,
+      "E0": 0.9999999999341076
+    },
+    "B2_default": {
+      "pass": true,
+      "cl_rows": 1595,
+      "pk_rows": 491,
+      "max_scaled_direct_field_perturbation": 5.1523114655447274e-05
+    },
+    "B3": {
+      "pass": true,
+      "canonical_sha256": "cef0f2970907925920477fedc136f07e9e69139999789fbcb83b9af0a43b887c",
+      "khat_1": {
+        "scale": 1.6699731271531028e-05,
+        "ratios": {
+          "Phi": 0.996307339088745,
+          "delta_x": 0.9961541974444236,
+          "delta_y": 0.99857413408469,
+          "r": 0.9958395519723435,
+          "t": 0.9960637641524324
+        },
+        "canonical_delta_y_today": -4.5224999400478597e-07,
+        "adapter_scaled_delta_y_today": -4.516051461531354e-07,
+        "all_signs_match": true
+      },
+      "khat_10": {
+        "scale": 1.77791921930683e-05,
+        "ratios": {
+          "Phi": 0.9990718786528096,
+          "delta_x": 0.9983653560445516,
+          "delta_y": 1.0038143961348418,
+          "r": 0.9982672106810548,
+          "t": 0.9997290328180352
+        },
+        "canonical_delta_y_today": -3.412850749036911e-08,
+        "adapter_scaled_delta_y_today": -3.4258687137428295e-08,
+        "all_signs_match": true
+      }
+    }
+  },
+  "aggregate": {
+    "job_id": 103822258397,
+    "artifact_id": 10328861652,
+    "artifact_digest": "sha256:46330de20588b92575ba0bcbb11590cf31b5a9848ac625dc77d15e06a1eb483e",
+    "checks": {
+      "source_guard": true,
+      "disabled_null": true,
+      "fixed_point_identity": true,
+      "B1": true,
+      "B2_default": true,
+      "B3": true
+    }
+  },
+  "historical_parent_B3_rewritten": false,
+  "one_step_blocker_rewritten": false,
+  "reference_precision_robustness_established": false,
+  "full_two_precision_regression_established": false,
+  "interpretation": "The earlier phantom-delta_y sign gap is removed when the executed CLASS adapter is initialized on the same physical K3C2 Newtonian zero-qfield initial surface via the preregistered self-consistent synchronous gauge map. The adapter source equations/stress signs were already independently audited as consistent. This establishes the frozen default NDF15 full-Boltzmann B1/B2/B3 regression with scope, while preserving the historical synchronous-zero B3 gap as evidence for a different initial surface.",
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "author_model_reproduced": false,
+  "published_V0_reproduced": false,
+  "author_normalization_map_claimed": false,
+  "physical_falsification": false,
+  "next_authorized_frontier": "Numerical robustness / reference-precision continuation must be addressed separately. The existing reference-RK blocker is localized to non-frozen intermediate k modes rather than the frozen K1/K10 trajectories; no reference-precision PASS is inferred from this default-lane result."
+}
