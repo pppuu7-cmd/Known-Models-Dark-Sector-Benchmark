@@ -1,0 +1,48 @@
+name: W04 M21 post-terminal l-support localization v0.1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m21-postterminal-l-support-localization-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  PARENT_RUN: '34879864684'
+
+jobs:
+  localize:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Download terminal R artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-lpair-LPAIR_R
+          path: R
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.PARENT_RUN }}
+      - name: Download terminal T2 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-lpair-LPAIR_T2
+          path: T2
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.PARENT_RUN }}
+      - name: Compute descriptive l-support localization
+        run: |
+          set -euo pipefail
+          python3 verification/m21/l_sampling_f3_support_localization.py R T2 M21_L_SAMPLING_F3_SUPPORT_LOCALIZATION_RESULT.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m21-l-sampling-f3-support-localization-v01
+          path: M21_L_SAMPLING_F3_SUPPORT_LOCALIZATION_RESULT.json
+          retention-days: 90
