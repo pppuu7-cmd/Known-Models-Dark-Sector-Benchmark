@@ -1,0 +1,113 @@
+name: W03 F15 NGCG author-code provider discovery v0.2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-f15-ngcg-author-code-discovery-v02.yml'
+      - 'protocol/W03_F15_NGCG_AUTHOR_CODE_PROVIDER_DISCOVERY_v0.2.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  search:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: 0
+            query: '"Xin Zhang" "Chaplygin" CAMB'
+          - lane: 1
+            query: '"Feng-Quan Wu" Chaplygin code'
+          - lane: 2
+            query: '"Jingfei Zhang" NGCG code'
+          - lane: 3
+            query: '"astro-ph/0411221" code'
+          - lane: 4
+            query: '"p = -" "rho" "alpha" chaplygin perturbation extension:py'
+          - lane: 5
+            query: '"chaplygin" "delta" "theta" extension:c'
+          - lane: 6
+            query: '"chaplygin" "delta" "theta" extension:f90'
+          - lane: 7
+            query: '"new generalized chaplygin" growth perturbation code'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Frozen author/equation keyed search
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUERY: ${{ matrix.query }}
+          LANE: ${{ matrix.lane }}
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.parse, urllib.request, urllib.error
+          q=os.environ['QUERY']; lane=int(os.environ['LANE'])
+          url='https://api.github.com/search/code?q='+urllib.parse.quote(q)+'&per_page=50'
+          headers={'Accept':'application/vnd.github+json','Authorization':'Bearer '+os.environ['GH_TOKEN'],'X-GitHub-Api-Version':'2022-11-28'}
+          payload=None; err=None
+          for attempt in range(5):
+              try:
+                  req=urllib.request.Request(url,headers=headers)
+                  with urllib.request.urlopen(req,timeout=60) as r: payload=json.load(r)
+                  break
+              except urllib.error.HTTPError as e:
+                  err=f'HTTP {e.code}'
+                  if e.code in (403,429): time.sleep(10*(attempt+1)); continue
+                  break
+              except Exception as e:
+                  err=repr(e); time.sleep(5*(attempt+1))
+          out={'schema':'KMDSB.W03.F15NGCGAuthorCodeDiscovery.v0.2','lane':lane,'query':q,'status':'OK' if payload is not None else 'INFRASTRUCTURE_ERROR','error':err,'total_count':0,'candidates':[]}
+          if payload is not None:
+              out['total_count']=payload.get('total_count',0)
+              for it in payload.get('items',[]):
+                  repo=it['repository']['full_name']; path=it['path']; low=path.lower()
+                  reject=any(x in low for x in ['.md','.xml','.html','.txt','.bib','rss','arxiv','corpus','data/'])
+                  impl=low.endswith(('.py','.c','.cc','.cpp','.h','.hpp','.f','.f90','.jl'))
+                  out['candidates'].append({'repository':repo,'path':path,'html_url':it.get('html_url'),'blob_sha':it.get('sha'),'priority':'REJECT_NONIMPLEMENTATION' if reject or not impl else 'SOURCE_REVIEW_CANDIDATE'})
+          open(f'f15_ngcg_author_lane_{lane}.json','w').write(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f15-ngcg-author-v02-lane-${{ matrix.lane }}
+          path: f15_ngcg_author_lane_${{ matrix.lane }}.json
+
+  aggregate:
+    needs: search
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: f15-ngcg-author-v02-lane-*
+          path: lanes
+          merge-multiple: true
+      - name: Frozen aggregate
+        run: |
+          python3 - <<'PY'
+          import json, glob
+          rows=[]
+          for p in sorted(glob.glob('lanes/*.json')): rows.append(json.load(open(p)))
+          cand=[]
+          for r in rows:
+              for c in r.get('candidates',[]):
+                  if c.get('priority')=='SOURCE_REVIEW_CANDIDATE': cand.append(c)
+          seen=set(); uniq=[]
+          for c in cand:
+              k=(c['repository'],c['path'],c.get('blob_sha'))
+              if k not in seen: seen.add(k); uniq.append(c)
+          infra=[r['lane'] for r in rows if r.get('status')!='OK']
+          if infra: cls='F15_AUTHOR_CODE_DISCOVERY_INFRASTRUCTURE_PARTIAL'
+          elif uniq: cls='F15_AUTHOR_CODE_SOURCE_REVIEW_CANDIDATES_FOUND'
+          else: cls='F15_AUTHOR_CODE_DISCOVERY_NO_SOURCE_COMPLETE_PROVIDER'
+          out={'schema':'KMDSB.W03.F15NGCGAuthorCodeDiscoveryAggregate.v0.2','protocol':'protocol/W03_F15_NGCG_AUTHOR_CODE_PROVIDER_DISCOVERY_v0.2.md','classification':cls,'infrastructure_failed_lanes':infra,'source_review_candidates':uniq,'lane_results':rows,'K0_promotion':False,'K1_promotion':False,'physical_falsification':False}
+          open('f15_ngcg_author_code_discovery_aggregate.json','w').write(json.dumps(out,indent=2))
+          print(json.dumps({'classification':cls,'candidate_count':len(uniq),'infra_failed_lanes':infra}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f15-ngcg-author-code-discovery-aggregate
+          path: f15_ngcg_author_code_discovery_aggregate.json
