@@ -1,0 +1,22 @@
+{
+  "schema": "KMDSB.W04.M21.ThermoEvolverCrosscheckHarnessBlocked.v0.1",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "protocol": "protocol/W04_M21_CONDITIONAL_THERMO_EVOLVER_CROSSCHECK_v0.1.md",
+  "run_id": 34883668337,
+  "aggregate_artifact_id": 10363911571,
+  "aggregate_artifact_digest": "sha256:219b2f32cf3b74d3b369b510bf553b692b583d2a086e538f0b1a84e6408e67d4",
+  "classification": "M21_THERMO_EVOLVER_CROSSCHECK_BLOCKED",
+  "blocker_type": "HARNESS_ENUM_SERIALIZATION_ONLY",
+  "evidence": {
+    "all_six_lane_jobs_failed_before_scientific_output": true,
+    "NDF_T1E5_all_case_rc": 1,
+    "NDF_T1E5_parser_error": "parser_read_int could not read parameter thermo_evolver serialized as ndf15",
+    "shared_builder_serialized_symbolic_enum_labels": true,
+    "exact_source_enum_mapping": {"rk": 0, "ndf15": 1},
+    "exact_parser_requires_integer": true
+  },
+  "scientific_interpretation": "No solver or physical result exists from this run. The failure occurred in input parsing before thermodynamics or spectra execution. Recovery may change only the textual enum serialization from semantic labels to the exact integer enum values while preserving the frozen 2x3 solver/tolerance matrix and all thresholds.",
+  "K1_promoted": false,
+  "physical_falsification": false
+}
