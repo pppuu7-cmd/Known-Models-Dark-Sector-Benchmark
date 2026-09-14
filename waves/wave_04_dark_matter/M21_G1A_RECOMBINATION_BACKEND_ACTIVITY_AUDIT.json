@@ -1,0 +1,35 @@
+{
+  "schema": "KMDSB.W04.M21.G1ARecombinationBackendActivityAudit.v0.1",
+  "date": "2026-09-14",
+  "status": "PRE_STAGE2_SCOPE_AUDIT_NOT_A_GATE",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "stage2_protocol": "protocol/W04_M21_CONDITIONAL_CMB_PRECISION_STAGE2_SUBGROUP_DECOMPOSITION_v0.1.md",
+  "audit_timing": "performed while the recovered parent G1/G2/G3 aggregate was still non-terminal and before any stage-2 execution",
+  "frozen_case_recombination_override_present": false,
+  "exact_provider_default_recombination": "hyrec",
+  "g1a_assignments": {
+    "recfast_Nz0=100000": {
+      "source_status": "LEGACY_KEY_NOT_REGISTERED_IN_EXACT_PIN_PRECISIONS_H",
+      "interpretation": "The key is present in the provider cl_ref.pre text but no class_precision_parameter(recfast_Nz0,...) registration exists in the exact pinned include/precisions.h, and no literal reader/use was found in the exact input.c or thermodynamics.c sources inspected. Treat as legacy/unread for attribution purposes unless later direct parser instrumentation proves otherwise."
+    },
+    "tol_thermo_integration=1.e-5": {
+      "source_status": "ACTIVE_GENERAL_THERMODYNAMICS_PRECISION",
+      "default": "1.e-6",
+      "interpretation": "Registered as a general thermodynamics integration tolerance, used independently of the Recfast/HyRec choice. This is the clearly active G1A precision change under the frozen HyRec backend."
+    },
+    "recfast_x_He0_trigger_delta=0.01": {
+      "source_status": "REGISTERED_RECFAST_SPECIFIC_PRECISION",
+      "default": "0.05",
+      "interpretation": "Declared in the exact provider's Recfast 1.4/1.5 precision section. With the frozen cases inheriting default recombination=hyrec, it is not an active HyRec control."
+    },
+    "recfast_x_H0_trigger_delta=0.01": {
+      "source_status": "REGISTERED_RECFAST_SPECIFIC_PRECISION",
+      "default": "0.05",
+      "interpretation": "Declared in the exact provider's Recfast 1.4/1.5 precision section. With the frozen cases inheriting default recombination=hyrec, it is not an active HyRec control."
+    }
+  },
+  "classification": "M21_G1A_EFFECTIVE_ACTIVE_CONTENT_REDUCED_TO_GENERAL_THERMO_TOLERANCE_WITH_LEGACY_SCOPE",
+  "stage2_governance": "Do not alter the already-frozen G1A subgroup or remove any of its four serialized lines. If G1A is eventually executed and is sufficient, attribution must be capped at the effective active content under HyRec, dominated by tol_thermo_integration; the legacy/Recfast-specific lines cannot be credited without additional backend-specific evidence. If G1A is insufficient, the result remains a subgroup-level negative localization only.",
+  "K1_promoted": false,
+  "physical_falsification": false
+}
