@@ -1,0 +1,76 @@
+name: W04 M21 l400 knot propagation diagnostic v0.1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m21-l400-knot-propagation-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  pair:
+    strategy:
+      fail-fast: false
+      matrix:
+        pair_id: [A, B]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Download immutable factorial lanes
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-lphase-*
+          path: lanes
+          merge-multiple: false
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34887488405
+      - name: Apply frozen pair classifier
+        run: python3 verification/m21/l400_knot_propagation.py lanes '${{ matrix.pair_id }}' result_${{ matrix.pair_id }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-knot-propagation-${{ matrix.pair_id }}
+          path: result_${{ matrix.pair_id }}.json
+          retention-days: 90
+
+  aggregate:
+    needs: pair
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-l400-knot-propagation-*
+          path: pairs
+      - name: Apply frozen aggregate rule
+        run: |
+          python3 - <<'PY'
+          import json,pathlib
+          ds=[]
+          for p in pathlib.Path('pairs').rglob('result_*.json'): ds.append(json.load(open(p)))
+          by={d.get('pair_id'):d for d in ds}
+          out={'schema':'KMDSB.W04.M21.L400KnotPropagation.v0.1','protocol':'protocol/W04_M21_L400_KNOT_PROPAGATION_DIAGNOSTIC_v0.1.md','parent_run_id':34887488405,'knot_only_run_id':34897465426,'direct_cmb_source_run_id':34897602278,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False,'pairs':by}
+          if set(by)!={'A','B'} or any(d.get('classification')=='PAIR_BLOCKED' for d in by.values()): cls='M21_L400_KNOT_PROPAGATION_DIAGNOSTIC_BLOCKED'
+          elif all(d.get('pair_propagates') is True for d in by.values()): cls='M21_L400_GRID_MEMBERSHIP_PROPAGATES_TO_OTHER_KNOT_VALUES_WITH_SCOPE'
+          elif all(d.get('pair_single_knot_sufficient') is True for d in by.values()): cls='M21_L400_SINGLE_KNOT_VALUE_SUFFICIENT_FOR_HIGH_STATE_WITH_SCOPE'
+          else: cls='M21_L400_KNOT_INFLUENCE_MIXED_WITH_SCOPE'
+          out['classification']=cls
+          pathlib.Path('M21_L400_KNOT_PROPAGATION_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({'classification':cls,'pair_classes':{k:v.get('classification') for k,v in by.items()}},indent=2))
+          if cls.endswith('BLOCKED'): raise SystemExit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-knot-propagation-v01
+          path: M21_L400_KNOT_PROPAGATION_RESULT.json
+          retention-days: 90
