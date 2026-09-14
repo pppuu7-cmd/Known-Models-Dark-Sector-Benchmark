@@ -1,0 +1,71 @@
+{
+  "schema": "KMDSB.W03.M13b.K3D2CGaugeMappedZ5IVPResult.v0.1",
+  "date": "2026-09-14",
+  "model_id": "M13b",
+  "family_id": "F13",
+  "gate": "K3D2-C",
+  "provider": "lesgourg/class_public",
+  "provider_commit": "64bbab707faf4de4779a9e04edd180fef18d98fa",
+  "protocol": "protocol/W03_M13B_K3D2C_GAUGE_MAPPED_Z5_IVP_PREREGISTRATION_v0.1.md",
+  "transformer": "verification/m13b/k3d2c_apply_gauge_mapped_z5_ivp.py",
+  "workflow": ".github/workflows/w03-m13b-k3d2c-gauge-mapped-z5-ivp.yml",
+  "workflow_run": 34793111419,
+  "workflow_head_sha": "d04f6b4fdeeaa9a101ee248442fb462492301b3a",
+  "classification": "M13B_K3D2C_GAUGE_MAPPED_Z5_IVP_IMPLEMENTATION_BLOCKED",
+  "physical_falsification": false,
+  "historical_parent_B3_rewritten": false,
+  "source_guard": {
+    "job_id": 103820964366,
+    "pass": true,
+    "artifact_id": 10328647778,
+    "artifact_digest": "sha256:16eb091a334e42b54a73ab21137d75b1b5a698f96b83068a31e2c6a02038f10c"
+  },
+  "disabled_null": {
+    "job_id": 103820964389,
+    "pass": true,
+    "artifact_id": 10328831320,
+    "artifact_digest": "sha256:e4d40d3790073e7a9d4522679c6f32c0ba487f213338a184535aa784a149175a",
+    "provider_rc_upstream": 0,
+    "provider_rc_patched": 0,
+    "pk_normalized_L2": 4.2828210457354356e-16,
+    "pk_L2_threshold": 1e-10,
+    "H0_relative_difference": 0.0,
+    "H0_relative_threshold": 1e-12
+  },
+  "enabled_default": {
+    "job_id": 103820964251,
+    "artifact_id": 10327759235,
+    "artifact_digest": "sha256:4a6dd564860ed3879e3360c437fa6e6610f0aa151c1a5c915be575b9013fedcf",
+    "provider_rc": 1,
+    "boundary_identity": {
+      "pass": false,
+      "frozen_raw_tolerance": 1e-12,
+      "max_raw_residual": 1.3888839265511165e-07,
+      "tau_handoff_Mpc": 6256.998662974107,
+      "a_handoff": 0.16666666666666616,
+      "phi_prime": 4.563712872814291e-10,
+      "psi_prime": -8.753067993605835e-09,
+      "alpha_after_assignment": 1308.5098548989101,
+      "alpha_prime_after_assignment": 0.19313467460950062,
+      "residuals": {
+        "delta_x_N": 6.598017278630614e-13,
+        "r_N": 7.2414225487337536e-09,
+        "delta_y_N": -1.2654804426717259e-11,
+        "t_N": -1.3888839265511165e-07
+      }
+    },
+    "B1_B2_B3_evaluated": false,
+    "reason": "The prospectively frozen one-step inverse gauge-map assignment changed the exact-boundary Einstein metric weakly because CLASS returns small but nonzero qfield background velocities at the interpolated exact boundary. The implementation identity guard halted before the historical scientific verifier."
+  },
+  "aggregate_verdict": {
+    "artifact_id": 10327899136,
+    "artifact_digest": "sha256:6d6f6712348f2fe6e1aed2a5776f7dab7e0bbee28ddc759d65a26eb37b8d8bd6",
+    "classification": "M13B_K3D2C_GAUGE_MAPPED_Z5_IVP_IMPLEMENTATION_BLOCKED",
+    "bookkeeping_note": "The aggregate JSON recorded disabled_null=false although the immutable disabled-null artifact itself is PASS with all checks true. This inconsistency does not alter the terminal classification because boundary_identity=false independently forces IMPLEMENTATION_BLOCKED. Canonical lane evidence records the immutable null artifact as authoritative."
+  },
+  "interpretation": "The same-initial-surface target remains authorized and the independent adapter retains an exact disabled reduction, but a single inverse-map assignment is not self-consistent with the recomputed Einstein metric at the exact boundary. This is a coupled coordinate/constraint implementation blocker, not a physical model failure.",
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "next_authorized_action": "Prospectively freeze a deterministic undamped fixed-point solve of the same inverse gauge-map identities against the unchanged CLASS Einstein constraints, retaining the same 1e-12 zero-target residual, with no fit, damping, sign tuning, parameter change, solver/tolerance change, or historical B3 rewrite."
+}
