@@ -1,0 +1,92 @@
+name: W03 M13b K3D2-B phantom delta_y sign diagnostic
+on:
+  push:
+    paths:
+      - '.github/workflows/w03-m13b-k3d2b-phantom-delta-y-sign-diagnostic.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download immutable parent scientific artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir prior
+          gh run download 34790860872 -n m13b-k3d2b-certified-default-full -D prior
+          find prior -maxdepth 3 -type f -printf '%p\n' | sort
+      - name: Diagnose frozen phantom delta_y sign gap without solver rerun
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import bisect, hashlib, json, math, re
+          K={'khat_1':0.00022398828992555914,'khat_10':0.0022398828992555913}
+          root=Path('prior/out'); result=Path('diagnostic'); result.mkdir(exist_ok=True)
+          def rows(p): return [[float(x) for x in l.split()] for l in p.read_text().splitlines() if l.strip() and not l.lstrip().startswith('#')]
+          def hdr(p, required):
+              hs=[l for l in p.read_text().splitlines() if l.lstrip().startswith('#') and all(x in l for x in required)]
+              assert len(hs)==1,(p,required,len(hs))
+              return {m.group(2).strip():int(m.group(1))-1 for m in re.finditer(r'(\d+):(.+?)(?=\s+\d+:|$)',hs[0].lstrip('#').strip())}
+          def lin(arr,a,key):
+              xs=[d['a'] for d in arr]; i=bisect.bisect_left(xs,a)
+              if i==0:return arr[0][key]
+              if i>=len(arr):return arr[-1][key]
+              u,v=arr[i-1],arr[i]; f=(a-u['a'])/(v['a']-u['a']) if v['a']!=u['a'] else 0
+              return u[key]+f*(v[key]-u[key])
+          def sgn(x): return 1 if x>0 else (-1 if x<0 else 0)
+          bg=next(root.glob('default*_background.dat')); bh=hdr(bg,['psi_qpf']); br=rows(bg)
+          b=[]
+          for r in br:
+              z=r[bh['z']]; a=1/(1+z); H=r[bh['H [1/Mpc]']]
+              b.append({'a':a,'H':H,'psip':r[bh["psi'_qpf"]],'dVy':r[bh["V'_qpf"]]})
+          b.sort(key=lambda x:x['a'])
+          canon_path=Path('waves/wave_03_expanded_dark_energy/M13B_K3C2_INDEPENDENT_PERTURBATION_BRIDGE_RESULT.json')
+          cb=canon_path.read_bytes(); canon=json.loads(cb); csha=hashlib.sha256(cb).hexdigest()
+          fs=sorted(root.glob('default*_perturbations_k*_s.dat')); assert len(fs)==2,[str(x) for x in fs]
+          out={'schema':'KMDSB.W03.M13b.K3D2BPhantomDeltaYSignDiagnostic.v0.1','parent_run':34790860872,'parent_artifact_id':10327756907,'parent_artifact_sha256':'4efbd193e5ab0943af4715fd262f9e695b5f65a1800bc971b6d48853727b4f9f','canonical_sha256':csha,'modes':{},'K3_state_ceiling':'PARTIAL','K4_promoted':False,'K5_promoted':False,'physical_falsification':False}
+          all_stable=True; all_mismatch=True; any_cancel=False
+          for f in fs:
+              first=f.read_text().splitlines()[0]; m=re.search(r'k\s*=\s*([0-9.eE+-]+)',first); assert m
+              kv=float(m.group(1)); key=min(K,key=lambda q:abs(K[q]-kv)); assert abs(K[key]-kv)/K[key]<1e-8
+              h=hdr(f,['delta_qpf_S','alpha_sync_to_newt']); rr=rows(f); tr=[]
+              for r in rr:
+                  a=r[h['a']]
+                  if a < 1/6-1e-12 or a>1+1e-12: continue
+                  H=lin(b,a,'H'); ah=a*H; psip=lin(b,a,'psip'); dVy=lin(b,a,'dVy')
+                  alpha=r[h['alpha_sync_to_newt']]; alphap=r[h['alpha_prime_sync_to_newt']]
+                  raw=r[h['delta_qpf_S']]; gauge=alpha*psip; dy=raw+gauge
+                  dyp=r[h['delta_prime_qpf_S']]+(-2*ah*alpha*psip+a*a*dVy*alpha+psip*alphap)
+                  tr.append({'a':a,'z':1/a-1,'Phi':r[h['phi']],'raw':raw,'gauge':gauge,'dy':dy,'t':dyp/ah})
+              tr.sort(key=lambda d:d['a']); assert tr
+              phi5=lin(tr,1/6,'Phi'); scale=1e-5/phi5
+              for d in tr:
+                  for q in ['raw','gauge','dy','t']: d[q]*=scale
+              today=min(tr,key=lambda d:abs(d['a']-1)); nearest=sorted(tr,key=lambda d:abs(d['a']-1))[:2]
+              cref=canon['modes'][key]['fine']['endpoint']['delta_y']; mismatch=sgn(today['dy'])!=sgn(cref)
+              stable=all(sgn(x['dy'])==sgn(today['dy']) for x in nearest)
+              denom=abs(today['raw'])+abs(today['gauge']); cancel=(denom>0 and abs(today['dy']) < 0.1*denom)
+              zc=[]
+              for u,v in zip(tr[:-1],tr[1:]):
+                  if u['dy']==0: zc.append(u['z'])
+                  elif u['dy']*v['dy']<0:
+                      frac=-u['dy']/(v['dy']-u['dy']); aa=u['a']+frac*(v['a']-u['a']); zc.append(1/aa-1)
+              out['modes'][key]={'k':kv,'today':today,'nearest_two_today_samples':nearest,'canonical_delta_y_today':cref,'canonical_sign':sgn(cref),'class_sign':sgn(today['dy']),'sign_mismatch':mismatch,'today_sign_interpolation_stable':stable,'gauge_cancellation_dominant':cancel,'mismatch_present_in_raw_synchronous':sgn(today['raw'])!=sgn(cref),'gauge_term_changes_raw_sign':sgn(today['raw'])!=sgn(today['dy']),'delta_y_zero_crossings_z':zc,'normalized_delta_y_min':min(d['dy'] for d in tr),'normalized_delta_y_max':max(d['dy'] for d in tr),'normalized_t_min':min(d['t'] for d in tr),'normalized_t_max':max(d['t'] for d in tr)}
+              all_stable &= stable; all_mismatch &= mismatch; any_cancel |= cancel
+          if all_stable and all_mismatch and not any_cancel: cls='M13B_K3D2B_PHANTOM_DELTA_Y_SIGN_GAP_LOCALIZED'
+          elif any_cancel or not all_stable: cls='M13B_K3D2B_PHANTOM_DELTA_Y_SIGN_DIAGNOSTIC_NUMERICAL_AMBIGUITY'
+          else: cls='M13B_K3D2B_PHANTOM_DELTA_Y_SIGN_DIAGNOSTIC_INCONCLUSIVE'
+          out['classification']=cls
+          (result/'phantom_delta_y_sign_diagnostic.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m13b-k3d2b-phantom-delta-y-sign-diagnostic
+          path: diagnostic
+          retention-days: 90
