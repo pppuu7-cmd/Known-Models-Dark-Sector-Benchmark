@@ -30,19 +30,10 @@ def main(clp: Path, ncdm: Path, out: Path, manifest: Path):
     apply('cl_permille.pre',parse(clp))
     apply('m21_ncdm_tight.pre',parse(ncdm))
     apply('frozen_common_control',[('evolver','0')])
-    # The exact common baseline is expected to have only this known override.
-    expected={'hyper_flat_approximation_nu'}
-    got={x['key'] for x in conflicts}
-    if got != expected:
-        raise RuntimeError(f'unexpected baseline conflict set: {sorted(got)} expected {sorted(expected)}')
-    c=conflicts[0]
-    if c['previous_value']!='7000.' or c['final_value']!='7000.':
-        # m21_ncdm_tight should not change this key; if a future file starts to, stop.
-        raise RuntimeError(f'unexpected hyper baseline conflict semantics: {c}')
-    # In current files there is normally no duplicate hyper key across these two files; tolerate only exact-identical duplicate.
-    for x in conflicts:
-        if x['previous_value'] != x['final_value']:
-            raise RuntimeError(f'non-identical baseline override: {x}')
+    # For the current exact baseline the three sources have disjoint keys.
+    # Fail closed if a future edit introduces an implicit override.
+    if conflicts:
+        raise RuntimeError(f'unexpected common-baseline override(s): {conflicts}')
     lines=['# M21 perturbation-output capability common baseline',f'# protocol: {PROTOCOL}',f'# provider: lesgourg/class_public@{PIN}']+[f'{k} = {v}' for k,v in vals.items()]
     out.write_text('\n'.join(lines)+'\n')
     reparsed=parse(out); ks=[k for k,_ in reparsed]
