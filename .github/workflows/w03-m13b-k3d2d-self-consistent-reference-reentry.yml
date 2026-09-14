@@ -1,0 +1,269 @@
+name: W03 M13b K3D2-D self-consistent reference re-entry
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/w03-m13b-k3d2d-self-consistent-reference-reentry.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+  K1: '0.00022398828992555914'
+  K10: '0.0022398828992555913'
+  DEFAULT_RUN: '34793433652'
+
+jobs:
+  source_guard:
+    name: S exact reference source and precision guard
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply exact stack plus diagnostic-only RK patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$CLASS_PIN"
+          mkdir -p result
+          sha256sum provider/cl_ref.pre > result/cl_ref.sha256
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py provider --manifest result/pt_split.json
+          python3 verification/m13b/k3d2b_apply_mapping_certified_tau_seam.py provider --manifest result/cert_tau.json
+          python3 verification/m13b/k3d2c_apply_self_consistent_gauge_ivp.py provider --manifest result/fixed_ivp.json
+          python3 verification/m13b/k3d2b_apply_output_diagnostics.py provider --manifest result/diag.json
+          python3 verification/m13b/k3d2b_apply_solver_collapse_geometry_probe.py provider --manifest result/geometry.json
+          python3 verification/m13b/k3d2b_apply_direct_mode_failure_trace.py provider --manifest result/failure_trace.json
+          sha256sum provider/cl_ref.pre > result/cl_ref_after.sha256
+          set +e
+          make -C provider -j2 class > result/build.log 2>&1
+          brc=$?
+          set -e
+          echo "$brc" > result/build_rc.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re
+          R=Path('result')
+          c=json.loads((R/'cert_tau.json').read_text())
+          f=json.loads((R/'fixed_ivp.json').read_text())
+          g=json.loads((R/'geometry.json').read_text())
+          t=json.loads((R/'failure_trace.json').read_text())
+          pre=Path('provider/cl_ref.pre').read_text()
+          checks={
+            'build_rc_zero':int((R/'build_rc.txt').read_text())==0,
+            'cl_ref_unchanged':(R/'cl_ref.sha256').read_text()==(R/'cl_ref_after.sha256').read_text(),
+            'cl_ref_evolver_RK':bool(re.search(r'^\s*evolver\s*=\s*0\s*$',pre,re.M)),
+            'cl_ref_tol_perturbations_1e_6':bool(re.search(r'^\s*tol_perturbations_integration\s*=\s*1\.e-6\s*$',pre,re.M)),
+            'certified_exact_12_ulps':c.get('expected_certified_tau_ulps')==12,
+            'fixed_point_pure_undamped':f.get('algorithm')=='pure_undamped_picard' and f.get('max_iterations')==16 and f.get('identity_raw_tolerance')==1e-12 and f.get('damping') is False,
+            'geometry_error_text_only':g.get('changes_error_text_only') is True,
+            'geometry_no_solver_logic_change':g.get('changes_solver_logic') is False,
+            'geometry_no_tolerance_change':g.get('changes_tolerances') is False,
+            'failure_wrapper_preserves_args':t.get('preserves_generic_evolver_arguments') is True,
+            'failure_wrapper_original_error_unchanged':t.get('original_error_buffer_unchanged') is True,
+            'failure_wrapper_no_state_change':t.get('changes_state_vector') is False,
+          }
+          ok=all(checks.values())
+          obj={'schema':'KMDSB.W03.M13b.K3D2DReferenceReentrySourceGuard.v0.1','checks':checks,'all_required_checks_pass':ok,'classification':'M13B_K3D2D_REFERENCE_SOURCE_GUARD_PASS' if ok else 'M13B_K3D2D_REFERENCE_SOURCE_GUARD_FAIL','physical_falsification':False}
+          (R/'source_guard.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(obj,indent=2,sort_keys=True)); assert ok,obj
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2d-reference-source-guard
+          path: result
+          retention-days: 90
+
+  reference:
+    name: R exact cl_ref self-consistent full execution
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact diagnostic reference provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential python3 >/dev/null
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          test "$(git -C provider rev-parse HEAD)" = "$CLASS_PIN"
+          mkdir -p result/reference out
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py provider --manifest result/pt_split.json
+          python3 verification/m13b/k3d2b_apply_mapping_certified_tau_seam.py provider --manifest result/cert_tau.json
+          python3 verification/m13b/k3d2c_apply_self_consistent_gauge_ivp.py provider --manifest result/fixed_ivp.json
+          python3 verification/m13b/k3d2b_apply_output_diagnostics.py provider --manifest result/diag.json
+          python3 verification/m13b/k3d2b_apply_solver_collapse_geometry_probe.py provider --manifest result/geometry_patch.json
+          python3 verification/m13b/k3d2b_apply_direct_mode_failure_trace.py provider --manifest result/failure_trace.json
+          set +e
+          make -C provider -j2 class > result/build.log 2>&1
+          echo "$?" > result/build_rc.txt
+          set -e
+      - name: Execute exact upstream cl_ref.pre
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > result/enabled.ini <<EOF
+          h = 0.6715
+          omega_b = 0.0224
+          Omega_cdm = 0.26172292868512664
+          Omega_g = 5.4572897176151613e-05
+          Omega_ur = 3.772710282384838e-05
+          N_ncdm = 0
+          Omega_Lambda = 0
+          Omega_fld = 0
+          Omega_scf = 0
+          Omega_k = 0
+          qcf_U0 = 0.3362232603714306
+          qcf_phi_ini = 0.92
+          qcf_phi_prime_ini = 0
+          qpf_U0 = 0.3362232603714306
+          qpf_psi_ini = 1.02
+          qpf_psi_prime_ini = 0
+          gauge = synchronous
+          A_s = 2.1e-9
+          n_s = 0.965
+          tau_reio = 0.054
+          output = tCl,pCl,lCl,mPk,dTk
+          lensing = yes
+          l_max_scalars = 1200
+          P_k_max_1/Mpc = 1.0
+          z_pk = 0
+          k_output_values = $K1,$K10
+          write_background = yes
+          root = $GITHUB_WORKSPACE/out/ref_
+          EOF
+          if [ "$(cat result/build_rc.txt)" -ne 0 ]; then
+            echo 125 > result/provider_rc.txt; : > result/stdout.txt; : > result/stderr.txt; exit 0
+          fi
+          set +e
+          (cd provider && ./class "$GITHUB_WORKSPACE/result/enabled.ini" cl_ref.pre) > result/stdout.txt 2> result/stderr.txt
+          rc=$?
+          set -e
+          echo "$rc" > result/provider_rc.txt
+          find out -maxdepth 1 -type f -printf '%f\n' | sort > result/output_files.txt
+      - name: Parse fixed point, scientific verifier or RK collapse geometry
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re,statistics,math
+          R=Path('result'); rc=int((R/'provider_rc.txt').read_text())
+          text=(R/'stderr.txt').read_text(errors='replace')+'\n'+(R/'stdout.txt').read_text(errors='replace')
+          finals=[]
+          for m in re.finditer(r'KMDSB_GAUGE_IVP_FIXED_FINAL\s+converged=(\d+)\s+iterations=(\d+)\s+max=([-+0-9.eE]+)\s+tol=([-+0-9.eE]+)',text):
+            finals.append({'converged':int(m.group(1)),'iterations':int(m.group(2)),'max':float(m.group(3)),'tol':float(m.group(4))})
+          fp_ok=bool(finals) and all(x['converged']==1 and 1<=x['iterations']<=16 and x['max']<=1e-12 and x['tol']==1e-12 for x in finals)
+          base=re.compile(r'KMDSB_MODE_FAIL index_md=(\d+) index_ic=(\d+) index_k=(\d+) k=([^ ]+) interval_start=([^ ]+) evolver_start=([^ ]+) interval_end=([^ ]+) error=(.*)')
+          rk=re.compile(r'KMDSB_RK_COLLAPSE x=([^| ]+) step_ratio=([^| ]+) minimum=([^| ]+) hdid=([^| ]+) hnext=([^| ]+) step_index=(\d+) interval=\[([^:]+):([^\]]+)\]')
+          recs=[]; seen=set()
+          for m in base.finditer(text):
+            key=(int(m.group(1)),int(m.group(2)),int(m.group(3)),float(m.group(4)))
+            if key in seen: continue
+            seen.add(key); q=rk.search(m.group(8))
+            d={'index_md':key[0],'index_ic':key[1],'index_k':key[2],'k':key[3],'interval_start':float(m.group(5)),'evolver_start':float(m.group(6)),'interval_end':float(m.group(7))}
+            if q: d.update({'collapse_tau':float(q.group(1)),'step_ratio':float(q.group(2)),'minimum':float(q.group(3)),'hdid':float(q.group(4)),'hnext':float(q.group(5)),'step_index':int(q.group(6)),'rk_interval':[float(q.group(7)),float(q.group(8))]})
+            recs.append(d)
+          parsed=[d for d in recs if 'collapse_tau' in d]
+          K1=float('${{ env.K1 }}'); K10=float('${{ env.K10 }}')
+          def failed(k): return any(abs(d['k']-k)/max(abs(k),1e-300)<=1e-8 for d in parsed)
+          geom={'failure_count':len(recs),'geometry_parsed_count':len(parsed),'k_range':None if not parsed else [min(d['k'] for d in parsed),max(d['k'] for d in parsed)],'K1_failed':failed(K1),'K10_failed':failed(K10),'records':sorted(parsed,key=lambda d:d['k'])}
+          state='executed' if rc==0 else 'blocked'
+          obj={'schema':'KMDSB.W03.M13b.K3D2DReferenceExecution.v0.1','provider_rc':rc,'fixed_point_pass':fp_ok,'fixed_point_finals':finals,'execution_state':state,'collapse_geometry':geom,'physical_falsification':False}
+          (R/'reference_execution.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n'); print(json.dumps(obj,indent=2,sort_keys=True))
+          PY
+          if [ "$(cat result/provider_rc.txt)" -eq 0 ]; then
+            set +e
+            python3 verification/m13b/k3d2b_verify_full_default.py --out out --result result/reference --canonical waves/wave_03_expanded_dark_energy/M13B_K3C2_INDEPENDENT_PERTURBATION_BRIDGE_RESULT.json --prefix ref
+            echo "$?" > result/reference_verifier_rc.txt
+            set -e
+          else
+            echo 125 > result/reference_verifier_rc.txt
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2d-self-consistent-reference
+          path: |
+            result
+            out
+          retention-days: 90
+
+  comparison:
+    name: C frozen default-reference comparison
+    needs:
+      - source_guard
+      - reference
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2d-reference-source-guard
+          path: lanes/source
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2d-self-consistent-reference
+          path: lanes/reference
+      - name: Download immutable successful default authority
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p lanes/default
+          gh run download "$DEFAULT_RUN" -n m13b-k3d2c-fixed-default-full -D lanes/default
+      - name: Apply frozen success/blocker logic
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p result
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,subprocess,sys
+          S=json.loads(Path('lanes/source/source_guard.json').read_text())
+          E=json.loads(Path('lanes/reference/result/reference_execution.json').read_text())
+          rc=int(E['provider_rc'])
+          source_ok=bool(S.get('all_required_checks_pass'))
+          if source_ok and rc==0 and E.get('fixed_point_pass'):
+            rv=Path('lanes/reference/result/reference/default_verify.json')
+            ref_science=rv.exists() and bool(json.loads(rv.read_text()).get('all_default_required_checks_pass'))
+            cmp_rc=125
+            if ref_science:
+              cmp_rc=subprocess.call([sys.executable,'verification/m13b/k3d2d_compare_default_reference.py','--default-root','lanes/default','--reference-root','lanes/reference','--out','result/default_reference.json'])
+            cmp_obj=json.loads(Path('result/default_reference.json').read_text()) if Path('result/default_reference.json').exists() else None
+            cmp_ok=bool(cmp_obj and cmp_obj.get('all_required_checks_pass'))
+            if ref_science and cmp_ok:
+              cls='M13B_K3D2D_SELF_CONSISTENT_REFERENCE_PRECISION_PASS_WITH_SCOPE'; ok=True
+            else:
+              cls='M13B_K3D2D_SELF_CONSISTENT_REFERENCE_PRECISION_SCIENTIFIC_OR_NUMERICAL_GAP'; ok=False
+          elif source_ok and rc!=0 and E.get('collapse_geometry',{}).get('geometry_parsed_count',0)>=1:
+            ref_science=False; cmp_ok=False; cls='M13B_K3D2D_SELF_CONSISTENT_REFERENCE_RK_NUMERICAL_BLOCKER_LOCALIZED'; ok=False
+          else:
+            ref_science=False; cmp_ok=False; cls='M13B_K3D2D_REFERENCE_REENTRY_IMPLEMENTATION_BLOCKED'; ok=False
+          obj={'schema':'KMDSB.W03.M13b.K3D2DReferenceReentryVerdict.v0.1','source_guard_pass':source_ok,'provider_rc':rc,'fixed_point_pass':bool(E.get('fixed_point_pass')),'reference_B1_B2_B3_pass':ref_science,'default_reference_reproducibility_pass':cmp_ok,'collapse_geometry':E.get('collapse_geometry'),'all_required_checks_pass':ok,'classification':cls,'historical_default_authority_run':34793433652,'historical_default_authority_artifact':10328826973,'K3_state_ceiling':'PARTIAL','K4_promoted':False,'K5_promoted':False,'physical_falsification':False}
+          Path('result/verdict.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n'); print(json.dumps(obj,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2d-reference-verdict
+          path: result
+          retention-days: 90
