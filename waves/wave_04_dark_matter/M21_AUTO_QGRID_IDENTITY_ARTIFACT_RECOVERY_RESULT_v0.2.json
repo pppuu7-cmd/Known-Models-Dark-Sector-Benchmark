@@ -1,0 +1,50 @@
+{
+  "schema": "KMDSB.W04.M21.AutoQGridIdentityArtifactRecoveryCanonical.v0.2",
+  "date": "2026-09-14",
+  "protocol": "protocol/W04_M21_AUTO_QGRID_IDENTITY_AUDIT_ARTIFACT_RECOVERY_v0.2.md",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "source_run": 34864061202,
+  "source_head": "261a0e38a3c3dedacf006bf3195b11495705e1ab",
+  "original_v01_classification": "M21_AUTO_QGRID_AUDIT_BLOCKED",
+  "workflow_run_id": 34868537760,
+  "head_sha": "70ff457738ac765aa3cf9b6c26bbed6490defacd",
+  "job_id": 104058383990,
+  "result_artifact": {
+    "id": 10358411026,
+    "digest": "sha256:ec9bf3fe3a4261149231e0f98987e3fdfa1b38c29595e83d3d0d9593130b16fe"
+  },
+  "source_artifacts": {
+    "f2": {"id": 10357080247, "digest": "sha256:1f2e464e1a68aec33ec3a0a9b8a19baeea82c69a0caf2e7eeb9d968e3862d674"},
+    "f3": {"id": 10356755518, "digest": "sha256:10cf196b702f2566d8dddd6f7ac5dafdb177597ce4ceecd5c6ac070bd676b5e5"},
+    "f4": {"id": 10355554458, "digest": "sha256:6aedea1ef11d8c5146e14d3532dacc4f388d47f9f9949b3b9bb624c6ab5f9b89"},
+    "f3_manual": {"id": 10357017735, "digest": "sha256:661c454eef830e0d72bc8619fd2df466bedb16f4854e2dd8e418beed12cbcf5b"}
+  },
+  "classification": "M21_AUTO_QGRID_IDENTICAL_ACROSS_FRACTIONS_RECOVERED",
+  "physical_lanes_valid": true,
+  "manual_negative_control_valid_at_qgrid_boundary": true,
+  "frozen_omega_inputs_exact_and_distinct": true,
+  "physical_grids_exactly_identical": true,
+  "manual_negative_control_grid_differs": true,
+  "physical_auto_grid": {
+    "strategy": 0,
+    "q_size": 28,
+    "qgrid_sha256": "8c53e98f378fa8334682aa06de3cd551b678acd1399f14bb45f7db4d88302552",
+    "omega_ncdm": {
+      "f2": 0.0012,
+      "f3": 0.00036,
+      "f4": 0.00012
+    },
+    "provider_rc": {"f2": 0, "f3": 0, "f4": 0}
+  },
+  "manual_negative_control": {
+    "strategy": 3,
+    "q_size": 150,
+    "qgrid_sha256": "c5b8d65d49616e328d8e73559820baebd022bea3ca27f0c76bb28094efe363a7",
+    "omega_ncdm": 0.00036,
+    "provider_rc": 124,
+    "provider_rc_interpretation": "provenance_only_after_complete_qgrid_record; cosmological output was not part of the negative-control claim"
+  },
+  "K1_promoted": false,
+  "physical_falsification": false,
+  "interpretation": "The frozen automatic perturbation q-grid is exactly identical across f_w=0.01, 0.003 and 0.001 while the immutable omega_ncdm inputs are distinct, and the frozen manual-trapz negative control produces a different grid. Fraction-dependent automatic q-grid selection is ruled out as the direct cause of the isolated f3 excursion. Common-grid quadrature error and later source/transfer/interpolation precision layers remain open."
+}
