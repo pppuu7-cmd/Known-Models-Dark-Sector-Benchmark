@@ -1,0 +1,45 @@
+name: W04 M21 automatic q-grid artifact recovery v0.2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-auto-qgrid-artifact-recovery-v02.yml'
+      - 'verification/m21/auto_qgrid_identity_artifact_recovery_v02.py'
+      - 'protocol/W04_M21_AUTO_QGRID_IDENTITY_AUDIT_ARTIFACT_RECOVERY_v0.2.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download immutable source-run lane artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-qgrid-*
+          path: evidence
+          merge-multiple: false
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34864061202
+
+      - name: Apply frozen artifact-only v0.2 recovery
+        run: |
+          set -euo pipefail
+          python3 verification/m21/auto_qgrid_identity_artifact_recovery_v02.py \
+            evidence \
+            M21_AUTO_QGRID_IDENTITY_ARTIFACT_RECOVERY_RESULT.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-auto-qgrid-identity-artifact-recovery-v02
+          path: M21_AUTO_QGRID_IDENTITY_ARTIFACT_RECOVERY_RESULT.json
+          retention-days: 90
