@@ -1,0 +1,40 @@
+name: W04 M21 stage3 exact-pin source semantic audit v0.1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m21-stage3-exact-pin-source-semantic-audit-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clone exact CLASS pin
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+
+      - name: Run exact-pin source semantic audit
+        run: |
+          set -euo pipefail
+          python3 verification/m21/stage3_exact_pin_source_semantic_audit.py \
+            class . M21_STAGE3_EXACT_PIN_SOURCE_SEMANTIC_AUDIT_RESULT.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-stage3-exact-pin-source-semantic-audit-v01
+          path: M21_STAGE3_EXACT_PIN_SOURCE_SEMANTIC_AUDIT_RESULT.json
+          retention-days: 90
