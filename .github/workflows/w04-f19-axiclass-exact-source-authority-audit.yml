@@ -1,0 +1,155 @@
+name: W04 F19 AxiCLASS exact-source authority audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-f19-axiclass-exact-source-authority-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  AXICLASS_PIN: ae9609e1f96ddebbb6cc8a46de94512514c68781
+
+jobs:
+  identity_example:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit immutable identity and author example
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/PoulinV/AxiCLASS.git provider
+          git -C provider checkout -q "$AXICLASS_PIN"
+          python3 - <<'PY'
+          import json,pathlib,subprocess,os
+          r=pathlib.Path('provider'); pin=os.environ['AXICLASS_PIN']
+          head=subprocess.check_output(['git','-C',str(r),'rev-parse','HEAD'],text=True).strip()
+          req=['Makefile','source/background.c','source/perturbations.c','source/input.c','include/background.h','include/perturbations.h','example_axionDM.ini']
+          ex=(r/'example_axionDM.ini').read_text(errors='ignore') if (r/'example_axionDM.ini').exists() else ''
+          checks={'exact_head':head==pin,'required_files':all((r/p).is_file() for p in req),'example_axion_model':'scf_potential = axion' in ex,'example_axion_parameters':all(x in ex for x in ['n_axion','f_axion','m_axion','scf_parameters']),'example_perturbations':'scf_has_perturbations = yes' in ex}
+          neg_fake='This review mentions axion only.'
+          negative={'text_only_rejected':not all(x in neg_fake for x in ['scf_potential = axion','n_axion','scf_has_perturbations = yes']),'wrong_head_rejected':head!='0'*40}
+          out={'schema':'KMDSB.W04.F19.AxiCLASS.SourceAudit.S1.v0.1','checks':checks,'negative_controls':negative,'head':head,'all_required_checks_pass':all(checks.values()) and all(negative.values())}
+          pathlib.Path('s1.json').write_text(json.dumps(out,indent=2)+'\n')
+          assert out['all_required_checks_pass'],out
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-axiclass-source-s1
+          path: s1.json
+
+  model_background:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit axion potential and background dynamics
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/PoulinV/AxiCLASS.git provider
+          git -C provider checkout -q "$AXICLASS_PIN"
+          python3 - <<'PY'
+          import json,pathlib,re
+          r=pathlib.Path('provider'); bg=(r/'source/background.c').read_text(errors='ignore'); inp=(r/'source/input.c').read_text(errors='ignore'); bh=(r/'include/background.h').read_text(errors='ignore')
+          n=re.sub(r'\s+','',bg)
+          checks={
+            'explicit_cosine_potential':('pow(m,2)*pow(fa,2)*pow(1-cos(phi/fa),n)' in n and 'pow(m,2)*pow(fa,2)*(1-cos(phi/fa))' in n),
+            'first_derivative':('sin(phi/fa)' in bg and 'dV_scf' in bg),
+            'second_derivative':'ddV_scf' in bg,
+            'axion_parameters_in_parser':all(x in inp for x in ['m_axion','f_axion','n_axion','scf_potential']),
+            'background_state':all(x in bh for x in ['index_bg_phi_scf','index_bg_phi_prime_scf','index_bi_phi_scf','index_bi_phi_prime_scf']),
+            'kg_fluid_switch':all(x in bh for x in ['scf_kg_eq','scf_fluid_eq','scf_evolve_like_axionCAMB']) and 'scf_kg_eq' in bg,
+          }
+          fake='axion V(phi) discussed in a paper'
+          negative={'text_only_model_rejected':not ('pow(m,2)*pow(fa,2)' in fake and 'index_bi_phi_scf' in fake)}
+          out={'schema':'KMDSB.W04.F19.AxiCLASS.SourceAudit.S2.v0.1','checks':checks,'negative_controls':negative,'all_required_checks_pass':all(checks.values()) and all(negative.values())}
+          pathlib.Path('s2.json').write_text(json.dumps(out,indent=2)+'\n'); assert out['all_required_checks_pass'],out
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-axiclass-source-s2
+          path: s2.json
+
+  perturbation_boltzmann:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit scalar perturbation and Boltzmann coexistence
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/PoulinV/AxiCLASS.git provider
+          git -C provider checkout -q "$AXICLASS_PIN"
+          python3 - <<'PY'
+          import json,pathlib
+          r=pathlib.Path('provider'); ph=(r/'include/perturbations.h').read_text(errors='ignore'); pc=(r/'source/perturbations.c').read_text(errors='ignore'); inp=(r/'source/input.c').read_text(errors='ignore')
+          scalar_indices=['index_pt_phi_scf','index_pt_phi_prime_scf','index_pt_delta_scf','index_pt_theta_scf']
+          checks={
+            'scalar_indices_declared':all(x in ph for x in scalar_indices),
+            'scalar_perturbation_switch':'scf_has_perturbations' in ph and 'scf_has_perturbations' in inp,
+            'scalar_indices_used_in_solver':sum(x in pc for x in scalar_indices)>=2,
+            'photon_hierarchy_same_solver':all(x in pc for x in ['index_pt_delta_g','index_pt_theta_g']),
+            'ur_hierarchy_same_solver':all(x in pc for x in ['index_pt_delta_ur','index_pt_theta_ur']),
+            'metric_einstein_workspace':('delta_rho' in pc and 'rho_plus_p_theta' in pc),
+          }
+          fake_h='int index_pt_phi_scf; int index_pt_phi_prime_scf;'; fake_c='axion scalar perturbations'
+          negative={'indices_without_solver_rejected':not (sum(x in fake_c for x in scalar_indices)>=2 and 'index_pt_delta_g' in fake_c)}
+          out={'schema':'KMDSB.W04.F19.AxiCLASS.SourceAudit.S3.v0.1','checks':checks,'negative_controls':negative,'scf_occurrences_in_solver':pc.count('scf'),'all_required_checks_pass':all(checks.values()) and all(negative.values())}
+          pathlib.Path('s3.json').write_text(json.dumps(out,indent=2)+'\n'); assert out['all_required_checks_pass'],out
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-axiclass-source-s3
+          path: s3.json
+
+  lineage_provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit lineage and real-source provenance
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/PoulinV/AxiCLASS.git provider
+          git -C provider checkout -q "$AXICLASS_PIN"
+          python3 - <<'PY'
+          import json,pathlib,subprocess,os
+          r=pathlib.Path('provider'); pin=os.environ['AXICLASS_PIN']; head=subprocess.check_output(['git','-C',str(r),'rev-parse','HEAD'],text=True).strip(); origin=subprocess.check_output(['git','-C',str(r),'remote','get-url','origin'],text=True).strip()
+          src='\n'.join(p.read_text(errors='ignore') for p in list((r/'source').glob('*.c'))+list((r/'include').glob('*.h')))
+          checks={'exact_head':head==pin,'origin_identity':'PoulinV/AxiCLASS' in origin,'real_source_tree':len(list((r/'source').glob('*.c')))>=10 and (r/'source/background.c').stat().st_size>10000,'not_class_gsf_dependency':'CLASS_GSF' not in src,'class_lineage_not_hidden':'CLASS' in (r/'README.md').read_text(errors='ignore') or 'CLASS' in src[:20000]}
+          negative={'wrong_pin_rejected':head!='f'*40,'metadata_only_rejected':checks['real_source_tree']}
+          out={'schema':'KMDSB.W04.F19.AxiCLASS.SourceAudit.S4.v0.1','checks':checks,'negative_controls':negative,'head':head,'origin':origin,'all_required_checks_pass':all(checks.values()) and all(negative.values())}
+          pathlib.Path('s4.json').write_text(json.dumps(out,indent=2)+'\n'); assert out['all_required_checks_pass'],out
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-axiclass-source-s4
+          path: s4.json
+
+  aggregate:
+    needs: [identity_example, model_background, perturbation_boltzmann, lineage_provenance]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: f19-axiclass-source-s*
+          path: evidence
+          merge-multiple: true
+      - name: Aggregate static source authority only
+        run: |
+          python3 - <<'PY'
+          import json,pathlib
+          lanes={}
+          for n in ['s1','s2','s3','s4']:
+            p=pathlib.Path('evidence')/(n+'.json'); lanes[n]=json.loads(p.read_text()) if p.exists() else None
+          ok=all(v is not None and v.get('all_required_checks_pass') for v in lanes.values())
+          cls='F19_AXICLASS_EXACT_SOURCE_AUTHORITY_PASS_WITH_SCOPE' if ok else 'F19_AXICLASS_EXACT_SOURCE_AUTHORITY_NOT_ESTABLISHED'
+          out={'schema':'KMDSB.W04.F19.AxiCLASS.ExactSourceAuthorityAggregate.v0.1','protocol':'protocol/W04_F19_AXICLASS_EXACT_SOURCE_AUTHORITY_AUDIT_v0.1.md','provider':'PoulinV/AxiCLASS@ae9609e1f96ddebbb6cc8a46de94512514c68781','lanes':lanes,'classification':cls,'K0_promoted':False,'K1_promoted':False,'physical_falsification':False,'author_control_reference':{'run':34846931382,'artifact':10348785556,'digest':'sha256:d0d4b2f3e5875d86eaaaeeba7f2bcd59917b38e91d2496ca0490e5da036faf4b'},'authoritative_k0k1_run_still_separate':True}
+          pathlib.Path('f19_axiclass_exact_source_authority.json').write_text(json.dumps(out,indent=2)+'\n'); print(json.dumps({'classification':cls}))
+          assert ok,out
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-axiclass-exact-source-authority
+          path: f19_axiclass_exact_source_authority.json
