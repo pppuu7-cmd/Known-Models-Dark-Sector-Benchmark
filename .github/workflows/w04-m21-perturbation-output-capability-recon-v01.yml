@@ -1,0 +1,70 @@
+name: W04 M21 perturbation output capability recon v0.1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m21-perturbation-output-capability-recon-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+
+jobs:
+  capability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Clone and build exact CLASS pin
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$PIN"
+          test "$(git -C class rev-parse HEAD)" = "$PIN"
+          make -C class -j2 > build.log 2>&1
+      - name: Prepare frozen reference capability input and common baseline
+        run: |
+          set -euo pipefail
+          python3 verification/m21/prepare_perturbation_capability_ref.py capability_case
+          python3 verification/m21/build_perturbation_capability_baseline.py class/cl_permille.pre verification/m21/m21_ncdm_tight.pre capability_common.pre capability_profile_manifest.json
+      - name: Execute schema-only reference capability run
+        run: |
+          set -euo pipefail
+          mkdir -p output
+          set +e
+          timeout 900 ./class/class capability_case/ref.ini capability_common.pre > capability_run.log 2>&1
+          rc=$?
+          set -e
+          RC="$rc" PIN_ENV="$PIN" python3 - <<'PY'
+          import json,os,pathlib,subprocess
+          head=subprocess.check_output(['git','-C','class','rev-parse','HEAD'],text=True).strip()
+          obj={'schema':'KMDSB.W04.M21.PerturbationCapabilityRunMeta.v0.1','provider_head':head,'exact_head':head==os.environ['PIN_ENV'],'class_rc':int(os.environ['RC'])}
+          pathlib.Path('capability_run_meta.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n')
+          PY
+          test "$rc" -eq 0
+      - name: Analyze output schema and freeze reference geometry
+        run: |
+          set -euo pipefail
+          python3 verification/m21/perturbation_output_capability_recon.py . capability_run_meta.json capability_case/manifest.json capability_profile_manifest.json M21_PERTURBATION_OUTPUT_CAPABILITY_RECON_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-perturbation-output-capability-recon-v01
+          retention-days: 90
+          path: |
+            M21_PERTURBATION_OUTPUT_CAPABILITY_RECON_RESULT.json
+            capability_run_meta.json
+            capability_case/ref.ini
+            capability_case/manifest.json
+            capability_common.pre
+            capability_profile_manifest.json
+            capability_run.log
+            build.log
+            output/*background.dat
+            output/*thermodynamics.dat
+            output/*perturbations_k*_s.dat
