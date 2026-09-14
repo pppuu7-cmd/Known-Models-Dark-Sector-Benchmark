@@ -1,0 +1,36 @@
+{
+  "schema": "KMDSB.W04.M21.NumericalResponseFloorContext.v0.1",
+  "date": "2026-09-14",
+  "status": "POST_HOC_CONTEXT_ONLY_NOT_A_GATE",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "parent_result": "waves/wave_04_dark_matter/M21_INTEGRATOR_BRANCH_DIAGNOSTIC_RESULT.json",
+  "reference_precision_result": "waves/wave_04_dark_matter/M21_FULL_CMB_REFERENCE_PRECISION_RESULT.json",
+  "f3_parent_RK_response_R2": {
+    "TT": 0.00006876388990322307,
+    "EE": 0.0002777263805475597,
+    "TE": 0.0005181174381816967
+  },
+  "f3_direct_clref_vs_parent_RK_R2": {
+    "TT": 0.0002536643781746486,
+    "EE": 0.0003485823245374434,
+    "TE": 0.0007581889345646008
+  },
+  "parent_response_over_precision_displacement": {
+    "TT": 0.2710821692743904,
+    "EE": 0.7967311048146029,
+    "TE": 0.6833619096264336
+  },
+  "f3_reference_precision_response_R2": {
+    "TT": 0.0000017709335352375327,
+    "EE": 0.000002708105490198575,
+    "TE": 0.000003043286330178636
+  },
+  "parent_to_reference_precision_response_suppression_factor": {
+    "TT": 38.82917598824502,
+    "EE": 102.55375263361513,
+    "TE": 170.24932325420855
+  },
+  "interpretation": "For every frozen CMB channel, the parent RK f3 response norm is smaller than the direct spectrum displacement caused by switching the same physical f3 case from the parent precision profile to exact cl_ref.pre. The previously isolated f3 response therefore lived at or below the relevant precision-displacement scale. Exact cl_ref.pre subsequently suppresses that response by roughly 39x, 103x and 170x in TT, EE and TE. This is descriptive numerical context only; it is not a preregistered pass/fail gate, does not promote K1, and is not a physical falsification.",
+  "K1_promoted": false,
+  "physical_falsification": false
+}
