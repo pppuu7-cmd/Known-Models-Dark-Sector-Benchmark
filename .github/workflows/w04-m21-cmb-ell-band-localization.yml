@@ -1,0 +1,38 @@
+name: W04 M21 CMB ell-band localization
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-cmb-ell-band-localization.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  localize:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download immutable parent artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: w04-m21-integrator-branch-diagnostic
+          path: parent
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: 34542162543
+      - name: Verify parent evidence and localize ell bands
+        run: |
+          set -euo pipefail
+          test -f parent/m21_integrator_result.json
+          test -d parent/ndf_out
+          test -d parent/rk_out
+          python3 verification/m21/cmb_ell_band_localization.py parent waves/wave_04_dark_matter/M21_INTEGRATOR_BRANCH_DIAGNOSTIC_RESULT.json M21_CMB_ELL_BAND_LOCALIZATION_RESULT.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m21-cmb-ell-band-localization
+          path: M21_CMB_ELL_BAND_LOCALIZATION_RESULT.json
+          retention-days: 90
