@@ -1,0 +1,13 @@
+{
+  "schema": "KMDSB.W04.M21.PerturbationStateGateConfig.v0.1",
+  "protocol": "protocol/W04_M21_PERTURBATION_STATE_BRANCH_SIGNATURE_v0.1.md",
+  "capability_protocol": "protocol/W04_M21_PERTURBATION_OUTPUT_CAPABILITY_RECON_v0.1.md",
+  "capability_classification": "M21_PERTURBATION_OUTPUT_CAPABILITY_RECON_PASS_WITH_SCOPE",
+  "capability_run_id": 34894971251,
+  "capability_artifact_id": 10368099599,
+  "capability_digest": "sha256:d74ff4f12ca313c8f27b432348728f8f545b301fd3b468b38554c63e93649dad",
+  "D_star_Mpc": 13901.714649679801,
+  "l_anchors": [100, 400, 800, 1200, 2000],
+  "k_anchors_unrounded_Mpc_inv": [0.00719335725987609, 0.02877342903950436, 0.05754685807900872, 0.08632028711851308, 0.1438671451975218],
+  "k_anchors_12sig_Mpc_inv": [0.00719335725988, 0.0287734290395, 0.057546858079, 0.0863202871185, 0.143867145198]
+}
