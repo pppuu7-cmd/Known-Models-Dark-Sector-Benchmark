@@ -1,0 +1,116 @@
+name: W04 F19 independent ULA provider discovery v0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-f19-independent-ula-provider-discovery-v01.yml'
+      - 'protocol/W04_F19_INDEPENDENT_ULA_PROVIDER_DISCOVERY_v0.1.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  search:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - lane: 0
+            query: 'AxiCLASS ultralight axion CLASS perturbations'
+          - lane: 1
+            query: '"ultralight axion" "perturbations.c"'
+          - lane: 2
+            query: '"fuzzy dark matter" CLASS Boltzmann code'
+          - lane: 3
+            query: '"scalar field dark matter" CLASS perturbations'
+          - lane: 4
+            query: '"Omega_ax" CLASS extension:c'
+          - lane: 5
+            query: '"axion fraction" "transfer" cosmology extension:py'
+          - lane: 6
+            query: '"ultralight scalar" CAMB perturbations -axionCAMB'
+          - lane: 7
+            query: '"fuzzy" "Boltzmann" "dark matter" code'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Frozen independent-provider code search
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUERY: ${{ matrix.query }}
+          LANE: ${{ matrix.lane }}
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.parse, urllib.request, urllib.error
+          q=os.environ['QUERY']; lane=int(os.environ['LANE'])
+          url='https://api.github.com/search/code?q='+urllib.parse.quote(q)+'&per_page=50'
+          headers={'Accept':'application/vnd.github+json','Authorization':'Bearer '+os.environ['GH_TOKEN'],'X-GitHub-Api-Version':'2022-11-28'}
+          payload=None; err=None
+          for attempt in range(6):
+              try:
+                  req=urllib.request.Request(url,headers=headers)
+                  with urllib.request.urlopen(req,timeout=60) as r: payload=json.load(r)
+                  break
+              except urllib.error.HTTPError as e:
+                  err=f'HTTP {e.code}'
+                  if e.code in (403,429): time.sleep(12*(attempt+1)); continue
+                  break
+              except Exception as e:
+                  err=repr(e); time.sleep(6*(attempt+1))
+          out={'schema':'KMDSB.W04.F19IndependentULAProviderDiscovery.v0.1','lane':lane,'query':q,'status':'OK' if payload is not None else 'INFRASTRUCTURE_ERROR','error':err,'total_count':0,'candidates':[]}
+          if payload is not None:
+              out['total_count']=payload.get('total_count',0)
+              for it in payload.get('items',[]):
+                  repo=it['repository']['full_name']; path=it['path']; low=path.lower(); repolow=repo.lower()
+                  reject_path=any(x in low for x in ['.md','.xml','.html','.txt','.bib','rss','arxiv','corpus','data/','docs/'])
+                  impl=low.endswith(('.py','.c','.cc','.cpp','.h','.hpp','.f','.f90','.jl'))
+                  blocked_lineage=('axioncamb' in repolow or 'axiecamb' in repolow)
+                  if reject_path or not impl: pr='REJECT_NONIMPLEMENTATION'
+                  elif blocked_lineage: pr='REJECT_EXISTING_AXIONCAMB_LINEAGE'
+                  else: pr='SOURCE_REVIEW_CANDIDATE'
+                  out['candidates'].append({'repository':repo,'path':path,'html_url':it.get('html_url'),'blob_sha':it.get('sha'),'priority':pr})
+          open(f'f19_independent_ula_lane_{lane}.json','w').write(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-independent-ula-v01-lane-${{ matrix.lane }}
+          path: f19_independent_ula_lane_${{ matrix.lane }}.json
+
+  aggregate:
+    needs: search
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: f19-independent-ula-v01-lane-*
+          path: lanes
+          merge-multiple: true
+      - name: Frozen aggregate barrier
+        run: |
+          python3 - <<'PY'
+          import json, glob
+          rows=[json.load(open(p)) for p in sorted(glob.glob('lanes/*.json'))]
+          cand=[]
+          for r in rows:
+              cand.extend(c for c in r.get('candidates',[]) if c.get('priority')=='SOURCE_REVIEW_CANDIDATE')
+          seen=set(); uniq=[]
+          for c in cand:
+              k=(c['repository'],c['path'],c.get('blob_sha'))
+              if k not in seen: seen.add(k); uniq.append(c)
+          infra=[r['lane'] for r in rows if r.get('status')!='OK']
+          if infra: cls='F19_INDEPENDENT_PROVIDER_DISCOVERY_INFRASTRUCTURE_PARTIAL'
+          elif uniq: cls='F19_INDEPENDENT_PROVIDER_SOURCE_REVIEW_CANDIDATES_FOUND'
+          else: cls='F19_INDEPENDENT_PROVIDER_DISCOVERY_NO_CANDIDATE'
+          out={'schema':'KMDSB.W04.F19IndependentULAProviderDiscoveryAggregate.v0.1','protocol':'protocol/W04_F19_INDEPENDENT_ULA_PROVIDER_DISCOVERY_v0.1.md','classification':cls,'infrastructure_failed_lanes':infra,'source_review_candidates':uniq,'lane_results':rows,'K0_promotion':False,'K1_promotion':False,'physical_falsification':False}
+          open('f19_independent_ula_provider_discovery_aggregate.json','w').write(json.dumps(out,indent=2))
+          print(json.dumps({'classification':cls,'candidate_count':len(uniq),'infra_failed_lanes':infra}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-independent-ula-provider-discovery-aggregate
+          path: f19_independent_ula_provider_discovery_aggregate.json
