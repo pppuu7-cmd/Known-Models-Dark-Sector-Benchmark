@@ -1,0 +1,19 @@
+{
+  "schema": "KMDSB.W04.M21.ThermoStateRecoveryV02HarnessBlocked.v0.1",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "run_id": 34886953863,
+  "aggregate_artifact_id": 10365121985,
+  "aggregate_artifact_digest": "sha256:ef709aa4f22fa92f9f895f85e7ea1e0aa435fe7e362fee5d6dad42868a12e8ce",
+  "classification": "M21_THERMO_STATE_BRANCH_SIGNATURE_BLOCKED",
+  "blocker_type": "RECOVERY_GUARD_WRONG_LITERAL_EXPECTATION_PRE_CLASS",
+  "evidence": {
+    "all_six_lane_jobs_failed_before_CLASS_execution": true,
+    "guard_expected": "non linear = halofit",
+    "actual_frozen_generator_line": "non linear = none",
+    "exact_parser_authority": "input.c tests presence of non_linear/non linear against has_perturbations before interpreting the value none, so explicit none is also incompatible with state-only no-output input"
+  },
+  "scientific_interpretation": "No CLASS thermodynamics execution or state result exists from v0.2. The recovery guard itself failed before CLASS. A v0.3 recovery may remove the actual explicit `non linear = none` key together with the spectrum output request, as required by exact parser semantics.",
+  "K1_promoted": false,
+  "physical_falsification": false
+}
