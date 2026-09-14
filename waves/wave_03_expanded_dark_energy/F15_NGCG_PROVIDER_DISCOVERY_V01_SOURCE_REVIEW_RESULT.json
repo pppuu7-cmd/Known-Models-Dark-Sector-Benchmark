@@ -1,0 +1,28 @@
+{
+  "schema": "KMDSB.W03.F15NGCGProviderDiscoverySourceReview.v0.1",
+  "family_id": "F15",
+  "benchmark_id": "M15",
+  "date": "2026-09-14",
+  "parent_run": 34826008004,
+  "parent_artifact": 10340128264,
+  "parent_artifact_digest": "sha256:232b0b036b99bae934653b2cd386e81e358274427e181ef0891fa33353136c3a",
+  "machine_classification": "F15_NGCG_PROVENANCE_LEADS_ONLY",
+  "manual_source_review": {
+    "source_complete_candidates": 0,
+    "reviewed_provenance_leads": [
+      {
+        "repository": "funwithscience-org/flat-earth-origins",
+        "path": "scripts/deep_batch3.py",
+        "pinned_ref": "eb3a5702f62e514c7a4197e4fd0a1fc73d3b2923",
+        "classification": "REJECT_NON_COSMOLOGY_NON_PROVIDER",
+        "reason": "The file is a prose/reference batch about geocentrism and general covariance; it does not implement NGCG background or perturbation equations and is not an executable cosmology/Boltzmann provider."
+      }
+    ]
+  },
+  "classification": "F15_EXACT_NGCG_DISCOVERY_NO_SOURCE_COMPLETE_PROVIDER_AFTER_SOURCE_REVIEW",
+  "K0_promotion": false,
+  "K1_promotion": false,
+  "physical_falsification": false,
+  "status": "PERTURBATION_PROVIDER_PROVENANCE_OPEN",
+  "next_allowed_gate": "Focused author-code and implementation discovery keyed to exact NGCG/GCG perturbation equations, named model authors, Boltzmann implementations, sound-speed and decomposed-fluid closure. No K1 execution before exact source/commit/equation/reference-map audit."
+}
