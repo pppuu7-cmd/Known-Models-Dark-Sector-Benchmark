@@ -1,0 +1,108 @@
+name: W04 M21 thermodynamics evolver enum recovery v0.2
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m21-thermo-evolver-enum-recovery-v02.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  OMP_NUM_THREADS: '1'
+  TOL_PARENT_RUN: '34879598732'
+
+jobs:
+  activation:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      authorized: ${{ steps.gate.outputs.authorized }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download terminal tolerance-direction parent
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-thermo-tolerance-direction-audit-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.TOL_PARENT_RUN }}
+      - id: gate
+        name: Enforce recovery authority
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          parent=json.loads(Path('parent/M21_THERMO_TOLERANCE_DIRECTION_AUDIT_RESULT.json').read_text())
+          blocked=json.loads(Path('waves/wave_04_dark_matter/M21_THERMO_EVOLVER_CROSSCHECK_HARNESS_BLOCKED.json').read_text())
+          ok=(parent.get('classification')=='M21_THERMO_TOL_NONMONOTONE_DIRECTIONAL_RESPONSE' and parent.get('cross_lane_input_identity') is True and blocked.get('classification')=='M21_THERMO_EVOLVER_CROSSCHECK_BLOCKED' and blocked.get('blocker_type')=='HARNESS_ENUM_SERIALIZATION_ONLY')
+          with Path(os.environ['GITHUB_OUTPUT']).open('a') as f: f.write('authorized='+('true' if ok else 'false')+'\n')
+          print(json.dumps({'authorized':ok,'parent':parent.get('classification'),'blocked':blocked.get('blocker_type')},indent=2))
+          PY
+
+  lane:
+    needs: activation
+    if: needs.activation.outputs.authorized == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [NDF_T1E5, NDF_T1E6, NDF_T1E7, RK_T1E5, RK_T1E6, RK_T1E7]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute enum-serialization recovery lane
+        run: |
+          set -euo pipefail
+          bash verification/m21/run_thermo_evolver_crosscheck_recovery_lane_v02.sh '${{ matrix.lane }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-thermo-evolver-${{ matrix.lane }}
+          path: |
+            lane_meta.json
+            case_status.tsv
+            thermo_evolver_recovery_${{ matrix.lane }}.pre
+            thermo_evolver_recovery_${{ matrix.lane }}_manifest.json
+            m21_cases/*.ini
+            output/*.dat
+            run_*.log
+            build.log
+          retention-days: 90
+
+  aggregate:
+    needs: [activation, lane]
+    if: always() && needs.activation.result == 'success' && needs.activation.outputs.authorized == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Download recovered lane artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-thermo-evolver-*
+          path: components
+      - name: Download terminal tolerance-direction parent
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-thermo-tolerance-direction-audit-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.TOL_PARENT_RUN }}
+      - name: Apply unchanged frozen cross-evolver classifier
+        run: |
+          set -euo pipefail
+          python3 verification/m21/thermo_evolver_crosscheck.py components parent/M21_THERMO_TOLERANCE_DIRECTION_AUDIT_RESULT.json M21_THERMO_EVOLVER_CROSSCHECK_RECOVERY_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-thermo-evolver-crosscheck-recovery-v02
+          path: M21_THERMO_EVOLVER_CROSSCHECK_RECOVERY_RESULT.json
+          retention-days: 90
