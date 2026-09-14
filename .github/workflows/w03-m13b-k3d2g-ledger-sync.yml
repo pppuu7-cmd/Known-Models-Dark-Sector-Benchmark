@@ -1,0 +1,50 @@
+name: W03 M13b K3D2-G ledger sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/w03-m13b-k3d2g-ledger-sync.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Synchronize K3D2-G canonical result into ledgers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv, io
+          from pathlib import Path
+          marker='M13B_K3D2G_GENERIC_CLASS_RK_HARD_RESTART_LAYER_EFFECT_SUPPORTED_2026_09_14'
+          note=(marker+': vanilla exact-pinned CLASS unsplit control executes with rc=0 and zero RK collapses, while the otherwise identical artificial z=5 hard perturbation restart returns rc=1 with 450/450 mode failures localized to the shifted restart boundary (k range 0.0130981414..0.0382396665 1/Mpc). Run 34804815136 jobs U=103854493317 S=103854493393 A=103855342080; aggregate artifact 10332553557 sha256:b97bb642240cdcc52944a34c756d671a25402b8eebea6b1e59a81182d7229f06. Shared CLASS/RK hard-restart numerical-layer effect supported; K3 remains PARTIAL; K4/K5 not promoted; physical_falsification=false.')
+          def patch_csv(path, id_field='family_id', id_value='F13'):
+            p=Path(path); rows=list(csv.DictReader(io.StringIO(p.read_text()))); fields=list(rows[0].keys()); changed=False
+            for r in rows:
+              if r.get(id_field)==id_value and marker not in r.get('notes',''):
+                r['notes']=(r.get('notes','').rstrip()+(' ' if r.get('notes','').strip() else '')+note); changed=True
+            if changed:
+              out=io.StringIO(newline=''); w=csv.DictWriter(out,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows); p.write_text(out.getvalue())
+          patch_csv('matrices/model_family_census.csv')
+          patch_csv('matrices/mandatory_properties_matrix.csv')
+          section=('\n\n### '+marker+'\n'
+                   '- Canonical result: `waves/wave_03_expanded_dark_energy/M13B_K3D2G_VANILLA_RK_RESTART_CONTROL_RESULT.json`.\n'
+                   '- Run `34804815136`; jobs U `103854493317`, S `103854493393`, aggregate `103855342080`; aggregate artifact `10332553557`, digest `sha256:b97bb642240cdcc52944a34c756d671a25402b8eebea6b1e59a81182d7229f06`.\n'
+                   '- Vanilla unsplit exact-pinned CLASS: rc=0, RK collapse count=0. Artificial exact-z5 hard restart: rc=1, 450/450 failures, all RK collapses at the shifted restart boundary, k range 0.0130981414..0.0382396665 1/Mpc.\n'
+                   '- Interpretation: generic CLASS/RK hard-restart numerical-layer effect supported; not a two-field physical failure. K3 remains PARTIAL; K4/K5 not promoted; physical_falsification=false.\n')
+          for path in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+            p=Path(path); t=p.read_text()
+            if marker not in t: p.write_text(t.rstrip()+section+'\n')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          if git diff --cached --quiet; then echo 'No ledger changes needed'; else git commit -m 'sync M13b K3D2-G generic restart effect'; git push; fi
