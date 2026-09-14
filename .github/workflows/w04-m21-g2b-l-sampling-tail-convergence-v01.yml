@@ -1,0 +1,115 @@
+name: W04 M21 G2B l-sampling tail convergence v0.1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m21-g2b-l-sampling-tail-convergence-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  OMP_NUM_THREADS: '1'
+  PARENT_RUN: '34879864684'
+
+jobs:
+  activation:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      authorized: ${{ steps.gate.outputs.authorized }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download terminal l-sampling parent aggregate
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-g2b-l-sampling-direction-interaction-audit-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.PARENT_RUN }}
+      - id: gate
+        name: Enforce frozen tail activation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=json.loads(Path('parent/M21_G2B_L_SAMPLING_DIRECTION_INTERACTION_AUDIT_RESULT.json').read_text())
+          ok=(d.get('classification')=='M21_G2B_L_SAMPLING_INTERACTION_AND_DIRECTION_SUPPORTED' and d.get('cross_lane_input_identity') is True and d.get('direction_monotone_supported') is True and d.get('pairs',{}).get('LPAIR_T2',{}).get('classification')=='REMOVES')
+          with Path(os.environ['GITHUB_OUTPUT']).open('a') as f: f.write('authorized='+('true' if ok else 'false')+'\n')
+          print(json.dumps({'authorized':ok,'parent_classification':d.get('classification')},indent=2))
+          PY
+
+  tail:
+    needs: activation
+    if: needs.activation.outputs.authorized == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [LTAIL_T3, LTAIL_T4]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute frozen l-sampling tail lane
+        run: |
+          set -euo pipefail
+          bash verification/m21/run_l_sampling_tail_lane_v01.sh '${{ matrix.lane }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-ltail-${{ matrix.lane }}
+          path: |
+            lane_meta.json
+            case_status.tsv
+            ltail_${{ matrix.lane }}.pre
+            ltail_${{ matrix.lane }}_manifest.json
+            m21_cases/*.ini
+            output/*.dat
+            run_*.log
+            build.log
+          retention-days: 90
+
+  aggregate:
+    needs: [activation, tail]
+    if: always() && needs.activation.result == 'success' && needs.activation.outputs.authorized == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Download tail artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-ltail-*
+          path: components
+      - name: Download immutable T2 anchor
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-lpair-LPAIR_T2
+          path: parent_t2
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.PARENT_RUN }}
+      - name: Download terminal parent aggregate
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-g2b-l-sampling-direction-interaction-audit-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.PARENT_RUN }}
+      - name: Apply frozen tail classifier
+        run: |
+          set -euo pipefail
+          python3 verification/m21/l_sampling_tail_convergence.py components parent_t2 parent/M21_G2B_L_SAMPLING_DIRECTION_INTERACTION_AUDIT_RESULT.json M21_G2B_L_SAMPLING_TAIL_CONVERGENCE_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-g2b-l-sampling-tail-convergence-v01
+          path: M21_G2B_L_SAMPLING_TAIL_CONVERGENCE_RESULT.json
+          retention-days: 90
