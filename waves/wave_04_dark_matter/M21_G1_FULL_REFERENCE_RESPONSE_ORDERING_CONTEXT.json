@@ -1,0 +1,40 @@
+{
+  "schema": "KMDSB.W04.M21.G1FullReferenceResponseOrderingContext.v0.1",
+  "date": "2026-09-14",
+  "status": "POST_HOC_CONTEXT_ONLY_NOT_A_GATE",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "g1_result": "waves/wave_04_dark_matter/M21_CMB_PRECISION_COMPONENT_G1_COMPLETE_READOUT.json",
+  "full_reference_source": {
+    "run": 34864827822,
+    "artifact": 10358256663,
+    "digest": "sha256:2e25f8cd134383b8f6b93be747e72feb8e7f8713a205ecc9d02563f38a33e859"
+  },
+  "ordering": {
+    "G1_TT": "f2>f3>f4",
+    "G1_EE": "f2>f3>f4",
+    "G1_TE": "f2>f3>f4",
+    "full_reference_TT": "f2>f3>f4",
+    "full_reference_EE": "f2>f3>f4",
+    "full_reference_TE": "f2>f3>f4"
+  },
+  "G1_over_full_reference_R2_ratio": {
+    "f2": {
+      "TT": 17.173410699118755,
+      "EE": 12.628772782019933,
+      "TE": 15.854796015951408
+    },
+    "f3": {
+      "TT": 0.9992541842784877,
+      "EE": 1.0001965054301891,
+      "TE": 1.0005958522893121
+    },
+    "f4": {
+      "TT": 0.9995831950840421,
+      "EE": 0.9999975346211679,
+      "TE": 0.9999132556793104
+    }
+  },
+  "interpretation": "G1 restores the monotone fraction ordering f2>f3>f4 in all three frozen CMB channels and reproduces the full-reference f3 and f4 response norms at the per-mille level, so it genuinely removes the isolated f3 spike rather than merely changing its denominator by a tiny perturbation. However, G1 alone leaves the f2 response 12.6x-17.2x larger than full cl_ref.pre. Therefore G1 is individually sufficient under the preregistered excursion criterion but is not a complete surrogate for the full reference-precision profile. The remaining f2 magnitude difference is descriptive context only and may reflect another precision group or inter-group interaction; it does not authorize post-hoc tuning or change the frozen G1 classification.",
+  "K1_promoted": false,
+  "physical_falsification": false
+}
