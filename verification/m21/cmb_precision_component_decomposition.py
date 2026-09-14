@@ -8,6 +8,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 PROTOCOL = "protocol/W04_M21_CONDITIONAL_CMB_PRECISION_COMPONENT_DECOMPOSITION_v0.1.md"
+RECOVERY_PROTOCOL = "protocol/W04_M21_CMB_PRECISION_COMPONENT_SERIALIZATION_RECOVERY_v0.2.md"
 PROVIDER = "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540"
 PARENT_EMAX = 534.8355868817356
 ALLOWED_ACTIVATION = {
@@ -50,7 +51,10 @@ def group_result(root: Path, meta_root: Path, parent_rk: Path, group: str) -> di
         set(meta) == set(CASES)
         and all(x.get("group") == group for x in meta.values())
         and all(x.get("provider_rc") == 0 and x.get("exact_head") is True for x in meta.values())
+        and all(x.get("duplicate_free_serialization") is True for x in meta.values())
+        and all(x.get("observed_conflict_keys") == x.get("expected_conflict_keys") for x in meta.values())
         and len({x.get("component_pre_sha256") for x in meta.values()}) == 1
+        and len({x.get("merge_manifest_sha256") for x in meta.values()}) == 1
         and len({x.get("base_cl_permille_sha256") for x in meta.values()}) == 1
         and len({x.get("ncdm_tight_sha256") for x in meta.values()}) == 1
     )
@@ -142,9 +146,10 @@ def main() -> None:
         classification = "M21_CMB_REFERENCE_PRECISION_INTERACTION_REQUIRED"
 
     result = {
-        "schema": "KMDSB.W04.M21.CMBPrecisionComponentDecomposition.v0.1",
+        "schema": "KMDSB.W04.M21.CMBPrecisionComponentDecomposition.v0.2-recovery",
         "date": "2026-09-14",
         "protocol": PROTOCOL,
+        "execution_recovery_protocol": RECOVERY_PROTOCOL,
         "provider": PROVIDER,
         "activation_source_run": 34864827822,
         "activation_classification": activation_class,
