@@ -1,0 +1,115 @@
+name: W03 M13b K3D2-C terminal ledger sync
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/w03-m13b-k3d2c-terminal-sync.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Sync F13 canonical ledgers and recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import csv, io
+
+          marker='M13B_K3D2C_SELF_CONSISTENT_GAUGE_IVP_DEFAULT_B123_PASS_WITH_SCOPE'
+          census=Path('matrices/model_family_census.csv')
+          mandatory=Path('matrices/mandatory_properties_matrix.csv')
+
+          def rewrite_csv(path, mutate):
+            raw=path.read_text(newline='')
+            rows=list(csv.DictReader(io.StringIO(raw)))
+            fields=list(rows[0].keys())
+            changed=False
+            for r in rows:
+              if mutate(r): changed=True
+            out=io.StringIO(newline='')
+            w=csv.DictWriter(out,fieldnames=fields,lineterminator='\r\n')
+            w.writeheader(); w.writerows(rows)
+            if changed: path.write_text(out.getvalue(), newline='')
+            return changed
+
+          def census_mut(r):
+            if r['family_id']!='F13': return False
+            changed=False
+            status='K1_BACKGROUND_CROSSING_PASS_K3_PARTIAL_FULL_BOLTZMANN_DEFAULT_B123_PASS_REFERENCE_PRECISION_OPEN_AUTHOR_UNIT_BINDING_BLOCKED'
+            if r['status']!=status: r['status']=status; changed=True
+            note=(
+              ' M13B_K3D2C_SELF_CONSISTENT_GAUGE_IVP_DEFAULT_B123_PASS_WITH_SCOPE_2026_09_14: '
+              'after source/IVP audit proved the historical synchronous-zero adapter seed was not the same physical initial surface as the frozen K3C2 Newtonian-zero seed, a prospectively frozen pure-undamped Picard boundary solve converged in 2 iterations from max Newtonian residual 1.3888839265511165e-07 to 1.037773556487728e-13 at unchanged 1e-12 target. '
+              'Strict disabled reduction remains exact (P(k) normalized L2 4.2828210457354356e-16, H0 relative difference 0). The unchanged default full-Boltzmann verifier passes B1, B2 and B3 for khat=1 and 10; phantom delta_y ratios are 0.99857413408469 and 1.0038143961348418 with correct signs. '
+              'Historical synchronous-zero B3 FAIL and one-step identity blocker remain immutable. This is independent CLASS-adapter evidence only: K3 stays PARTIAL, reference-precision robustness remains open, author normalization/source map remains blocked, K4/K5 are not promoted, physical_falsification=false. Run 34793433652; default artifact 10328826973 sha256:714380b4da09a3ddaf6f27448f844eec2e1d431422812bf84c2c1f3a5d50dbbc; verdict artifact 10328861652 sha256:46330de20588b92575ba0bcbb11590cf31b5a9848ac625dc77d15e06a1eb483e.'
+            )
+            if marker not in r['notes']:
+              r['notes']=(r['notes'].rstrip()+note).strip(); changed=True
+            return changed
+
+          def mandatory_mut(r):
+            if r['family_id']!='F13': return False
+            changed=False
+            # Preserve formal gate ceilings: this result is scoped K3 evidence, not a K3/K4/K5 promotion.
+            desired={
+              'K3_conservation_gauge_closure':'PARTIAL',
+              'K4_numerical_robustness':'NOT_TESTED',
+              'K5_multichannel_rank':'BLOCKED_BY_K3',
+              'coverage_state':'K0_K1_PASS_K2_PARTIAL_K3_PARTIAL_FULL_BOLTZMANN_DEFAULT_B123_PASS_REFERENCE_PRECISION_OPEN_AUTHOR_UNIT_BINDING_BLOCKED'
+            }
+            for k,v in desired.items():
+              if r[k]!=v: r[k]=v; changed=True
+            note=(
+              ' M13B_K3D2C_SELF_CONSISTENT_GAUGE_IVP_DEFAULT_B123_PASS_WITH_SCOPE_2026_09_14: '
+              'same-initial-surface independent CLASS full-Boltzmann default lane passes frozen B1/B2/B3 after a preregistered 2-iteration undamped Einstein/gauge boundary fixed point (1.3888839265511165e-07 -> 1.037773556487728e-13; target 1e-12). '
+              'Strict disabled null P(k) L2=4.2828210457354356e-16 and H0_rel=0. Historical synchronous-zero B3 gap is retained as a different-IVP result. Reference precision remains open and no K4/K5 promotion is authorized. Run 34793433652.'
+            )
+            if marker not in r['notes']:
+              r['notes']=(r['notes'].rstrip()+note).strip(); changed=True
+            return changed
+
+          rewrite_csv(census,census_mut)
+          rewrite_csv(mandatory,mandatory_mut)
+
+          block='''
+
+## M13b K3D2-C self-consistent gauge-IVP terminal result — 2026-09-14
+
+- Classification: `M13B_K3D2C_SELF_CONSISTENT_GAUGE_IVP_DEFAULT_B123_PASS_WITH_SCOPE`.
+- Canonical result: `waves/wave_03_expanded_dark_energy/M13B_K3D2C_SELF_CONSISTENT_GAUGE_IVP_RESULT.json`.
+- Provider: `lesgourg/class_public@64bbab707faf4de4779a9e04edd180fef18d98fa`.
+- Workflow run: `34793433652`; default scientific artifact `10328826973` (`sha256:714380b4da09a3ddaf6f27448f844eec2e1d431422812bf84c2c1f3a5d50dbbc`); aggregate artifact `10328861652` (`sha256:46330de20588b92575ba0bcbb11590cf31b5a9848ac625dc77d15e06a1eb483e`).
+- Source guard PASS; strict disabled null PASS with normalized P(k) L2 `4.2828210457354356e-16` and H0 relative difference `0`.
+- Pure undamped Picard boundary solve converged in 2 iterations: `1.3888839265511165e-07 -> 1.037773556487728e-13` at unchanged target `1e-12`.
+- Unchanged default full-Boltzmann B1/B2/B3 verifier PASS. Phantom `delta_y` ratio vs frozen K3C2 is `0.99857413408469` at khat=1 and `1.0038143961348418` at khat=10, with correct signs.
+- Interpretation: the earlier phantom sign gap was an initial-surface mismatch (synchronous-zero vs frozen Newtonian-zero), not a qpf RHS/stress-sign failure. Historical parent B3 FAIL and one-step blocker remain immutable.
+- Claim ceiling remains strict: `K3=PARTIAL`; reference-precision robustness is OPEN; `K4` and `K5` are not promoted; author source/normalization reproduction remains blocked; `physical_falsification=false`.
+- Next frontier: separately preregister numerical/reference-precision continuation. Do not infer two-precision robustness from the default-lane PASS.
+'''
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+            p=Path(fn)
+            if not p.exists(): continue
+            t=p.read_text()
+            if marker not in t:
+              p.write_text(t.rstrip()+block+'\n')
+          PY
+          if git diff --quiet; then
+            echo 'No ledger changes needed.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          git commit -m 'sync M13b K3D2-C default B123 pass'
+          git push
