@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/w04-m21-l400-transfer-convolution-decomposition-v01.yml'
+      - 'verification/m21/run_l400_transfer_convolution_case_v01.sh'
   workflow_dispatch:
 
 permissions:
