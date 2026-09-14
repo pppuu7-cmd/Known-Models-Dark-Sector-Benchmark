@@ -1,0 +1,158 @@
+name: W04 F19 AxiCLASS K2 parameter-identity preparation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-f19-axiclass-k2-parameter-identity-preparation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  AXICLASS_PIN: ae9609e1f96ddebbb6cc8a46de94512514c68781
+
+jobs:
+  p1_decay_scale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify f_axion decay-scale semantics
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/PoulinV/AxiCLASS.git provider
+          git -C provider checkout -q "$AXICLASS_PIN"
+          python3 - <<'PY'
+          import json,pathlib,re,subprocess,os
+          r=pathlib.Path('provider'); ex=(r/'example_axionDM.ini').read_text(errors='ignore'); bg=(r/'source/background.c').read_text(errors='ignore'); head=subprocess.check_output(['git','-C',str(r),'rev-parse','HEAD'],text=True).strip()
+          checks={
+            'exact_head':head==os.environ['AXICLASS_PIN'],
+            'example_labels_f_axion_mpl':('f_axion' in ex and 'units of mpl' in ex),
+            'potential_uses_phi_over_f':('cos(phi/fa)' in bg and 'sin(phi/fa)' in bg),
+            'potential_uses_f_as_scale':('pow(fa,2)' in bg),
+            'example_separates_f_from_field_ic':('f_axion =  0.02' in ex and 'scf_parameters = 2,0.0' in ex),
+          }
+          semantic={'f_axion_is_decay_scale':all(checks.values()),'f_axion_is_abundance':False}
+          negative={'reject_f_axion_equals_abundance':semantic['f_axion_is_decay_scale'] and not semantic['f_axion_is_abundance']}
+          out={'schema':'KMDSB.W04.F19.AxiCLASS.K2ParamIdentity.P1.v0.1','checks':checks,'semantic':semantic,'negative_controls':negative,'all_required_checks_pass':all(checks.values()) and all(negative.values())}
+          pathlib.Path('p1.json').write_text(json.dumps(out,indent=2)+'\n'); assert out['all_required_checks_pass'],out
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-k2-param-p1
+          path: p1.json
+
+  p2_present_abundance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Omega_scf present-density target semantics
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/PoulinV/AxiCLASS.git provider
+          git -C provider checkout -q "$AXICLASS_PIN"
+          python3 - <<'PY'
+          import json,pathlib
+          r=pathlib.Path('provider'); ih=(r/'include/input.h').read_text(errors='ignore'); inp=(r/'source/input.c').read_text(errors='ignore')
+          checks={
+            'omega_scf_target_declared':'Omega_scf' in ih,
+            'omega_scf_shoot_fa_declared':'Omega_scf_shoot_fa' in ih,
+            'final_rho_scf_used':'background_table[(ba.bt_size-1)*ba.bg_size+ba.index_bg_rho_scf]' in inp,
+            'normalized_by_H0_squared':'/(ba.H0*ba.H0)' in inp,
+            'compared_to_Omega0_scf':'-ba.Omega0_scf' in inp,
+          }
+          semantic={'Omega_scf_is_present_scalar_density_target':all(checks.values())}
+          out={'schema':'KMDSB.W04.F19.AxiCLASS.K2ParamIdentity.P2.v0.1','checks':checks,'semantic':semantic,'all_required_checks_pass':all(checks.values())}
+          pathlib.Path('p2.json').write_text(json.dumps(out,indent=2)+'\n'); assert out['all_required_checks_pass'],out
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-k2-param-p2
+          path: p2.json
+
+  p3_critical_fraction:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify fraction_axion_ac is distinct critical-epoch target
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/PoulinV/AxiCLASS.git provider
+          git -C provider checkout -q "$AXICLASS_PIN"
+          python3 - <<'PY'
+          import json,pathlib
+          r=pathlib.Path('provider'); ih=(r/'include/input.h').read_text(errors='ignore'); inp=(r/'source/input.c').read_text(errors='ignore'); ex=(r/'example_axionDM.ini').read_text(errors='ignore'); mp=(r/'montepython_param_files/EDE_PlanckTTTEEE_BAO.param').read_text(errors='ignore') if (r/'montepython_param_files/EDE_PlanckTTTEEE_BAO.param').exists() else ''
+          checks={
+            'distinct_targets_in_enum':all(x in ih for x in ['Omega_scf','fraction_axion_ac','log10_axion_ac']),
+            'fraction_target_parser_surface':'fraction_axion_ac' in inp,
+            'critical_epoch_pairing':'fraction_axion_ac' in ex and 'log10_axion_ac' in ex,
+            'ede_config_uses_fraction_target':'fraction_axion_ac' in mp,
+            'omega_and_fraction_names_distinct':('Omega_scf' != 'fraction_axion_ac'),
+          }
+          semantic={'fraction_axion_ac_is_distinct_from_present_Omega_scf':all(checks.values())}
+          negative={'reject_fraction_axion_ac_equals_Omega_scf':semantic['fraction_axion_ac_is_distinct_from_present_Omega_scf']}
+          out={'schema':'KMDSB.W04.F19.AxiCLASS.K2ParamIdentity.P3.v0.1','checks':checks,'semantic':semantic,'negative_controls':negative,'all_required_checks_pass':all(checks.values()) and all(negative.values())}
+          pathlib.Path('p3.json').write_text(json.dumps(out,indent=2)+'\n'); assert out['all_required_checks_pass'],out
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-k2-param-p3
+          path: p3.json
+
+  p4_initial_conditions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify scf_parameters initial-condition semantics
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/PoulinV/AxiCLASS.git provider
+          git -C provider checkout -q "$AXICLASS_PIN"
+          python3 - <<'PY'
+          import json,pathlib
+          r=pathlib.Path('provider'); ex=(r/'example_axionDM.ini').read_text(errors='ignore'); inp=(r/'source/input.c').read_text(errors='ignore'); bh=(r/'include/background.h').read_text(errors='ignore')
+          checks={
+            'example_documents_phi_and_velocity':('phi_i' in ex and 'phi_ini_dot' in ex),
+            'example_documents_theta_initial':'Theta_initial' in ex and 'Theta_dot_initial' in ex,
+            'scf_parameters_present_in_parser':'scf_parameters' in inp,
+            'background_has_phi_initial_state':('phi_ini_scf' in bh and 'phi_prime_ini_scf' in bh),
+            'omega_scf_separate_symbol':'Omega0_scf' in bh or 'Omega_scf' in inp,
+          }
+          semantic={'scf_parameters_are_initial_condition_parameters':all(checks.values()),'scf_parameters0_is_Omega_scf':False}
+          negative={'reject_scf_parameter0_equals_Omega_scf':semantic['scf_parameters_are_initial_condition_parameters'] and not semantic['scf_parameters0_is_Omega_scf']}
+          out={'schema':'KMDSB.W04.F19.AxiCLASS.K2ParamIdentity.P4.v0.1','checks':checks,'semantic':semantic,'negative_controls':negative,'all_required_checks_pass':all(checks.values()) and all(negative.values())}
+          pathlib.Path('p4.json').write_text(json.dumps(out,indent=2)+'\n'); assert out['all_required_checks_pass'],out
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-k2-param-p4
+          path: p4.json
+
+  aggregate:
+    needs: [p1_decay_scale, p2_present_abundance, p3_critical_fraction, p4_initial_conditions]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: f19-k2-param-p*
+          path: evidence
+          merge-multiple: true
+      - name: Aggregate parameter identity without K2 authorization
+        run: |
+          python3 - <<'PY'
+          import json,pathlib
+          lanes={}
+          for n in ['p1','p2','p3','p4']:
+            p=pathlib.Path('evidence')/(n+'.json'); lanes[n]=json.loads(p.read_text()) if p.exists() else None
+          ok=all(v is not None and v.get('all_required_checks_pass') for v in lanes.values())
+          cls='F19_AXICLASS_K2_PARAMETER_IDENTITY_PREPARATION_PASS_WITH_SCOPE' if ok else 'F19_AXICLASS_K2_PARAMETER_IDENTITY_PREPARATION_INCOMPLETE'
+          out={'schema':'KMDSB.W04.F19.AxiCLASS.K2ParamIdentityAggregate.v0.1','protocol':'protocol/W04_F19_AXICLASS_K2_PARAMETER_IDENTITY_PREPARATION_v0.1.md','provider':'PoulinV/AxiCLASS@ae9609e1f96ddebbb6cc8a46de94512514c68781','lanes':lanes,'classification':cls,'parameter_map':{'f_axion':'potential decay scale','Omega_scf':'present scalar-density target/shooting coordinate','fraction_axion_ac':'critical-epoch fraction target','scf_parameters':'scalar initial-condition/tuning parameters'},'K0_promoted':False,'K1_promoted':False,'K2_authorized':False,'physical_falsification':False}
+          pathlib.Path('f19_axiclass_k2_parameter_identity_preparation.json').write_text(json.dumps(out,indent=2)+'\n'); print(json.dumps({'classification':cls,'K2_authorized':False}))
+          assert ok,out
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-axiclass-k2-parameter-identity-preparation
+          path: f19_axiclass_k2_parameter_identity_preparation.json
