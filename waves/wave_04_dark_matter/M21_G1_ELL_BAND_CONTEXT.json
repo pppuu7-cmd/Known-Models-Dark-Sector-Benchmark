@@ -1,0 +1,65 @@
+{
+  "schema": "KMDSB.W04.M21.G1EllBandContext.v0.1",
+  "date": "2026-09-14",
+  "status": "POST_HOC_CONTEXT_ONLY_NOT_A_GATE",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "g1_source_run": 34869857740,
+  "g1_complete_result": "waves/wave_04_dark_matter/M21_CMB_PRECISION_COMPONENT_G1_COMPLETE_READOUT.json",
+  "bands": {
+    "low": [2, 29],
+    "acoustic": [30, 500],
+    "mid": [501, 1200],
+    "damping": [1201, 2500]
+  },
+  "TT": {
+    "f3_energy_shares": {
+      "low": 0.0001106607857703539,
+      "acoustic": 0.1428910355623234,
+      "mid": 0.5929965573395541,
+      "damping": 0.26400174631235207
+    },
+    "excursion_factors": {
+      "low": 0.9426299131569799,
+      "acoustic": 0.04152949827640235,
+      "mid": 0.021546646503679438,
+      "damping": 0.042135506469658864
+    },
+    "localization": "BROAD_OR_MULTIBAND",
+    "largest_energy_band": "mid"
+  },
+  "EE": {
+    "f3_energy_shares": {
+      "low": 2.066255913751349e-09,
+      "acoustic": 0.1534053382596124,
+      "mid": 0.23653194272563982,
+      "damping": 0.6100627169484917
+    },
+    "excursion_factors": {
+      "low": 0.2645232825874221,
+      "acoustic": 0.057856969701457116,
+      "mid": 0.005510442591316132,
+      "damping": 0.015102263802583593
+    },
+    "localization": "BROAD_OR_MULTIBAND",
+    "largest_energy_band": "damping"
+  },
+  "TE": {
+    "f3_energy_shares": {
+      "low": 5.447717003791407e-06,
+      "acoustic": 0.10460702554437647,
+      "mid": 0.4974508256179998,
+      "damping": 0.39793670112061985
+    },
+    "excursion_factors": {
+      "low": 0.45537036389241603,
+      "acoustic": 0.01802944583391154,
+      "mid": 0.004557433546689391,
+      "damping": 0.009242552623231683
+    },
+    "localization": "BROAD_OR_MULTIBAND",
+    "largest_energy_band": "mid"
+  },
+  "interpretation": "Under the complete terminal G1 group, the f3 residual-energy distribution across low/acoustic/mid/damping bands closely matches the full cl_ref.pre reference-precision pattern, while no band retains a large isolated f3 excursion factor. This strengthens the localization of the original f3 spike to the G1 thermodynamics/perturbation-source evolution layer. The result is descriptive context only: G1 still over-amplifies f2 relative to full cl_ref.pre and is not a complete reference-precision surrogate.",
+  "K1_promoted": false,
+  "physical_falsification": false
+}
