@@ -9,6 +9,7 @@ profile='conv_P400_ON_TAIL_OFF.pre'
 profile_manifest='conv_P400_ON_TAIL_OFF_profile_manifest.json'
 patch_manifest='l400_transfer_convolution_patch_manifest.json'
 diag="conv_${case_id}.dat"
+RECOVERY='protocol/W04_M21_L400_TRANSFER_CONVOLUTION_DIAGNOSTIC_SERIALIZATION_RECOVERY_v0.1.md'
 
 python3 -m pip install --disable-pip-version-check --no-input -q numpy==2.2.6
 git clone -q https://github.com/lesgourg/class_public.git class
@@ -25,12 +26,12 @@ make -C class -j2 > build.log 2>&1
 mkdir -p output
 
 set +e
-KMDSB_M21_L400_CONV_DIAG="$(pwd)/$diag" timeout 2700 ./class/class "m21_cases/${case_id}.ini" "$profile" > "run_${case_id}.log" 2>&1
+OMP_NUM_THREADS=1 KMDSB_M21_L400_CONV_DIAG="$(pwd)/$diag" timeout 2700 ./class/class "m21_cases/${case_id}.ini" "$profile" > "run_${case_id}.log" 2>&1
 rc=$?
 set -e
 printf '%s\t%s\n' "$case_id" "$rc" > case_status.tsv
 
-CASE_ID="$case_id" RC="$rc" PIN_ENV="$PIN" PROFILE="$profile" PMAN="$profile_manifest" PATCH="$patch_manifest" PARENT_DIR="$parent_dir" DIAG="$diag" python3 - <<'PY'
+CASE_ID="$case_id" RC="$rc" PIN_ENV="$PIN" PROFILE="$profile" PMAN="$profile_manifest" PATCH="$patch_manifest" PARENT_DIR="$parent_dir" DIAG="$diag" RECOVERY_ENV="$RECOVERY" python3 - <<'PY'
 import hashlib,json,math,os,pathlib,subprocess
 import numpy as np
 H=lambda p: hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
@@ -60,6 +61,7 @@ else: null_l2=float(np.linalg.norm(a-b)/max(float(np.linalg.norm(a)),float(np.li
 obj={
  'schema':'KMDSB.W04.M21.L400TransferConvolutionCase.v0.1',
  'protocol':'protocol/W04_M21_L400_TRANSFER_CONVOLUTION_DECOMPOSITION_v0.1.md',
+ 'serialization_recovery_protocol':os.environ['RECOVERY_ENV'],'diagnostic_omp_num_threads':1,
  'case':c,'lane':'P400_ON_TAIL_OFF','provider_head':head,'exact_head':head==os.environ['PIN_ENV'],
  'class_rc':rc,'class_rc0':rc==0,
  'ini_sha256':H('m21_cases/'+c+'.ini'),'cl_permille_sha256':H('class/cl_permille.pre'),'ncdm_tight_sha256':H('verification/m21/m21_ncdm_tight.pre'),
@@ -80,4 +82,5 @@ python3 - <<'PY'
 import json
 m=json.load(open('case_meta.json'))
 assert m['authority_clean']
+assert m['diagnostic_omp_num_threads']==1
 PY
