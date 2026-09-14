@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows:
       - "W04 M21 perturbation-state branch signature v0.1"
+      - "W04 M21 perturbation-state seam recovery v0.1"
     types: [completed]
   workflow_dispatch:
 
@@ -18,38 +19,55 @@ jobs:
     outputs:
       authorized: ${{ steps.gate.outputs.authorized }}
       parent_run_id: ${{ steps.gate.outputs.parent_run_id }}
+      parent_artifact_name: ${{ steps.parent.outputs.artifact_name }}
+      parent_is_recovery: ${{ steps.parent.outputs.is_recovery }}
     steps:
       - uses: actions/checkout@v4
       - id: parent
-        name: Resolve parent run id
+        name: Resolve parent run and artifact identity
         run: |
           set -euo pipefail
           if [ "${{ github.event_name }}" = "workflow_run" ]; then
             echo "run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+            if [ "${{ github.event.workflow_run.name }}" = "W04 M21 perturbation-state seam recovery v0.1" ]; then
+              echo "artifact_name=m21-perturbation-state-seam-recovery-v01" >> "$GITHUB_OUTPUT"
+              echo "is_recovery=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "artifact_name=m21-perturbation-state-branch-signature-v01" >> "$GITHUB_OUTPUT"
+              echo "is_recovery=false" >> "$GITHUB_OUTPUT"
+            fi
           else
-            echo "run_id=34895647832" >> "$GITHUB_OUTPUT"
+            echo "run_id=34896737054" >> "$GITHUB_OUTPUT"
+            echo "artifact_name=m21-perturbation-state-seam-recovery-v01" >> "$GITHUB_OUTPUT"
+            echo "is_recovery=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Download terminal perturbation-state aggregate
         uses: actions/download-artifact@v4
         with:
-          name: m21-perturbation-state-branch-signature-v01
+          name: ${{ steps.parent.outputs.artifact_name }}
           path: parent
           github-token: ${{ github.token }}
           repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
           run-id: ${{ steps.parent.outputs.run_id }}
       - id: gate
         name: Enforce conditional source-gate activation
+        env:
+          IS_RECOVERY: ${{ steps.parent.outputs.is_recovery }}
+          PARENT_RUN_ID: ${{ steps.parent.outputs.run_id }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
           import json,os
           from pathlib import Path
           d=json.loads(Path('parent/M21_PERTURBATION_STATE_BRANCH_SIGNATURE_RESULT.json').read_text())
+          recovery=(os.environ['IS_RECOVERY']=='true')
           ok=(d.get('classification')=='M21_CMB_BRANCH_NOT_LOCALIZED_IN_NATIVE_PERTURBATION_STATES' and d.get('cross_lane_input_identity') is True)
+          if recovery:
+            ok = ok and d.get('seam_recovery_passed') is True and d.get('parent_run_id')==34895647832
           with Path(os.environ['GITHUB_OUTPUT']).open('a') as f:
             f.write('authorized='+('true' if ok else 'false')+'\n')
-            f.write('parent_run_id=${{ steps.parent.outputs.run_id }}\n')
-          print(json.dumps({'authorized':ok,'parent_classification':d.get('classification')},indent=2))
+            f.write('parent_run_id='+os.environ['PARENT_RUN_ID']+'\n')
+          print(json.dumps({'authorized':ok,'recovery_parent':recovery,'parent_classification':d.get('classification'),'seam_recovery_passed':d.get('seam_recovery_passed')},indent=2))
           PY
 
   source:
@@ -100,7 +118,7 @@ jobs:
       - name: Download immutable perturbation-state parent
         uses: actions/download-artifact@v4
         with:
-          name: m21-perturbation-state-branch-signature-v01
+          name: ${{ needs.activation.outputs.parent_artifact_name }}
           path: parent
           github-token: ${{ github.token }}
           repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
