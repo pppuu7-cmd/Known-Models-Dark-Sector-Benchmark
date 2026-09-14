@@ -1,0 +1,133 @@
+name: W04 M21 CMB precision-component decomposition recovery v0.2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-cmb-precision-component-decomposition-recovery-v02.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  OMP_NUM_THREADS: '1'
+
+jobs:
+  activation:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download terminal full-reference gate
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-full-cmb-reference-precision
+          path: activation
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34864827822
+      - name: Enforce pre-frozen activation condition
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          d=json.load(open('activation/M21_FULL_CMB_REFERENCE_PRECISION_RESULT.json'))
+          allowed={
+            'M21_FULL_CMB_REFERENCE_PRECISION_REMOVES_EXCURSION',
+            'M21_FULL_CMB_REFERENCE_PRECISION_REDUCES_EXCURSION',
+          }
+          assert d.get('classification') in allowed,d.get('classification')
+          assert d.get('provider')=='lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540'
+          assert d.get('evidence_ok') is True and d.get('finite_outputs') is True
+          print(d['classification'])
+          PY
+
+  component:
+    needs: activation
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [G1, G2, G3]
+        case: [ref, f2, f3, f4]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute frozen recovered component lane
+        run: |
+          set -euo pipefail
+          bash verification/m21/run_component_lane_recovery_v02.sh '${{ matrix.group }}' '${{ matrix.case }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-v02-${{ matrix.group }}-${{ matrix.case }}
+          path: |
+            lane_meta.json
+            provider_rc.txt
+            component_${{ matrix.group }}_v02.pre
+            component_${{ matrix.group }}_merge_manifest.json
+            m21_cases/${{ matrix.case }}.ini
+            output/${{ matrix.case }}*.dat
+            run_${{ matrix.case }}.log
+            build_${{ matrix.case }}.log
+          retention-days: 90
+
+  aggregate:
+    needs: [component]
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Download recovered component artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-v02-*-*
+          path: components
+      - name: Download immutable parent RK evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: w04-m21-integrator-branch-diagnostic
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34542162543
+      - name: Download terminal activation evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-full-cmb-reference-precision
+          path: activation
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34864827822
+      - name: Assemble recovered group products and apply frozen classification
+        run: |
+          set -euo pipefail
+          mkdir -p eval/g1 eval/g2 eval/g3 meta/g1 meta/g2 meta/g3
+          for G in G1 G2 G3; do
+            g=$(printf '%s' "$G" | tr 'A-Z' 'a-z')
+            for c in ref f2 f3 f4; do
+              d="components/m21-v02-${G}-${c}"
+              test -d "$d"
+              test -f "$d/lane_meta.json"
+              cp "$d/lane_meta.json" "meta/${g}/${c}.json"
+              find "$d" -type f \( -name "${c}_cl.dat" -o -name "${c}_*_cl.dat" -o -name "${c}_pk.dat" -o -name "${c}_*_pk.dat" -o -name "${c}_background.dat" -o -name "${c}_*_background.dat" \) -exec cp {} "eval/${g}/" \;
+            done
+          done
+          python3 verification/m21/cmb_precision_component_decomposition.py \
+            eval \
+            meta \
+            parent/rk_out \
+            activation/M21_FULL_CMB_REFERENCE_PRECISION_RESULT.json \
+            M21_CMB_PRECISION_COMPONENT_DECOMPOSITION_RECOVERY_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-cmb-precision-component-decomposition-recovery-v02
+          path: M21_CMB_PRECISION_COMPONENT_DECOMPOSITION_RECOVERY_RESULT.json
+          retention-days: 90
