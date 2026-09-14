@@ -1,0 +1,92 @@
+name: W04 M21 thermodynamics state downstream-output recovery v0.2
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m21-thermo-state-downstream-output-recovery-v02.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  OMP_NUM_THREADS: '1'
+
+jobs:
+  activation:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      authorized: ${{ steps.gate.outputs.authorized }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: gate
+        name: Enforce frozen recovery authority
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          parent=json.loads(Path('waves/wave_04_dark_matter/M21_THERMO_EVOLVER_CROSSCHECK_RECOVERY_TERMINAL.json').read_text())
+          blocked=json.loads(Path('waves/wave_04_dark_matter/M21_THERMO_STATE_BRANCH_SIGNATURE_HARNESS_BLOCKED.json').read_text())
+          ok=(parent.get('classification')=='M21_THERMO_EVOLVER_DEPENDENCE_MIXED' and parent.get('cross_lane_input_identity') is True and blocked.get('classification')=='M21_THERMO_STATE_BRANCH_SIGNATURE_BLOCKED' and blocked.get('blocker_type')=='HARNESS_DOWNSTREAM_NONLINEAR_REQUEST_WITHOUT_PERTURBATIONS')
+          with Path(os.environ['GITHUB_OUTPUT']).open('a') as f: f.write('authorized='+('true' if ok else 'false')+'\n')
+          print(json.dumps({'authorized':ok,'parent':parent.get('classification'),'blocker':blocked.get('blocker_type')},indent=2))
+          PY
+
+  state:
+    needs: activation
+    if: needs.activation.outputs.authorized == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [NDF_T1E5, NDF_T1E6, NDF_T1E7, RK_T1E5, RK_T1E6, RK_T1E7]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute recovered thermodynamics-state lane
+        run: |
+          set -euo pipefail
+          bash verification/m21/run_thermo_state_recovery_lane_v02.sh '${{ matrix.lane }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-thermo-state-${{ matrix.lane }}
+          path: |
+            lane_meta.json
+            case_status.tsv
+            thermo_cases/*.ini
+            thermo_cases/manifest.json
+            thermo_state_recovery_${{ matrix.lane }}.pre
+            thermo_state_recovery_${{ matrix.lane }}_profile_manifest.json
+            output/*thermodynamics.dat
+            output/*background.dat
+            run_*.log
+            build.log
+          retention-days: 90
+
+  aggregate:
+    needs: [activation, state]
+    if: always() && needs.activation.result == 'success' && needs.activation.outputs.authorized == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Download recovered state artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-thermo-state-*
+          path: components
+      - name: Apply unchanged frozen state branch classifier
+        run: |
+          set -euo pipefail
+          python3 verification/m21/thermo_state_branch_signature.py components M21_THERMO_STATE_BRANCH_SIGNATURE_RECOVERY_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-thermo-state-branch-signature-recovery-v02
+          path: M21_THERMO_STATE_BRANCH_SIGNATURE_RECOVERY_RESULT.json
+          retention-days: 90
