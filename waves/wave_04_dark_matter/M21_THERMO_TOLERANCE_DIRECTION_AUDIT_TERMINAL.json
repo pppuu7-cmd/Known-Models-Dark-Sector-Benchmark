@@ -1,0 +1,24 @@
+{
+  "schema": "KMDSB.W04.M21.ThermoToleranceDirectionAuditTerminal.v0.1",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "protocol": "protocol/W04_M21_CONDITIONAL_THERMODYNAMICS_TOLERANCE_DIRECTION_AUDIT_v0.1.md",
+  "run_id": 34879598732,
+  "artifact_id": 10363062831,
+  "artifact_digest": "sha256:4a91404ff0ea4cfd13d6287bab7d04a01a9ecb4083a71897df4828ca686b1c51",
+  "classification": "M21_THERMO_TOL_NONMONOTONE_DIRECTIONAL_RESPONSE",
+  "cross_lane_input_identity": true,
+  "lanes": {
+    "1e-4": {"classification": "REMOVES", "Emax": 0.3390877059308329},
+    "3e-5": {"classification": "REMOVES", "Emax": 0.013135340186788207},
+    "1e-5": {"classification": "REMOVES", "Emax": 0.03431664516144772},
+    "3e-6": {"classification": "REMOVES", "Emax": 0.01087788199580774},
+    "1e-6": {"classification": "INSUFFICIENT", "Emax": 534.8355868817356},
+    "3e-7": {"classification": "INSUFFICIENT", "Emax": 417.69996905927826},
+    "1e-7": {"classification": "REMOVES", "Emax": 1.000009046588933}
+  },
+  "scientific_interpretation": "The response is strongly nonmonotone under decreasing thermodynamics tolerance. The cl_ref value 1e-5 is not evidence of monotone convergence. This is a numerical-path sensitivity of the thermodynamics solver until cross-evolver testing resolves solver specificity.",
+  "cross_evolver_gate_authorized": true,
+  "K1_promoted": false,
+  "physical_falsification": false
+}
