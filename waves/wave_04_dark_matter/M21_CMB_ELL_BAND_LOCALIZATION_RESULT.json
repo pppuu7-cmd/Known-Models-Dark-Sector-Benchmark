@@ -1,0 +1,47 @@
+{
+  "schema": "KMDSB.W04.M21.CMBEllBandLocalizationCanonical.v0.1",
+  "date": "2026-09-14",
+  "protocol": "protocol/W04_M21_CMB_ELL_BAND_LOCALIZATION_v0.1.md",
+  "parent_run": 34542162543,
+  "parent_head": "25a74539371fe7bc9304df9fe2e51ff4be050a79",
+  "parent_artifact": {
+    "id": 10178334419,
+    "digest": "sha256:640472f79c7e55d9edf4ed39ed35d4ab692fcf4700fad4d50edbad0642f7c65c"
+  },
+  "workflow_run_id": 34864446108,
+  "head_sha": "324bad4e2c4fe209fc028ed229e9f086db7a321a",
+  "job_id": 104044613428,
+  "result_artifact": {
+    "id": 10355413755,
+    "digest": "sha256:1283b23bf038e277fca3b4609373632f6f990b2d6aabeb33e06f34f89d5ee236"
+  },
+  "controls": {
+    "canonical_full_metric_reproduction": true,
+    "f3_energy_share_sums_unity": true,
+    "direct_RK_vs_NDF15_reproduction": true
+  },
+  "NDF15_default": {
+    "TT": {"category": "MID_LOCALIZED", "largest_band": "mid", "mid_energy_share": 0.8462680903589854, "mid_excursion_factor": 103.21349001490269, "low_excursion_factor": 0.999850096025024},
+    "EE": {"category": "MID_LOCALIZED", "largest_band": "mid", "mid_energy_share": 0.7412128917972001, "mid_excursion_factor": 257.99534633621596, "low_excursion_factor": 1.0013365346382552},
+    "TE": {"category": "MID_LOCALIZED", "largest_band": "mid", "mid_energy_share": 0.8280673337346136, "mid_excursion_factor": 338.91747419137414, "low_excursion_factor": 0.9984073805902041}
+  },
+  "RK_evolver0": {
+    "TT": {"category": "MID_LOCALIZED", "largest_band": "mid", "mid_energy_share": 0.8462130762373266, "mid_excursion_factor": 110.38958330080902, "low_excursion_factor": 0.9995745883536032},
+    "EE": {"category": "MID_LOCALIZED", "largest_band": "mid", "mid_energy_share": 0.7411531813305721, "mid_excursion_factor": 338.61900547025124, "low_excursion_factor": 1.0003365803588162},
+    "TE": {"category": "MID_LOCALIZED", "largest_band": "mid", "mid_energy_share": 0.8280312525878861, "mid_excursion_factor": 694.6731437000547, "low_excursion_factor": 0.9982608685042201}
+  },
+  "cross_branch_localization": {
+    "TT": "CONSISTENT",
+    "EE": "CONSISTENT",
+    "TE": "CONSISTENT"
+  },
+  "strong_excursion_bands_both_solvers": {
+    "TT": ["acoustic", "mid", "damping"],
+    "EE": ["acoustic", "mid", "damping"],
+    "TE": ["acoustic", "mid", "damping"]
+  },
+  "classification": "M21_CMB_ELL_BAND_LOCALIZATION_PASS_WITH_SCOPE",
+  "K1_promoted": false,
+  "physical_falsification": false,
+  "interpretation": "The deterministic f_w=0.003 CMB residual anomaly is solver-branch independent and is concentrated primarily in ell=501..1200 for TT, EE and TE. Low-ell residuals show no isolated f3 excursion. The next numerical localization should target the CMB source/transfer/integration layer rather than background evolution or low-ell physics; this result is diagnostic only."
+}
