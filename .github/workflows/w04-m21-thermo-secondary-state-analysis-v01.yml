@@ -1,0 +1,103 @@
+name: W04 M21 thermodynamics secondary-state analysis v0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-thermo-secondary-state-analysis-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enforce frozen parent authority
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('protocol/W04_M21_THERMODYNAMICS_SECONDARY_STATE_BRANCH_SIGNATURE_v0.1.md')
+          assert p.exists()
+          d=json.loads(Path('waves/wave_04_dark_matter/M21_THERMO_EVOLVER_CROSSCHECK_RECOVERY_TERMINAL.json').read_text())
+          assert d['classification']=='M21_THERMO_EVOLVER_DEPENDENCE_MIXED'
+          assert d['cross_lane_input_identity'] is True
+          PY
+
+      - name: Download NDF 1e-5 immutable state artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-thermo-state-NDF_T1E5
+          path: components/m21-thermo-state-NDF_T1E5
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 34887773207
+      - name: Download NDF 1e-6 immutable state artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-thermo-state-NDF_T1E6
+          path: components/m21-thermo-state-NDF_T1E6
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 34887773207
+      - name: Download NDF 1e-7 immutable state artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-thermo-state-NDF_T1E7
+          path: components/m21-thermo-state-NDF_T1E7
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 34887773207
+      - name: Download RK 1e-5 immutable state artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-thermo-state-RK_T1E5
+          path: components/m21-thermo-state-RK_T1E5
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 34887773207
+      - name: Download RK 1e-6 immutable state artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-thermo-state-RK_T1E6
+          path: components/m21-thermo-state-RK_T1E6
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 34887773207
+      - name: Download RK 1e-7 immutable state artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-thermo-state-RK_T1E7
+          path: components/m21-thermo-state-RK_T1E7
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 34887773207
+      - name: Download immutable parent aggregate
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-thermo-state-branch-signature-recovery-v03
+          path: parent
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 34887773207
+
+      - name: Analyze frozen secondary columns only
+        run: |
+          python -m pip install --disable-pip-version-check -q numpy
+          python verification/m21/thermo_secondary_state_branch_signature.py \
+            components \
+            parent/M21_THERMO_STATE_BRANCH_SIGNATURE_RECOVERY_V03_RESULT.json \
+            M21_THERMO_SECONDARY_STATE_BRANCH_SIGNATURE_RESULT.json
+
+      - name: Upload terminal analysis artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: m21-thermo-secondary-state-branch-signature-v01
+          path: M21_THERMO_SECONDARY_STATE_BRANCH_SIGNATURE_RESULT.json
+          if-no-files-found: error
