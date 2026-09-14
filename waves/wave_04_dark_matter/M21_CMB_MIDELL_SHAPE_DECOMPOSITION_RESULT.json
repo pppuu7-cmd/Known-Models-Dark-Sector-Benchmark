@@ -1,0 +1,30 @@
+{
+  "schema": "KMDSB.W04.M21.CMBMidEllShapeDecompositionCanonical.v0.1",
+  "date": "2026-09-14",
+  "protocol": "protocol/W04_M21_CMB_MIDELL_SHAPE_DECOMPOSITION_v0.1.md",
+  "parent_run": 34542162543,
+  "parent_artifact": {"id": 10178334419, "digest": "sha256:640472f79c7e55d9edf4ed39ed35d4ab692fcf4700fad4d50edbad0642f7c65c"},
+  "workflow_run_id": 34865062884,
+  "head_sha": "178f82dde35d5845549d3228ae4d73b5cd6662a5",
+  "job_id": 104046710904,
+  "result_artifact": {"id": 10356562037, "digest": "sha256:49e60bed2b68de9378e533a983d8826e78af66bd450f9b68c0c73fb25afef595"},
+  "classification": "M21_CMB_MIDELL_SHAPE_DECOMPOSITION_PASS_WITH_SCOPE",
+  "NDF15_default": {
+    "TT": {"category":"COMPLEX_SHAPE","amplitude_energy_fraction":0.0003220990424941565,"shift_energy_fraction":0.0053082986347190554,"two_template_explained_fraction":0.005630397677213212,"residual_fraction":0.9943696023227857},
+    "EE": {"category":"COMPLEX_SHAPE","amplitude_energy_fraction":0.0005780443127438627,"shift_energy_fraction":0.0018980653515833985,"two_template_explained_fraction":0.0024761096643272614,"residual_fraction":0.9975238903356723},
+    "TE": {"category":"COMPLEX_SHAPE","amplitude_energy_fraction":0.0032881082686951092,"shift_energy_fraction":0.006097721531676679,"two_template_explained_fraction":0.009385829800371788,"residual_fraction":0.9906141701996284}
+  },
+  "RK_evolver0": {
+    "TT": {"category":"COMPLEX_SHAPE","amplitude_energy_fraction":0.00030005259694148255,"shift_energy_fraction":0.005303726924469138,"two_template_explained_fraction":0.005603779521410621,"residual_fraction":0.9943962204785901},
+    "EE": {"category":"COMPLEX_SHAPE","amplitude_energy_fraction":0.0005940747403497973,"shift_energy_fraction":0.0018895011946243269,"two_template_explained_fraction":0.002483575934974124,"residual_fraction":0.9975164240650274},
+    "TE": {"category":"COMPLEX_SHAPE","amplitude_energy_fraction":0.003205787930200342,"shift_energy_fraction":0.0060456414223871375,"two_template_explained_fraction":0.009251429352587479,"residual_fraction":0.9907485706474142}
+  },
+  "cross_solver": {
+    "TT": {"status":"CONSISTENT","cosine_similarity":0.9999976423767718},
+    "EE": {"status":"CONSISTENT","cosine_similarity":0.9999984404690743},
+    "TE": {"status":"CONSISTENT","cosine_similarity":0.9999993275606534}
+  },
+  "K1_promoted": false,
+  "physical_falsification": false,
+  "interpretation": "After subtracting the fixed linear f2-to-f4 fraction trend, the f3 mid-ell anomaly is an almost identical deterministic shape under NDF15 and RK but is not explained by either a multiplicative CMB amplitude template or a small acoustic-peak shift template. More than 99 percent of the anomaly energy remains outside their two-dimensional span. This prioritizes source/transfer support, interpolation or sampling diagnostics over background-distance/phase explanations."
+}
