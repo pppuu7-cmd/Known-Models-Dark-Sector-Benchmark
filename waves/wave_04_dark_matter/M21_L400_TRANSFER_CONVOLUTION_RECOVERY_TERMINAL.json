@@ -1,0 +1,40 @@
+{
+  "schema": "KMDSB.W04.M21.L400TransferConvolutionRecoveryTerminal.v0.1",
+  "date": "2026-09-15",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "parent_protocol": "protocol/W04_M21_L400_TRANSFER_CONVOLUTION_DECOMPOSITION_v0.1.md",
+  "recovery_protocol": "protocol/W04_M21_L400_TRANSFER_CONVOLUTION_DIAGNOSTIC_SERIALIZATION_RECOVERY_v0.1.md",
+  "run_id": 34907528331,
+  "head_sha": "2338fb5a4ee92c8b94a1583089465e42d164f439",
+  "artifact_id": 10373467959,
+  "artifact_digest": "sha256:ba86f18e1a57f4b8dd16652976e0d015fb912fdaaca5848685476bf64017883e",
+  "classification": "M21_L400_TRANSFER_SPIKE_CONVOLUTION_ACCUMULATION_WITH_SCOPE",
+  "serialization_recovery": "OMP_NUM_THREADS=1",
+  "integrity": {
+    "all_four_cases_authority_clean": true,
+    "all_four_cases_null_clean": true,
+    "provider_identity": true,
+    "same_q_index_set": true,
+    "support_q_nonempty": true,
+    "positive_parent_weight": true,
+    "all_blocks_reconstruct_and_geometry_clean": true,
+    "q_count": 73,
+    "k_min_Mpc_inv": 0.03030247505892471,
+    "k_max_Mpc_inv": 0.04401375054733766,
+    "parent_weight_sum": 1.1156747696507287e-13
+  },
+  "specificity": {
+    "source_S": 1.2846611791553475,
+    "radial_R": 1.1273489553368872,
+    "pointwise_product_P": 1.2375373459930303,
+    "signed_weighted_contribution_C": 1.549367287605997,
+    "frozen_threshold": 3.0
+  },
+  "scientific_interpretation": "Within the frozen l=400 and k-support diagnostic, source, radial, pointwise source-radial product, and signed weighted-contribution profiles are individually below the established f3-specificity threshold. The f3-specific transfer response therefore emerges only after the full signed tau accumulation at this decomposition level. This is numerical mechanism localization, not a physical WDM scale or provider-defect verdict.",
+  "authorized_next_step_pending_router": "CONVOLUTION_SIGN_CANCELLATION",
+  "successor_router_run_id": 34908508458,
+  "K1_promoted": false,
+  "K3_promoted": false,
+  "K4_promoted": false,
+  "physical_falsification": false
+}
