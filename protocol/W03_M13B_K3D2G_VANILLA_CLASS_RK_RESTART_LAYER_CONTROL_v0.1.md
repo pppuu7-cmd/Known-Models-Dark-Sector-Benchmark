@@ -23,7 +23,7 @@ Run two otherwise identical vanilla flat LCDM jobs with no qcf/qpf adapter and n
 - **U (unsplit):** exact upstream perturbation interval construction.
 - **S (split):** insert one native perturbation interval boundary at the exact background `tau(z=5)` and restart the next interval at `nextafter(tau_z5, interval_end)`. Duplicate the pre-existing CLASS approximation row across the inserted boundary. Do not change state variables, initial conditions, hierarchy equations, Einstein sources, tolerances, precision file, or solver family.
 
-Both lanes receive the same output-only RK collapse/component diagnostics. Instrumentation may change error text only and must not alter solver logic.
+Both lanes receive the same output-only RK collapse-geometry diagnostics. Instrumentation may change error text only and must not alter solver logic. Because this provider is unmodified vanilla CLASS, every perturbation-vector component is by construction a standard CLASS Boltzmann/metric/matter component and no qcf/qpf variable exists; component-class attribution is therefore not required for the binary generic-restart control.
 
 ## Frozen cosmology
 
@@ -49,7 +49,7 @@ If the density closure is rejected by CLASS, classify implementation-blocked; do
 
 ## Frozen classifications
 
-1. If U returns rc=0 and S returns nonzero rc with an RK-collapse trace at the first post-z5 split step, and the dominant terminal components are standard photon/UR hierarchy variables with no qfield variables present:
+1. If U returns rc=0 and S returns nonzero rc with a parseable RK-collapse trace whose failing interval begins at the inserted z=5 restart boundary:
 
 `M13B_K3D2G_GENERIC_CLASS_RK_HARD_RESTART_LAYER_EFFECT_SUPPORTED`.
 
