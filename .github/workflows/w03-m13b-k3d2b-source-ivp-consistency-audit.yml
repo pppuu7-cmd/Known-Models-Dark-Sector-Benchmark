@@ -1,0 +1,147 @@
+name: W03 M13b K3D2-B source IVP consistency audit
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/w03-m13b-k3d2b-source-ivp-consistency-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CLASS_PIN: 64bbab707faf4de4779a9e04edd180fef18d98fa
+
+jobs:
+  source_equations:
+    name: A exact source equation/sign audit
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply exact independent adapter and audit source signs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          set +e
+          python3 verification/m13b/k3d2b_source_ivp_consistency_audit.py source --provider provider --out result/source_result.json
+          echo "$?" > result/verifier_rc.txt
+          set -e
+          test -s result/source_result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-source-ivp-source
+          path: result
+          retention-days: 90
+
+  artifact_ivp:
+    name: B immutable parent IVP identity audit
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download immutable parent scientific artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p prior result
+          gh run download 34790860872 -n m13b-k3d2b-certified-default-full -D prior
+          test -d prior/out
+      - name: Audit frozen Newtonian versus executed synchronous initial surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          python3 verification/m13b/k3d2b_source_ivp_consistency_audit.py artifact \
+            --root prior \
+            --canonical waves/wave_03_expanded_dark_energy/M13B_K3C2_INDEPENDENT_PERTURBATION_BRIDGE_RESULT.json \
+            --out result/artifact_result.json
+          echo "$?" > result/verifier_rc.txt
+          set -e
+          test -s result/artifact_result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-source-ivp-artifact
+          path: result
+          retention-days: 90
+
+  implementation_feasibility:
+    name: C native boundary gauge-map feasibility
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply exact certified-tau source stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git provider
+          git -C provider checkout -q "$CLASS_PIN"
+          mkdir -p result
+          python3 verification/m13b/k3d2_apply_class_two_field_adapter_entry.py provider --manifest result/adapter.json
+          python3 verification/m13b/k3d2b_apply_piecewise_background_restart.py provider --conditional-qfields --recover-handoff-boundary --manifest result/bg_restart.json
+          python3 verification/m13b/k3d2b_apply_post_handoff_ulp_seam.py provider --ulps 1 --manifest result/bg_ulp.json
+          python3 verification/m13b/k3d2b_apply_perturbation_native_interval_split.py provider --manifest result/pt_split.json
+          python3 verification/m13b/k3d2b_apply_mapping_certified_tau_seam.py provider --manifest result/cert_tau.json
+      - name: Audit native boundary implementation path
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          python3 verification/m13b/k3d2b_source_ivp_consistency_audit.py feasibility --provider provider --out result/feasibility_result.json
+          echo "$?" > result/verifier_rc.txt
+          set -e
+          test -s result/feasibility_result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-source-ivp-feasibility
+          path: result
+          retention-days: 90
+
+  aggregate:
+    name: D frozen source-IVP verdict
+    needs:
+      - source_equations
+      - artifact_ivp
+      - implementation_feasibility
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-source-ivp-source
+          path: lanes/source
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-source-ivp-artifact
+          path: lanes/artifact
+      - uses: actions/download-artifact@v4
+        with:
+          name: m13b-k3d2b-source-ivp-feasibility
+          path: lanes/feasibility
+      - name: Assemble prospectively frozen verdict
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p aggregate
+          python3 verification/m13b/k3d2b_source_ivp_consistency_audit.py aggregate \
+            --source lanes/source/source_result.json \
+            --artifact lanes/artifact/artifact_result.json \
+            --feasibility lanes/feasibility/feasibility_result.json \
+            --out aggregate/aggregate_result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2b-source-ivp-aggregate
+          path: aggregate
+          retention-days: 90
