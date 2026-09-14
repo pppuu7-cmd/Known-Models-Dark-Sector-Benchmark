@@ -332,3 +332,14 @@ Seven-lane provider reconnaissance run `34650903154` returned zero provider-grad
 - Unchanged default B1/B2/B3 verifier PASS; phantom delta_y ratios `0.99857413408469` (khat=1) and `1.0038143961348418` (khat=10), correct signs.
 - Historical synchronous-zero B3 FAIL and one-step blocker remain immutable. K3 remains PARTIAL; reference precision remains OPEN; K4/K5 not promoted; author source/normalization reproduction blocked; physical_falsification=false.
 
+## M13b K3D2-D self-consistent reference terminal result - 2026-09-14
+
+- Classification: `M13B_K3D2D_SELF_CONSISTENT_REFERENCE_RK_NUMERICAL_BLOCKER_LOCALIZED`.
+- Canonical result: `waves/wave_03_expanded_dark_energy/M13B_K3D2D_SELF_CONSISTENT_REFERENCE_RESULT.json`.
+- Provider: `lesgourg/class_public@64bbab707faf4de4779a9e04edd180fef18d98fa`; exact upstream `cl_ref.pre` unchanged.
+- Parent run `34793932614`; parser recovery run `34794392309`, job `103824587962`.
+- Reference artifact `10329550837` (`sha256:563bc5829e516a8a09f2d3fae995789c2c2a36d60267527a7a5b4f6e6407c676`); parser artifact `10329077259` (`sha256:64b75ddddaf4439f1c19bda79ab56318199ddd8c4656b08f8b8fbae1f78f346c`).
+- Source/precision guard PASS. Boundary fixed point converged in 5 iterations to `4.32531410187872e-15` at frozen target `1e-12`.
+- Provider rc `1`; 388 top-level RK collapse signatures over `k=0.015586127194346362..0.03824049129868911 1/Mpc`; frozen K1/K10 do not fail; 380 records have clean first-step geometry near `tau=6256.99866298 Mpc`.
+- By frozen protocol reference B1/B2/B3 and default/reference reproducibility are not evaluated after nonzero provider rc. K3 remains PARTIAL; K4/K5 not promoted; physical_falsification=false.
+
