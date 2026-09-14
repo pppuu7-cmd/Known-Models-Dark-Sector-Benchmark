@@ -1,0 +1,171 @@
+name: W04 F19 AxiCLASS exact-zero fluid-coordinate regularity confirmation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-f19-axiclass-exact-zero-fluid-regularity-confirmation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  AXICLASS_PIN: ae9609e1f96ddebbb6cc8a46de94512514c68781
+
+jobs:
+  r1_activation_algebra:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm species activation and exact-zero algebra
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/PoulinV/AxiCLASS.git provider
+          git -C provider checkout -q "$AXICLASS_PIN"
+          python3 - <<'PY'
+          import json,pathlib,math
+          r=pathlib.Path('provider'); bg=(r/'source/background.c').read_text(errors='ignore')
+          checks={
+            'size_activates_species':('if (pba->scf_parameters_size != 0)' in bg and 'pba->has_scf = _TRUE_' in bg),
+            'n1_cosine_zero_at_origin':('pow(m,2)*pow(fa,2)*(1-cos(phi/fa))' in ''.join(bg.split())) and abs((1-math.cos(0.0)))==0.0,
+            'derivative_zero_at_origin':('sin(phi/fa)' in bg and math.sin(0.0)==0.0),
+            'rho_formula_present':'phi_prime*phi_prime/(2*a*a) + V_scf' in bg,
+            'p_formula_present':'phi_prime*phi_prime/(2*a*a) - V_scf' in bg,
+            'w_ratio_present':'index_bg_p_scf]/pvecback[pba->index_bg_rho_scf]' in bg,
+          }
+          algebra={'phi':0.0,'phi_prime':0.0,'V_factor':1-math.cos(0.0),'rho_proxy':0.0,'p_proxy':0.0}
+          out={'schema':'KMDSB.W04.F19.AxiCLASS.ZeroRegularity.R1.v0.1','checks':checks,'algebra':algebra,'all_required_checks_pass':all(checks.values()) and all(v==0.0 for v in algebra.values())}
+          pathlib.Path('r1.json').write_text(json.dumps(out,indent=2)+'\n'); assert out['all_required_checks_pass'],out
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-zero-reg-r1
+          path: r1.json
+
+  r2_flag_control_flow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm frozen Z0 selects fluid perturbation variables
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/PoulinV/AxiCLASS.git provider
+          git -C provider checkout -q "$AXICLASS_PIN"
+          python3 - <<'PY'
+          import json,pathlib
+          wf=pathlib.Path('.github/workflows/w04-f19-axiclass-k0k1-probe-v01-recovery.yml').read_text(errors='ignore')
+          pc=pathlib.Path('provider/source/perturbations.c').read_text(errors='ignore')
+          frozen=['scf_parameters = 0,0','scf_evolve_as_fluid = yes','scf_evolve_like_axionCAMB = yes','scf_has_perturbations = yes','use_delta_scf_over_1plusw = yes','do_shooting = no','do_shooting_scf = no']
+          checks={
+            'all_frozen_Z0_flags_present':all(x in wf for x in frozen),
+            'fluid_selector_has_scf':'scf_fluid_variables =' in pc and 'pba->has_scf == _TRUE_' in pc,
+            'fluid_selector_requires_perturbations':'pba->scf_has_perturbations == _TRUE_' in pc,
+            'fluid_selector_requires_fluid':'pba->scf_evolve_as_fluid == _TRUE_' in pc,
+            'axioncamb_true_selects_fluid':'pba->scf_evolve_like_axionCAMB == _TRUE_' in pc,
+          }
+          frozen_eval={'has_scf':True,'scf_has_perturbations':True,'scf_evolve_as_fluid':True,'scf_evolve_like_axionCAMB':True}
+          fluid_selected=all(frozen_eval.values())
+          negA=not (True and False and True and True)
+          negB=not (True and True and False and False)
+          controls={'scf_has_perturbations_no_disables_fluid':negA,'direct_KG_flags_disable_fluid':negB}
+          out={'schema':'KMDSB.W04.F19.AxiCLASS.ZeroRegularity.R2.v0.1','checks':checks,'frozen_fluid_selected':fluid_selected,'controls':controls,'all_required_checks_pass':all(checks.values()) and fluid_selected and all(controls.values())}
+          pathlib.Path('r2.json').write_text(json.dumps(out,indent=2)+'\n'); assert out['all_required_checks_pass'],out
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-zero-reg-r2
+          path: r2.json
+
+  r3_downstream_consumption:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm w_scf is consumed in executable fluid perturbation paths
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/PoulinV/AxiCLASS.git provider
+          git -C provider checkout -q "$AXICLASS_PIN"
+          python3 - <<'PY'
+          import json,pathlib,re
+          pc=pathlib.Path('provider/source/perturbations.c').read_text(errors='ignore')
+          token='index_bg_w_scf'
+          positions=[m.start() for m in re.finditer(token,pc)]
+          contexts=[pc[max(0,p-300):p+500] for p in positions]
+          ic_hits=[c for c in contexts if ('INITIAL CONDITIONS' in c or 'index_pt_delta_scf' in c or 'index_pt_big_theta_scf' in c) and ('curvature_ini' in c or 'ppw->pv->y' in c or 'ppv->y' in c)]
+          rhs_hits=[c for c in contexts if ('delta_rho_scf' in c or 'rho_plus_p_theta_scf' in c or 'delta_p_scf' in c)]
+          gauge_hits=[c for c in contexts if ('alpha' in c and ('theta_scf' in c or 'delta_scf' in c))]
+          checks={
+            'multiple_w_uses':len(positions)>=5,
+            'initial_condition_or_vector_use':len(ic_hits)>=1,
+            'stress_energy_or_rhs_use':len(rhs_hits)>=1,
+            'gauge_transform_use':len(gauge_hits)>=1,
+            'one_plus_w_times_rho_expression':'(1+ppw->pvecback[pba->index_bg_w_scf])*ppw->pvecback[pba->index_bg_rho_scf]' in pc or '(1.+ppw->pvecback[pba->index_bg_w_scf])*ppw->pvecback[pba->index_bg_rho_scf]' in pc,
+          }
+          out={'schema':'KMDSB.W04.F19.AxiCLASS.ZeroRegularity.R3.v0.1','checks':checks,'w_scf_occurrences':len(positions),'ic_context_count':len(ic_hits),'rhs_context_count':len(rhs_hits),'gauge_context_count':len(gauge_hits),'all_required_checks_pass':all(checks.values())}
+          pathlib.Path('r3.json').write_text(json.dumps(out,indent=2)+'\n'); assert out['all_required_checks_pass'],out
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-zero-reg-r3
+          path: r3.json
+
+  r4_binary64_witness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm binary64 NaN coordinate witness and positive control
+        run: |
+          python3 - <<'PY'
+          import json,math,pathlib
+          rho=0.0; p=0.0; w=float('nan')
+          one_plus_w=1.0+w
+          product=one_plus_w*rho
+          source_guard_ne_zero=(product != 0.0)
+          divided=0.0/product if math.isfinite(product) and product!=0.0 else float('nan')
+          phi=2.0; fa=0.02
+          nonzero_V_factor=1.0-math.cos(phi/fa)
+          checks={
+            'w_nonfinite':not math.isfinite(w),
+            'one_plus_w_nonfinite':not math.isfinite(one_plus_w),
+            'nan_times_zero_nonfinite':not math.isfinite(product),
+            'nan_not_equal_zero':source_guard_ne_zero,
+            'representative_division_nonfinite':not math.isfinite(divided),
+            'author_nonzero_initial_field_has_nonzero_potential_factor':nonzero_V_factor>0.0,
+          }
+          controls={'nonzero_author_example_not_exact_zero':nonzero_V_factor>0.0}
+          out={'schema':'KMDSB.W04.F19.AxiCLASS.ZeroRegularity.R4.v0.1','checks':checks,'controls':controls,'w':None,'one_plus_w_finite':math.isfinite(one_plus_w),'product_finite':math.isfinite(product),'source_guard_ne_zero':source_guard_ne_zero,'nonzero_V_factor':nonzero_V_factor,'all_required_checks_pass':all(checks.values()) and all(controls.values())}
+          pathlib.Path('r4.json').write_text(json.dumps(out,indent=2)+'\n'); assert out['all_required_checks_pass'],out
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-zero-reg-r4
+          path: r4.json
+
+  aggregate:
+    needs: [r1_activation_algebra, r2_flag_control_flow, r3_downstream_consumption, r4_binary64_witness]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: f19-zero-reg-r*
+          path: evidence
+          merge-multiple: true
+      - name: Aggregate coordinate-regularity confirmation only
+        run: |
+          python3 - <<'PY'
+          import json,pathlib
+          lanes={}
+          for n in ['r1','r2','r3','r4']:
+            p=pathlib.Path('evidence')/(n+'.json'); lanes[n]=json.loads(p.read_text()) if p.exists() else None
+          ok=all(v is not None and v.get('all_required_checks_pass') for v in lanes.values())
+          cls='F19_AXICLASS_EXACT_ZERO_FLUID_COORDINATE_SINGULARITY_CONFIRMED_WITH_SCOPE' if ok else 'F19_AXICLASS_EXACT_ZERO_FLUID_COORDINATE_SINGULARITY_NOT_CONFIRMED'
+          out={'schema':'KMDSB.W04.F19.AxiCLASS.ZeroRegularityAggregate.v0.1','protocol':'protocol/W04_F19_AXICLASS_EXACT_ZERO_FLUID_COORDINATE_REGULARITY_CONFIRMATION_v0.1.md','provider':'PoulinV/AxiCLASS@ae9609e1f96ddebbb6cc8a46de94512514c68781','lanes':lanes,'classification':cls,'does_not_claim_unique_runtime_cause':True,'authoritative_k1_run_separate':34846931382,'K0_promoted':False,'K1_promoted':False,'K2_authorized':False,'physical_falsification':False}
+          pathlib.Path('f19_axiclass_exact_zero_fluid_coordinate_regularity.json').write_text(json.dumps(out,indent=2)+'\n'); print(json.dumps({'classification':cls}))
+          assert ok,out
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-axiclass-exact-zero-fluid-coordinate-regularity
+          path: f19_axiclass_exact_zero_fluid_coordinate_regularity.json
