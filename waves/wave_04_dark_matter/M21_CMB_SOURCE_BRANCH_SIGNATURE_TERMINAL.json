@@ -1,0 +1,28 @@
+{
+  "schema": "KMDSB.W04.M21.CMBSourceBranchSignatureTerminal.v0.1",
+  "date": "2026-09-15",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "run_id": 34897602278,
+  "artifact_id": 10369419717,
+  "artifact_digest": "sha256:15110d1691b36ae173a0538c98daad2471bafa984d0fbad06c22d77db8139bab",
+  "classification": "M21_CMB_BRANCH_NOT_LOCALIZED_IN_DIRECT_CMB_SOURCES",
+  "cross_lane_input_identity": true,
+  "J_threshold": 3.0,
+  "branch_change_localized_count": 0,
+  "branch_change_edges": {
+    "NDF_T1E5__NDF_T1E6": {"Jmax": 1.5726434601072778, "localized": false},
+    "NDF_T1E6__NDF_T1E7": {"Jmax": 1.4994031490805209, "localized": false},
+    "RK_T1E5__RK_T1E6": {"Jmax": 0.999990450776, "localized": false},
+    "NDF_T1E7__RK_T1E7": {"Jmax": 1.1270619832596809, "localized": false}
+  },
+  "same_branch_controls": {
+    "NDF_T1E5__RK_T1E5": {"Jmax": 1.0072251864854018, "localized": false},
+    "NDF_T1E6__RK_T1E6": {"Jmax": 1.692782568004899, "localized": false},
+    "RK_T1E6__RK_T1E7": {"Jmax": 1.000072577771845, "localized": false}
+  },
+  "scientific_interpretation": "The f3-specific HIGH/CALM CMB branch map is not present in the directly sampled native CMB source functions under the frozen source metric. This moves the localization downstream of perturbation-source generation, without establishing a CLASS defect or a converged production setting.",
+  "K1_promoted": false,
+  "K3_promoted": false,
+  "K4_promoted": false,
+  "physical_falsification": false
+}
