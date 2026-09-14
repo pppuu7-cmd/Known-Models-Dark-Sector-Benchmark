@@ -1,0 +1,191 @@
+name: W04 M21 automatic ncdm q-grid identity audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-auto-qgrid-identity-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  OMP_NUM_THREADS: '1'
+
+jobs:
+  qgrid:
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [f2, f3, f4, f3_manual]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install exact provider and prepare frozen M21 cases
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.3.3
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+          python3 verification/m21/mixed_cold_warm_k1_reference.py prepare m21_cases
+          cat class/cl_permille.pre verification/m21/m21_ncdm_tight.pre > m21_p2.pre
+
+      - name: Apply output-only q-grid instrumentation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          p=Path('class/source/background.c')
+          before=p.read_text()
+          marker='    class_alloc(pba->dlnf0_dlnq_ncdm[k],\n'
+          assert before.count(marker)==1, before.count(marker)
+          ins='''    /* KMDSB M21 output-only q-grid audit. */
+    fprintf(stdout,"KMDSB_QGRID_BEGIN species=%d strategy=%d qsize=%d deg=%.17g factor=%.17g\\n",
+            k,(int)pba->ncdm_quadrature_strategy[k],pba->q_size_ncdm[k],pba->deg_ncdm[k],pba->factor_ncdm[k]);
+    for (int kmdsb_qi=0; kmdsb_qi<pba->q_size_ncdm[k]; kmdsb_qi++) {
+      fprintf(stdout,"KMDSB_QGRID_POINT species=%d i=%d q=%.17g w=%.17g\\n",
+              k,kmdsb_qi,pba->q_ncdm[k][kmdsb_qi],pba->w_ncdm[k][kmdsb_qi]);
+    }
+    fprintf(stdout,"KMDSB_QGRID_END species=%d\\n",k);
+    fflush(stdout);
+
+'''
+          after=before.replace(marker,ins+marker,1)
+          p.write_text(after)
+          manifest={
+            'schema':'KMDSB.W04.M21.QGridInstrumentation.v0.1',
+            'changed_file':'source/background.c',
+            'insertions':1,
+            'output_only':True,
+            'changes_arrays':False,
+            'changes_equations':False,
+            'changes_inputs':False,
+            'changes_tolerances':False,
+            'before_sha256':hashlib.sha256(before.encode()).hexdigest(),
+            'after_sha256':hashlib.sha256(after.encode()).hexdigest()
+          }
+          Path('instrumentation_manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          PY
+          make -C class -j2 > build_${{ matrix.lane }}.log 2>&1
+
+      - name: Select lane INI and execute unchanged physics or frozen negative control
+        run: |
+          set -euo pipefail
+          lane='${{ matrix.lane }}'
+          base="$lane"
+          if [ "$lane" = f3_manual ]; then base=f3; fi
+          cp "m21_cases/${base}.ini" lane.ini
+          if [ "$lane" = f3_manual ]; then
+            cat >> lane.ini <<'EOF'
+          ncdm_quadrature_strategy = 3
+          ncdm_N_momentum_bins = 150
+          ncdm_maximum_q = 15
+          EOF
+          fi
+          set +e
+          (cd class && timeout 1200 ./class ../lane.ini ../m21_p2.pre > ../run_${lane}.log 2>&1)
+          rc=$?
+          set -e
+          echo "$rc" > provider_rc.txt
+          test "$rc" -eq 0
+          grep -q 'KMDSB_QGRID_BEGIN' "run_${lane}.log"
+          grep -q 'KMDSB_QGRID_END' "run_${lane}.log"
+
+      - name: Serialize exact q-grid record
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,re,pathlib,math
+          lane='${{ matrix.lane }}'
+          text=pathlib.Path(f'run_{lane}.log').read_text(errors='replace')
+          b=re.findall(r'KMDSB_QGRID_BEGIN species=(\d+) strategy=(\d+) qsize=(\d+) deg=([^ ]+) factor=([^\n]+)',text)
+          assert len(b)==1,b
+          sp,st,n,deg,factor=b[0]; n=int(n)
+          pts=re.findall(r'KMDSB_QGRID_POINT species=(\d+) i=(\d+) q=([^ ]+) w=([^\n]+)',text)
+          assert len(pts)==n,(len(pts),n)
+          pts=sorted(pts,key=lambda x:int(x[1]))
+          q=[float(x[2]) for x in pts]; w=[float(x[3]) for x in pts]
+          assert all(math.isfinite(x) for x in q+w+[float(deg),float(factor)])
+          payload={'strategy':int(st),'q_size':n,'q':q,'w':w}
+          canon=json.dumps(payload,sort_keys=True,separators=(',',':')).encode()
+          out={
+            'schema':'KMDSB.W04.M21.AutoQGridLane.v0.1','lane':lane,
+            'provider':'lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540',
+            'strategy':int(st),'q_size':n,'q':q,'w':w,
+            'deg_ncdm':float(deg),'factor_ncdm':float(factor),
+            'qgrid_sha256':hashlib.sha256(canon).hexdigest(),
+            'provider_rc':int(pathlib.Path('provider_rc.txt').read_text()),
+            'instrumentation':json.loads(pathlib.Path('instrumentation_manifest.json').read_text()),
+            'all_required_checks_pass':True
+          }
+          pathlib.Path(f'{lane}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({k:out[k] for k in ['lane','strategy','q_size','deg_ncdm','factor_ncdm','qgrid_sha256']},indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m21-qgrid-${{ matrix.lane }}
+          path: |
+            ${{ matrix.lane }}.json
+            instrumentation_manifest.json
+            provider_rc.txt
+            lane.ini
+            run_${{ matrix.lane }}.log
+            build_${{ matrix.lane }}.log
+          retention-days: 90
+
+  aggregate:
+    needs: [qgrid]
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-qgrid-*
+          path: evidence
+      - name: Apply frozen q-grid identity classification
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,hashlib
+          lanes={}
+          for lane in ['f2','f3','f4','f3_manual']:
+            fs=list(pathlib.Path('evidence').glob(f'm21-qgrid-{lane}/{lane}.json'))
+            lanes[lane]=json.loads(fs[0].read_text()) if len(fs)==1 else None
+          required=all(v is not None and v.get('all_required_checks_pass') and v.get('provider_rc')==0 for v in lanes.values())
+          if required:
+            phys=[lanes[x] for x in ['f2','f3','f4']]
+            exact_grid=all((p['strategy'],p['q_size'],p['q'],p['w'])==(phys[0]['strategy'],phys[0]['q_size'],phys[0]['q'],phys[0]['w']) for p in phys[1:])
+            norms={(p['deg_ncdm'],p['factor_ncdm']) for p in phys}
+            norm_diff=len(norms)>1
+            negative_diff=lanes['f3_manual']['qgrid_sha256']!=lanes['f3']['qgrid_sha256']
+            if exact_grid and norm_diff and negative_diff:
+              cls='M21_AUTO_QGRID_IDENTICAL_ACROSS_FRACTIONS'
+            elif (not exact_grid) and negative_diff:
+              cls='M21_AUTO_QGRID_FRACTION_DEPENDENT'
+            else:
+              cls='M21_AUTO_QGRID_AUDIT_BLOCKED'
+          else:
+            exact_grid=False; norm_diff=False; negative_diff=False; cls='M21_AUTO_QGRID_AUDIT_BLOCKED'
+          out={
+            'schema':'KMDSB.W04.M21.AutoQGridIdentityAudit.v0.1',
+            'protocol':'protocol/W04_M21_AUTO_QGRID_IDENTITY_AUDIT_v0.1.md',
+            'provider':'lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540',
+            'lanes':lanes,'physical_grids_exactly_identical':exact_grid,
+            'abundance_normalization_differs':norm_diff,
+            'manual_negative_control_grid_differs':negative_diff,
+            'classification':cls,'K1_promoted':False,'physical_falsification':False
+          }
+          pathlib.Path('M21_AUTO_QGRID_IDENTITY_AUDIT_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({'classification':cls,'physical_grids_exactly_identical':exact_grid,'abundance_normalization_differs':norm_diff,'manual_negative_control_grid_differs':negative_diff},indent=2))
+          assert cls!='M21_AUTO_QGRID_AUDIT_BLOCKED',out
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m21-auto-qgrid-identity-audit
+          path: M21_AUTO_QGRID_IDENTITY_AUDIT_RESULT.json
+          retention-days: 90
