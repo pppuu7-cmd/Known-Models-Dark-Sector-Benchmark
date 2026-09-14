@@ -1,0 +1,43 @@
+{
+  "schema": "KMDSB.W04.M21.CMBPrecisionComponentSourceMap.v0.1",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "protocol": "protocol/W04_M21_CONDITIONAL_CMB_PRECISION_COMPONENT_DECOMPOSITION_v0.1.md",
+  "audit_timing": "recorded after recovery launch and before any recovered component scientific result",
+  "groups": {
+    "G1": {
+      "label": "thermodynamics / perturbation-source evolution",
+      "source_modules": ["source/perturbations.c", "thermodynamics state consumed by perturbations"],
+      "exact_source_role": [
+        "The perturbation module integrates perturbation equations and constructs/interpolates source functions S^X(k,tau).",
+        "start_sources_at_tau_c_over_tau_h is used in perturbations.c to locate the initial source-computation time by bisection in the thermo-to-Hubble timescale ratio.",
+        "The tight-coupling, hierarchy and perturbation integration/sampling controls in G1 therefore act before transfer projection, at the source-generation/evolution layer."
+      ],
+      "interpretation_if_sufficient": "Localizes the precision sensitivity to the thermodynamics/perturbation/source-generation layer as a group. It does not identify a unique scalar parameter or a unique code defect."
+    },
+    "G2": {
+      "label": "k/l/hyperspherical/q sampling and projection grid",
+      "source_modules": ["source/perturbations.c", "source/transfer.c"],
+      "exact_source_role": [
+        "k_step_sub and k_step_super enter construction of the perturbation-module k sampling grid around the recombination scale.",
+        "transfer.c constructs the transfer-function q grid using q_linstep, q_logstep_spline/q_logstep_trapzd and q_numstep_transition.",
+        "transfer_init passes hyper_sampling_flat and related hyperspherical precision parameters into the spherical/hyperspherical interpolation structure used for transfer projection."
+      ],
+      "interpretation_if_sufficient": "Localizes the sensitivity to the sampling/projection-grid layer spanning perturbation k sampling and transfer q/hyperspherical sampling. It does not by itself distinguish k-grid from q-grid from hyperspherical interpolation."
+    },
+    "G3": {
+      "label": "scalar CMB transfer-support truncation",
+      "source_modules": ["source/transfer.c"],
+      "exact_source_role": [
+        "The transfer module computes Delta_l^X(q) from perturbation source functions.",
+        "For scalar temperature source types, transfer.c directly compares l against (k - transfer_neglect_delta_k_S_t*) times the recombination angular-distance factor and marks transfer contributions for neglect when the threshold condition is met.",
+        "neglect_CMB_sources_below_visibility and transfer_neglect_late_source are likewise transfer/source support truncation controls."
+      ],
+      "interpretation_if_sufficient": "Localizes the sensitivity to scalar CMB transfer/source-support truncation as a group. It does not prove that any one neglect threshold is defective."
+    }
+  },
+  "classification": "M21_CMB_PRECISION_COMPONENT_SOURCE_MAP_FROZEN_WITH_SCOPE",
+  "scope": "This map is outcome-independent and constrains interpretation only. It cannot change group membership, thresholds, classification rules or K1 status after component results are seen.",
+  "K1_promoted": false,
+  "physical_falsification": false
+}
