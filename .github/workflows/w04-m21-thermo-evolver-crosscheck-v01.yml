@@ -1,0 +1,109 @@
+name: W04 M21 thermodynamics evolver crosscheck v0.1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m21-thermo-evolver-crosscheck-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  OMP_NUM_THREADS: '1'
+  PARENT_RUN: '34879598732'
+
+jobs:
+  activation:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      authorized: ${{ steps.gate.outputs.authorized }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download terminal tolerance-direction parent
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-thermo-tolerance-direction-audit-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.PARENT_RUN }}
+      - id: gate
+        name: Enforce prospectively frozen activation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=json.loads(Path('parent/M21_THERMO_TOLERANCE_DIRECTION_AUDIT_RESULT.json').read_text())
+          allowed={'M21_THERMO_TOL_REFERENCE_VALUE_PATH_SPECIFIC','M21_THERMO_TOL_NONMONOTONE_DIRECTIONAL_RESPONSE'}
+          ok=d.get('classification') in allowed and d.get('cross_lane_input_identity') is True
+          with Path(os.environ['GITHUB_OUTPUT']).open('a') as f: f.write('authorized='+('true' if ok else 'false')+'\n')
+          print(json.dumps({'authorized':ok,'parent_classification':d.get('classification')},indent=2))
+          PY
+
+  lane:
+    needs: activation
+    if: needs.activation.outputs.authorized == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [NDF_T1E5, NDF_T1E6, NDF_T1E7, RK_T1E5, RK_T1E6, RK_T1E7]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute frozen thermodynamics evolver lane
+        run: |
+          set -euo pipefail
+          bash verification/m21/run_thermo_evolver_crosscheck_lane_v01.sh '${{ matrix.lane }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-thermo-evolver-${{ matrix.lane }}
+          path: |
+            lane_meta.json
+            case_status.tsv
+            thermo_evolver_${{ matrix.lane }}.pre
+            thermo_evolver_${{ matrix.lane }}_manifest.json
+            m21_cases/*.ini
+            output/*.dat
+            run_*.log
+            build.log
+          retention-days: 90
+
+  aggregate:
+    needs: [activation, lane]
+    if: always() && needs.activation.result == 'success' && needs.activation.outputs.authorized == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Download lane artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-thermo-evolver-*
+          path: components
+      - name: Download terminal tolerance-direction parent
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-thermo-tolerance-direction-audit-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.PARENT_RUN }}
+      - name: Apply frozen cross-evolver classifier
+        run: |
+          set -euo pipefail
+          python3 verification/m21/thermo_evolver_crosscheck.py components parent/M21_THERMO_TOLERANCE_DIRECTION_AUDIT_RESULT.json M21_THERMO_EVOLVER_CROSSCHECK_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-thermo-evolver-crosscheck-v01
+          path: M21_THERMO_EVOLVER_CROSSCHECK_RESULT.json
+          retention-days: 90
