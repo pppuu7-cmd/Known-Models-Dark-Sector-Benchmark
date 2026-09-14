@@ -1,0 +1,33 @@
+{
+  "schema": "KMDSB.W03.F15NGCGAuthorCodeDiscoverySourceReview.v0.2",
+  "family_id": "F15",
+  "model_id": "M15",
+  "parent_run_id": 34830972756,
+  "parent_artifact_id": 10341809963,
+  "parent_artifact_sha256": "803c4aae354d08cc09c42165ff36866fbaef9699e87f4dea2de323b933b6765b",
+  "parent_machine_classification": "F15_AUTHOR_CODE_SOURCE_REVIEW_CANDIDATES_FOUND",
+  "manual_source_review": [
+    {
+      "repository": "comphy-lab/basilisk-C",
+      "commit": "2f0fb984b20b11da9154f28c2e62e08529e918c4",
+      "path": "basilisk-wiki/sandbox/Antoonvh/lamb-dipole.c",
+      "blob_sha": "cdf2b4b60585c837e10e1a8efa61c4ec486f71ec",
+      "verdict": "REJECT_NONCOSMOLOGY_FLUID_DYNAMICS",
+      "reason": "Incompressible Navier-Stokes Lamb-Chaplygin dipolar-vortex wall-collision simulation; Chaplygin here names the Lamb-Chaplygin vortex, not generalized-Chaplygin-gas cosmology."
+    },
+    {
+      "repository": "comphy-lab/basilisk-C",
+      "commit": "2f0fb984b20b11da9154f28c2e62e08529e918c4",
+      "path": "basilisk-wiki/sandbox/Antoonvh/front_page.c",
+      "blob_sha": "7de4dcec2cbf834665f94112da810a5a43869b23",
+      "verdict": "REJECT_NONCOSMOLOGY_FLUID_DYNAMICS",
+      "reason": "Basilisk Navier-Stokes visualization initialized with a Lamb-Chaplygin dipolar vortex; no NGCG background, perturbation closure, Boltzmann sector, or cosmological reference map."
+    }
+  ],
+  "classification": "F15_AUTHOR_CODE_V02_NO_SOURCE_COMPLETE_NGCG_PROVIDER_AFTER_MANUAL_REVIEW",
+  "K0_promotion": false,
+  "K1_promotion": false,
+  "physical_falsification": false,
+  "provider_status": "PERTURBATION_CLOSURE_PROVENANCE_OPEN",
+  "interpretation": "The author/equation-keyed GitHub tranche produced only lexical false positives among implementation-bearing candidates. This is a provenance-search result, not evidence against NGCG physics and not authorization to identify IDECAMB background duality with the published NGCG perturbation closure."
+}
