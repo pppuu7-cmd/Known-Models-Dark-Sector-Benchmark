@@ -361,3 +361,10 @@ Seven-lane provider reconnaissance run `34650903154` returned zero provider-grad
 
 ### 2026-09-14 — F18 code-biased independent-provider discovery v0.2 source review
 Action run `34820792370` completed all eight frozen code-biased lanes and the aggregate mechanically returned `F18_CODE_BIASED_SOURCE_COMPLETE_CANDIDATE_FOUND`. Manual exact-source review rejected the promoted set as unrelated Persistence-Theory/CPL code, matter-bounce verification, review-analysis scripts, or lexical/non-cosmology collisions. No independent source-complete ghost-condensate background+linear-perturbation provider with a documented regular condensate reference map was identified. Canonical classification: `F18_CODE_BIASED_DISCOVERY_NO_INDEPENDENT_SOURCE_COMPLETE_PROVIDER_AFTER_MANUAL_REVIEW`. Aggregate artifact `10337808801`, digest `sha256:d824ba2afdcac0020e15228504f0eeeb986d0049e0a46ba5fcd43753b4cb4e78`; source-review commit `b415b5ab51e0a6f90c38141249c9279a28d8bcd7`. Keep F18 `BLOCKED_IMPLEMENTATION_REFERENCE_PROVIDER_SEARCH`; K0/K1 not promoted; no physical falsification. Do not spend further capacity on broad lexical F18 search unless a new independently justified implementation or author-supported regular reference prescription appears.
+
+## 2026-09-14 — F15 exact NGCG provider discovery v0.1 source review
+
+Run 34826008004 completed all eight frozen lanes. Aggregate artifact 10340128264 (sha256:232b0b036b99bae934653b2cd386e81e358274427e181ef0891fa33353136c3a) classified the tranche as provenance leads only and produced no source-complete candidate. Manual exact-source review rejected the sole promoted lead `funwithscience-org/flat-earth-origins/scripts/deep_batch3.py`: it is prose/reference material about geocentrism/general covariance, not an NGCG cosmology or Boltzmann implementation.
+
+Canonical classification: `F15_EXACT_NGCG_DISCOVERY_NO_SOURCE_COMPLETE_PROVIDER_AFTER_SOURCE_REVIEW_2026_09_14`. K0/K1 are not promoted; physical_falsification=false. Exact NGCG perturbation-provider provenance remains open. A narrower author/equation keyed discovery v0.2 is prospectively frozen before search.
+
