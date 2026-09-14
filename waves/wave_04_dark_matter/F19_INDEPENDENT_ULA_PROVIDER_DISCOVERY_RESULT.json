@@ -1,0 +1,42 @@
+{
+  "schema": "KMDSB.W04.F19IndependentULAProviderDiscoveryCanonical.v0.1",
+  "date": "2026-09-14",
+  "protocol": "protocol/W04_F19_INDEPENDENT_ULA_PROVIDER_DISCOVERY_v0.1.md",
+  "workflow": ".github/workflows/w04-f19-independent-ula-provider-discovery-v01.yml",
+  "workflow_run_id": 34836375705,
+  "workflow_run_attempt": 2,
+  "workflow_head": "a72bef6eaf2ce798e327daf724626dface80ebc8",
+  "workflow_conclusion": "success",
+  "aggregate_artifact_id": 10345474792,
+  "aggregate_artifact_digest": "sha256:f1c9725823da3188f76994b5eb543974c57d9892837893085c1125d77a17bda0",
+  "classification": "F19_INDEPENDENT_PROVIDER_DISCOVERY_INFRASTRUCTURE_PARTIAL",
+  "infrastructure_failed_lanes": [1, 2, 5, 6],
+  "infrastructure_failure_mode": "GitHub code-search HTTP 429 after frozen retry loop",
+  "successful_lanes": [0, 3, 4, 7],
+  "source_review_candidate_count": 23,
+  "source_review_candidate_repository_count": 12,
+  "candidate_repositories": [
+    "edwphysics/SFDM-CMaDE",
+    "PoulinV/AxiCLASS",
+    "Fives555555/AxiCLASS_Passaglia_Hu",
+    "PoulinV/class_EDE",
+    "jmd-dk/concept",
+    "galacticusorg/galacticus",
+    "pfhopkins/gizmo-public",
+    "yishunlu-222/AnACor_public",
+    "yishunlu-222/AnACor2.0",
+    "githubgphl/imginfo",
+    "gqmaguirejr/Canvas-tools",
+    "mazarynio/mazaryn"
+  ],
+  "K0_promotion": false,
+  "K1_promotion": false,
+  "K2_authorized": false,
+  "physical_falsification": false,
+  "interpretation_ceiling": "Terminal discovery result only. Four frozen search lanes were infrastructure-limited, so this is neither a no-candidate result nor an independent-provider validation. Machine lexical hits require exact source review under the frozen five-point source-completeness criteria before any provider-control or K1 gate may be preregistered.",
+  "notes": [
+    "GitHub Actions green status is not the scientific classification; the frozen aggregate classifier returns infrastructure partial.",
+    "The authoritative raw aggregate is the later attempt-2 artifact listed above; an older same-run aggregate artifact from attempt 1 is historical, not canonical.",
+    "The still-nonterminal AxiCLASS K0/K1 run 34846931382 is not modified, duplicated, cancelled, or interpreted by this orthogonal discovery result."
+  ]
+}
