@@ -1,0 +1,320 @@
+name: W04 M21 CMB precision-component decomposition
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-cmb-precision-component-decomposition.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  OMP_NUM_THREADS: '1'
+
+jobs:
+  activation:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download terminal full-reference gate
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-full-cmb-reference-precision
+          path: activation
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34864827822
+      - name: Enforce pre-frozen activation condition
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          p='activation/M21_FULL_CMB_REFERENCE_PRECISION_RESULT.json'
+          d=json.load(open(p))
+          allowed={'M21_FULL_CMB_REFERENCE_PRECISION_REMOVES_EXCURSION','M21_FULL_CMB_REFERENCE_PRECISION_REDUCES_EXCURSION'}
+          assert d.get('classification') in allowed,d.get('classification')
+          assert d.get('provider')=='lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540'
+          assert d.get('evidence_ok') is True and d.get('finite_outputs') is True
+          print(d['classification'])
+          PY
+
+  g1:
+    needs: activation
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [ref, f2, f3, f4]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact provider and frozen G1 case
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+          python3 verification/m21/mixed_cold_warm_k1_reference.py prepare m21_cases
+          make -C class -j2 > "build_${{ matrix.case }}.log" 2>&1
+          cat class/cl_permille.pre verification/m21/m21_ncdm_tight.pre > component_G1.pre
+          printf '\nevolver=0\n' >> component_G1.pre
+          cat >> component_G1.pre <<'EOF'
+          recfast_Nz0=100000
+          tol_thermo_integration=1.e-5
+          recfast_x_He0_trigger_delta=0.01
+          recfast_x_H0_trigger_delta=0.01
+          start_small_k_at_tau_c_over_tau_h=0.0004
+          start_large_k_at_tau_h_over_tau_k=0.05
+          tight_coupling_trigger_tau_c_over_tau_h=0.005
+          tight_coupling_trigger_tau_c_over_tau_k=0.008
+          start_sources_at_tau_c_over_tau_h=0.006
+          l_max_g=50
+          l_max_pol_g=25
+          l_max_ur=50
+          tol_perturbations_integration=1.e-6
+          perturbations_sampling_stepsize=0.01
+          radiation_streaming_approximation=2
+          radiation_streaming_trigger_tau_over_tau_k=240.
+          radiation_streaming_trigger_tau_c_over_tau=100.
+          ur_fluid_approximation=2
+          ur_fluid_trigger_tau_over_tau_k=50.
+          EOF
+      - name: Execute G1 lane
+        run: |
+          set -euo pipefail
+          case='${{ matrix.case }}'
+          mkdir -p output
+          set +e
+          timeout 2700 ./class/class "m21_cases/${case}.ini" component_G1.pre > "run_${case}.log" 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > provider_rc.txt
+          test "$rc" -eq 0
+          test -s "output/${case}_00_cl.dat" -o -s "output/${case}_cl.dat"
+          test -s "output/${case}_00_pk.dat" -o -s "output/${case}_pk.dat"
+          test -s "output/${case}_00_background.dat" -o -s "output/${case}_background.dat"
+          CASE_NAME="$case" CLASS_PIN_ENV="$CLASS_PIN" python3 - <<'PY'
+          import hashlib,json,os,pathlib,subprocess
+          case=os.environ['CASE_NAME']; pin=os.environ['CLASS_PIN_ENV']
+          H=lambda p: hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
+          head=subprocess.check_output(['git','-C','class','rev-parse','HEAD'],text=True).strip()
+          obj={'schema':'KMDSB.W04.M21.CMBPrecisionComponentLane.v0.1','group':'G1','case':case,'provider_head':head,'exact_head':head==pin,'provider_rc':int(pathlib.Path('provider_rc.txt').read_text()),'ini_sha256':H('m21_cases/'+case+'.ini'),'base_cl_permille_sha256':H('class/cl_permille.pre'),'ncdm_tight_sha256':H('verification/m21/m21_ncdm_tight.pre'),'component_pre_sha256':H('component_G1.pre')}
+          pathlib.Path('lane_meta.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n')
+          assert obj['exact_head'] and obj['provider_rc']==0
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-g1-${{ matrix.case }}
+          path: |
+            lane_meta.json
+            provider_rc.txt
+            component_G1.pre
+            m21_cases/${{ matrix.case }}.ini
+            output/${{ matrix.case }}*.dat
+            run_${{ matrix.case }}.log
+            build_${{ matrix.case }}.log
+          retention-days: 90
+
+  g2:
+    needs: activation
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [ref, f2, f3, f4]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact provider and frozen G2 case
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+          python3 verification/m21/mixed_cold_warm_k1_reference.py prepare m21_cases
+          make -C class -j2 > "build_${{ matrix.case }}.log" 2>&1
+          cat class/cl_permille.pre verification/m21/m21_ncdm_tight.pre > component_G2.pre
+          printf '\nevolver=0\n' >> component_G2.pre
+          cat >> component_G2.pre <<'EOF'
+          k_min_tau0=0.002
+          k_max_tau0_over_l_max=3.
+          k_step_sub=0.015
+          k_step_super=0.0001
+          k_step_super_reduction=0.1
+          l_logstep=1.026
+          l_linstep=25
+          hyper_sampling_flat=12.
+          hyper_sampling_curved_low_nu=10.
+          hyper_sampling_curved_high_nu=10.
+          hyper_nu_sampling_step=10.
+          hyper_phi_min_abs=1.e-10
+          hyper_x_tol=1.e-4
+          hyper_flat_approximation_nu=1.e6
+          q_linstep=0.20
+          q_logstep_spline=20.
+          q_logstep_trapzd=0.5
+          q_numstep_transition=250
+          EOF
+      - name: Execute G2 lane
+        run: |
+          set -euo pipefail
+          case='${{ matrix.case }}'
+          mkdir -p output
+          set +e
+          timeout 2700 ./class/class "m21_cases/${case}.ini" component_G2.pre > "run_${case}.log" 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > provider_rc.txt
+          test "$rc" -eq 0
+          test -s "output/${case}_00_cl.dat" -o -s "output/${case}_cl.dat"
+          test -s "output/${case}_00_pk.dat" -o -s "output/${case}_pk.dat"
+          test -s "output/${case}_00_background.dat" -o -s "output/${case}_background.dat"
+          CASE_NAME="$case" CLASS_PIN_ENV="$CLASS_PIN" python3 - <<'PY'
+          import hashlib,json,os,pathlib,subprocess
+          case=os.environ['CASE_NAME']; pin=os.environ['CLASS_PIN_ENV']
+          H=lambda p: hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
+          head=subprocess.check_output(['git','-C','class','rev-parse','HEAD'],text=True).strip()
+          obj={'schema':'KMDSB.W04.M21.CMBPrecisionComponentLane.v0.1','group':'G2','case':case,'provider_head':head,'exact_head':head==pin,'provider_rc':int(pathlib.Path('provider_rc.txt').read_text()),'ini_sha256':H('m21_cases/'+case+'.ini'),'base_cl_permille_sha256':H('class/cl_permille.pre'),'ncdm_tight_sha256':H('verification/m21/m21_ncdm_tight.pre'),'component_pre_sha256':H('component_G2.pre')}
+          pathlib.Path('lane_meta.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n')
+          assert obj['exact_head'] and obj['provider_rc']==0
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-g2-${{ matrix.case }}
+          path: |
+            lane_meta.json
+            provider_rc.txt
+            component_G2.pre
+            m21_cases/${{ matrix.case }}.ini
+            output/${{ matrix.case }}*.dat
+            run_${{ matrix.case }}.log
+            build_${{ matrix.case }}.log
+          retention-days: 90
+
+  g3:
+    needs: activation
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [ref, f2, f3, f4]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact provider and frozen G3 case
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+          python3 verification/m21/mixed_cold_warm_k1_reference.py prepare m21_cases
+          make -C class -j2 > "build_${{ matrix.case }}.log" 2>&1
+          cat class/cl_permille.pre verification/m21/m21_ncdm_tight.pre > component_G3.pre
+          printf '\nevolver=0\n' >> component_G3.pre
+          cat >> component_G3.pre <<'EOF'
+          transfer_neglect_delta_k_S_t0=100.
+          transfer_neglect_delta_k_S_t1=100.
+          transfer_neglect_delta_k_S_t2=100.
+          transfer_neglect_delta_k_S_e=100.
+          neglect_CMB_sources_below_visibility=1.e-30
+          transfer_neglect_late_source=3000.
+          EOF
+      - name: Execute G3 lane
+        run: |
+          set -euo pipefail
+          case='${{ matrix.case }}'
+          mkdir -p output
+          set +e
+          timeout 2700 ./class/class "m21_cases/${case}.ini" component_G3.pre > "run_${case}.log" 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > provider_rc.txt
+          test "$rc" -eq 0
+          test -s "output/${case}_00_cl.dat" -o -s "output/${case}_cl.dat"
+          test -s "output/${case}_00_pk.dat" -o -s "output/${case}_pk.dat"
+          test -s "output/${case}_00_background.dat" -o -s "output/${case}_background.dat"
+          CASE_NAME="$case" CLASS_PIN_ENV="$CLASS_PIN" python3 - <<'PY'
+          import hashlib,json,os,pathlib,subprocess
+          case=os.environ['CASE_NAME']; pin=os.environ['CLASS_PIN_ENV']
+          H=lambda p: hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
+          head=subprocess.check_output(['git','-C','class','rev-parse','HEAD'],text=True).strip()
+          obj={'schema':'KMDSB.W04.M21.CMBPrecisionComponentLane.v0.1','group':'G3','case':case,'provider_head':head,'exact_head':head==pin,'provider_rc':int(pathlib.Path('provider_rc.txt').read_text()),'ini_sha256':H('m21_cases/'+case+'.ini'),'base_cl_permille_sha256':H('class/cl_permille.pre'),'ncdm_tight_sha256':H('verification/m21/m21_ncdm_tight.pre'),'component_pre_sha256':H('component_G3.pre')}
+          pathlib.Path('lane_meta.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n')
+          assert obj['exact_head'] and obj['provider_rc']==0
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-g3-${{ matrix.case }}
+          path: |
+            lane_meta.json
+            provider_rc.txt
+            component_G3.pre
+            m21_cases/${{ matrix.case }}.ini
+            output/${{ matrix.case }}*.dat
+            run_${{ matrix.case }}.log
+            build_${{ matrix.case }}.log
+          retention-days: 90
+
+  aggregate:
+    needs: [g1, g2, g3]
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Download component artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-g*-*
+          path: components
+      - name: Download immutable parent RK evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: w04-m21-integrator-branch-diagnostic
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34542162543
+      - name: Download terminal activation evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-full-cmb-reference-precision
+          path: activation
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34864827822
+      - name: Assemble group products and apply frozen classification
+        run: |
+          set -euo pipefail
+          mkdir -p eval/g1 eval/g2 eval/g3 meta/g1 meta/g2 meta/g3
+          for g in g1 g2 g3; do
+            for c in ref f2 f3 f4; do
+              d="components/m21-${g}-${c}"
+              test -d "$d"
+              cp "$d/lane_meta.json" "meta/${g}/${c}.json"
+              find "$d" -type f \( -name "${c}_cl.dat" -o -name "${c}_*_cl.dat" -o -name "${c}_pk.dat" -o -name "${c}_*_pk.dat" -o -name "${c}_background.dat" -o -name "${c}_*_background.dat" \) -exec cp {} "eval/${g}/" \;
+            done
+          done
+          python3 verification/m21/cmb_precision_component_decomposition.py \
+            eval meta parent/rk_out \
+            activation/M21_FULL_CMB_REFERENCE_PRECISION_RESULT.json \
+            M21_CMB_PRECISION_COMPONENT_DECOMPOSITION_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-cmb-precision-component-decomposition
+          path: M21_CMB_PRECISION_COMPONENT_DECOMPOSITION_RESULT.json
+          retention-days: 90
