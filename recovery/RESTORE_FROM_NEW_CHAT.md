@@ -288,3 +288,11 @@ M25 compile-capacity isolation classification M25_M0_PK_STOCK_CAPACITY_PROVIDER_
 - Provider rc `1`; 388 top-level RK collapse signatures over `k=0.015586127194346362..0.03824049129868911 1/Mpc`; frozen K1/K10 do not fail; 380 records have clean first-step geometry near `tau=6256.99866298 Mpc`.
 - By frozen protocol reference B1/B2/B3 and default/reference reproducibility are not evaluated after nonzero provider rc. K3 remains PARTIAL; K4/K5 not promoted; physical_falsification=false.
 
+### M13B_K3D2F_REFERENCE_RK_STANDARD_BOLTZMANN_ABSOLUTE_SCALE_FLOOR_LOCALIZED_2026_09_14
+- Canonical result: `waves/wave_03_expanded_dark_energy/M13B_K3D2F_REFERENCE_RK_SCALE_FLOOR_RESULT.json`.
+- Run `34801216990`, job `103844119187`, artifact `10331557427`, digest `sha256:d4a3099c4d742769c959e019cf398f6499f58270e5234d990fc6381555aefe83`.
+- 349/349 strict-clean records satisfy the frozen joint `final_yscal<=1.0000000001e-30` and `|final_y|<=1e-16` criterion; near-zero start derivative fraction is also 1.0.
+- Dominant final classes: photon temperature hierarchy l>=3: 335; `ur_theta`: 14; direct qcf/qpf floor dominance: 0.
+- Interpretation ceiling: reference blocker localized to standard Boltzmann RK absolute-scale-floor behavior at hard re-entry. K3 remains PARTIAL; K4/K5 are not promoted; no physical falsification.
+- Next frozen diagnostic: K3D2-G vanilla CLASS split-vs-unsplit RK restart-layer control.
+
