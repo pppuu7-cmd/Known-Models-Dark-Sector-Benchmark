@@ -1,0 +1,75 @@
+name: W03 M13b K3D2-D terminal ledger sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/w03-m13b-k3d2d-terminal-sync.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Sync F13 reference RK blocker into canonical ledgers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import csv
+
+          marker='M13B_K3D2D_SELF_CONSISTENT_REFERENCE_RK_NUMERICAL_BLOCKER_LOCALIZED'
+          def read_csv(path):
+            with open(path,'r',newline='',encoding='utf-8') as f:
+              return list(csv.DictReader(f))
+          def write_csv(path,rows):
+            fields=list(rows[0].keys())
+            with open(path,'w',newline='',encoding='utf-8') as f:
+              w=csv.DictWriter(f,fieldnames=fields,lineterminator='\r\n'); w.writeheader(); w.writerows(rows)
+
+          cp=Path('matrices/model_family_census.csv'); rows=read_csv(cp)
+          for r in rows:
+            if r['family_id']=='F13':
+              r['status']='K1_BACKGROUND_CROSSING_PASS_K3_PARTIAL_FULL_BOLTZMANN_DEFAULT_B123_PASS_REFERENCE_RK_NUMERICAL_BLOCKED_AUTHOR_UNIT_BINDING_BLOCKED'
+              if marker not in r['notes']:
+                r['notes']=(r['notes'].rstrip()+ ' M13B_K3D2D_SELF_CONSISTENT_REFERENCE_RK_NUMERICAL_BLOCKER_LOCALIZED_2026_09_14: exact upstream cl_ref.pre on the same self-consistent z=5 gauge-IVP converged its boundary fixed point in 5 iterations to 4.32531410187872e-15, then explicit RK returned provider rc=1 on 388 intermediate-k modes spanning k=0.015586127194346362..0.03824049129868911 1/Mpc; frozen K1/K10 did not fail. 380 collapse records have clean geometry at the first post-handoff RK step near tau=6256.99866298 Mpc. Reference B1/B2/B3 and default/reference reproducibility were not evaluated by frozen rule. K3 remains PARTIAL; K4/K5 not promoted; physical_falsification=false. Parent run 34793932614; parser recovery run 34794392309; reference artifact 10329550837; parser artifact 10329077259.').strip()
+          write_csv(cp,rows)
+
+          mp=Path('matrices/mandatory_properties_matrix.csv'); rows=read_csv(mp)
+          for r in rows:
+            if r['family_id']=='F13':
+              r['K3_conservation_gauge_closure']='PARTIAL'
+              r['K4_numerical_robustness']='BLOCKED_NUMERICAL_REFERENCE_PRECISION'
+              r['K5_multichannel_rank']='BLOCKED_BY_K3'
+              r['coverage_state']='K0_K1_PASS_K2_PARTIAL_K3_PARTIAL_FULL_BOLTZMANN_DEFAULT_B123_PASS_REFERENCE_RK_NUMERICAL_BLOCKED_AUTHOR_UNIT_BINDING_BLOCKED'
+              if marker not in r['notes']:
+                r['notes']=(r['notes'].rstrip()+ ' M13B_K3D2D_SELF_CONSISTENT_REFERENCE_RK_NUMERICAL_BLOCKER_LOCALIZED_2026_09_14: source/precision guard PASS and self-consistent fixed point PASS, but exact cl_ref.pre explicit RK provider rc=1 for 388 intermediate-k modes; K1/K10 unaffected. No reference B123 or default/reference comparison permitted after nonzero rc. No K4/K5 promotion and no physical falsification.').strip()
+          write_csv(mp,rows)
+
+          block=('\n\n## M13b K3D2-D self-consistent reference terminal result - 2026-09-14\n\n'
+                 '- Classification: `M13B_K3D2D_SELF_CONSISTENT_REFERENCE_RK_NUMERICAL_BLOCKER_LOCALIZED`.\n'
+                 '- Canonical result: `waves/wave_03_expanded_dark_energy/M13B_K3D2D_SELF_CONSISTENT_REFERENCE_RESULT.json`.\n'
+                 '- Provider: `lesgourg/class_public@64bbab707faf4de4779a9e04edd180fef18d98fa`; exact upstream `cl_ref.pre` unchanged.\n'
+                 '- Parent run `34793932614`; parser recovery run `34794392309`, job `103824587962`.\n'
+                 '- Reference artifact `10329550837` (`sha256:563bc5829e516a8a09f2d3fae995789c2c2a36d60267527a7a5b4f6e6407c676`); parser artifact `10329077259` (`sha256:64b75ddddaf4439f1c19bda79ab56318199ddd8c4656b08f8b8fbae1f78f346c`).\n'
+                 '- Source/precision guard PASS. Boundary fixed point converged in 5 iterations to `4.32531410187872e-15` at frozen target `1e-12`.\n'
+                 '- Provider rc `1`; 388 top-level RK collapse signatures over `k=0.015586127194346362..0.03824049129868911 1/Mpc`; frozen K1/K10 do not fail; 380 records have clean first-step geometry near `tau=6256.99866298 Mpc`.\n'
+                 '- By frozen protocol reference B1/B2/B3 and default/reference reproducibility are not evaluated after nonzero provider rc. K3 remains PARTIAL; K4/K5 not promoted; physical_falsification=false.\n')
+          for fn in ['recovery/STATE.md','recovery/RESTORE_FROM_NEW_CHAT.md','logs/research_log.md']:
+            p=Path(fn)
+            if p.exists() and marker not in p.read_text(encoding='utf-8'):
+              p.write_text(p.read_text(encoding='utf-8').rstrip()+block+'\n',encoding='utf-8')
+          PY
+          if git diff --quiet; then echo 'No ledger changes needed.'; exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md
+          git commit -m 'sync M13b K3D2-D reference RK blocker'
+          git push
