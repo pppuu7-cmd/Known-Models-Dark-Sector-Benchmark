@@ -1,0 +1,75 @@
+name: W03 M13b K3D2-D reference artifact parser recovery
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/w03-m13b-k3d2d-reference-artifact-recovery.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recover:
+    name: Artifact-only robust RK blocker recovery
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download immutable parent artifacts only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p prior source_guard result
+          gh run download 34793932614 -n m13b-k3d2d-self-consistent-reference -D prior
+          gh run download 34793932614 -n m13b-k3d2d-reference-source-guard -D source_guard
+          test -s prior/result/provider_rc.txt
+          test -s prior/result/stderr.txt
+          test -s prior/result/stdout.txt
+          find source_guard -name source_guard.json -type f -print > result/source_guard_paths.txt
+          test "$(wc -l < result/source_guard_paths.txt)" -eq 1
+      - name: Parse immutable raw artifact robustly
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_guard_file=$(cat result/source_guard_paths.txt)
+          python3 verification/m13b/k3d2d_parse_reference_blocker_artifact.py \
+            --root prior \
+            --source-guard "$source_guard_file" \
+            --out result/recovered_reference_blocker.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('result/recovered_reference_blocker.json')
+          o=json.loads(p.read_text())
+          assert o['authority']['parent_run']==34793932614
+          assert o['authority']['reference_artifact_id']==10329550837
+          assert o['classification']=='M13B_K3D2D_SELF_CONSISTENT_REFERENCE_RK_NUMERICAL_BLOCKER_LOCALIZED'
+          assert o['provider_rc']!=0
+          assert o['fixed_point_pass'] is True
+          assert o['mode_failures']['rk_signature_count']>=1
+          assert o['reference_B1_B2_B3_evaluated'] is False
+          assert o['default_reference_reproducibility_evaluated'] is False
+          print(json.dumps({
+            'classification':o['classification'],
+            'provider_rc':o['provider_rc'],
+            'fixed_point_pass':o['fixed_point_pass'],
+            'unique_mode_failures':o['mode_failures']['unique_top_level_count'],
+            'rk_signatures':o['mode_failures']['rk_signature_count'],
+            'strict_clean_geometry':o['mode_failures']['strict_clean_geometry_count'],
+            'malformed_or_interleaved':o['mode_failures']['malformed_or_interleaved_geometry_count'],
+            'k_range':o['mode_failures']['all_k_range_1_per_Mpc'],
+            'K1_failed':o['mode_failures']['K1_failed'],
+            'K10_failed':o['mode_failures']['K10_failed'],
+          },indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m13b-k3d2d-reference-artifact-recovery
+          path: result
+          retention-days: 90
