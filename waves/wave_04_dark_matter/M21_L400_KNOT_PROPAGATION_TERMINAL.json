@@ -1,0 +1,37 @@
+{
+  "schema": "KMDSB.W04.M21.L400KnotPropagationTerminal.v0.1",
+  "date": "2026-09-15",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "run_id": 34901952566,
+  "artifact_id": 10371520158,
+  "artifact_digest": "sha256:c203bf7a4943d270779069c17b1f0887ff41c25629e340d0b829ea6d0f5cc2a6",
+  "parent_run_id": 34887488405,
+  "knot_only_run_id": 34897465426,
+  "direct_cmb_source_run_id": 34897602278,
+  "classification": "M21_L400_SINGLE_KNOT_VALUE_SUFFICIENT_FOR_HIGH_STATE_WITH_SCOPE",
+  "pairs": {
+    "A": {
+      "classification": "PAIR_SINGLE_KNOT_SUFFICIENT",
+      "high_full_EE": 8.128734292661338,
+      "high_without_l400_EE": 1.1205241364399114,
+      "high_common_EE": 1.302689969931422,
+      "calm_common_EE": 1.3070503997221896,
+      "single_knot_sufficient": true,
+      "grid_membership_propagates": false
+    },
+    "B": {
+      "classification": "PAIR_SINGLE_KNOT_SUFFICIENT",
+      "high_full_EE": 8.235324180377253,
+      "high_without_l400_EE": 1.1171126155492468,
+      "high_common_EE": 1.191105939404232,
+      "calm_common_EE": 1.1932106096517614,
+      "single_knot_sufficient": true,
+      "grid_membership_propagates": false
+    }
+  },
+  "scientific_interpretation": "Across two independently structured HIGH sparse-l grids, the f3-specific EE HIGH state disappears when the single l=400 knot is removed, while identical common support remains CALM. Combined with the direct-source null localization, the numerical mechanism is localized downstream to the l=400 transfer/harmonic knot value itself rather than broad source or grid-membership propagation.",
+  "K1_promoted": false,
+  "K3_promoted": false,
+  "K4_promoted": false,
+  "physical_falsification": false
+}
