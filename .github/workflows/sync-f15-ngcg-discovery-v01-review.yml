@@ -1,0 +1,59 @@
+name: Sync F15 NGCG discovery v0.1 source review
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-f15-ngcg-discovery-v01-review.yml'
+      - 'waves/wave_03_expanded_dark_energy/F15_NGCG_PROVIDER_DISCOVERY_V01_SOURCE_REVIEW_RESULT.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Synchronize F15 source-review blocker
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import csv, io, json
+          result=json.loads(Path('waves/wave_03_expanded_dark_energy/F15_NGCG_PROVIDER_DISCOVERY_V01_SOURCE_REVIEW_RESULT.json').read_text())
+          marker='F15_EXACT_NGCG_DISCOVERY_NO_SOURCE_COMPLETE_PROVIDER_AFTER_SOURCE_REVIEW_2026_09_14'
+          state_delta=f'''\n\n## 2026-09-14 — F15 exact NGCG provider discovery v0.1 source review\n\nRun 34826008004 completed all eight frozen lanes. Aggregate artifact 10340128264 (sha256:232b0b036b99bae934653b2cd386e81e358274427e181ef0891fa33353136c3a) classified the tranche as provenance leads only and produced no source-complete candidate. Manual exact-source review rejected the sole promoted lead `funwithscience-org/flat-earth-origins/scripts/deep_batch3.py`: it is prose/reference material about geocentrism/general covariance, not an NGCG cosmology or Boltzmann implementation.\n\nCanonical classification: `{marker}`. K0/K1 are not promoted; physical_falsification=false. Exact NGCG perturbation-provider provenance remains open. A narrower author/equation keyed discovery v0.2 is prospectively frozen before search.\n'''
+          restore_delta=f'''\n\n### F15 provider discovery v0.1 reviewed — 2026-09-14\nRun 34826008004 / artifact 10340128264 yielded no source-complete NGCG provider after manual review. Sole machine provenance lead was unrelated prose/reference code and was rejected. Classification `{marker}`; K0/K1 unchanged; no physical failure. Continue only prospectively frozen author/equation keyed provider search or another independent implementation lead.\n'''
+          log_delta=f'''\n\n## 2026-09-14 — F15 exact NGCG provider discovery source review\nRun 34826008004 finished eight independent lanes. Aggregate artifact 10340128264 contained no source-complete provider. Manual review rejected the only provenance lead (`flat-earth-origins/deep_batch3.py`) as non-cosmology prose/reference material. `{marker}` recorded. K0/K1 not promoted; physical_falsification=false.\n'''
+          for path,tag,delta in [
+            ('recovery/STATE.md',marker,state_delta),
+            ('recovery/RESTORE_FROM_NEW_CHAT.md',marker,restore_delta),
+            ('logs/research_log.md',marker,log_delta),
+          ]:
+            p=Path(path); s=p.read_text()
+            if tag not in s: p.write_text(s.rstrip()+delta+'\n')
+
+          # Append durable source-review note to F15 rows without changing existing gate verdicts.
+          note=' F15 exact-NGCG provider discovery run 34826008004 / artifact 10340128264 found no source-complete provider after manual review; sole machine provenance lead was unrelated non-cosmology prose/reference material. K0/K1 not promoted; physical_falsification=false. Author/equation keyed v0.2 search is the next provenance gate.'
+          for path in ['matrices/model_family_census.csv','matrices/mandatory_properties_matrix.csv']:
+            p=Path(path)
+            rows=list(csv.reader(io.StringIO(p.read_text())))
+            for i,row in enumerate(rows):
+              if row and row[0]=='F15' and note.strip() not in row[-1]:
+                row[-1]=row[-1].rstrip()+note
+                rows[i]=row
+            buf=io.StringIO(); csv.writer(buf,lineterminator='\n').writerows(rows); p.write_text(buf.getvalue())
+          PY
+      - name: Commit synchronized ledgers
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add recovery/STATE.md recovery/RESTORE_FROM_NEW_CHAT.md logs/research_log.md matrices/model_family_census.csv matrices/mandatory_properties_matrix.csv
+          if ! git diff --cached --quiet; then
+            git commit -m 'sync F15 NGCG provider discovery source review'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
