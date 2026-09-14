@@ -1,0 +1,107 @@
+name: W03 F16 public provider discovery sweep
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/w03-f16-public-provider-discovery.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  search:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        lane:
+          - id: running_vacuum_camb
+            query: 'running vacuum CAMB cosmology'
+          - id: running_vacuum_class
+            query: 'running vacuum CLASS cosmology'
+          - id: lambda_h_camb
+            query: 'Lambda(H) CAMB cosmology'
+          - id: inverse_h_camb
+            query: 'H0^4 H^-2 CAMB'
+          - id: rho_lambda_camb
+            query: 'rho_Lambda CAMB running vacuum'
+          - id: running_vacuum_cosmomc
+            query: 'running vacuum CosmoMC'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Search GitHub public indexes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUERY: ${{ matrix.lane.query }}
+          LANE: ${{ matrix.lane.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python3 - <<'PY'
+          import json, os, urllib.parse, urllib.request, urllib.error, time
+          token=os.environ['GH_TOKEN']; q=os.environ['QUERY']; lane=os.environ['LANE']
+          headers={'Accept':'application/vnd.github+json','Authorization':'Bearer '+token,'X-GitHub-Api-Version':'2022-11-28','User-Agent':'KMDSB-F16-discovery'}
+          result={'schema':'KMDSB.W03.F16ProviderDiscoveryLane.v0.1','lane':lane,'query':q,'repository_search':None,'code_search':None,'classification':'DISCOVERY_COMPLETE'}
+          def get(url):
+            req=urllib.request.Request(url,headers=headers)
+            try:
+              with urllib.request.urlopen(req,timeout=30) as r:
+                return {'status':r.status,'body':json.loads(r.read().decode())}
+            except urllib.error.HTTPError as e:
+              body=e.read().decode(errors='replace')
+              try: body=json.loads(body)
+              except Exception: pass
+              return {'status':e.code,'body':body}
+            except Exception as e:
+              return {'status':None,'error':repr(e)}
+          enc=urllib.parse.quote(q,safe='')
+          result['repository_search']=get(f'https://api.github.com/search/repositories?q={enc}&per_page=20')
+          time.sleep(1)
+          result['code_search']=get(f'https://api.github.com/search/code?q={enc}&per_page=20')
+          statuses=[result['repository_search'].get('status'),result['code_search'].get('status')]
+          if not any(s==200 for s in statuses): result['classification']='DISCOVERY_INFRASTRUCTURE_BLOCKED'
+          with open(f'out/{lane}.json','w') as f: json.dump(result,f,indent=2,sort_keys=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f16-provider-discovery-${{ matrix.lane.id }}
+          path: out/${{ matrix.lane.id }}.json
+          if-no-files-found: error
+
+  aggregate:
+    runs-on: ubuntu-22.04
+    needs: search
+    if: always()
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: f16-provider-discovery-*
+          path: lanes
+          merge-multiple: true
+      - name: Aggregate candidate URLs without promotion
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import glob,json
+          repos={}; files={}; lanes=[]
+          for fn in glob.glob('lanes/*.json'):
+            d=json.load(open(fn)); lanes.append({'lane':d['lane'],'query':d['query'],'classification':d['classification']})
+            rr=d.get('repository_search') or {}
+            if rr.get('status')==200:
+              for x in rr.get('body',{}).get('items',[]): repos[x['full_name']]={'full_name':x['full_name'],'html_url':x['html_url'],'description':x.get('description'),'default_branch':x.get('default_branch')}
+            cr=d.get('code_search') or {}
+            if cr.get('status')==200:
+              for x in cr.get('body',{}).get('items',[]): files[x['html_url']]={'name':x.get('name'),'path':x.get('path'),'html_url':x.get('html_url'),'repository':x.get('repository',{}).get('full_name')}
+          out={'schema':'KMDSB.W03.F16ProviderDiscoveryAggregate.v0.1','classification':'DISCOVERY_CANDIDATE_POOL_ONLY_NO_K0_PROMOTION','lanes':lanes,'unique_repositories':sorted(repos.values(),key=lambda x:x['full_name'].lower()),'unique_code_hits':sorted(files.values(),key=lambda x:x['html_url'])}
+          json.dump(out,open('f16_provider_discovery_aggregate.json','w'),indent=2,sort_keys=True)
+          print(json.dumps({'repositories':len(repos),'code_hits':len(files),'lanes':lanes},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f16-provider-discovery-aggregate
+          path: f16_provider_discovery_aggregate.json
+          if-no-files-found: error
