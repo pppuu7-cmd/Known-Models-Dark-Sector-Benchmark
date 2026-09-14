@@ -1,0 +1,117 @@
+name: W04 M21 conditional direct CMB-source branch signature v0.1
+
+on:
+  workflow_run:
+    workflows:
+      - "W04 M21 perturbation-state branch signature v0.1"
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  activation:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      authorized: ${{ steps.gate.outputs.authorized }}
+      parent_run_id: ${{ steps.gate.outputs.parent_run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: parent
+        name: Resolve parent run id
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_id=34895647832" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Download terminal perturbation-state aggregate
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-perturbation-state-branch-signature-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ steps.parent.outputs.run_id }}
+      - id: gate
+        name: Enforce conditional source-gate activation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=json.loads(Path('parent/M21_PERTURBATION_STATE_BRANCH_SIGNATURE_RESULT.json').read_text())
+          ok=(d.get('classification')=='M21_CMB_BRANCH_NOT_LOCALIZED_IN_NATIVE_PERTURBATION_STATES' and d.get('cross_lane_input_identity') is True)
+          with Path(os.environ['GITHUB_OUTPUT']).open('a') as f:
+            f.write('authorized='+('true' if ok else 'false')+'\n')
+            f.write('parent_run_id=${{ steps.parent.outputs.run_id }}\n')
+          print(json.dumps({'authorized':ok,'parent_classification':d.get('classification')},indent=2))
+          PY
+
+  source:
+    needs: activation
+    if: needs.activation.outputs.authorized == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [NDF_T1E5, NDF_T1E6, NDF_T1E7, RK_T1E5, RK_T1E6, RK_T1E7]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute frozen direct CMB-source lane
+        run: |
+          set -euo pipefail
+          bash verification/m21/run_cmb_source_lane_v01.sh '${{ matrix.lane }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-cmb-source-${{ matrix.lane }}
+          retention-days: 90
+          path: |
+            lane_meta.json
+            cmb_source_${{ matrix.lane }}.pre
+            cmb_source_${{ matrix.lane }}_profile_manifest.json
+            source_out/*.npz
+            source_out/lane_sources_meta.json
+            source_extract.log
+            python_deps.log
+            classy_build.log
+
+  aggregate:
+    needs: [activation, source]
+    if: always() && needs.activation.result == 'success' && needs.activation.outputs.authorized == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Download source-lane artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-cmb-source-*
+          path: lanes
+          merge-multiple: false
+      - name: Download immutable perturbation-state parent
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-perturbation-state-branch-signature-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ needs.activation.outputs.parent_run_id }}
+      - name: Apply frozen direct-source classifier
+        run: |
+          set -euo pipefail
+          python3 verification/m21/cmb_source_branch_signature.py lanes verification/m21/m21_perturbation_state_gate_config.json parent/M21_PERTURBATION_STATE_BRANCH_SIGNATURE_RESULT.json M21_CMB_SOURCE_BRANCH_SIGNATURE_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-cmb-source-branch-signature-v01
+          retention-days: 90
+          path: M21_CMB_SOURCE_BRANCH_SIGNATURE_RESULT.json
