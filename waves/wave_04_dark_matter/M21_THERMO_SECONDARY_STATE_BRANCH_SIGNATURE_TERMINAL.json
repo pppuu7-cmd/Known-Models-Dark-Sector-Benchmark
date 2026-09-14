@@ -1,0 +1,30 @@
+{
+  "schema": "KMDSB.W04.M21.ThermoSecondaryStateBranchSignatureTerminal.v0.1",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "protocol": "protocol/W04_M21_THERMODYNAMICS_SECONDARY_STATE_BRANCH_SIGNATURE_v0.1.md",
+  "parent_run_id": 34887773207,
+  "run_id": 34890500312,
+  "artifact_id": 10366677088,
+  "artifact_digest": "sha256:205ff9487c8a27c4a36ded0331b5cae1d4f82ba67a8f6842d8928f6410e3c7c1",
+  "classification": "M21_CMB_BRANCH_NOT_LOCALIZED_IN_EXPOSED_THERMO_STATE_COLUMNS",
+  "cross_lane_input_identity": true,
+  "branch_change_localized_count": 0,
+  "same_branch_control_localized_count": 0,
+  "edge_Jmax": {
+    "NDF_T1E5__NDF_T1E6": 1.0063100879436504,
+    "NDF_T1E6__NDF_T1E7": 1.0975622111441043,
+    "RK_T1E5__RK_T1E6": 1.012670745308467,
+    "NDF_T1E7__RK_T1E7": 1.3516226071972095,
+    "RK_T1E6__RK_T1E7": 0.9946999599119868,
+    "NDF_T1E5__RK_T1E5": 0.9970679008341937,
+    "NDF_T1E6__RK_T1E6": 1.0314000951353939
+  },
+  "columns_tested": ["conf_time", "dTb", "w_b", "c_b2", "kappa_b"],
+  "frozen_localization_threshold_J": 3.0,
+  "scientific_interpretation": "No f_w=0.003-specific branch signature meeting the frozen J>=3 criterion was found in any remaining exposed thermodynamics-table state column. Under the preregistered consequence rule, further mining of this thermodynamics table is closed; localization must move downstream to perturbation/source/transfer quantities or remain a numerical-path blocker.",
+  "K1_promoted": false,
+  "K3_promoted": false,
+  "K4_promoted": false,
+  "physical_falsification": false
+}
