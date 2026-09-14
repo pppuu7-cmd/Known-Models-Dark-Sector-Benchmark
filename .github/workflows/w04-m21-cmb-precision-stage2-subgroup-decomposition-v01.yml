@@ -2,6 +2,11 @@ name: W04 M21 CMB precision stage2 subgroup decomposition v0.1
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows:
+      - "W04 M21 CMB precision-component decomposition recovery v0.2"
+    types:
+      - completed
 
 permissions:
   actions: read
