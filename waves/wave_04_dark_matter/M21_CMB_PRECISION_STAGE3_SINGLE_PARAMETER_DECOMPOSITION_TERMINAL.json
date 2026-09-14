@@ -1,0 +1,45 @@
+{
+  "schema": "KMDSB.W04.M21.CMBPrecisionStage3SingleParameterTerminal.v0.1",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "protocol": "protocol/W04_M21_CMB_PRECISION_STAGE3_SINGLE_PARAMETER_DECOMPOSITION_v0.1.md",
+  "run_id": 34878158930,
+  "head_sha": "92fc5387c5e9d59df39e792c9dbaab3bfb708f58",
+  "artifact_id": 10361784318,
+  "artifact_digest": "sha256:733e995346926ebbb3dd7355a33fbc0090fb5cc027b66eea0c7c968bc86453a9",
+  "classification": "M21_CMB_PRECISION_STAGE3_COMPLETE",
+  "cross_lane_input_identity": true,
+  "Emax_parent_RK": 534.8355868817356,
+  "G1A": {
+    "classification": "G1A_STAGE3_SINGLE_PARAMETER_SUFFICIENCY_IDENTIFIED",
+    "sufficient_parameters": ["G1A__tol_thermo_integration"],
+    "parameters": {
+      "recfast_Nz0": {"classification": "PARAMETER_INSUFFICIENT", "Emax": 534.8355868817356},
+      "tol_thermo_integration": {"classification": "PARAMETER_REMOVES_EXCURSION", "Emax": 0.03431664516144772},
+      "recfast_x_He0_trigger_delta": {"classification": "PARAMETER_INSUFFICIENT", "Emax": 534.8355868817356},
+      "recfast_x_H0_trigger_delta": {"classification": "PARAMETER_INSUFFICIENT", "Emax": 534.8355868817356}
+    }
+  },
+  "G2B": {
+    "classification": "G2B_STAGE3_SINGLE_PARAMETER_SUFFICIENCY_IDENTIFIED",
+    "sufficient_parameters": ["G2B__l_logstep", "G2B__l_linstep"],
+    "parameters": {
+      "l_logstep": {"classification": "PARAMETER_REDUCES_EXCURSION", "Emax": 70.53199679337801},
+      "l_linstep": {"classification": "PARAMETER_REDUCES_EXCURSION", "Emax": 78.37222398394675},
+      "hyper_sampling_flat": {"classification": "PARAMETER_INSUFFICIENT", "Emax": 534.8263913081856},
+      "hyper_sampling_curved_low_nu": {"classification": "PARAMETER_INSUFFICIENT", "Emax": 534.8355868817356},
+      "hyper_sampling_curved_high_nu": {"classification": "PARAMETER_INSUFFICIENT", "Emax": 534.8355868817356},
+      "hyper_nu_sampling_step": {"classification": "PARAMETER_INSUFFICIENT", "Emax": 534.8355868817356},
+      "hyper_phi_min_abs": {"classification": "PARAMETER_INSUFFICIENT", "Emax": 534.8355868817356},
+      "hyper_x_tol": {"classification": "PARAMETER_INSUFFICIENT", "Emax": 534.8355868817356},
+      "hyper_flat_approximation_nu": {"classification": "PARAMETER_INSUFFICIENT", "Emax": 534.8355868817356}
+    }
+  },
+  "source_semantic_consistency": {
+    "G1A": "Exact-pin source audit independently found tol_thermo_integration to be the only runtime-consumed G1A key; stage-3 numerical sufficiency identifies exactly the same key.",
+    "G2B": "Exact-pin source audit identified l_logstep/l_linstep as active transfer-l sampling controls. Stage-3 identifies both as sufficient reducers. Other frozen G2B controls are insufficient in this flat benchmark."
+  },
+  "K1_promoted": false,
+  "physical_falsification": false,
+  "interpretation_ceiling": "Stage-3 localizes the CMB excursion sensitivity to specific numerical precision controls only. It does not establish a CLASS bug, does not authorize production tuning, does not prove convergence, does not promote M21 K1/K3/K4, and is not a physical verdict on mixed cold+warm dark matter."
+}
