@@ -1,0 +1,56 @@
+{
+  "schema": "KMDSB.W04.M21.CMBPrecisionComponentCompleteReadout.v0.2",
+  "date": "2026-09-14",
+  "status": "COMPLETE_GROUP_EARLY_READOUT_AGGREGATE_PENDING",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "protocol": "protocol/W04_M21_CONDITIONAL_CMB_PRECISION_COMPONENT_DECOMPOSITION_v0.1.md",
+  "execution_recovery_protocol": "protocol/W04_M21_CMB_PRECISION_COMPONENT_SERIALIZATION_RECOVERY_v0.2.md",
+  "workflow_run": 34869857740,
+  "workflow_head": "d23fb0f8f9abb6fd395f86fa372b754d31a6db49",
+  "group": "G1",
+  "group_label": "thermodynamics / perturbation-source evolution",
+  "source_artifacts": {
+    "ref": {"id": 10358985758, "digest": "sha256:b74aa97726ee072e156a0f413694b356e86721139371ca663e7212617db327ce"},
+    "f2": {"id": 10358468774, "digest": "sha256:e35e69058d168668e715542c08a53d2e7440166b6e48eaec5eadb7fd2da8b9e6"},
+    "f3": {"id": 10358384113, "digest": "sha256:372683ff790740b235eb20a17752c11d72a6cc67f94f9edf220050396d49d5cc"},
+    "f4": {"id": 10358815822, "digest": "sha256:d55a7a2711efea99450bb747df6aa2183b429944f26092b519fa2b6c464f5e6e"}
+  },
+  "response_R2": {
+    "f2": {
+      "TT": 0.00006873867936919139,
+      "EE": 0.0002776882336281405,
+      "TE": 0.0005179387292606736,
+      "Pk": 0.000000399109864454508,
+      "H": 0.0000025351650164300382
+    },
+    "f3": {
+      "TT": 0.000001769612745165199,
+      "EE": 0.0000027086376476329243,
+      "TE": 0.0000030450996793055054,
+      "Pk": 0.00000032161164675307764,
+      "H": 0.0000007605501741102751
+    },
+    "f4": {
+      "TT": 0.000000676380263795564,
+      "EE": 0.0000008337713760137718,
+      "TE": 0.000001503815515983525,
+      "Pk": 0.00000030041154670062015,
+      "H": 0.0000002535167916950842
+    }
+  },
+  "excursion_factors": {
+    "TT": 0.02574406086070862,
+    "EE": 0.009754239897899784,
+    "TE": 0.005879266228366823,
+    "Pk": 0.8058223446635359,
+    "H": 0.3000002639596473
+  },
+  "Emax_group": 0.02574406086070862,
+  "Emax_parent_RK": 534.8355868817356,
+  "removal_threshold": 3.0,
+  "classification": "GROUP_REMOVES_EXCURSION",
+  "conditional_stage2_effect": "G1A/G1B/G1C become conditionally eligible under the pre-frozen stage-2 protocol, but execution remains forbidden until the recovered parent aggregate is terminal.",
+  "interpretation": "The frozen G1 thermodynamics/perturbation-source evolution precision group is individually sufficient to remove the isolated f3 CMB excursion: all three CMB excursion factors are far below 3. This localizes the dominant numerical sensitivity to the G1 source-generation/evolution layer as a group. It does not identify a unique G1 parameter or a unique code defect.",
+  "K1_promoted": false,
+  "physical_falsification": false
+}
