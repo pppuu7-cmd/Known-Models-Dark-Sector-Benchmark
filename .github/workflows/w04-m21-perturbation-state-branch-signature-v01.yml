@@ -1,0 +1,66 @@
+name: W04 M21 perturbation-state branch signature v0.1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m21-perturbation-state-branch-signature-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lane:
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [NDF_T1E5, NDF_T1E6, NDF_T1E7, RK_T1E5, RK_T1E6, RK_T1E7]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute frozen perturbation-state lane
+        run: |
+          set -euo pipefail
+          bash verification/m21/run_perturbation_state_lane_v01.sh '${{ matrix.lane }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-pert-state-${{ matrix.lane }}
+          retention-days: 90
+          path: |
+            lane_meta.json
+            case_status.tsv
+            pert_state_cases/*.ini
+            pert_state_cases/manifest.json
+            pert_state_${{ matrix.lane }}.pre
+            pert_state_${{ matrix.lane }}_profile_manifest.json
+            run_*.log
+            build.log
+            output/*perturbations_k*_s.dat
+
+  aggregate:
+    needs: lane
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Download all perturbation-state lane artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-pert-state-*
+          path: lanes
+          merge-multiple: false
+      - name: Apply frozen branch-signature classifier
+        run: |
+          set -euo pipefail
+          python3 verification/m21/perturbation_state_branch_signature.py lanes verification/m21/m21_perturbation_state_gate_config.json M21_PERTURBATION_STATE_BRANCH_SIGNATURE_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-perturbation-state-branch-signature-v01
+          retention-days: 90
+          path: M21_PERTURBATION_STATE_BRANCH_SIGNATURE_RESULT.json
