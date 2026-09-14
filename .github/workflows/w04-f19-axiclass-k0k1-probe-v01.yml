@@ -1,0 +1,255 @@
+name: W04 F19 AxiCLASS K0K1 probe v0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-f19-axiclass-k0k1-probe-v01.yml'
+      - 'protocol/W04_F19_AXICLASS_INDEPENDENT_PROVIDER_K0K1_PROBE_v0.1.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source_guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Frozen source and lineage audit
+        run: |
+          set -euxo pipefail
+          git clone https://github.com/PoulinV/AxiCLASS.git axiclass
+          cd axiclass
+          git checkout ae9609e1f96ddebbb6cc8a46de94512514c68781
+          test "$(git rev-parse HEAD)" = "ae9609e1f96ddebbb6cc8a46de94512514c68781"
+          test -f example_axionDM.ini
+          grep -q 'scf_potential = axion' example_axionDM.ini
+          grep -q 'scf_has_perturbations = yes' example_axionDM.ini
+          grep -q 'output=mPk' example_axionDM.ini
+          grep -q 'n_axion' source/input.c
+          grep -q 'has_scf' source/background.c
+          grep -q 'scf' source/perturbations.c
+          python3 - <<'PY'
+          import json, subprocess
+          out={
+            'schema':'KMDSB.W04.F19AxiCLASS.SourceGuard.v0.1',
+            'provider':'PoulinV/AxiCLASS',
+            'commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+            'author_example':'example_axionDM.ini',
+            'source_background':True,
+            'source_perturbations':True,
+            'author_mPk_example':True,
+            'blocked_axioncamb_dependency':False,
+            'classification':'F19_AXICLASS_K0_SOURCE_ELIGIBLE_FOR_PROVIDER_PROBE'
+          }
+          open('../f19_axiclass_source_guard.json','w').write(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-axiclass-source-guard
+          path: f19_axiclass_source_guard.json
+
+  author_control:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact pinned AxiCLASS and run unchanged author axion-DM example
+        run: |
+          set -euxo pipefail
+          git clone https://github.com/PoulinV/AxiCLASS.git axiclass
+          cd axiclass
+          git checkout ae9609e1f96ddebbb6cc8a46de94512514c68781
+          make -j2
+          mkdir -p output
+          set +e
+          ./class example_axionDM.ini > ../author_stdout.log 2> ../author_stderr.log
+          rc=$?
+          set -e
+          python3 - "$rc" <<'PY'
+          import glob,json,os,sys,numpy as np
+          rc=int(sys.argv[1])
+          b=glob.glob('output/axion_n1_DM_*background.dat')
+          p=glob.glob('output/axion_n1_DM_*pk.dat')
+          finite=False
+          if b and p:
+            try:
+              B=np.loadtxt(b[0]); P=np.loadtxt(p[0]); finite=bool(B.size and P.size and np.isfinite(B).all() and np.isfinite(P).all())
+            except Exception: pass
+          cls='F19_AXICLASS_AUTHOR_PROVIDER_CONTROL_PASS' if rc==0 and finite else 'F19_AXICLASS_PROVIDER_CONTROL_BLOCKED'
+          out={'schema':'KMDSB.W04.F19AxiCLASS.AuthorControl.v0.1','exit_code':rc,'background_files':b,'pk_files':p,'finite_products':finite,'classification':cls}
+          open('../f19_axiclass_author_control.json','w').write(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-axiclass-author-control
+          path: |
+            f19_axiclass_author_control.json
+            author_stdout.log
+            author_stderr.log
+
+  zero_identity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact pinned AxiCLASS
+        run: |
+          set -euxo pipefail
+          git clone https://github.com/PoulinV/AxiCLASS.git axiclass
+          cd axiclass
+          git checkout ae9609e1f96ddebbb6cc8a46de94512514c68781
+          make -j2
+          mkdir -p output
+      - name: Frozen C0 and exact Z0 executions
+        run: |
+          set -euxo pipefail
+          cd axiclass
+          cat > kmdsb_c0.ini <<'EOF'
+          root = output/kmdsb_c0_
+          output = mPk
+          P_k_max_1/Mpc = 12
+          write background = yes
+          compute_sigma8 = yes
+          omega_b = 2.284855e-02
+          omega_cdm = 0.12
+          H0 = 69.57471
+          ln10^{10}A_s = 3.066223
+          n_s = 0.9818947
+          tau_reio = 0.06400184
+          N_ur = 3.044
+          modes = s
+          gauge = synchronous
+          EOF
+          cat > kmdsb_z0.ini <<'EOF'
+          root = output/kmdsb_z0_
+          output = mPk
+          P_k_max_1/Mpc = 12
+          write background = yes
+          compute_sigma8 = yes
+          omega_b = 2.284855e-02
+          omega_cdm = 0.12
+          H0 = 69.57471
+          ln10^{10}A_s = 3.066223
+          n_s = 0.9818947
+          tau_reio = 0.06400184
+          N_ur = 3.044
+          scf_potential = axion
+          n_axion = 1
+          f_axion = 0.02
+          m_axion = 1e8
+          scf_parameters = 0,0
+          scf_tuning_index = 0
+          scf_evolve_as_fluid = yes
+          scf_evolve_like_axionCAMB = yes
+          threshold_scf_fluid_m_over_H = 3
+          do_shooting = no
+          do_shooting_scf = no
+          scf_has_perturbations = yes
+          use_big_theta_scf = no
+          use_delta_scf_over_1plusw = yes
+          attractor_ic_scf = no
+          use_ppf = no
+          include_scf_in_delta_m = yes
+          include_scf_in_delta_cb = no
+          modes = s
+          gauge = synchronous
+          EOF
+          set +e
+          ./class kmdsb_c0.ini > ../c0_stdout.log 2> ../c0_stderr.log; rc0=$?
+          ./class kmdsb_z0.ini > ../z0_stdout.log 2> ../z0_stderr.log; rcz=$?
+          set -e
+          echo "$rc0 $rcz" > ../exit_codes.txt
+      - name: Apply frozen K1 metrics
+        run: |
+          python3 - <<'PY'
+          import json,glob,re,numpy as np
+          rc0,rcz=map(int,open('exit_codes.txt').read().split())
+          out={'schema':'KMDSB.W04.F19AxiCLASS.ZeroIdentity.v0.1','c0_exit':rc0,'z0_exit':rcz,'thresholds':{'H':1e-10,'rho_cdm':1e-10,'Pk':1e-8}}
+          def load_bg(path):
+            header='\n'.join([l for l in open(path,errors='ignore') if l.startswith('#')])
+            A=np.loadtxt(path)
+            # CLASS background convention: first columns are z, proper time, conformal time, H; locate rho_cdm from numbered header if possible.
+            hidx=3
+            m=re.search(r'(\d+):rho_cdm',header.replace(' ',''))
+            ridx=int(m.group(1))-1 if m else None
+            return A,hidx,ridx
+          def sym(a,b):
+            den=np.maximum(np.maximum(np.abs(a),np.abs(b)),1e-300)
+            return float(np.max(np.abs(a-b)/den))
+          metrics={}; finite=False
+          try:
+            b0=glob.glob('axiclass/output/kmdsb_c0_*background.dat')[0]; bz=glob.glob('axiclass/output/kmdsb_z0_*background.dat')[0]
+            p0=glob.glob('axiclass/output/kmdsb_c0_*pk.dat')[0]; pz=glob.glob('axiclass/output/kmdsb_z0_*pk.dat')[0]
+            A0,h0,r0=load_bg(b0); Az,hz,rz=load_bg(bz)
+            # interpolate Z0 onto C0 redshift support inside overlap
+            z0=A0[:,0]; zz=Az[:,0]; lo=max(z0.min(),zz.min()); hi=min(z0.max(),zz.max()); mask=(z0>=lo)&(z0<=hi)
+            order=np.argsort(zz)
+            Hzi=np.interp(z0[mask],zz[order],Az[order,hz]); metrics['H_max_sym_rel']=sym(A0[mask,h0],Hzi)
+            if r0 is not None and rz is not None:
+              Rzi=np.interp(z0[mask],zz[order],Az[order,rz]); metrics['rho_cdm_max_sym_rel']=sym(A0[mask,r0],Rzi)
+            else: metrics['rho_cdm_max_sym_rel']=float('inf')
+            P0=np.loadtxt(p0); Pz=np.loadtxt(pz); k0=P0[:,0]; kz=Pz[:,0]; lo=max(k0.min(),kz.min()); hi=min(k0.max(),kz.max()); mk=(k0>=lo)&(k0<=hi); ko=np.argsort(kz)
+            Pzi=np.exp(np.interp(np.log(k0[mk]),np.log(kz[ko]),np.log(np.maximum(Pz[ko,1],1e-300))))
+            metrics['Pk_max_sym_rel']=sym(P0[mk,1],Pzi)
+            finite=all(np.isfinite(list(metrics.values())))
+          except Exception as e:
+            out['analysis_error']=repr(e)
+          out['metrics']=metrics; out['finite_metrics']=finite
+          if rc0!=0: cls='F19_AXICLASS_CONTROL_INFRASTRUCTURE_BLOCKED'
+          elif rcz!=0 or not finite: cls='F19_AXICLASS_EXACT_ZERO_FIELD_REFERENCE_BLOCKED_IMPLEMENTATION'
+          elif metrics['H_max_sym_rel']<=1e-10 and metrics['rho_cdm_max_sym_rel']<=1e-10 and metrics['Pk_max_sym_rel']<=1e-8: cls='F19_AXICLASS_EXACT_ZERO_FIELD_K1_PASS_WITH_SCOPE'
+          else: cls='F19_AXICLASS_EXACT_ZERO_FIELD_K1_FAIL_NUMERICAL_IDENTITY'
+          out['classification']=cls; out['physical_falsification']=False
+          open('f19_axiclass_zero_identity.json','w').write(json.dumps(out,indent=2))
+          print(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-axiclass-zero-identity
+          path: |
+            f19_axiclass_zero_identity.json
+            exit_codes.txt
+            c0_stdout.log
+            c0_stderr.log
+            z0_stdout.log
+            z0_stderr.log
+            axiclass/output/kmdsb_c0_*background.dat
+            axiclass/output/kmdsb_z0_*background.dat
+            axiclass/output/kmdsb_c0_*pk.dat
+            axiclass/output/kmdsb_z0_*pk.dat
+
+  aggregate:
+    needs: [source_guard, author_control, zero_identity]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: f19-axiclass-*
+          path: evidence
+          merge-multiple: true
+      - name: Frozen aggregate classification
+        run: |
+          python3 - <<'PY'
+          import json,glob,os
+          def one(name):
+            p=glob.glob('evidence/'+name)
+            return json.load(open(p[0])) if p else None
+          s=one('f19_axiclass_source_guard.json'); a=one('f19_axiclass_author_control.json'); z=one('f19_axiclass_zero_identity.json')
+          if s is None or a is None or z is None:
+            cls='F19_AXICLASS_PROBE_INFRASTRUCTURE_PARTIAL'
+          elif s['classification']!='F19_AXICLASS_K0_SOURCE_ELIGIBLE_FOR_PROVIDER_PROBE':
+            cls='F19_AXICLASS_K0_SOURCE_INCOMPLETE_OR_LINEAGE_REJECTED'
+          elif a['classification']!='F19_AXICLASS_AUTHOR_PROVIDER_CONTROL_PASS':
+            cls='F19_AXICLASS_PROVIDER_CONTROL_BLOCKED'
+          else:
+            cls=z['classification']
+          out={'schema':'KMDSB.W04.F19AxiCLASS.Aggregate.v0.1','protocol':'protocol/W04_F19_AXICLASS_INDEPENDENT_PROVIDER_K0K1_PROBE_v0.1.md','classification':cls,'source_guard':s,'author_control':a,'zero_identity':z,'K0_promotion': cls=='F19_AXICLASS_EXACT_ZERO_FIELD_K1_PASS_WITH_SCOPE','K1_promotion': cls=='F19_AXICLASS_EXACT_ZERO_FIELD_K1_PASS_WITH_SCOPE','physical_falsification':False}
+          open('f19_axiclass_k0k1_aggregate.json','w').write(json.dumps(out,indent=2))
+          print(json.dumps({'classification':cls}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f19-axiclass-k0k1-aggregate
+          path: f19_axiclass_k0k1_aggregate.json
