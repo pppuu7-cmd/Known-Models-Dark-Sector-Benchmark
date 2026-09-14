@@ -1,0 +1,168 @@
+name: W04 M21 l400 transfer-vs-harmonic diagnostic v0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-l400-transfer-vs-harmonic-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  lane:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pair_id: A
+            parent_artifact: m21-lphase-P400_ON_TAIL_OFF
+          - pair_id: B
+            parent_artifact: m21-lphase-P400_EVEN_TAIL_OFF
+    runs-on: ubuntu-22.04
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enforce frozen parent authority
+        run: |
+          python3 - <<'PY'
+          import json
+          req=[
+            ('waves/wave_04_dark_matter/M21_CMB_SOURCE_BRANCH_SIGNATURE_TERMINAL.json','M21_CMB_BRANCH_NOT_LOCALIZED_IN_DIRECT_CMB_SOURCES'),
+            ('waves/wave_04_dark_matter/M21_L400_KNOT_PROPAGATION_TERMINAL.json','M21_L400_SINGLE_KNOT_VALUE_SUFFICIENT_FOR_HIGH_STATE_WITH_SCOPE'),
+            ('waves/wave_04_dark_matter/M21_L400_LOCAL_LEAVE_ONE_OUT_TERMINAL.json','M21_L400_ISOLATED_LOCAL_RESPONSE_SPIKE_SUPPORTED_WITH_SCOPE'),
+          ]
+          for p,c in req:
+            d=json.load(open(p)); assert d['classification']==c; assert d['physical_falsification'] is False
+          PY
+
+      - name: Download immutable matching factorial parent lane
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.parent_artifact }}
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34887488405
+
+      - name: Execute output-only instrumented lane
+        id: execute
+        continue-on-error: true
+        run: bash verification/m21/run_l400_transfer_harmonic_lane_v01.sh '${{ matrix.pair_id }}'
+
+      - name: Analyze frozen transfer and integrand metrics
+        id: analyze
+        if: steps.execute.outcome == 'success'
+        continue-on-error: true
+        run: |
+          python3 verification/m21/l400_transfer_harmonic_analyze.py \
+            '${{ matrix.pair_id }}' . parent lane_meta.json l400_transfer_harmonic_patch_manifest.json \
+            'result_${{ matrix.pair_id }}.json'
+
+      - name: Materialize blocked lane if harness failed
+        if: always()
+        env:
+          PAIR: ${{ matrix.pair_id }}
+          EXEC_OUTCOME: ${{ steps.execute.outcome }}
+          ANALYZE_OUTCOME: ${{ steps.analyze.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path('result_'+os.environ['PAIR']+'.json')
+          if not p.exists():
+            p.write_text(json.dumps({
+              'schema':'KMDSB.W04.M21.L400TransferHarmonicLane.v0.1',
+              'protocol':'protocol/W04_M21_L400_TRANSFER_VS_HARMONIC_DIAGNOSTIC_v0.1.md',
+              'pair_id':os.environ['PAIR'],
+              'classification':'LANE_BLOCKED',
+              'execution_outcome':os.environ['EXEC_OUTCOME'],
+              'analysis_outcome':os.environ['ANALYZE_OUTCOME'],
+              'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False,
+            },indent=2,sort_keys=True)+'\n')
+          PY
+
+      - name: Upload immutable lane evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m21-l400-transfer-harmonic-${{ matrix.pair_id }}
+          path: |
+            result_${{ matrix.pair_id }}.json
+            lane_meta.json
+            l400_transfer_harmonic_patch_manifest.json
+            diag_*.dat
+            case_status.tsv
+            run_*.log
+            build.log
+            output/*_cl.dat
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Fail lane only after evidence upload if blocked
+        if: always()
+        env:
+          PAIR: ${{ matrix.pair_id }}
+        run: |
+          python3 - <<'PY'
+          import json,os
+          d=json.load(open('result_'+os.environ['PAIR']+'.json'))
+          if d.get('classification')=='LANE_BLOCKED': raise SystemExit(1)
+          PY
+
+  aggregate:
+    needs: lane
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-l400-transfer-harmonic-*
+          path: lanes
+      - name: Apply frozen aggregate localization rule
+        run: |
+          python3 - <<'PY'
+          import json,pathlib
+          ds=[]
+          for p in pathlib.Path('lanes').rglob('result_*.json'):
+            ds.append(json.load(open(p)))
+          by={d.get('pair_id'):d for d in ds}
+          out={
+            'schema':'KMDSB.W04.M21.L400TransferVsHarmonic.v0.1',
+            'protocol':'protocol/W04_M21_L400_TRANSFER_VS_HARMONIC_DIAGNOSTIC_v0.1.md',
+            'provider':'lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540',
+            'parent_local_leave_one_out_run_id':34903783469,
+            'factorial_parent_run_id':34887488405,
+            'lanes':by,
+            'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False,
+          }
+          if set(by)!={'A','B'} or any(d.get('classification')=='LANE_BLOCKED' for d in by.values()):
+            cls='M21_L400_TRANSFER_HARMONIC_DIAGNOSTIC_BLOCKED'
+          else:
+            transfer=[bool(by[x].get('transfer_locally_l400_specific')) for x in ('A','B')]
+            integ=[bool(by[x].get('integrand_locally_l400_specific')) for x in ('A','B')]
+            clhigh=[float(by[x].get('direct_sparse_cl_l400_E',0.0))>3.0 for x in ('A','B')]
+            if all(transfer):
+              cls='M21_L400_SPIKE_PRESENT_IN_E_TRANSFER_KERNEL_WITH_SCOPE'
+            elif not any(transfer) and all(integ):
+              cls='M21_L400_SPIKE_EMERGES_IN_EE_INTEGRAND_WITH_SCOPE'
+            elif not any(transfer) and not any(integ) and all(clhigh):
+              cls='M21_L400_SPIKE_EMERGES_IN_HARMONIC_ACCUMULATION_WITH_SCOPE'
+            else:
+              cls='M21_L400_TRANSFER_HARMONIC_LOCALIZATION_MIXED_WITH_SCOPE'
+          out['classification']=cls
+          pathlib.Path('M21_L400_TRANSFER_VS_HARMONIC_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({'classification':cls,'lane_classes':{k:v.get('classification') for k,v in by.items()}},indent=2,sort_keys=True))
+          if cls.endswith('BLOCKED'): raise SystemExit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-transfer-vs-harmonic-v01
+          path: M21_L400_TRANSFER_VS_HARMONIC_RESULT.json
+          if-no-files-found: error
+          retention-days: 90
