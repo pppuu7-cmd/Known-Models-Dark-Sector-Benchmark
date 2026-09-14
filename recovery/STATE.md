@@ -351,3 +351,9 @@ Seven-lane provider reconnaissance run `34650903154` returned zero provider-grad
 - Interpretation ceiling: reference blocker localized to standard Boltzmann RK absolute-scale-floor behavior at hard re-entry. K3 remains PARTIAL; K4/K5 are not promoted; no physical falsification.
 - Next frozen diagnostic: K3D2-G vanilla CLASS split-vs-unsplit RK restart-layer control.
 
+### M13B_K3D2G_GENERIC_CLASS_RK_HARD_RESTART_LAYER_EFFECT_SUPPORTED_2026_09_14
+- Canonical result: `waves/wave_03_expanded_dark_energy/M13B_K3D2G_VANILLA_RK_RESTART_CONTROL_RESULT.json`.
+- Run `34804815136`; jobs U `103854493317`, S `103854493393`, aggregate `103855342080`; aggregate artifact `10332553557`, digest `sha256:b97bb642240cdcc52944a34c756d671a25402b8eebea6b1e59a81182d7229f06`.
+- Vanilla unsplit exact-pinned CLASS: rc=0, RK collapse count=0. Artificial exact-z5 hard restart: rc=1, 450/450 failures, all RK collapses at the shifted restart boundary, k range 0.0130981414..0.0382396665 1/Mpc.
+- Interpretation: generic CLASS/RK hard-restart numerical-layer effect supported; not a two-field physical failure. K3 remains PARTIAL; K4/K5 not promoted; physical_falsification=false.
+
