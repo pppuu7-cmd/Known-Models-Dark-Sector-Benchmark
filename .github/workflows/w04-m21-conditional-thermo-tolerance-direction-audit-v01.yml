@@ -1,0 +1,129 @@
+name: W04 M21 conditional thermo-tolerance direction audit v0.1
+
+on:
+  workflow_run:
+    workflows:
+      - "W04 M21 CMB precision stage3 single-parameter decomposition v0.1"
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  OMP_NUM_THREADS: '1'
+
+jobs:
+  activation:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      authorized: ${{ steps.gate.outputs.authorized }}
+      parent_run_id: ${{ steps.gate.outputs.parent_run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve parent run id
+        id: parent
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_id=34878158930" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Download terminal stage3 aggregate
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-cmb-precision-stage3-single-parameter-decomposition-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ steps.parent.outputs.run_id }}
+      - id: gate
+        name: Enforce conditional prospective activation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path('parent/M21_CMB_PRECISION_STAGE3_SINGLE_PARAMETER_DECOMPOSITION_RESULT.json')
+          d=json.loads(p.read_text())
+          ok=(d.get('classification')=='M21_CMB_PRECISION_STAGE3_COMPLETE' and d.get('cross_lane_input_identity') is True and d.get('parameters',{}).get('G1A__tol_thermo_integration',{}).get('classification') in {'PARAMETER_REMOVES_EXCURSION','PARAMETER_REDUCES_EXCURSION'} and d.get('subgroup_stage3',{}).get('G1A',{}).get('classification')!='G1A_STAGE3_BLOCKED')
+          out=Path(os.environ['GITHUB_OUTPUT'])
+          with out.open('a') as f:
+            f.write('authorized='+('true' if ok else 'false')+'\n')
+            f.write('parent_run_id=${{ steps.parent.outputs.run_id }}\n')
+          print(json.dumps({'authorized':ok,'stage3_classification':d.get('classification'),'tol_class':d.get('parameters',{}).get('G1A__tol_thermo_integration',{}).get('classification')},indent=2))
+          PY
+
+  tolerance:
+    needs: activation
+    if: needs.activation.outputs.authorized == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {id: T1E4, value: '1e-4'}
+          - {id: T3E5, value: '3e-5'}
+          - {id: T1E5, value: '1e-5'}
+          - {id: T3E6, value: '3e-6'}
+          - {id: T1E6, value: '1e-6'}
+          - {id: T3E7, value: '3e-7'}
+          - {id: T1E7, value: '1e-7'}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute frozen tolerance lane
+        run: |
+          set -euo pipefail
+          bash verification/m21/run_thermo_tolerance_lane_v01.sh '${{ matrix.id }}' '${{ matrix.value }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-thermo-tol-${{ matrix.id }}
+          path: |
+            lane_meta.json
+            case_status.tsv
+            thermo_tol_${{ matrix.id }}.pre
+            thermo_tol_${{ matrix.id }}_manifest.json
+            m21_cases/*.ini
+            output/*.dat
+            run_*.log
+            build.log
+          retention-days: 90
+
+  aggregate:
+    needs: [activation, tolerance]
+    if: always() && needs.activation.result == 'success' && needs.activation.outputs.authorized == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Download tolerance artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-thermo-tol-*
+          path: components
+      - name: Download immutable stage3 parent
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-cmb-precision-stage3-single-parameter-decomposition-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ needs.activation.outputs.parent_run_id }}
+      - name: Apply frozen direction classifier
+        run: |
+          set -euo pipefail
+          python3 verification/m21/thermo_tolerance_direction_audit.py components parent/M21_CMB_PRECISION_STAGE3_SINGLE_PARAMETER_DECOMPOSITION_RESULT.json M21_THERMO_TOLERANCE_DIRECTION_AUDIT_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-thermo-tolerance-direction-audit-v01
+          path: M21_THERMO_TOLERANCE_DIRECTION_AUDIT_RESULT.json
+          retention-days: 90
