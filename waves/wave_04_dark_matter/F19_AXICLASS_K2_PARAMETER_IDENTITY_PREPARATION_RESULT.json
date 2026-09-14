@@ -1,0 +1,30 @@
+{
+  "schema": "KMDSB.W04.F19.AxiCLASS.K2ParameterIdentityPreparationResult.v0.1",
+  "date": "2026-09-14",
+  "provider": "PoulinV/AxiCLASS@ae9609e1f96ddebbb6cc8a46de94512514c68781",
+  "protocol": "protocol/W04_F19_AXICLASS_K2_PARAMETER_IDENTITY_PREPARATION_v0.1.md",
+  "workflow_run_id": 34862014570,
+  "head_sha": "797d6ddfb7862b584a8634d890f5b01b6b4f5bc6",
+  "jobs": {
+    "P1_decay_scale": {"job_id": 104036380102, "pass": true, "artifact_id": 10355525738, "artifact_digest": "sha256:068da7fc508f393a0c37609033cb47e8f4e0860bd55271c8e9f2b241326785b3"},
+    "P2_present_abundance": {"job_id": 104036380663, "pass": true, "artifact_id": 10356125622, "artifact_digest": "sha256:d3105c84cd9df827ca530cf27dd9a1e8f841830030ec2848b611dc78cec405c4"},
+    "P3_critical_fraction": {"job_id": 104036380451, "pass": true, "artifact_id": 10355465823, "artifact_digest": "sha256:46176212b91bbd7dd63a71b3163c4dc648119e1ba8d3c477d975b0c2f2ba029e"},
+    "P4_initial_conditions": {"job_id": 104036380567, "pass": true, "artifact_id": 10355935828, "artifact_digest": "sha256:a04d53fb30f2453990ede384c0c2fedaba424efa7534a287714ff7cfc5cd2cd4"},
+    "aggregate": {"job_id": 104037014022, "pass": true, "artifact_id": 10356095722, "artifact_digest": "sha256:76a9ca9657628dcc041c027ae711728defb35145ee8bdd99c86c40222249f8aa"}
+  },
+  "parameter_map": {
+    "f_axion": "potential decay scale, not abundance",
+    "Omega_scf": "present scalar-density target/shooting coordinate",
+    "fraction_axion_ac": "distinct critical-epoch axion fraction target, not present Omega_scf",
+    "scf_parameters": "scalar initial-condition/tuning parameters, not present abundance"
+  },
+  "negative_semantic_controls_pass": true,
+  "classification": "F19_AXICLASS_K2_PARAMETER_IDENTITY_PREPARATION_PASS_WITH_SCOPE",
+  "authoritative_k1_run": 34846931382,
+  "authoritative_k1_run_terminal_at_record_time": false,
+  "K0_promoted": false,
+  "K1_promoted": false,
+  "K2_authorized": false,
+  "physical_falsification": false,
+  "interpretation": "The exact-pin provider parameter semantics are sufficiently resolved to prevent a future K2 gate from conflating decay scale, present abundance, critical-epoch fraction and field initial conditions. A future K2 gate remains forbidden until separate terminal K1 authority permits it."
+}
