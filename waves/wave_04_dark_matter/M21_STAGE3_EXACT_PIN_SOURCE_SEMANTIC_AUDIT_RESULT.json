@@ -1,0 +1,36 @@
+{
+  "schema": "KMDSB.W04.M21.Stage3ExactPinSourceSemanticAuditTerminal.v0.1",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "run_id": 34878816263,
+  "head_sha": "7658b2bcdf268a67ff2fd46e4e5cc9b411497892",
+  "artifact_id": 10361793059,
+  "artifact_digest": "sha256:fb0d901bda733bb45121a11535628b0c0dc4b30fd034f14f0eafb391cfe49662",
+  "classification": "M21_STAGE3_SOURCE_SEMANTIC_AUDIT_PASS_WITH_SCOPE",
+  "all_frozen_checks_pass": true,
+  "G1A_runtime_consumer_counts": {
+    "recfast_Nz0": 0,
+    "tol_thermo_integration": 4,
+    "recfast_x_He0_trigger_delta": 0,
+    "recfast_x_H0_trigger_delta": 0
+  },
+  "G1A_source_localization": "Only tol_thermo_integration has a runtime consumer at the exact pin among the four frozen G1A assignments. The three recfast entries are legacy/declaration/reference-profile controls with no runtime consumer; recfast_Nz0 is not even an exact-pin precision declaration.",
+  "G2B_source_facts": {
+    "l_logstep_runtime": true,
+    "l_linstep_runtime": true,
+    "hyper_sampling_flat_runtime": true,
+    "hyper_sampling_curved_low_nu_runtime": true,
+    "hyper_sampling_curved_high_nu_runtime": true,
+    "hyper_nu_sampling_step_runtime": true,
+    "hyper_phi_min_abs_runtime": true,
+    "hyper_x_tol_runtime": true,
+    "hyper_flat_approximation_nu_runtime": true,
+    "frozen_cosmology_flat": true,
+    "hyper_phi_min_abs_stage3_value_equals_default": true,
+    "hyper_x_tol_stage3_value_equals_default": true,
+    "branch_note": "Runtime occurrence alone does not imply reachability. Exact transfer.c source map places curved sampling/nu controls in non-flat paths; the flat M21 branch directly uses hyper_sampling_flat and hyper_phi_min_abs, while l_logstep/l_linstep are general transfer-l sampling controls."
+  },
+  "K1_promoted": false,
+  "physical_falsification": false,
+  "interpretation_ceiling": "Source consumption and branch reachability only. This result cannot replace the prospectively frozen numerical stage-3 aggregate and does not authorize tuning, a CLASS bug claim, K1/K3/K4 promotion, or a physical mixed-DM conclusion."
+}
