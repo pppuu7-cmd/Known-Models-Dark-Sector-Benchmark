@@ -1,0 +1,68 @@
+name: W04 M21 G2B l-sampling direction interaction audit v0.1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m21-g2b-l-sampling-direction-interaction-audit-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  OMP_NUM_THREADS: '1'
+
+jobs:
+  pair:
+    strategy:
+      fail-fast: false
+      matrix:
+        pair: [LPAIR_I, LPAIR_R, LPAIR_T1, LPAIR_T2]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute frozen l-sampling pair lane
+        run: |
+          set -euo pipefail
+          bash verification/m21/run_l_sampling_pair_lane_v01.sh '${{ matrix.pair }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-lpair-${{ matrix.pair }}
+          path: |
+            lane_meta.json
+            case_status.tsv
+            lsamp_${{ matrix.pair }}.pre
+            lsamp_${{ matrix.pair }}_manifest.json
+            m21_cases/*.ini
+            output/*.dat
+            run_*.log
+            build.log
+          retention-days: 90
+
+  aggregate:
+    needs: pair
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Download pair artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-lpair-*
+          path: components
+      - name: Apply frozen interaction/direction classifier
+        run: |
+          set -euo pipefail
+          python3 verification/m21/l_sampling_direction_interaction_audit.py components M21_G2B_L_SAMPLING_DIRECTION_INTERACTION_AUDIT_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-g2b-l-sampling-direction-interaction-audit-v01
+          path: M21_G2B_L_SAMPLING_DIRECTION_INTERACTION_AUDIT_RESULT.json
+          retention-days: 90
