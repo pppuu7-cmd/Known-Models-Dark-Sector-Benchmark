@@ -1,11 +1,11 @@
-# M21 stage-3 current front — 2026-09-14
+# M21 numerical CMB precision current front — 2026-09-14
 
 ## STATE_READ
 
 Authoritative repository: `pppuu7-cmd/Known-Models-Dark-Sector-Benchmark`.
 Provider: `lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540`.
 
-## TERMINAL_PARENT
+## TERMINAL STAGE-2
 
 M21 CMB precision stage-2 subgroup decomposition is terminal.
 
@@ -18,21 +18,46 @@ M21 CMB precision stage-2 subgroup decomposition is terminal.
 - G1B/G1C/G2A/G2C: insufficient
 - K1/K3/K4 not promoted; no physical falsification.
 
-Canonical terminal summary:
+Canonical result:
 `waves/wave_04_dark_matter/M21_CMB_PRECISION_STAGE2_SUBGROUP_DECOMPOSITION_TERMINAL.json`.
 
-## ACTIVE_GATE
+## TERMINAL STAGE-3
 
-Prospectively frozen stage-3 single-parameter decomposition:
+Prospectively frozen protocol:
 `protocol/W04_M21_CMB_PRECISION_STAGE3_SINGLE_PARAMETER_DECOMPOSITION_v0.1.md`.
 
-Execution run: `34878158930`, head `92fc5387c5e9d59df39e792c9dbaab3bfb708f58`.
-Activation is PASS. All 13 mandatory parameter jobs are now terminal `success`; aggregate job `104094581455` is queued at this recovery update. Do not consume individual parameter artifacts or values before the aggregate is terminal.
+- run: `34878158930`
+- head: `92fc5387c5e9d59df39e792c9dbaab3bfb708f58`
+- aggregate artifact: `10361784318`
+- digest: `sha256:733e995346926ebbb3dd7355a33fbc0090fb5cc027b66eea0c7c968bc86453a9`
+- classification: `M21_CMB_PRECISION_STAGE3_COMPLETE`
+- cross-lane input identity: true
+- all 13 mandatory parameter jobs and aggregate: terminal success
+- canonical terminal result: `waves/wave_04_dark_matter/M21_CMB_PRECISION_STAGE3_SINGLE_PARAMETER_DECOMPOSITION_TERMINAL.json`.
 
-Mandatory parameter family:
+### G1A result
 
-- G1A: `recfast_Nz0`, `tol_thermo_integration`, `recfast_x_He0_trigger_delta`, `recfast_x_H0_trigger_delta`;
-- G2B: `l_logstep`, `l_linstep`, `hyper_sampling_flat`, `hyper_sampling_curved_low_nu`, `hyper_sampling_curved_high_nu`, `hyper_nu_sampling_step`, `hyper_phi_min_abs`, `hyper_x_tol`, `hyper_flat_approximation_nu`.
+`G1A_STAGE3_SINGLE_PARAMETER_SUFFICIENCY_IDENTIFIED`.
+
+Only sufficient parameter:
+- `tol_thermo_integration=1e-5`: `PARAMETER_REMOVES_EXCURSION`, `Emax=0.03431664516144772`.
+
+Insufficient controls reproduce the parent excursion exactly (`Emax=534.8355868817356`):
+- `recfast_Nz0=100000`;
+- `recfast_x_He0_trigger_delta=0.01`;
+- `recfast_x_H0_trigger_delta=0.01`.
+
+### G2B result
+
+`G2B_STAGE3_SINGLE_PARAMETER_SUFFICIENCY_IDENTIFIED`.
+
+Sufficient reducers:
+- `l_logstep=1.026`: `Emax=70.53199679337801`;
+- `l_linstep=25`: `Emax=78.37222398394675`.
+
+All seven other G2B individual controls are insufficient. `hyper_sampling_flat=12` changes Emax only slightly (`534.8263913081856`); the remaining six frozen controls reproduce `534.8355868817356` exactly in this benchmark.
+
+Stage-3 is numerical localization only and does not promote K1/K3/K4.
 
 ## TERMINAL EXACT-PIN SOURCE AUDIT
 
@@ -44,39 +69,54 @@ Machine audit run `34878816263` is terminal `success`.
 - canonical result: `waves/wave_04_dark_matter/M21_STAGE3_EXACT_PIN_SOURCE_SEMANTIC_AUDIT_RESULT.json`
 - narrative audit: `models/mixed_cold_warm/m21_stage3_exact_pin_source_semantic_audit_2026-09-14.md`.
 
-Important exact-pin facts established without stage-3 numerical values:
+Source/numerical agreement is unusually clean:
 
-1. `recfast_Nz0`: zero runtime consumers; not an exact-pin precision declaration; legacy/unconsumed reference-profile entry.
-2. `recfast_x_He0_trigger_delta`: exact declaration/default `0.05`, but zero runtime consumers in the exact repository tree.
-3. `recfast_x_H0_trigger_delta`: exact declaration/default `0.05`, but zero runtime consumers in the exact repository tree.
-4. `tol_thermo_integration`: four direct runtime consumers in `source/thermodynamics.c`; among the four G1A changes it is the only runtime-consumed key.
-5. frozen M21 has `Omega_k=0`. G2B runtime/branch audit shows flat-relevant non-default candidates are principally `l_logstep`, `l_linstep`, and `hyper_sampling_flat`; curved-only/default-identical lanes remain required negative controls.
-6. `hyper_phi_min_abs=1e-10` and `hyper_x_tol=1e-4` equal exact defaults.
-
-These source facts do not alter or prune the prospectively frozen 13-lane numerical matrix.
+1. `recfast_Nz0`: zero runtime consumers; stage-3 insufficient with exactly baseline Emax.
+2. `recfast_x_He0_trigger_delta`: zero runtime consumers; stage-3 insufficient with exactly baseline Emax.
+3. `recfast_x_H0_trigger_delta`: zero runtime consumers; stage-3 insufficient with exactly baseline Emax.
+4. `tol_thermo_integration`: four direct runtime consumers in `source/thermodynamics.c`; stage-3 identifies it as the sole G1A sufficient parameter.
+5. exact transfer source identifies `l_logstep/l_linstep` as general multipole-sampling controls; stage-3 identifies both as G2B sufficient reducers.
+6. flat M21 branch / default-identical hyperspherical controls are numerically insufficient as expected from source semantics.
 
 ## REFERENCE-PROFILE INTERPRETATION
 
 See `models/mixed_cold_warm/m21_reference_profile_monotonicity_audit_2026-09-14.md`.
 
-Exact `cl_ref.pre` is not a componentwise monotone precision-tightening ladder. In particular it sets `tol_thermo_integration=1e-5` while the exact default is `1e-6`; the same coexistence is already present at checked commit `45195306dac09fab6bd9cf23320974f418c81f27` from 2023-10-10, where `cl_ref.pre` has the same blob SHA as the M21 pin. Therefore stage-2/stage-3 reference-profile sensitivity must not be called convergence-by-tightening without a separate directional gate.
+Exact `cl_ref.pre` is not a componentwise monotone precision-tightening ladder. Crucially, it sets `tol_thermo_integration=1e-5` while exact default is `1e-6`; the same coexistence is already present at checked 2023 commit `45195306dac09fab6bd9cf23320974f418c81f27`. Therefore the G1A result is sensitivity to a reference-profile numerical path, not yet evidence of convergence-by-tightening.
 
-## CONDITIONAL SUCCESSOR PREPARED PROSPECTIVELY
+## ACTIVE PARALLEL GATES
 
-Before stage-3 aggregate result, froze:
+### A. Thermodynamics tolerance-direction audit
+
+Protocol frozen before stage-3 result:
 `protocol/W04_M21_CONDITIONAL_THERMODYNAMICS_TOLERANCE_DIRECTION_AUDIT_v0.1.md`.
 
-Implementation/workflow are already committed. The workflow is triggered only after completion of the stage-3 workflow and activates only if terminal stage-3 is complete, input identity passes, G1A is unblocked, and `G1A__tol_thermo_integration` is numerically sufficient. Otherwise it remains skipped historical preparation.
+Stage-3 satisfied its prospective activation condition. Workflow run `34879598732` activation is terminal success and all seven mandatory tolerance lanes are authorized/queued:
+`1e-4, 3e-5, 1e-5, 3e-6, 1e-6, 3e-7, 1e-7`.
 
-Frozen tolerance ladder: `1e-4, 3e-5, 1e-5, 3e-6, 1e-6, 3e-7, 1e-7`. Only `tol_thermo_integration` varies. This gate distinguishes tightening-preserved removal/sufficiency from a reference-value path-specific or nonmonotone response; it cannot promote K1/K3/K4.
+Only `tol_thermo_integration` varies. This gate asks whether the `1e-5` excursion removal survives actual tightening or is reference-value/path-specific/nonmonotone.
+
+### B. G2B transfer-l sampling interaction/direction audit
+
+Protocol:
+`protocol/W04_M21_G2B_TRANSFER_L_SAMPLING_DIRECTION_INTERACTION_AUDIT_v0.1.md`.
+
+Workflow run `34879864684` launched four independent pure-pair lanes:
+- `LPAIR_I=(l_logstep=1.05,l_linstep=32)`;
+- `LPAIR_R=(1.026,25)`;
+- `LPAIR_T1=(1.015,20)`;
+- `LPAIR_T2=(1.010,15)`.
+
+This gate tests whether the two stage-3 sufficient transfer-l controls interact and whether further sampling refinement behaves directionally/monotonically. It is independent of the thermodynamics tolerance audit and may run in parallel.
 
 ## CLAIM_CEILING
 
-Stage-3 and its conditional successor are numerical-localization/diagnostic gates only. They cannot directly establish a CLASS bug, authorize production tuning, promote M21 K1/K3/K4, or physically falsify/validate mixed cold+warm dark matter.
+All current gates are numerical localization/convergence diagnostics. They do not establish a CLASS bug, do not authorize production tuning, do not promote M21 K1/K3/K4, and do not physically falsify or validate mixed cold+warm dark matter.
 
 ## NEXT_ACTION
 
-1. Check aggregate job `104094581455` / run `34878158930`.
-2. If still non-terminal, do not duplicate it and do not consume individual parameter values.
-3. Once aggregate is terminal, verify artifact identity/digest and frozen classification and materialize a canonical terminal stage-3 result.
-4. Observe whether the already-preregistered conditional thermodynamics-tolerance workflow activates. If it activates, its seven tolerance lanes are the authorized next numerical gate; if not, choose the next gate from the terminal stage-3 result without modifying historical criteria.
+1. Do not rerun stage-2 or stage-3; both are terminal.
+2. Check runs `34879598732` and `34879864684`; do not use partial substantive values while either aggregate is non-terminal.
+3. Once each aggregate is terminal, verify artifact identities/digests and materialize canonical terminal results.
+4. Use their joint result to decide whether the original f3 CMB excursion is best classified as a thermodynamics solver-path sensitivity, transfer-l sampling under-resolution, a mixed numerical interaction, or a still-unresolved numerical artifact.
+5. K1/K3/K4 remain locked until a separately authorized gate establishes the required physical/numerical reference-limit conditions.
