@@ -2,6 +2,8 @@
 
 Frozen: 2026-09-14 after terminal `M21_CMB_BRANCH_NOT_LOCALIZED_IN_EXPOSED_THERMO_STATE_COLUMNS`, terminal `M21_L_GRID_PHASE_L400_SIGNATURE_SUPPORTED_WITH_SCOPE`, and while the non-scientific perturbation-output capability recon is still non-terminal. No f2/f3/f4 perturbation-state branch comparison has been generated at freeze time.
 
+Pre-execution QA amendment: before any scientific branch lane was run, the J denominator reporting floor was prospectively set to `1e-12`, matching the 12-significant-digit native CLASS output precision and preventing output-rounding noise from generating arbitrarily large ratios. The localization threshold remains unchanged at `J>=3`.
+
 Provider must remain exactly `lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540`.
 
 ## Scientific question
@@ -12,8 +14,7 @@ This is a numerical localization audit. It is not a physical mixed-dark-matter t
 
 ## Mandatory capability dependency
 
-Execution is forbidden unless `protocol/W04_M21_PERTURBATION_OUTPUT_CAPABILITY_RECON_v0.1.md` has a terminal result classified exactly
-`M21_PERTURBATION_OUTPUT_CAPABILITY_RECON_PASS_WITH_SCOPE`.
+Execution is forbidden unless `protocol/W04_M21_PERTURBATION_OUTPUT_CAPABILITY_RECON_v0.1.md` has a terminal result classified exactly `M21_PERTURBATION_OUTPUT_CAPABILITY_RECON_PASS_WITH_SCOPE`.
 
 The successor config must copy, without alteration:
 
@@ -102,9 +103,7 @@ No post-result column selection is allowed.
 
 For each k table use scale factor `a` as the alignment coordinate. Sort ascending in `a`, reject duplicate/non-finite coordinate rows, and interpolate the second lane onto the first lane in `log(a)` over strict overlap.
 
-Primary physical window is exactly
-
-`500 <= z <= 2500`, equivalently `1/2501 <= a <= 1/501`.
+Primary physical window is exactly `500 <= z <= 2500`, equivalently `1/2501 <= a <= 1/501`.
 
 At least 16 common overlap samples are required for each compared variable/k/case cell. Full-time comparisons may be report-only and cannot change the classification.
 
@@ -114,13 +113,15 @@ For each edge E, case C, k anchor K and variable V define normalized L2 distance
 
 `D(E,C,K,V) = ||x_A - x_B_interp||_2 / max(||x_A||_2, ||x_B_interp||_2, 1e-300)`.
 
+The fixed branch-specificity reporting floor is `J_FLOOR = 1e-12`.
+
 For a common-state cell:
 
-`J_common(E,K,V) = D(E,f3,K,V) / max(D(E,ref,K,V), D(E,f2,K,V), D(E,f4,K,V), 1e-300)`.
+`J_common(E,K,V) = D(E,f3,K,V) / max(D(E,ref,K,V), D(E,f2,K,V), D(E,f4,K,V), J_FLOOR)`.
 
 For an ncdm-only cell:
 
-`J_ncdm(E,K,V) = D(E,f3,K,V) / max(D(E,f2,K,V), D(E,f4,K,V), 1e-300)`.
+`J_ncdm(E,K,V) = D(E,f3,K,V) / max(D(E,f2,K,V), D(E,f4,K,V), J_FLOOR)`.
 
 A cell is localized when `J >= 3`, reusing the already-preregistered branch-specificity threshold from the thermodynamics-state audits.
 
@@ -130,21 +131,17 @@ For each edge report:
 - count of cells with `J>=3` for each family;
 - `edge_localized = true` if either family has at least one `J>=3` cell.
 
-No lower threshold or alternate ranking may be substituted after execution.
+No lower threshold, smaller reporting floor, or alternate ranking may be substituted after execution.
 
 ## Frozen classification
 
-Artifact/provider/profile/case/k/schema/time-overlap failure ->
-`M21_PERTURBATION_STATE_BRANCH_SIGNATURE_BLOCKED`.
+Artifact/provider/profile/case/k/schema/time-overlap failure -> `M21_PERTURBATION_STATE_BRANCH_SIGNATURE_BLOCKED`.
 
-All four branch-change edges localized and zero same-branch controls localized ->
-`M21_PERTURBATION_STATE_BRANCH_SIGNATURE_MATCHES_CMB_MAP_WITH_SCOPE`.
+All four branch-change edges localized and zero same-branch controls localized -> `M21_PERTURBATION_STATE_BRANCH_SIGNATURE_MATCHES_CMB_MAP_WITH_SCOPE`.
 
-At least two of four branch-change edges localized, but the full pattern above fails ->
-`M21_PERTURBATION_STATE_BRANCH_SIGNATURE_PARTIAL`.
+At least two of four branch-change edges localized, but the full pattern above fails -> `M21_PERTURBATION_STATE_BRANCH_SIGNATURE_PARTIAL`.
 
-Fewer than two branch-change edges localized ->
-`M21_CMB_BRANCH_NOT_LOCALIZED_IN_NATIVE_PERTURBATION_STATES`.
+Fewer than two branch-change edges localized -> `M21_CMB_BRANCH_NOT_LOCALIZED_IN_NATIVE_PERTURBATION_STATES`.
 
 ## Consequence rule
 
