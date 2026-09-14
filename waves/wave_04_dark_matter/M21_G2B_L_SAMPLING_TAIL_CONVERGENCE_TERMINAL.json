@@ -1,0 +1,40 @@
+{
+  "schema": "KMDSB.W04.M21.LSamplingTailConvergenceTerminal.v0.1",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "protocol": "protocol/W04_M21_G2B_L_SAMPLING_TAIL_CONVERGENCE_v0.1.md",
+  "run_id": 34883823728,
+  "artifact_id": 10363858907,
+  "artifact_digest": "sha256:df44ad84fb6806c136ef58ba464a814775f640dcdc77a841f10d63662ec5f020",
+  "classification": "M21_G2B_L_SAMPLING_TAIL_REMOVAL_NOT_STABLE",
+  "cross_lane_input_identity": true,
+  "distance_contraction_supported": true,
+  "T2_anchor": {
+    "l_logstep": 1.01,
+    "l_linstep": 15,
+    "classification": "REMOVES",
+    "Emax": 2.5439301104904253
+  },
+  "T3": {
+    "l_logstep": 1.0075,
+    "l_linstep": 12,
+    "classification": "REMOVES",
+    "Emax": 1.999402026206219,
+    "excursion_factors": {"TT": 0.8394146181795447, "EE": 1.556299369941368, "TE": 1.999402026206219}
+  },
+  "T4": {
+    "l_logstep": 1.005,
+    "l_linstep": 10,
+    "classification": "REDUCES",
+    "Emax": 4.3134820992594936,
+    "excursion_factors": {"TT": 1.0270332431105396, "EE": 4.3134820992594936, "TE": 1.588033191741104}
+  },
+  "max_adjacent_CMB_R2": {
+    "T2_to_T3": 4.3374239973035595e-06,
+    "T3_to_T4": 3.864279622695383e-06
+  },
+  "scientific_interpretation": "Adjacent numerical spectra contract under further transfer-l refinement, but the frozen removal criterion is not stable: the denser T4 grid reintroduces an f3-specific EE excursion above the threshold. Hence simple monotone disappearance of the M21 CMB excursion with denser l sampling is not established. This remains a numerical response instability, not a physical model failure.",
+  "k1v2_reference_authorized_by_this_parent": false,
+  "K1_promoted": false,
+  "physical_falsification": false
+}
