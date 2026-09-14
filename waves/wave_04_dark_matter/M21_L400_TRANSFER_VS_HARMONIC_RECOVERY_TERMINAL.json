@@ -1,0 +1,58 @@
+{
+  "schema": "KMDSB.W04.M21.L400TransferVsHarmonicRecoveryTerminal.v0.3",
+  "date": "2026-09-15",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "protocol": "protocol/W04_M21_L400_TRANSFER_VS_HARMONIC_DIAGNOSTIC_v0.1.md",
+  "recovery_protocol": "protocol/W04_M21_L400_TRANSFER_HARMONIC_OUTPUT_NORMALIZATION_RECOVERY_v0.1.md",
+  "activation_protocol": "protocol/W04_M21_L400_TRANSFER_HARMONIC_RECOVERY_TRIGGER_ACTIVATION_v0.1.md",
+  "run_id": 34905311127,
+  "head_sha": "3a935eff2d0914f265b9aa52840b6e5deb2c6827",
+  "artifact_id": 10372622446,
+  "artifact_digest": "sha256:0ff3f59f17002dfeacf86d34fc306f6656ce7e604fcead3780f65db1670d7262",
+  "parent_instrumented_run_id": 34904313450,
+  "parent_lane_artifacts": {
+    "A": {"id": 10372027866, "digest": "sha256:f665de041ef374ac300ecc804a11319ddbbed2b31b03502417174d45f1abbe56"},
+    "B": {"id": 10371708940, "digest": "sha256:51458adb090400bbe4301c878fe81afdc7c5188b5da45ca064b54a47619d5e30"}
+  },
+  "factorial_parent_run_id": 34887488405,
+  "classification": "M21_L400_SPIKE_PRESENT_IN_E_TRANSFER_KERNEL_WITH_SCOPE",
+  "normalization_recovery_only": true,
+  "no_class_execution": true,
+  "null_max": 0.0,
+  "lanes": {
+    "A": {
+      "lane": "P400_ON_TAIL_OFF",
+      "classification": "LANE_TRANSFER_LOCALIZED",
+      "neighbors": [399, 401],
+      "direct_sparse_cl_l400_E": 178.51538852487005,
+      "transfer_E": {"399": 1.3986411467340771, "400": 874.3960019455686, "401": 1.402052183573077},
+      "ee_integrand_E": {"399": 1.415192002659188, "400": 457.5028886698498, "401": 1.4456405742714764},
+      "transfer_l400_D": {"f2": 4.282014789898243e-07, "f3": 0.00042319589410518037, "f4": 4.83986538323084e-07},
+      "transfer_l400_area_specificity_report_only": 125.89353580550059,
+      "transfer_l400_max_pointwise_specificity_report_only": 36807.73859536561,
+      "transfer_l400_p95_pointwise_specificity_report_only": 1228.7158528762545,
+      "serialization_relative_error_max": 1.56811785114117e-13,
+      "null_max": 0.0
+    },
+    "B": {
+      "lane": "P400_EVEN_TAIL_OFF",
+      "classification": "LANE_TRANSFER_LOCALIZED",
+      "neighbors": [398, 402],
+      "direct_sparse_cl_l400_E": 178.51538852487005,
+      "transfer_E": {"398": 1.4008607379692404, "400": 874.3960019455686, "402": 1.4013385741358386},
+      "ee_integrand_E": {"398": 1.4176818119519772, "400": 457.5028886698498, "402": 1.4430016759831863},
+      "transfer_l400_D": {"f2": 4.282014789898243e-07, "f3": 0.00042319589410518037, "f4": 4.83986538323084e-07},
+      "transfer_l400_area_specificity_report_only": 125.89353580550059,
+      "transfer_l400_max_pointwise_specificity_report_only": 36807.73859536561,
+      "transfer_l400_p95_pointwise_specificity_report_only": 1228.7158528762545,
+      "serialization_relative_error_max": 1.62386849701978e-13,
+      "null_max": 0.0
+    }
+  },
+  "scientific_interpretation": "Across two independently structured sparse-l layouts, the isolated f3-specific l=400 EE anomaly is already present in the native scalar E transfer kernel Delta_l^E(k), while neighboring direct sparse multipoles remain calm. The later EE integrand inherits the anomaly; harmonic k/q accumulation is not the first anomalous layer under the frozen metrics. This localizes the numerical mechanism to scalar-E transfer computation with scope, not to a physical mixed-dark-matter failure or a proven CLASS defect.",
+  "next_authorized_protocol": "protocol/W04_M21_CONDITIONAL_L400_K_SUPPORT_MAPPING_v0.1.md",
+  "K1_promoted": false,
+  "K3_promoted": false,
+  "K4_promoted": false,
+  "physical_falsification": false
+}
