@@ -2,11 +2,13 @@
 
 Frozen: 2026-09-14 while `W04 M21 perturbation-state branch signature v0.1` run `34895647832` is non-terminal. No perturbation-state result from that run is used in this protocol.
 
+Infrastructure amendment frozen while `W04 M21 perturbation-state seam recovery v0.1` run `34896737054` is still queued/non-terminal: the original parent subsequently terminalized BLOCKED solely on native duplicate `(tau,a)` approximation-switch seams. Therefore a terminal seam-recovery result may act as the parent authority **only if** it has `seam_recovery_passed=true`, `cross_lane_input_identity=true`, and classification exactly `M21_CMB_BRANCH_NOT_LOCALIZED_IN_NATIVE_PERTURBATION_STATES`. MATCH/PARTIAL/BLOCKED recovery outcomes remain non-authorizing. No source statistic, source name, k anchor, branch edge, or threshold is changed by this infrastructure amendment.
+
 Provider: exactly `lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540`.
 
 ## Conditional activation
 
-This gate is authorized **only if** the terminal parent perturbation-state aggregate is classified exactly
+This gate is authorized **only if** a valid terminal perturbation-state aggregate (the original aggregate, or its prospectively preregistered seam-preserving recovery described above) is classified exactly
 `M21_CMB_BRANCH_NOT_LOCALIZED_IN_NATIVE_PERTURBATION_STATES`.
 
 For MATCH/PARTIAL/BLOCKED parent outcomes this protocol remains historical preparation and MUST NOT execute.
