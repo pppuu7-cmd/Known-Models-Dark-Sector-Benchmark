@@ -1,0 +1,176 @@
+name: W04 M21 l400 transfer convolution decomposition v0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-l400-transfer-convolution-decomposition-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  FACTORIAL_RUN: '34887488405'
+  PARENT_DIAG_RUN: '34904313450'
+
+jobs:
+  preflight:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce terminal parent authority
+        run: |
+          python3 - <<'PY'
+          import json
+          a=json.load(open('waves/wave_04_dark_matter/M21_L400_TRANSFER_VS_HARMONIC_RECOVERY_TERMINAL.json'))
+          b=json.load(open('waves/wave_04_dark_matter/M21_L400_K_SUPPORT_MAPPING_TERMINAL.json'))
+          assert a['classification']=='M21_L400_SPIKE_PRESENT_IN_E_TRANSFER_KERNEL_WITH_SCOPE'
+          assert b['classification']=='M21_L400_K_SUPPORT_MAPPED_WITH_SCOPE'
+          assert a['physical_falsification'] is False and b['physical_falsification'] is False
+          PY
+      - name: Exact-source patch anchor preflight
+        run: |
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$PIN"
+          test "$(git -C class rev-parse HEAD)" = "$PIN"
+          python3 verification/m21/apply_l400_transfer_convolution_diag.py class/source/transfer.c patch_manifest.json
+          test "$(git -C class diff --name-only)" = 'source/transfer.c'
+          git -C class diff --check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m21-l400-conv-preflight-v01
+          path: patch_manifest.json
+          if-no-files-found: error
+          retention-days: 90
+
+  case:
+    needs: preflight
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        case_id: [ref, f2, f3, f4]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download immutable matching factorial A parent
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-lphase-P400_ON_TAIL_OFF
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.FACTORIAL_RUN }}
+      - name: Execute one independent physical case
+        id: execute
+        continue-on-error: true
+        run: bash verification/m21/run_l400_transfer_convolution_case_v01.sh '${{ matrix.case_id }}' parent
+      - name: Preserve case-specific metadata name
+        if: always()
+        run: |
+          if [ -f case_meta.json ]; then mv case_meta.json '${{ matrix.case_id }}_case_meta.json'; fi
+      - name: Materialize blocked metadata if execution stopped early
+        if: always()
+        env:
+          CASE_ID: ${{ matrix.case_id }}
+          EXECUTE: ${{ steps.execute.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['CASE_ID']+'_case_meta.json')
+          if not p.exists():
+            p.write_text(json.dumps({
+              'schema':'KMDSB.W04.M21.L400TransferConvolutionCase.v0.1',
+              'protocol':'protocol/W04_M21_L400_TRANSFER_CONVOLUTION_DECOMPOSITION_v0.1.md',
+              'case':os.environ['CASE_ID'],'authority_clean':False,'execution_outcome':os.environ['EXECUTE'],
+              'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False,
+            },indent=2,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-conv-case-${{ matrix.case_id }}-v01
+          path: |
+            ${{ matrix.case_id }}_case_meta.json
+            conv_${{ matrix.case_id }}.dat
+            l400_transfer_convolution_patch_manifest.json
+            conv_P400_ON_TAIL_OFF_profile_manifest.json
+            case_status.tsv
+            run_${{ matrix.case_id }}.log
+            build.log
+            output/*_cl.dat
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Fail blocked execution after evidence upload
+        if: always()
+        env:
+          CASE_ID: ${{ matrix.case_id }}
+        run: |
+          python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ['CASE_ID']+'_case_meta.json'))
+          if d.get('authority_clean') is not True: raise SystemExit(1)
+          PY
+
+  aggregate:
+    needs: [preflight,case]
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-l400-conv-case-*-v01
+          path: components
+      - name: Download immutable parent l400 transfer diagnostic A
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-l400-transfer-harmonic-A
+          path: parent_diag
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.PARENT_DIAG_RUN }}
+      - name: Apply frozen source/radial/convolution classifier
+        id: analyze
+        continue-on-error: true
+        run: |
+          python3 -m pip install --disable-pip-version-check -q numpy==2.2.6
+          python3 verification/m21/l400_transfer_convolution_decomposition.py components parent_diag M21_L400_TRANSFER_CONVOLUTION_DECOMPOSITION_RESULT.json
+      - name: Materialize aggregate blocker if needed
+        if: always()
+        env:
+          ANALYZE: ${{ steps.analyze.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path('M21_L400_TRANSFER_CONVOLUTION_DECOMPOSITION_RESULT.json')
+          if not p.exists():
+            p.write_text(json.dumps({
+              'schema':'KMDSB.W04.M21.L400TransferConvolutionDecomposition.v0.1',
+              'protocol':'protocol/W04_M21_L400_TRANSFER_CONVOLUTION_DECOMPOSITION_v0.1.md',
+              'classification':'M21_L400_TRANSFER_CONVOLUTION_DECOMPOSITION_BLOCKED',
+              'analysis_outcome':os.environ['ANALYZE'],
+              'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False,
+            },indent=2,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-transfer-convolution-decomposition-v01
+          path: M21_L400_TRANSFER_CONVOLUTION_DECOMPOSITION_RESULT.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Fail aggregate only after artifact upload if blocked
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json
+          d=json.load(open('M21_L400_TRANSFER_CONVOLUTION_DECOMPOSITION_RESULT.json'))
+          if d.get('classification')=='M21_L400_TRANSFER_CONVOLUTION_DECOMPOSITION_BLOCKED': raise SystemExit(1)
+          PY
