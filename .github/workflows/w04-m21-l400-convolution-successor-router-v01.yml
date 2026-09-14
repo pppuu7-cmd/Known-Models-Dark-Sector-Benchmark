@@ -1,0 +1,43 @@
+name: W04 M21 l400 convolution successor router v0.1
+
+on:
+  workflow_run:
+    workflows: ['W04 M21 l400 transfer convolution decomposition v0.1']
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  route:
+    if: ${{ github.event.workflow_run.id == 34907528331 }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download terminal recovery aggregate only
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-l400-transfer-convolution-decomposition-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ github.event.workflow_run.id }}
+      - name: Verify immutable recovery parent identity
+        run: |
+          test '${{ github.event.workflow_run.id }}' = '34907528331'
+          test '${{ github.event.workflow_run.head_sha }}' = '2338fb5a4ee92c8b94a1583089465e42d164f439'
+          test -f parent/M21_L400_TRANSFER_CONVOLUTION_DECOMPOSITION_RESULT.json
+      - name: Route frozen terminal classification
+        run: |
+          python3 verification/m21/l400_convolution_successor_router.py \
+            parent/M21_L400_TRANSFER_CONVOLUTION_DECOMPOSITION_RESULT.json \
+            M21_L400_CONVOLUTION_SUCCESSOR_ROUTER_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-convolution-successor-router-v01
+          path: M21_L400_CONVOLUTION_SUCCESSOR_ROUTER_RESULT.json
+          if-no-files-found: error
+          retention-days: 90
