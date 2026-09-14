@@ -1,0 +1,102 @@
+{
+  "schema": "KMDSB.W03.M13b.K3D2BSourceIVPConsistencyAuditResult.v0.1",
+  "date": "2026-09-14",
+  "model_id": "M13b",
+  "family_id": "F13",
+  "gate": "K3D2-B",
+  "provider": "lesgourg/class_public",
+  "provider_commit": "64bbab707faf4de4779a9e04edd180fef18d98fa",
+  "protocol": "protocol/W03_M13B_K3D2B_SOURCE_IVP_CONSISTENCY_AUDIT_v0.1.md",
+  "verifier": "verification/m13b/k3d2b_source_ivp_consistency_audit.py",
+  "workflow": ".github/workflows/w03-m13b-k3d2b-source-ivp-consistency-audit.yml",
+  "workflow_run": 34792651978,
+  "workflow_head_sha": "3df610ddbf5b50b0880673b317b31ee7f7882f91",
+  "classification": "M13B_K3D2B_EQUATIONS_CONSISTENT_IVP_GAUGE_MISMATCH_CONFIRMED",
+  "all_required_checks_pass": true,
+  "lane_status": {
+    "source_equations": {
+      "job_id": 103819655145,
+      "classification": "M13B_K3D2B_SOURCE_EQUATIONS_AND_STRESS_SIGNS_PASS",
+      "artifact_id": 10327614457,
+      "artifact_digest": "sha256:e433f65edba128b93fb73c608bf4a1c440bee47303686adfc87797b5ebfd4ade"
+    },
+    "immutable_parent_ivp": {
+      "job_id": 103819655089,
+      "classification": "M13B_K3D2B_NEWTONIAN_IVP_GAUGE_MISMATCH_WITNESS_PASS",
+      "artifact_id": 10328564007,
+      "artifact_digest": "sha256:17d0e94dc8c401a25c2c38d71203dc5aaf3ea228e6afa730930b2bd35e3fe2f7"
+    },
+    "implementation_feasibility": {
+      "job_id": 103819654972,
+      "classification": "M13B_K3D2B_GAUGE_MAPPED_IVP_SOURCE_PATH_AVAILABLE",
+      "artifact_id": 10328810897,
+      "artifact_digest": "sha256:f4c86a4d6a508a58129e63b6107a8f7d9f2a71bb14ff0cf5f1fd21a5b4929dfa"
+    },
+    "aggregate": {
+      "job_id": 103819967950,
+      "artifact_id": 10328985081,
+      "artifact_digest": "sha256:6fa9d2fed8212b816d8cbb62eddcaaaed941176b1c270b38f7398c9c7b5005aa"
+    }
+  },
+  "parent_scientific_run": {
+    "run_id": 34790860872,
+    "artifact_id": 10327756907,
+    "artifact_digest": "sha256:4efbd193e5ab0943af4715fd262f9e695b5f65a1800bc971b6d48853727b4f9f",
+    "classification": "M13B_K3D2B_CERTIFIED_DEFAULT_FULL_B123_GAP",
+    "historical_B3_rewritten": false
+  },
+  "evidence": {
+    "source_equation_and_stress_sign_checks_passed": 11,
+    "khat_1": {
+      "a_handoff": 0.1666666666667,
+      "tau_handoff_Mpc": 6256.998662974,
+      "alpha": 1297.37584848,
+      "alpha_prime": 0.197867437908,
+      "common_scale": 1.6699731271531055e-05,
+      "executed_sync_seed": {
+        "delta_x_S": 0.0,
+        "delta_x_prime_S": 0.0,
+        "delta_y_S": 0.0,
+        "delta_y_prime_S": 0.0
+      },
+      "scaled_newtonian_seed_implied_by_executed_sync_seed": {
+        "delta_x_N": 1.566748181653432e-11,
+        "r_N": 1.0853451071915286e-07,
+        "delta_y_N": -3.0049781861991285e-10,
+        "t_N": -2.0816609990715853e-06
+      },
+      "sync_prime_required_for_frozen_newtonian_zero_derivative_seed": {
+        "delta_x_prime_S": -2.0037884127080934e-06,
+        "delta_y_prime_S": 3.8432090968001314e-05
+      }
+    },
+    "khat_10": {
+      "alpha": 1223.661438599,
+      "alpha_prime": 0.1851890996062,
+      "common_scale": 1.7779192193068332e-05,
+      "scaled_newtonian_seed_implied_by_executed_sync_seed": {
+        "delta_x_N": 1.573248066497442e-11,
+        "r_N": 1.0898472219321559e-07,
+        "delta_y_N": -3.017444779361818e-10,
+        "t_N": -2.090295926899511e-06
+      },
+      "sync_prime_required_for_frozen_newtonian_zero_derivative_seed": {
+        "delta_x_prime_S": -1.8899359560925905e-06,
+        "delta_y_prime_S": 3.624843328147878e-05
+      }
+    },
+    "reused_exclusion_floor": 1e-12,
+    "frozen_K3C2_newtonian_target_seed": {
+      "delta_x_N": 0.0,
+      "r_N": 0.0,
+      "delta_y_N": 0.0,
+      "t_N": 0.0
+    }
+  },
+  "interpretation": "The independent CLASS adapter equations and stress-energy signs are internally consistent with the frozen covariant implementation, but the executed synchronous-zero qcf/qpf seed is not gauge-equivalent to the frozen K3C2 Newtonian-zero derivative seed. The historical parent B3 sign gap remains valid for the executed initialization but is not a clean same-initial-surface K3C2 regression.",
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "physical_falsification": false,
+  "next_authorized_gate": "Prospectively freeze and execute a gauge-mapped synchronous z=5 IVP successor that changes only the four qcf/qpf direct-field state values at the native boundary according to the already frozen inverse gauge transform, while preserving the exact provider pin, equations, cosmology, certified tau seam, modes, common normalization and all B1/B2/B3 thresholds."
+}
