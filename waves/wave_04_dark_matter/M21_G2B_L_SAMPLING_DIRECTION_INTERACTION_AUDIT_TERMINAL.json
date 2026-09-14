@@ -1,0 +1,23 @@
+{
+  "schema": "KMDSB.W04.M21.LSamplingDirectionInteractionAuditTerminal.v0.1",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "protocol": "protocol/W04_M21_G2B_TRANSFER_L_SAMPLING_DIRECTION_INTERACTION_AUDIT_v0.1.md",
+  "run_id": 34879864684,
+  "artifact_id": 10364145887,
+  "artifact_digest": "sha256:9e87c183e5827ec160e40c69e0ba6002be53e76bc123252fd3b66a9e48dbe344",
+  "classification": "M21_G2B_L_SAMPLING_INTERACTION_AND_DIRECTION_SUPPORTED",
+  "cross_lane_input_identity": true,
+  "interaction_supported": true,
+  "interaction_gain": 2.056026060256032,
+  "direction_monotone_supported": true,
+  "pairs": {
+    "LPAIR_I": {"l_logstep": 1.05, "l_linstep": 32, "classification": "REDUCES", "Emax": 154.25643660087928},
+    "LPAIR_R": {"l_logstep": 1.026, "l_linstep": 25, "classification": "REDUCES", "Emax": 34.305011087551506},
+    "LPAIR_T1": {"l_logstep": 1.015, "l_linstep": 20, "classification": "REDUCES", "Emax": 13.582267651621091},
+    "LPAIR_T2": {"l_logstep": 1.01, "l_linstep": 15, "classification": "REMOVES", "Emax": 2.543930110490425}
+  },
+  "scientific_interpretation": "The transfer multipole-sampling excursion contracts monotonically under an independently source-verified denser l grid, and the joint l_logstep/l_linstep refinement is stronger than either stage-3 axis alone. This supports transfer-l under-resolution as a genuine numerical contributor, but does not yet establish a globally converged reference limit.",
+  "K1_promoted": false,
+  "physical_falsification": false
+}
