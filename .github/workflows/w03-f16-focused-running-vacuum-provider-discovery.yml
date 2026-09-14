@@ -17,7 +17,7 @@ jobs:
   search:
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 2
       matrix:
         include:
           - lane: 0
@@ -48,22 +48,37 @@ jobs:
           set -euo pipefail
           mkdir -p out
           python - <<'PY'
-          import json, os, re, urllib.parse, urllib.request, time
+          import base64, json, os, re, time, urllib.error, urllib.parse, urllib.request
           token=os.environ['GH_TOKEN']; q=os.environ['QUERY']; lane=int(os.environ['LANE'])
           headers={'Authorization':f'Bearer {token}','Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'KMDSB-F16'}
-          def get(url):
-              req=urllib.request.Request(url,headers=headers)
-              with urllib.request.urlopen(req,timeout=30) as r: return json.load(r)
+          def get(url, attempts=6):
+              last=None
+              for i in range(attempts):
+                  try:
+                      req=urllib.request.Request(url,headers=headers)
+                      with urllib.request.urlopen(req,timeout=30) as r: return json.load(r)
+                  except urllib.error.HTTPError as e:
+                      last=e
+                      if e.code not in (403,429): raise
+                      retry=e.headers.get('Retry-After')
+                      sleep=float(retry) if retry else min(60, 5*(2**i))
+                      time.sleep(sleep)
+                  except Exception as e:
+                      last=e
+                      if i==attempts-1: raise
+                      time.sleep(min(30,3*(i+1)))
+              raise last
           u='https://api.github.com/search/code?q='+urllib.parse.quote(q)+'&per_page=20'
-          try: sr=get(u)
+          try:
+              sr=get(u)
           except Exception as e:
-              json.dump({'lane':lane,'query':q,'status':'SEARCH_ERROR','error':repr(e),'candidates':[]},open(f'out/lane_{lane}.json','w'),indent=2); raise
+              json.dump({'lane':lane,'query':q,'status':'SEARCH_ERROR','error':repr(e),'candidates':[]},open(f'out/lane_{lane}.json','w'),indent=2)
+              raise SystemExit(0)
           candidates=[]
           for item in sr.get('items',[]):
-              repo=item['repository']['full_name']; path=item['path']; ref=item.get('html_url','').split('/blob/')[-1].split('/')[0] if '/blob/' in item.get('html_url','') else None
-              # Fetch current matched blob through contents URL supplied by search.
+              repo=item['repository']['full_name']; path=item['path']
               try:
-                  obj=get(item['url']); import base64
+                  obj=get(item['url'])
                   text=base64.b64decode(obj.get('content','')).decode('utf-8','replace') if obj.get('encoding')=='base64' else ''
               except Exception as e:
                   candidates.append({'repository':repo,'path':path,'fetch_error':repr(e),'priority':'FETCH_BLOCKED'}); continue
@@ -110,13 +125,14 @@ jobs:
           sc=[x for x in cand if x.get('priority')=='SOURCE_COMPLETE_REVIEW']
           leads=[x for x in cand if x.get('priority')=='PROVENANCE_LEAD']
           errors=[r for r in rows if r.get('status')!='OK']
+          missing=max(0,8-len(rows))
           if sc: cl='F16_FOCUSED_DISCOVERY_SOURCE_COMPLETE_CANDIDATE_FOUND'
           elif leads: cl='F16_FOCUSED_DISCOVERY_PROVENANCE_LEADS_ONLY'
-          elif errors and len(errors)==len(rows): cl='F16_FOCUSED_DISCOVERY_INFRASTRUCTURE_BLOCKED'
+          elif (errors or missing) and len(errors)+missing==8: cl='F16_FOCUSED_DISCOVERY_INFRASTRUCTURE_BLOCKED'
           else: cl='F16_FOCUSED_DISCOVERY_NO_QUALIFYING_PUBLIC_SOURCE'
-          out={'schema':'KMDSB.W03.F16FocusedRunningVacuumDiscovery.v0.1','protocol':'protocol/W03_F16_FOCUSED_RUNNING_VACUUM_PROVIDER_DISCOVERY_v0.1.md','classification':cl,'source_complete_candidates':sc,'provenance_leads':leads,'lane_results':rows,'K0_promoted':False,'K1_promoted':False,'physical_falsification':False}
+          out={'schema':'KMDSB.W03.F16FocusedRunningVacuumDiscovery.v0.1','protocol':'protocol/W03_F16_FOCUSED_RUNNING_VACUUM_PROVIDER_DISCOVERY_v0.1.md','classification':cl,'source_complete_candidates':sc,'provenance_leads':leads,'lane_results':rows,'missing_lane_count':missing,'search_error_count':len(errors),'K0_promoted':False,'K1_promoted':False,'physical_falsification':False}
           json.dump(out,open('f16_focused_discovery_aggregate.json','w'),indent=2)
-          print(json.dumps({'classification':cl,'source_complete':len(sc),'leads':len(leads),'errors':len(errors)},indent=2))
+          print(json.dumps({'classification':cl,'source_complete':len(sc),'leads':len(leads),'errors':len(errors),'missing':missing},indent=2))
           PY
       - uses: actions/upload-artifact@v4
         with:
