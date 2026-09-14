@@ -1,0 +1,47 @@
+name: W04 M21 transfer-l knot-only phase reanalysis v0.1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m21-transfer-l-knot-only-phase-reanalysis-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  reanalyze:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Download immutable factorial lane artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-lphase-*
+          path: lanes
+          merge-multiple: false
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34887488405
+      - name: Download immutable factorial parent aggregate
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-l-grid-phase-factorial-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34887488405
+      - name: Apply frozen knot-only classifier
+        run: |
+          set -euo pipefail
+          python3 verification/m21/l_grid_knot_only_phase_reanalysis.py lanes parent/M21_L_GRID_PHASE_FACTORIAL_RESULT.json M21_L_GRID_KNOT_ONLY_PHASE_REANALYSIS_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l-grid-knot-only-phase-reanalysis-v01
+          retention-days: 90
+          path: M21_L_GRID_KNOT_ONLY_PHASE_REANALYSIS_RESULT.json
