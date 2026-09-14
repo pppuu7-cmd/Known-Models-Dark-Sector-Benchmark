@@ -75,6 +75,7 @@ def metric_for_l(ds:dict[str,dict[int,np.ndarray]],l:int,col:int)->dict:
 def main(pair_id:str,newroot:Path,parentroot:Path,meta_path:Path,patch_path:Path,outp:Path)->int:
  cfg=LANES[pair_id]
  meta=json.loads(meta_path.read_text()); patch=json.loads(patch_path.read_text())
+ parent_meta=json.loads((parentroot/'lane_meta.json').read_text())
  checks={
   'provider_head':meta.get('provider_head')==PIN,
   'exact_head':meta.get('exact_head') is True,
@@ -84,6 +85,13 @@ def main(pair_id:str,newroot:Path,parentroot:Path,meta_path:Path,patch_path:Path
   'patch_anchor_count':patch.get('anchor_count')==1,
   'patch_after_harmonic_cls':patch.get('insertion_after_harmonic_cls') is True,
   'patch_state_nonmutating_claim':patch.get('mutates_class_state') is False,
+  'parent_lane_identity':parent_meta.get('lane')==cfg['name'],
+  'ini_hash_identity':meta.get('ini_sha256')==parent_meta.get('ini_sha256'),
+  'cl_permille_hash_identity':meta.get('cl_permille_sha256')==parent_meta.get('cl_permille_sha256'),
+  'ncdm_tight_hash_identity':meta.get('ncdm_tight_sha256')==parent_meta.get('ncdm_tight_sha256'),
+  'l_logstep_identity':str(meta.get('l_logstep'))==str(parent_meta.get('l_logstep')),
+  'l_linstep_identity':str(meta.get('l_linstep'))==str(parent_meta.get('l_linstep')),
+  'sparse_l_signature_identity':meta.get('sparse_l_signature')==parent_meta.get('sparse_l_signature'),
  }
  local=set(meta.get('sparse_l_signature',{}).get('nodes_394_406',[])); checks['direct_sparse_nodes']=cfg['required'].issubset(local)
  null={}; null_ok=True
@@ -102,7 +110,6 @@ def main(pair_id:str,newroot:Path,parentroot:Path,meta_path:Path,patch_path:Path
  ds={c:diag(newroot/f'diag_{c}.dat') for c in CASES}
  for c in CASES:
   if not cfg['required'].issubset(set(ds[c])): raise RuntimeError(f'missing direct diag l nodes for {c}: {sorted(ds[c])}')
- # Diagnostic direct C_l must equal the new cl.dat direct integer value at selected sparse nodes.
  cl_diag_match=True; cl_diag_abs={}
  for c in CASES:
   cl_diag_abs[c]={}
