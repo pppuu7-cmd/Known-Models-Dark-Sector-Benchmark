@@ -1,0 +1,63 @@
+{
+  "schema": "KMDSB.W04.M21.G2FlatGeometryActivityAudit.v0.1",
+  "date": "2026-09-14",
+  "status": "PRE_G2_TERMINAL_SCOPE_AUDIT_NOT_A_GATE",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "parent_protocol": "protocol/W04_M21_CONDITIONAL_CMB_PRECISION_COMPONENT_DECOMPOSITION_v0.1.md",
+  "stage2_protocol": "protocol/W04_M21_CONDITIONAL_CMB_PRECISION_STAGE2_SUBGROUP_DECOMPOSITION_v0.1.md",
+  "audit_timing": "recorded while recovered parent G2 f2/f3 were still in progress and before any terminal G2 group classification",
+  "frozen_geometry": "flat (M21 case files do not override curvature; provider default Omega_k=0 / sgnK=0)",
+  "source_facts": {
+    "transfer_q_definition": "In the exact provider transfer module, wavenumbers are called q; in flat universes k=q. The transfer module precomputes Delta_l^X(q).",
+    "flat_q_branch": "The exact transfer q-grid constructor has an explicit sgnK==0 flat branch for q_min/q_max.",
+    "closed_trapezoidal_branch": "q_logstep_trapzd and the associated q_numstep_transition smoothing are used in the sgnK==1 closed-curvature branch, including integer-nu handling before the flat approximation.",
+    "flat_hyperspherical_sampling": "The flat spherical-Bessel interpolation structure is created with hyper_sampling_flat and hyper_phi_min_abs.",
+    "curved_hyperspherical_sampling": "hyper_sampling_curved_low_nu/high_nu and hyper_nu_sampling_step are used in the curved hyperspherical path."
+  },
+  "stage2_effective_scope": {
+    "G2A": {
+      "status": "ACTIVE_FLAT",
+      "parameters": [
+        "k_min_tau0",
+        "k_max_tau0_over_l_max",
+        "k_step_sub",
+        "k_step_super",
+        "k_step_super_reduction"
+      ],
+      "interpretation": "Perturbation k-range/density changes are active in the frozen scalar flat run."
+    },
+    "G2B": {
+      "status": "MIXED_ACTIVE_AND_CURVED_ONLY",
+      "active_or_directly_relevant_flat_parameters": [
+        "l_logstep",
+        "l_linstep",
+        "hyper_sampling_flat",
+        "hyper_phi_min_abs",
+        "hyper_x_tol"
+      ],
+      "curvature_specific_or_noncausal_in_flat_scope": [
+        "hyper_sampling_curved_low_nu",
+        "hyper_sampling_curved_high_nu",
+        "hyper_nu_sampling_step",
+        "hyper_flat_approximation_nu"
+      ],
+      "interpretation": "If G2B is sufficient in flat M21, attribution must be capped to the active flat multipole/Bessel sampling content unless later instrumentation separates individual parameters."
+    },
+    "G2C": {
+      "status": "MIXED_ACTIVE_AND_CLOSED_ONLY",
+      "active_flat_parameters": [
+        "q_linstep",
+        "q_logstep_spline"
+      ],
+      "closed_curvature_specific_parameters": [
+        "q_logstep_trapzd",
+        "q_numstep_transition"
+      ],
+      "interpretation": "In flat M21, G2C is effectively a transfer-wavenumber q linear/log-spline sampling test; closed-universe trapezoidal controls cannot receive causal credit."
+    }
+  },
+  "governance": "Do not alter the preregistered G2 or stage2 subgroup files. This audit only caps later causal wording for the flat frozen case; the frozen subgroup execution and thresholds remain unchanged.",
+  "classification": "M21_G2_FLAT_GEOMETRY_ACTIVITY_SCOPED",
+  "K1_promoted": false,
+  "physical_falsification": false
+}
