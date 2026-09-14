@@ -1,0 +1,34 @@
+{
+  "schema": "KMDSB.W04.M21.CMBPrecisionStage2SubgroupTerminal.v0.1",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "protocol": "protocol/W04_M21_CONDITIONAL_CMB_PRECISION_STAGE2_SUBGROUP_DECOMPOSITION_v0.1.md",
+  "run_id": 34872522336,
+  "head_sha": "c052ac72de0fdba70dee735f09a6e9c1eeb3a359",
+  "artifact_id": 10360228613,
+  "artifact_digest": "sha256:2a6499bcafdd321a5f3832870657aca12210e5f5a64f1b3dc429b56cbbc24e7c",
+  "classification": "M21_CMB_PRECISION_STAGE2_COMPLETE",
+  "Emax_parent_RK": 534.8355868817356,
+  "activated_parents": ["G1", "G2"],
+  "parent_stage2": {
+    "G1": {
+      "classification": "G1_STAGE2_SUBGROUP_SUFFICIENCY_IDENTIFIED",
+      "sufficient_subgroups": ["G1A"]
+    },
+    "G2": {
+      "classification": "G2_STAGE2_SUBGROUP_SUFFICIENCY_IDENTIFIED",
+      "sufficient_subgroups": ["G2B"]
+    }
+  },
+  "subgroups": {
+    "G1A": {"classification": "SUBGROUP_REMOVES_EXCURSION", "Emax": 0.03431664516144772},
+    "G1B": {"classification": "SUBGROUP_INSUFFICIENT", "Emax": 799.8927885017413},
+    "G1C": {"classification": "SUBGROUP_INSUFFICIENT", "Emax": 535.3669592210668},
+    "G2A": {"classification": "SUBGROUP_INSUFFICIENT", "Emax": 556.8000668461917},
+    "G2B": {"classification": "SUBGROUP_REDUCES_EXCURSION", "Emax": 34.304759775112494},
+    "G2C": {"classification": "SUBGROUP_INSUFFICIENT", "Emax": 534.8580282618358}
+  },
+  "K1_promoted": false,
+  "physical_falsification": false,
+  "interpretation_ceiling": "Stage-2 localizes precision-sensitive module families only. G1A removes the CMB excursion and G2B reduces it, but no unique parameter, code defect, K1 result, K3/K4 result, or physical mixed-DM falsification is established. Any single-parameter diagnostic requires a new prospective preregistration."
+}
