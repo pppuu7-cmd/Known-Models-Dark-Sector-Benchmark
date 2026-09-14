@@ -8,7 +8,7 @@ LANES={
  'RK_T1E5':('rk',1e-5),'RK_T1E6':('rk',1e-6),'RK_T1E7':('rk',1e-7),
 }
 CASES=('ref','f2','f3','f4')
-COLS={'x_e':3,"kappa_prime":4,'exp_m_kappa':5,'g':6,'Tb':7}
+COLS={'x_e':3,'kappa_prime':4,'exp_m_kappa':5,'g':6,'Tb':7}
 CHANGE=[('NDF_T1E5','NDF_T1E6'),('NDF_T1E6','NDF_T1E7'),('RK_T1E5','RK_T1E6'),('NDF_T1E7','RK_T1E7')]
 CONTROL=[('RK_T1E6','RK_T1E7'),('NDF_T1E5','RK_T1E5'),('NDF_T1E6','RK_T1E6')]
 PROTOCOL='protocol/W04_M21_THERMODYNAMICS_STATE_BRANCH_SIGNATURE_v0.1.md'
@@ -62,20 +62,21 @@ def main(comp:Path,out:Path):
    for a,b in pairs:
     name=a+'__'+b; ed={'kind':kind,'columns':{}}
     for colname,col in COLS.items():
-     ds={c:dist(tables[a][c],tables[b][c],col) for c in CASES}; j=float(ds['f3']['R2_symnorm']/max(ds['ref']['R2_symnorm'],ds['f2']['R2_symnorm'],ds['f4']['R2_symnorm'],1e-300))
-     ed['columns'][colname]={'case_distances':ds,'J_f3_specific':j}
+     primary={c:dist(tables[a][c],tables[b][c],col) for c in CASES}
+     full={c:dist(tables[a][c],tables[b][c],col,None,None) for c in CASES}
+     j=float(primary['f3']['R2_symnorm']/max(primary['ref']['R2_symnorm'],primary['f2']['R2_symnorm'],primary['f4']['R2_symnorm'],1e-300))
+     ed['columns'][colname]={'recombination_window_case_distances':primary,'full_overlap_case_distances_report_only':full,'J_f3_specific':j}
     ed['Jmax']=max(v['J_f3_specific'] for v in ed['columns'].values()); ed['localized_Jmax_ge_3']=ed['Jmax']>=3.0; edges[name]=ed
     if kind=='branch_change' and ed['localized_Jmax_ge_3']: branch_hits+=1
     if kind=='same_branch_control' and ed['localized_Jmax_ge_3']: control_hits+=1
- # same-lane finite-vs-ref response is descriptive only
  lane_state={}
  if identity:
   for lane in LANES:
    lane_state[lane]={}
    for colname,col in COLS.items():
-    rr={c:dist(tables[lane][c],tables[lane]['ref'][... if False else 'ref'],col) for c in ()}
-    vals={c:dist(tables[lane][c],tables[lane]['ref'],col) for c in ('f2','f3','f4')}
-    lane_state[lane][colname]={'case_R2':vals,'f3_excursion_factor':float(vals['f3']['R2_symnorm']/max(vals['f2']['R2_symnorm'],vals['f4']['R2_symnorm'],1e-300))}
+    primary={c:dist(tables[lane][c],tables[lane]['ref'],col) for c in ('f2','f3','f4')}
+    full={c:dist(tables[lane][c],tables[lane]['ref'],col,None,None) for c in ('f2','f3','f4')}
+    lane_state[lane][colname]={'recombination_window_case_R2':primary,'full_overlap_case_R2_report_only':full,'f3_excursion_factor':float(primary['f3']['R2_symnorm']/max(primary['f2']['R2_symnorm'],primary['f4']['R2_symnorm'],1e-300))}
  if not identity: cls='M21_THERMO_STATE_BRANCH_SIGNATURE_BLOCKED'
  elif branch_hits==4 and control_hits==0: cls='M21_THERMO_STATE_BRANCH_SIGNATURE_MATCHES_CMB_MAP_WITH_SCOPE'
  elif branch_hits>=2: cls='M21_THERMO_STATE_BRANCH_SIGNATURE_PARTIAL'
