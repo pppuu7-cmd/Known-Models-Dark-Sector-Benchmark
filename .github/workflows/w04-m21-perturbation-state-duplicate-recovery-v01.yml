@@ -1,0 +1,42 @@
+name: W04 M21 perturbation-state duplicate-coordinate recovery v0.1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m21-perturbation-state-duplicate-recovery-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Download immutable parent lane artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-pert-state-*
+          path: lanes
+          merge-multiple: false
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34895647832
+      - name: Apply frozen dual-sided duplicate-coordinate recovery
+        run: |
+          set -euo pipefail
+          python3 verification/m21/perturbation_state_duplicate_coordinate_recovery.py lanes verification/m21/m21_perturbation_state_gate_config.json M21_PERTURBATION_STATE_DUPLICATE_RECOVERY_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-perturbation-state-duplicate-recovery-v01
+          retention-days: 90
+          path: |
+            M21_PERTURBATION_STATE_DUPLICATE_RECOVERY_RESULT.json
+            FIRST_RESULT.json
+            LAST_RESULT.json
