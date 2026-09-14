@@ -1,0 +1,113 @@
+name: W03 F15 exact NGCG provider discovery v0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w03-f15-exact-ngcg-provider-discovery-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  search:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - {lane: 0, q: '"new generalized chaplygin gas" perturbation extension:py'}
+          - {lane: 1, q: '"new generalized chaplygin gas" CAMB'}
+          - {lane: 2, q: '"new generalized chaplygin gas" CLASS'}
+          - {lane: 3, q: 'NGCG perturbation cosmology extension:py'}
+          - {lane: 4, q: '"generalized chaplygin gas" perturbations extension:c'}
+          - {lane: 5, q: '"generalized chaplygin gas" perturbations extension:f90'}
+          - {lane: 6, q: '"chaplygin" "sound speed" Boltzmann'}
+          - {lane: 7, q: '"chaplygin" "momentum transfer" cosmology'}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Frozen exact-NGCG source search
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LANE: ${{ matrix.lane }}
+          QUERY: ${{ matrix.q }}
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python - <<'PY'
+          import base64,json,os,re,time,urllib.error,urllib.parse,urllib.request
+          lane=int(os.environ['LANE']); q=os.environ['QUERY']; token=os.environ['GH_TOKEN']
+          headers={'Authorization':f'Bearer {token}','Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'KMDSB-F15-NGCG-v01'}
+          def get(url,attempts=6):
+            last=None
+            for i in range(attempts):
+              try:
+                with urllib.request.urlopen(urllib.request.Request(url,headers=headers),timeout=30) as r: return json.load(r)
+              except urllib.error.HTTPError as e:
+                last=e
+                if e.code not in (403,429): raise
+                time.sleep(float(e.headers.get('Retry-After') or min(60,5*(2**i))))
+              except Exception as e:
+                last=e; time.sleep(min(30,3*(i+1)))
+            raise last
+          try: sr=get('https://api.github.com/search/code?q='+urllib.parse.quote(q)+'&per_page=20')
+          except Exception as e:
+            json.dump({'lane':lane,'query':q,'status':'SEARCH_ERROR','error':repr(e),'candidates':[]},open(f'out/lane_{lane}.json','w'),indent=2); raise SystemExit(0)
+          out=[]; allowed=('.py','.c','.cc','.cpp','.h','.f','.f90','.jl')
+          for item in sr.get('items',[]):
+            repo=item['repository']['full_name']; path=item['path']; lp=path.lower()
+            if repo.lower()=='pppuu7-cmd/known-models-dark-sector-benchmark' or not lp.endswith(allowed):
+              out.append({'repository':repo,'path':path,'priority':'REJECT','reason':'nonimplementation_path_or_self'}); continue
+            try:
+              obj=get(item['url']); text=base64.b64decode(obj.get('content','')).decode('utf-8','replace') if obj.get('encoding')=='base64' else ''
+            except Exception as e:
+              out.append({'repository':repo,'path':path,'priority':'FETCH_BLOCKED','fetch_error':repr(e)}); continue
+            low=text.lower()
+            law=bool(re.search(r'new generalized chaplygin|ngcg|generalized chaplygin|chaplygin gas|rho.*alpha|a[_ ]?s.*alpha',low))
+            bg=bool(re.search(r'friedmann|hubble|background|rho[_ ]?(de|ch|cg)|omega[_ ]?(de|ch|cg)|scale[_ ]?factor',low))
+            pert=bool(re.search(r'perturb|boltzmann|synchronous|newtonian[_ ]?gauge|einstein|delta[_ ]?(de|ch|cg)|theta[_ ]?(de|ch|cg)|sound[_ ]?speed|momentum[_ ]?transfer',low))
+            exe=bool(re.search(r'^\s*(def |class |subroutine |module |#include|int main|double |float )|numpy|scipy',text,re.I|re.M))
+            toy=bool(re.search(r'\btoy\b|scaffolding|placeholder|not implemented',low))
+            generic_ide=bool(re.search(r'idecamb',low)) and not bool(re.search(r'ngcg|new generalized chaplygin',low))
+            priority='SOURCE_COMPLETE_REVIEW' if law and bg and pert and exe and not toy and not generic_ide else ('PROVENANCE_LEAD' if law and bg and not toy else 'REJECT')
+            out.append({'repository':repo,'path':path,'html_url':item.get('html_url'),'blob_sha':item.get('sha'),'signals':{'law':law,'background':bg,'perturbation':pert,'executable':exe,'toy':toy,'generic_ide_without_ngcg_bind':generic_ide},'priority':priority})
+          json.dump({'lane':lane,'query':q,'status':'OK','total_count':sr.get('total_count',0),'candidates':out},open(f'out/lane_{lane}.json','w'),indent=2)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f15-ngcg-v01-lane-${{ matrix.lane }}
+          path: out/lane_${{ matrix.lane }}.json
+
+  aggregate:
+    if: always()
+    needs: [search]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: f15-ngcg-v01-lane-*
+          path: lanes
+          merge-multiple: true
+      - name: Frozen aggregate
+        run: |
+          python - <<'PY'
+          import glob,json
+          rows=[json.load(open(p)) for p in sorted(glob.glob('lanes/lane_*.json'))]
+          allc=sum((r.get('candidates',[]) for r in rows),[])
+          sc=[x for x in allc if x.get('priority')=='SOURCE_COMPLETE_REVIEW']; leads=[x for x in allc if x.get('priority')=='PROVENANCE_LEAD']
+          errors=[r for r in rows if r.get('status')!='OK']; missing=max(0,8-len(rows))
+          if sc: cl='F15_NGCG_SOURCE_COMPLETE_CANDIDATE_FOUND'
+          elif leads: cl='F15_NGCG_PROVENANCE_LEADS_ONLY'
+          elif len(errors)+missing==8: cl='F15_NGCG_DISCOVERY_INFRASTRUCTURE_BLOCKED'
+          else: cl='F15_NGCG_NO_QUALIFYING_PUBLIC_SOURCE_IN_FROZEN_TRANCHE'
+          out={'schema':'KMDSB.W03.F15ExactNGCGProviderDiscovery.v0.1','protocol':'protocol/W03_F15_EXACT_NGCG_PROVIDER_DISCOVERY_v0.1.md','classification':cl,'source_complete_candidates':sc,'provenance_leads':leads,'lane_results':rows,'missing_lane_count':missing,'search_error_count':len(errors),'K0_promoted':False,'K1_promoted':False,'physical_falsification':False}
+          json.dump(out,open('f15_ngcg_provider_discovery_aggregate.json','w'),indent=2)
+          print(json.dumps({'classification':cl,'source_complete':len(sc),'leads':len(leads),'errors':len(errors),'missing':missing},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f15-ngcg-provider-discovery-aggregate
+          path: f15_ngcg_provider_discovery_aggregate.json
