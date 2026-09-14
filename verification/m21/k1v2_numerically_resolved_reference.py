@@ -44,11 +44,18 @@ def pass_route(resp,floors):
   p=float(np.polyfit(np.log(FRACS[-3:]),np.log(np.maximum(R[-3:],1e-300)),1)[0])
   ok=mono(R) and R[-1]<R[0] and p>0.5
   return {'pass':bool(ok),'route':'A_IDENTIFIED' if ok else 'NONE','Q':Q.tolist(),'identified':ident.tolist(),'tail_exponent':p,'monotonic_5pct':bool(mono(R))}
- # route B
+ # route B: equivalence must persist once entered; if f=0.10 is itself
+ # equivalent there is no identified-prefix amplitude condition. Otherwise
+ # the last identified point must be strictly below the f=0.10 response.
  if not ident[-1]:
   first_eq=int(np.where(~ident)[0][0]); no_reemerge=not bool(np.any(ident[first_eq+1:])); ids=R[:first_eq]
   prefix_mono=True if ids.size<2 else mono(ids)
-  lower=True if first_eq==0 else R[first_eq-1] < R[0] if first_eq>1 else True
+  if first_eq==0:
+   lower=True
+  elif first_eq==1:
+   lower=False
+  else:
+   lower=bool(R[first_eq-1] < R[0])
   ok=no_reemerge and prefix_mono and lower
   return {'pass':bool(ok),'route':'B_NUMERICAL_EQUIVALENCE' if ok else 'NONE','Q':Q.tolist(),'identified':ident.tolist(),'first_equivalent_index':first_eq,'no_reemergence':bool(no_reemerge),'identified_prefix_monotonic_5pct':bool(prefix_mono),'last_identified_lower_than_first':bool(lower)}
  return {'pass':False,'route':'NONE','Q':Q.tolist(),'identified':ident.tolist(),'reason':'smallest fraction remains identified while earlier equivalence occurred'}
