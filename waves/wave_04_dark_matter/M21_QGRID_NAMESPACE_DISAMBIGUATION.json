@@ -1,0 +1,27 @@
+{
+  "schema": "KMDSB.W04.M21.QGridNamespaceDisambiguation.v0.1",
+  "date": "2026-09-14",
+  "status": "PRE_G2_TERMINAL_TERMINOLOGY_GUARD",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "namespaces": {
+    "NCDM_PHASE_SPACE_MOMENTUM_Q": {
+      "provider_objects": ["q_ncdm", "w_ncdm", "q_size_ncdm"],
+      "provider_layer": "background/input ncdm phase-space quadrature",
+      "scientific_role": "quadrature over the non-cold-dark-matter momentum distribution entering background/perturbation moments",
+      "audited_by": "waves/wave_04_dark_matter/M21_AUTO_QGRID_IDENTITY_ARTIFACT_RECOVERY_RESULT_v0.2.json",
+      "established_result": "Automatic phase-space momentum grid is exactly identical across frozen f2/f3/f4 cases while omega_ncdm differs; fraction-dependent automatic ncdm momentum-grid selection is ruled out as the direct cause of the isolated f3 excursion."
+    },
+    "TRANSFER_WAVENUMBER_Q": {
+      "provider_objects": ["transfer q grid", "q_linstep", "q_logstep_spline", "q_logstep_trapzd", "q_numstep_transition"],
+      "provider_layer": "source/transfer.c",
+      "scientific_role": "sampling/interpolation grid for transfer functions Delta_l^X(q) and spherical/hyperspherical projection",
+      "parent_group": "G2",
+      "stage2_subgroup": "G2C",
+      "established_result": "OPEN until the parent G2 result is terminal and, if G2 is sufficient, the preregistered G2C stage-2 subgroup is executed."
+    }
+  },
+  "non_equivalence_rule": "Never cite the recovered identical NCDM phase-space momentum q-grid as evidence against G2C transfer-q sampling. The two q variables live in different numerical layers and are controlled by different provider structures/precision parameters.",
+  "classification": "M21_QGRID_NAMESPACES_DISTINCT",
+  "K1_promoted": false,
+  "physical_falsification": false
+}
