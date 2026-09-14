@@ -1,0 +1,39 @@
+{
+  "schema": "KMDSB.W04.M21.CMBPrecisionComponentCoverageAudit.v0.1",
+  "date": "2026-09-14",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "protocol": "protocol/W04_M21_CONDITIONAL_CMB_PRECISION_COMPONENT_DECOMPOSITION_v0.1.md",
+  "audit_timing": "after full-reference activation and after component launch, before any component lane result was terminal",
+  "frozen_case_controls": {
+    "output": "tCl,pCl,mPk",
+    "lensing": "no",
+    "non_linear": "none",
+    "modes": "s"
+  },
+  "coverage": {
+    "baseline_already_contains": [
+      "tol_ncdm_bg",
+      "l_max_ncdm",
+      "ncdm_fluid_approximation",
+      "ncdm_fluid_trigger_tau_over_tau_k",
+      "tol_ncdm_synchronous",
+      "tol_ncdm_newtonian",
+      "tol_perturbations_integration",
+      "perturbations_sampling_stepsize",
+      "evolver=0"
+    ],
+    "G1": "thermodynamics plus scalar perturbation/source evolution and radiation/ur hierarchy controls",
+    "G2": "k/l/hyperspherical/q transfer and projection sampling controls",
+    "G3": "scalar CMB transfer-support and late/visibility source truncation controls"
+  },
+  "excluded_cl_ref_settings": {
+    "vector_tensor_transfer_and_hierarchy": "inactive because modes=s",
+    "halofit_k_per_decade": "inactive because non linear=none",
+    "accurate_lensing_num_mu_minus_lmax_delta_l_max": "lensing branch not requested because lensing=no",
+    "l_switch_limber": "precision parameter is documented by the pinned provider as the Limber switch for projected gravitational-potential Cls; these are not requested by the frozen tCl,pCl,mPk unlensed scalar case"
+  },
+  "classification": "M21_CMB_PRECISION_COMPONENT_COVERAGE_PASS_WITH_SCOPE",
+  "scope": "No obvious active scalar unlensed-CMB cl_ref precision category is omitted from the pre-frozen baseline plus G1/G2/G3 partition. This audit does not predict which group will be sufficient and cannot alter the frozen group classifications.",
+  "K1_promoted": false,
+  "physical_falsification": false
+}
