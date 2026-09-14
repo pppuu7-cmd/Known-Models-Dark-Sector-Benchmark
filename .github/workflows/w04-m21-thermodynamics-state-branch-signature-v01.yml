@@ -1,0 +1,92 @@
+name: W04 M21 thermodynamics state branch signature v0.1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/w04-m21-thermodynamics-state-branch-signature-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  OMP_NUM_THREADS: '1'
+
+jobs:
+  activation:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      authorized: ${{ steps.gate.outputs.authorized }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: gate
+        name: Enforce terminal mixed cross-evolver parent
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path('waves/wave_04_dark_matter/M21_THERMO_EVOLVER_CROSSCHECK_RECOVERY_TERMINAL.json')
+          d=json.loads(p.read_text())
+          ok=(d.get('classification')=='M21_THERMO_EVOLVER_DEPENDENCE_MIXED' and d.get('cross_lane_input_identity') is True and d.get('artifact_digest')=='sha256:cef0ef9492f9890b76bc50351ad51e9354f9e24026095b04a2d7e5062f814ceb')
+          with Path(os.environ['GITHUB_OUTPUT']).open('a') as f: f.write('authorized='+('true' if ok else 'false')+'\n')
+          print(json.dumps({'authorized':ok,'parent_classification':d.get('classification')},indent=2))
+          PY
+
+  state:
+    needs: activation
+    if: needs.activation.outputs.authorized == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [NDF_T1E5, NDF_T1E6, NDF_T1E7, RK_T1E5, RK_T1E6, RK_T1E7]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute thermodynamics-state lane
+        run: |
+          set -euo pipefail
+          bash verification/m21/run_thermo_state_lane_v01.sh '${{ matrix.lane }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-thermo-state-${{ matrix.lane }}
+          path: |
+            lane_meta.json
+            case_status.tsv
+            thermo_cases/*.ini
+            thermo_cases/manifest.json
+            thermo_state_${{ matrix.lane }}.pre
+            thermo_state_${{ matrix.lane }}_profile_manifest.json
+            output/*thermodynamics.dat
+            output/*background.dat
+            run_*.log
+            build.log
+          retention-days: 90
+
+  aggregate:
+    needs: [activation, state]
+    if: always() && needs.activation.result == 'success' && needs.activation.outputs.authorized == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - name: Download state artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-thermo-state-*
+          path: components
+      - name: Apply frozen state branch classifier
+        run: |
+          set -euo pipefail
+          python3 verification/m21/thermo_state_branch_signature.py components M21_THERMO_STATE_BRANCH_SIGNATURE_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-thermo-state-branch-signature-v01
+          path: M21_THERMO_STATE_BRANCH_SIGNATURE_RESULT.json
+          retention-days: 90
