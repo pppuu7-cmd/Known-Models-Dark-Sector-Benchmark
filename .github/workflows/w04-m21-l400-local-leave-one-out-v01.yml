@@ -1,0 +1,101 @@
+name: W04 M21 l400 local leave-one-out audit v0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-l400-local-leave-one-out-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  lane:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pair_id: A
+            artifact: m21-lphase-P400_ON_TAIL_OFF
+          - pair_id: B
+            artifact: m21-lphase-P400_EVEN_TAIL_OFF
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce frozen parent authority
+        run: |
+          python3 - <<'PY'
+          import json
+          d=json.load(open('waves/wave_04_dark_matter/M21_L400_KNOT_PROPAGATION_TERMINAL.json'))
+          assert d['run_id']==34901952566
+          assert d['classification']=='M21_L400_SINGLE_KNOT_VALUE_SUFFICIENT_FOR_HIGH_STATE_WITH_SCOPE'
+          assert d['physical_falsification'] is False
+          PY
+      - name: Download immutable factorial lane
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: lane
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34887488405
+      - name: Apply frozen local leave-one-out metric
+        run: python3 verification/m21/l400_local_leave_one_out.py lane '${{ matrix.pair_id }}' result_${{ matrix.pair_id }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-local-loo-${{ matrix.pair_id }}
+          path: result_${{ matrix.pair_id }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+  aggregate:
+    needs: lane
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-l400-local-loo-*
+          path: pairs
+      - name: Apply frozen aggregate classifier
+        run: |
+          python3 - <<'PY'
+          import json,pathlib
+          ds=[]
+          for p in pathlib.Path('pairs').rglob('result_*.json'):
+            ds.append(json.load(open(p)))
+          by={d.get('pair_id'):d for d in ds}
+          out={
+            'schema':'KMDSB.W04.M21.L400LocalLeaveOneOut.v0.1',
+            'protocol':'protocol/W04_M21_L400_LOCAL_LEAVE_ONE_OUT_SMOOTHNESS_v0.1.md',
+            'provider':'lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540',
+            'parent_run_id':34901952566,
+            'factorial_run_id':34887488405,
+            'pairs':by,
+            'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False,
+          }
+          if set(by)!={'A','B'} or any(d.get('classification')=='PAIR_BLOCKED' for d in by.values()):
+            cls='M21_L400_LOCAL_LEAVE_ONE_OUT_BLOCKED'
+          else:
+            n=sum(d.get('isolated_l400_spike') is True for d in by.values())
+            if n==2: cls='M21_L400_ISOLATED_LOCAL_RESPONSE_SPIKE_SUPPORTED_WITH_SCOPE'
+            elif n==1: cls='M21_L400_LOCAL_RESPONSE_SPIKE_PARTIAL'
+            else: cls='M21_L400_LOCAL_RESPONSE_SPIKE_NOT_ESTABLISHED'
+          out['classification']=cls
+          pathlib.Path('M21_L400_LOCAL_LEAVE_ONE_OUT_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({'classification':cls,'pair_classes':{k:v.get('classification') for k,v in by.items()}},indent=2,sort_keys=True))
+          if cls.endswith('BLOCKED'): raise SystemExit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-local-leave-one-out-v01
+          path: M21_L400_LOCAL_LEAVE_ONE_OUT_RESULT.json
+          if-no-files-found: error
+          retention-days: 90
