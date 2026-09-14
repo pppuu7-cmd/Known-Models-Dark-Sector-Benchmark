@@ -1,0 +1,32 @@
+{
+  "schema": "KMDSB.W03.M13B.K3D2E.ReferenceRKErrorComponentResult.v0.1",
+  "classification": "M13B_K3D2E_REFERENCE_RK_ERROR_COMPONENTS_LOCALIZED",
+  "protocol": "protocol/W03_M13B_K3D2E_REFERENCE_RK_ERROR_COMPONENT_AUDIT_v0.1.md",
+  "provider": "lesgourg/class_public",
+  "provider_commit": "64bbab707faf4de4779a9e04edd180fef18d98fa",
+  "run_id": 34797701252,
+  "jobs": {
+    "source_guard": 103833908070,
+    "reference_execution": 103833908162,
+    "aggregate": 103834574895
+  },
+  "artifacts": {
+    "source_guard": {"id": 10329814050, "sha256": "21427ae72d578c3f5d5cb560eb735a19d5bbc8bc3f8e58f46f6564ceb099b189"},
+    "reference_raw": {"id": 10330591619, "sha256": "9550b929ebd3bc76c8c1582d53480f7063f15125df266f9561b218bad1dd4ef2"},
+    "component_audit": {"id": 10329419715, "sha256": "d24eb2f57b3936a7c7fec2f6d5263320097a438966a62c375112d5a22e9d0d27"}
+  },
+  "provider_rc": 1,
+  "strict_clean_records": 349,
+  "malformed_or_unparseable_component_records": 39,
+  "fixed_point": {"pass": true, "iterations": 5, "residual": 4.32531410187872e-15, "target": 1e-12},
+  "first_attempt_component_distribution": {"photon_temperature_hierarchy_l3plus": 349},
+  "final_accepted_component_distribution": {"photon_temperature_hierarchy_l3plus": 335, "ur_theta": 14},
+  "qfield_dominance": {"first_attempt_count": 0, "first_attempt_fraction": 0.0, "final_attempt_count": 0, "final_attempt_fraction": 0.0},
+  "component_changed_during_shrinkage": {"count": 349, "fraction": 1.0},
+  "interpretation": "The exact cl_ref.pre numerical blocker is localized to standard photon/UR Boltzmann error-control components, not direct qcf/qpf field components. This is numerical-layer localization only and does not authorize tolerance, solver, seam, equation, or physics changes.",
+  "K3_state_ceiling": "PARTIAL",
+  "K4_promoted": false,
+  "K5_promoted": false,
+  "default_reference_reproducibility_evaluated": false,
+  "physical_falsification": false
+}
