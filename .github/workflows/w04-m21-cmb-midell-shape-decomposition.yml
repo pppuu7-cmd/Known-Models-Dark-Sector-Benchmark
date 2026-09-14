@@ -1,0 +1,34 @@
+name: W04 M21 CMB mid-ell shape decomposition
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-cmb-midell-shape-decomposition.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  decompose:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: w04-m21-integrator-branch-diagnostic
+          path: parent
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: 34542162543
+      - name: Apply frozen mid-ell shape decomposition
+        run: |
+          set -euo pipefail
+          python3 verification/m21/cmb_midell_shape_decomposition.py parent waves/wave_04_dark_matter/M21_CMB_ELL_BAND_LOCALIZATION_RESULT.json M21_CMB_MIDELL_SHAPE_DECOMPOSITION_RESULT.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m21-cmb-midell-shape-decomposition
+          path: M21_CMB_MIDELL_SHAPE_DECOMPOSITION_RESULT.json
+          retention-days: 90
