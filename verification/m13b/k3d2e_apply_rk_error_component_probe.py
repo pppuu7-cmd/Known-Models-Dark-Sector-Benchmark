@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 
 
@@ -53,13 +54,52 @@ def main() -> int:
     err_insert = """    errmax=0.0;\n    for (i=0;i<pgi->n;i++) errmax=MAX(errmax,fabs(pgi->yerr[i]/pgi->yscal[i]));\n    {\n      int kmdsb_max_index=0;\n      double kmdsb_max_ratio=0.;\n      double kmdsb_ratio;\n      for (i=0;i<pgi->n;i++) {\n        kmdsb_ratio=fabs(pgi->yerr[i]/pgi->yscal[i]);\n        if (kmdsb_ratio > kmdsb_max_ratio) {\n          kmdsb_max_ratio=kmdsb_ratio;\n          kmdsb_max_index=i;\n        }\n      }\n      if (pgi->kmdsb_rk_attempts == 1) {\n        pgi->kmdsb_first_max_index=kmdsb_max_index;\n        pgi->kmdsb_first_raw_ratio=kmdsb_max_ratio;\n      }\n      pgi->kmdsb_final_max_index=kmdsb_max_index;\n      pgi->kmdsb_final_raw_ratio=kmdsb_max_ratio;\n    }\n    errmax /= eps;\n    if (pgi->kmdsb_rk_attempts == 1) pgi->kmdsb_first_errmax=errmax;\n    pgi->kmdsb_final_errmax=errmax;\n    if (errmax <= 1.0) break;\n"""
     r = r.replace(err_anchor, err_insert, 1)
 
-    # Enrich the already-authorized failure text with the first/final error-control
-    # decomposition. The class_test condition and all solver variables are intact.
-    fail_anchor = """    class_test(fabs(hnext/x1) <= hmin,\n\t       pgi->error_message,\n\t       \"KMDSB_RK_COLLAPSE x=%.17g step_ratio=%.17g minimum=%.17g hdid=%.17g hnext=%.17g step_index=%d interval=[%.17g:%.17g]\",\n\t       x,\n\t       fabs(hnext/x1),\n\t       hmin,\n\t       hdid,\n\t       hnext,\n\t       nstp,\n\t       x1,\n\t       x2);\n"""
-    if r.count(fail_anchor) != 1:
-        raise RuntimeError("authorized RK collapse text anchor not found")
-    fail_insert = """    class_test(fabs(hnext/x1) <= hmin,\n\t       pgi->error_message,\n\t       \"KMDSB_RK_COLLAPSE x=%.17g step_ratio=%.17g minimum=%.17g hdid=%.17g hnext=%.17g step_index=%d interval=[%.17g:%.17g] attempts=%d first_max_index=%d first_raw_ratio=%.17g first_errmax=%.17g final_max_index=%d final_raw_ratio=%.17g final_errmax=%.17g final_yerr=%.17g final_yscal=%.17g final_y=%.17g final_start_dydx=%.17g\",\n\t       x,\n\t       fabs(hnext/x1),\n\t       hmin,\n\t       hdid,\n\t       hnext,\n\t       nstp,\n\t       x1,\n\t       x2,\n               pgi->kmdsb_rk_attempts,\n               pgi->kmdsb_first_max_index,\n               pgi->kmdsb_first_raw_ratio,\n               pgi->kmdsb_first_errmax,\n               pgi->kmdsb_final_max_index,\n               pgi->kmdsb_final_raw_ratio,\n               pgi->kmdsb_final_errmax,\n               pgi->yerr[pgi->kmdsb_final_max_index],\n               pgi->yscal[pgi->kmdsb_final_max_index],\n               pgi->y[pgi->kmdsb_final_max_index],\n               pgi->dydx[pgi->kmdsb_final_max_index]);\n"""
-    r = r.replace(fail_anchor, fail_insert, 1)
+    # Enrich the already-authorized collapse text.  Match the semantic site
+    # whitespace-robustly because the preceding geometry-only transformer owns
+    # indentation.  The class_test condition and numerical argument sequence are
+    # kept exact; only diagnostic text/arguments are extended.
+    fail_pattern = re.compile(
+        r'(?m)^([ \t]*)class_test\(fabs\(hnext/x1\) <= hmin,\s*\n'
+        r'[ \t]*pgi->error_message,\s*\n'
+        r'[ \t]*"KMDSB_RK_COLLAPSE x=%.17g step_ratio=%.17g minimum=%.17g hdid=%.17g hnext=%.17g step_index=%d interval=\[%.17g:%.17g\]",\s*\n'
+        r'[ \t]*x,\s*\n'
+        r'[ \t]*fabs\(hnext/x1\),\s*\n'
+        r'[ \t]*hmin,\s*\n'
+        r'[ \t]*hdid,\s*\n'
+        r'[ \t]*hnext,\s*\n'
+        r'[ \t]*nstp,\s*\n'
+        r'[ \t]*x1,\s*\n'
+        r'[ \t]*x2\);'
+    )
+    matches = list(fail_pattern.finditer(r))
+    if len(matches) != 1:
+        raise RuntimeError(f"authorized RK collapse text anchor not found uniquely: {len(matches)}")
+    indent = matches[0].group(1)
+    fail_insert = (
+        indent+'class_test(fabs(hnext/x1) <= hmin,\n'
+        +indent+'           pgi->error_message,\n'
+        +indent+'           "KMDSB_RK_COLLAPSE x=%.17g step_ratio=%.17g minimum=%.17g hdid=%.17g hnext=%.17g step_index=%d interval=[%.17g:%.17g] attempts=%d first_max_index=%d first_raw_ratio=%.17g first_errmax=%.17g final_max_index=%d final_raw_ratio=%.17g final_errmax=%.17g final_yerr=%.17g final_yscal=%.17g final_y=%.17g final_start_dydx=%.17g",\n'
+        +indent+'           x,\n'
+        +indent+'           fabs(hnext/x1),\n'
+        +indent+'           hmin,\n'
+        +indent+'           hdid,\n'
+        +indent+'           hnext,\n'
+        +indent+'           nstp,\n'
+        +indent+'           x1,\n'
+        +indent+'           x2,\n'
+        +indent+'           pgi->kmdsb_rk_attempts,\n'
+        +indent+'           pgi->kmdsb_first_max_index,\n'
+        +indent+'           pgi->kmdsb_first_raw_ratio,\n'
+        +indent+'           pgi->kmdsb_first_errmax,\n'
+        +indent+'           pgi->kmdsb_final_max_index,\n'
+        +indent+'           pgi->kmdsb_final_raw_ratio,\n'
+        +indent+'           pgi->kmdsb_final_errmax,\n'
+        +indent+'           pgi->yerr[pgi->kmdsb_final_max_index],\n'
+        +indent+'           pgi->yscal[pgi->kmdsb_final_max_index],\n'
+        +indent+'           pgi->y[pgi->kmdsb_final_max_index],\n'
+        +indent+'           pgi->dydx[pgi->kmdsb_final_max_index]);'
+    )
+    r = fail_pattern.sub(lambda _: fail_insert, r, count=1)
 
     # Append only integer index metadata to the existing mode failure line.
     p_anchor = """      fprintf(stderr,\"KMDSB_MODE_FAIL index_md=%d index_ic=%d index_k=%d k=%.17g interval_start=%.17g evolver_start=%.17g interval_end=%.17g error=%s\\n\",\n              index_md,index_ic,index_k,k,\n              interval_limit[index_interval],interval_start_kmdsb,\n              interval_limit[index_interval+1],kmdsb_error_flat);\n"""
@@ -72,7 +112,7 @@ def main() -> int:
     rk.write_text(r)
     pt.write_text(p)
     manifest = {
-        "schema": "KMDSB.W03.M13b.K3D2ERKErrorComponentProbePatch.v0.1",
+        "schema": "KMDSB.W03.M13b.K3D2ERKErrorComponentProbePatch.v0.2",
         "changed_files": ["include/dei_rkck.h", "tools/dei_rkck.c", "source/perturbations.c"],
         "diagnostic_only": True,
         "preserves_original_errmax_calculation": True,
@@ -81,6 +121,7 @@ def main() -> int:
         "records_final_accepted_component": True,
         "records_attempt_count": True,
         "records_runtime_perturbation_index_map": True,
+        "collapse_matcher_whitespace_robust": True,
         "changes_equations": False,
         "changes_state_vector": False,
         "changes_tolerances": False,
