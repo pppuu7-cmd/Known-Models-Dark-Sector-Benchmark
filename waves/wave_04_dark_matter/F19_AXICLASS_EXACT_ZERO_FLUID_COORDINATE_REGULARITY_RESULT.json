@@ -1,0 +1,38 @@
+{
+  "schema": "KMDSB.W04.F19.AxiCLASS.ExactZeroFluidCoordinateRegularityResult.v0.1",
+  "date": "2026-09-14",
+  "provider": "PoulinV/AxiCLASS@ae9609e1f96ddebbb6cc8a46de94512514c68781",
+  "protocol": "protocol/W04_F19_AXICLASS_EXACT_ZERO_FLUID_COORDINATE_REGULARITY_CONFIRMATION_v0.1.md",
+  "workflow_run_id": 34862292830,
+  "head_sha": "e71e3d91c26160fbfd14bba5d341010cd377b69f",
+  "jobs": {
+    "R1_activation_algebra": {"job_id": 104037330304, "pass": true, "artifact_id": 10355590905, "artifact_digest": "sha256:f97e1925e59012ddbb89000f39691ef6a203e98e495169fc626fd609026184ca"},
+    "R2_flag_control_flow": {"job_id": 104037330237, "pass": true, "artifact_id": 10356125810, "artifact_digest": "sha256:26034ff23bf10d630ce013a343dfd813ee4693414ff745839c21cb607eb192c3"},
+    "R3_downstream_consumption": {"job_id": 104037330169, "pass": true, "artifact_id": 10355940983, "artifact_digest": "sha256:db1d64478a00a58d2c6fb2a59b86c3853f7050faca5c9596f9cdfa896f76651d"},
+    "R4_binary64_witness": {"job_id": 104037330443, "pass": true, "artifact_id": 10355267536, "artifact_digest": "sha256:595b28e62d1d1021d3c4633cb4b407e7ef298150b153a743f5ddf538a5564191"},
+    "aggregate": {"job_id": 104037431137, "pass": true, "artifact_id": 10355146364, "artifact_digest": "sha256:cac8dbc73268e17d2f9642cf9e6997d4a7e60cdf9c59b69ac2aae50bfe51848c"}
+  },
+  "confirmed_chain": {
+    "zero_scf_parameters_activate_species": true,
+    "n1_axion_origin_has_zero_potential_and_derivative": true,
+    "zero_field_and_velocity_give_zero_rho_and_pressure": true,
+    "provider_forms_w_as_p_over_rho": true,
+    "frozen_Z0_selects_fluid_perturbation_variables": true,
+    "w_scf_is_consumed_in_fluid_perturbation_paths": true,
+    "binary64_nan_does_not_automatically_reduce_to_finite_zero": true
+  },
+  "controls": {
+    "author_nonzero_initial_field_not_exact_zero": true,
+    "scf_has_perturbations_no_disables_fluid_state": true,
+    "direct_KG_flags_disable_fluid_state": true
+  },
+  "classification": "F19_AXICLASS_EXACT_ZERO_FLUID_COORDINATE_SINGULARITY_CONFIRMED_WITH_SCOPE",
+  "does_not_claim_unique_runtime_cause": true,
+  "authoritative_k1_run": 34846931382,
+  "authoritative_k1_run_terminal_at_record_time": false,
+  "K0_promoted": false,
+  "K1_promoted": false,
+  "K2_authorized": false,
+  "physical_falsification": false,
+  "interpretation": "For the frozen Z0 flags, the exact axion zero-field KG solution is physically regular but the selected provider fluid perturbation coordinates are structurally singular because w_scf=p_scf/rho_scf becomes 0/0 and is consumed downstream. This confirms a provider-coordinate issue only; it does not prove the unique cause of the still-running workflow and does not replace the frozen K1 verdict."
+}
