@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/w04-m21-l400-late-source-predicate-ulp-audit-v01.yml'
+      - 'verification/m21/apply_l400_late_source_predicate_diag.py'
+      - 'protocol/W04_M21_L400_LATE_SOURCE_PREDICATE_COMPILE_RECOVERY_v0.1.md'
   workflow_dispatch:
 
 permissions:
@@ -18,7 +20,7 @@ env:
 jobs:
   preflight:
     runs-on: ubuntu-22.04
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - name: Enforce structural parent authority
@@ -30,7 +32,7 @@ jobs:
           assert d['classification']=='M21_L400_TRANSFER_SPIKE_CONVOLUTION_ACCUMULATION_WITH_SCOPE'
           assert d['physical_falsification'] is False
           PY
-      - name: Exact-source diagnostic patch preflight
+      - name: Exact-source diagnostic patch and compile preflight
         run: |
           git clone -q https://github.com/lesgourg/class_public.git class
           git -C class checkout -q --detach "$PIN"
@@ -38,11 +40,15 @@ jobs:
           python3 verification/m21/apply_l400_late_source_predicate_diag.py class/source/transfer.c patch_manifest.json
           test "$(git -C class diff --name-only)" = 'source/transfer.c'
           git -C class diff --check
+          make -C class -j2 > preflight_build.log 2>&1
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: m21-l400-late-source-predicate-preflight-v01
-          path: patch_manifest.json
-          if-no-files-found: error
+          path: |
+            patch_manifest.json
+            preflight_build.log
+          if-no-files-found: warn
           retention-days: 90
 
   case:
