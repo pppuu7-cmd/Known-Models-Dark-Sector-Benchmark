@@ -1,0 +1,106 @@
+name: W04 M21 full CMB reference-precision diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-full-cmb-reference-precision.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  CLASS_PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  OMP_NUM_THREADS: '1'
+
+jobs:
+  reference_precision:
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [ref, f2, f3, f4]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact provider and frozen case
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$CLASS_PIN"
+          test "$(git -C class rev-parse HEAD)" = "$CLASS_PIN"
+          python3 verification/m21/mixed_cold_warm_k1_reference.py prepare m21_cases
+          make -C class -j2 > "build_${{ matrix.case }}.log" 2>&1
+
+      - name: Execute exact cl_ref.pre lane
+        run: |
+          set -euo pipefail
+          case='${{ matrix.case }}'
+          mkdir -p output
+          set +e
+          timeout 2400 ./class/class "m21_cases/${case}.ini" class/cl_ref.pre > "run_${case}.log" 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > provider_rc.txt
+          test "$rc" -eq 0
+          test -s "output/${case}_00_cl.dat" -o -s "output/${case}_cl.dat"
+          test -s "output/${case}_00_pk.dat" -o -s "output/${case}_pk.dat"
+          test -s "output/${case}_00_background.dat" -o -s "output/${case}_background.dat"
+          CASE_NAME="$case" CLASS_PIN_ENV="$CLASS_PIN" python3 - <<'PY'
+          import hashlib,json,os,pathlib,subprocess
+          case=os.environ['CASE_NAME']; pin=os.environ['CLASS_PIN_ENV']
+          head=subprocess.check_output(['git','-C','class','rev-parse','HEAD'],text=True).strip()
+          ini=pathlib.Path('m21_cases')/(case+'.ini'); pre=pathlib.Path('class/cl_ref.pre')
+          obj={'schema':'KMDSB.W04.M21.FullCMBReferencePrecisionLane.v0.1','case':case,'exact_head':head==pin,'provider_head':head,'provider_rc':int(pathlib.Path('provider_rc.txt').read_text().strip()),'ini_sha256':hashlib.sha256(ini.read_bytes()).hexdigest(),'cl_ref_sha256':hashlib.sha256(pre.read_bytes()).hexdigest()}
+          pathlib.Path('lane_meta.json').write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n')
+          assert obj['exact_head'] and obj['provider_rc']==0,obj
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-clref-${{ matrix.case }}
+          path: |
+            lane_meta.json
+            provider_rc.txt
+            m21_cases/${{ matrix.case }}.ini
+            output/${{ matrix.case }}*.dat
+            run_${{ matrix.case }}.log
+            build_${{ matrix.case }}.log
+          retention-days: 90
+
+  aggregate:
+    needs: [reference_precision]
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analyzer dependency
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy==2.2.6
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-clref-*
+          path: new_cases
+      - name: Download immutable parent RK evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: w04-m21-integrator-branch-diagnostic
+          path: parent
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: 34542162543
+      - name: Assemble outputs and apply frozen classification
+        run: |
+          set -euo pipefail
+          mkdir -p new
+          find new_cases -type f \( -name '*_cl.dat' -o -name '*_pk.dat' -o -name '*_background.dat' \) -exec cp {} new/ \;
+          python3 verification/m21/full_cmb_reference_precision_diagnostic.py new parent/rk_out new_cases M21_FULL_CMB_REFERENCE_PRECISION_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-full-cmb-reference-precision
+          path: M21_FULL_CMB_REFERENCE_PRECISION_RESULT.json
+          retention-days: 90
