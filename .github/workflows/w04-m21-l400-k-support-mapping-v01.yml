@@ -1,0 +1,140 @@
+name: W04 M21 l400 transfer k-support mapping v0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-l400-k-support-mapping-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  PARENT_DIAG_RUN: '34904313450'
+
+jobs:
+  lane:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pair_id: A
+            artifact: m21-l400-transfer-harmonic-A
+          - pair_id: B
+            artifact: m21-l400-transfer-harmonic-B
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce conditional activation
+        run: |
+          python3 - <<'PY'
+          import json
+          d=json.load(open('waves/wave_04_dark_matter/M21_L400_TRANSFER_VS_HARMONIC_RECOVERY_TERMINAL.json'))
+          assert d['run_id']==34905311127
+          assert d['classification']=='M21_L400_SPIKE_PRESENT_IN_E_TRANSFER_KERNEL_WITH_SCOPE'
+          assert d['physical_falsification'] is False
+          assert d['no_class_execution'] is True
+          PY
+      - name: Download immutable instrumented diagnostic lane
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: lane
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.PARENT_DIAG_RUN }}
+      - name: Map frozen l400 k-support
+        id: analyze
+        continue-on-error: true
+        run: |
+          python3 -m pip install --disable-pip-version-check -q numpy==2.2.6
+          python3 verification/m21/l400_k_support_mapping.py lane '${{ matrix.pair_id }}' 'result_${{ matrix.pair_id }}.json'
+      - name: Preserve blocked evidence if analyzer fails before result
+        if: always()
+        env:
+          PAIR: ${{ matrix.pair_id }}
+          ANALYZE: ${{ steps.analyze.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path('result_'+os.environ['PAIR']+'.json')
+          if not p.exists():
+            p.write_text(json.dumps({
+              'schema':'KMDSB.W04.M21.L400KSupportLane.v0.1',
+              'protocol':'protocol/W04_M21_CONDITIONAL_L400_K_SUPPORT_MAPPING_v0.1.md',
+              'pair_id':os.environ['PAIR'],'classification':'LANE_BLOCKED',
+              'analysis_outcome':os.environ['ANALYZE'],'no_class_execution':True,
+              'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False,
+            },indent=2,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-k-support-${{ matrix.pair_id }}-v01
+          path: result_${{ matrix.pair_id }}.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Fail blocked lane after upload
+        if: always()
+        env:
+          PAIR: ${{ matrix.pair_id }}
+        run: |
+          python3 - <<'PY'
+          import json,os
+          d=json.load(open('result_'+os.environ['PAIR']+'.json'))
+          if d.get('classification')=='LANE_BLOCKED': raise SystemExit(1)
+          PY
+
+  aggregate:
+    needs: lane
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-l400-k-support-*-v01
+          path: lanes
+      - name: Aggregate frozen support map
+        run: |
+          python3 - <<'PY'
+          import json,math,pathlib
+          ds=[json.load(open(p)) for p in pathlib.Path('lanes').rglob('result_*.json')]
+          by={d.get('pair_id'):d for d in ds}
+          out={
+            'schema':'KMDSB.W04.M21.L400KSupportMapping.v0.1',
+            'protocol':'protocol/W04_M21_CONDITIONAL_L400_K_SUPPORT_MAPPING_v0.1.md',
+            'provider':'lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540',
+            'parent_transfer_localization_run_id':34905311127,
+            'parent_diagnostic_run_id':34904313450,
+            'active_quantity':'Delta_E',
+            'lanes':by,
+            'no_class_execution':True,
+            'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False,
+          }
+          if set(by)!={'A','B'} or any(d.get('classification')!='LANE_K_SUPPORT_MAPPED' for d in by.values()):
+            cls='M21_L400_K_SUPPORT_MAPPING_BLOCKED'
+          else:
+            cls='M21_L400_K_SUPPORT_MAPPED_WITH_SCOPE'
+            out['cross_lane_comparison']={
+              'abs_log10_k05_ratio':abs(math.log10(by['A']['k05']/by['B']['k05'])),
+              'abs_log10_k50_ratio':abs(math.log10(by['A']['k50']/by['B']['k50'])),
+              'abs_log10_k95_ratio':abs(math.log10(by['A']['k95']/by['B']['k95'])),
+              'abs_log10_kpeak_ratio':abs(math.log10(by['A']['k_peak_W']/by['B']['k_peak_W'])),
+            }
+          out['classification']=cls
+          pathlib.Path('M21_L400_K_SUPPORT_MAPPING_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({'classification':cls,'A':{k:by.get('A',{}).get(k) for k in ('k05','k50','k95','k_peak_W')},'B':{k:by.get('B',{}).get(k) for k in ('k05','k50','k95','k_peak_W')}},indent=2,sort_keys=True))
+          if cls.endswith('BLOCKED'): raise SystemExit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-k-support-mapping-v01
+          path: M21_L400_K_SUPPORT_MAPPING_RESULT.json
+          if-no-files-found: error
+          retention-days: 90
