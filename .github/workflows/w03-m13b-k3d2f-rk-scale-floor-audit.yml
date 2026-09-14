@@ -1,0 +1,85 @@
+name: W03 M13b K3D2-F RK scale-floor audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/w03-m13b-k3d2f-rk-scale-floor-audit.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download immutable K3D2-E aggregate artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34797701252
+          name: m13b-k3d2e-component-audit
+          path: parent
+      - name: Apply frozen scale-floor audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, statistics
+          from pathlib import Path
+          src=Path('parent/component_audit.json')
+          d=json.loads(src.read_text())
+          rec=[]
+          qnames={'qcf','qcfp','qpf','qpfp','canonical_field','phantom_field'}
+          for r in d.get('records',[]):
+            rk=r.get('rk',{})
+            required=['final_yscal','final_y','final_yerr','final_start_dydx','final_raw_ratio','final_errmax']
+            if rk.get('strict_clean') and all(k in rk and rk[k] is not None for k in required):
+              rec.append(r)
+          n=len(rec)
+          floor=[r for r in rec if float(r['rk']['final_yscal']) <= 1.0000000001e-30]
+          nearzero=[r for r in rec if abs(float(r['rk']['final_y'])) <= 1e-16]
+          joint=[r for r in rec if float(r['rk']['final_yscal']) <= 1.0000000001e-30 and abs(float(r['rk']['final_y'])) <= 1e-16]
+          derivzero=[r for r in rec if abs(float(r['rk']['final_start_dydx'])) <= 1e-20]
+          def comp(r): return r.get('final_component','unknown')
+          qfloor=[r for r in joint if any(q in comp(r).lower() for q in qnames)]
+          ratios=[float(r['rk']['final_raw_ratio']) for r in rec]
+          errs=[float(r['rk']['final_errmax']) for r in rec]
+          ks=[float(r['k']) for r in joint if r.get('k') is not None]
+          dist={}
+          for r in joint: dist[comp(r)]=dist.get(comp(r),0)+1
+          if n < 100:
+            cls='M13B_K3D2F_REFERENCE_RK_SCALE_FLOOR_AUDIT_IMPLEMENTATION_BLOCKED'
+          elif len(joint)/n >= .95 and len(qfloor)==0:
+            cls='M13B_K3D2F_REFERENCE_RK_STANDARD_BOLTZMANN_ABSOLUTE_SCALE_FLOOR_LOCALIZED'
+          else:
+            cls='M13B_K3D2F_REFERENCE_RK_SCALE_FLOOR_NOT_DOMINANT'
+          out={
+            'schema':'KMDSB.W03.M13B.K3D2F.ReferenceRKScaleFloorAudit.v0.1',
+            'classification':cls,
+            'parent_run':34797701252,
+            'parent_artifact':10329419715,
+            'strict_clean_required_fields':n,
+            'floor_fraction':len(floor)/n if n else 0.0,
+            'nearzero_y_fraction':len(nearzero)/n if n else 0.0,
+            'joint_floor_nearzero_fraction':len(joint)/n if n else 0.0,
+            'nearzero_start_dydx_fraction':len(derivzero)/n if n else 0.0,
+            'joint_component_distribution':dist,
+            'qfield_floor_dominant_count':len(qfloor),
+            'final_raw_ratio': {'min':min(ratios) if ratios else None,'median':statistics.median(ratios) if ratios else None,'max':max(ratios) if ratios else None},
+            'final_errmax': {'min':min(errs) if errs else None,'median':statistics.median(errs) if errs else None,'max':max(errs) if errs else None},
+            'joint_k_range': [min(ks),max(ks)] if ks else None,
+            'K3_state_ceiling':'PARTIAL','K4_promoted':False,'K5_promoted':False,'physical_falsification':False
+          }
+          Path('m13b_k3d2f_scale_floor_audit.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m13b-k3d2f-rk-scale-floor-audit
+          path: m13b_k3d2f_scale_floor_audit.json
+          if-no-files-found: error
