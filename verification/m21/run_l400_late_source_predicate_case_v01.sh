@@ -44,11 +44,11 @@ def numeric(p):
  if a.ndim!=2 or a.shape[0]<3: raise RuntimeError(f'bad table {p}: {a.shape}')
  return a
 def find_cl(root,c):
- root=pathlib.Path(root); xs=[]
- for pat in (f'output/{c}_*_cl.dat',f'output/{c}_cl.dat'):
-  for p in root.rglob(pat):
+ out=pathlib.Path(root)/'output'; xs=[]
+ for pat in (f'{c}_*_cl.dat',f'{c}_cl.dat'):
+  for p in out.glob(pat):
    if p not in xs: xs.append(p)
- if len(xs)!=1: raise RuntimeError(f'cl discovery {root}/{c}: {xs}')
+ if len(xs)!=1: raise RuntimeError(f'cl discovery {out}/{c}: {xs}')
  return xs[0]
 c=os.environ['CASE_ID']; rc=int(os.environ['RC']); head=subprocess.check_output(['git','-C','class','rev-parse','HEAD'],text=True).strip(); pm=json.load(open(os.environ['PMAN'])); patch=json.load(open(os.environ['PATCH'])); diag=pathlib.Path(os.environ['DIAG'])
 new_cl=find_cl('.',c); parent_cl=find_cl(os.environ['PARENT_DIR'],c); a=numeric(new_cl); b=numeric(parent_cl)
