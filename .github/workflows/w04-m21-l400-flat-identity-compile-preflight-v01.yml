@@ -1,0 +1,37 @@
+name: W04 M21 l400 flat-identity compile preflight v0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-l400-flat-identity-compile-preflight-v01.yml'
+      - 'verification/m21/apply_l400_flat_identity_predicate_counterfactual.py'
+
+permissions:
+  contents: read
+
+jobs:
+  compile-only:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply output/counterfactual patch and compile exact provider
+        run: |
+          PIN='e85808324f51fc694d12e3ed7439552a3c3f9540'
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$PIN"
+          test "$(git -C class rev-parse HEAD)" = "$PIN"
+          python3 verification/m21/apply_l400_flat_identity_predicate_counterfactual.py class/source/transfer.c patch_manifest.json
+          test "$(git -C class diff --name-only)" = 'source/transfer.c'
+          git -C class diff --check
+          make -C class -j2 > build.log 2>&1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-flat-identity-compile-preflight-v01
+          path: |
+            patch_manifest.json
+            build.log
+          if-no-files-found: warn
+          retention-days: 90
