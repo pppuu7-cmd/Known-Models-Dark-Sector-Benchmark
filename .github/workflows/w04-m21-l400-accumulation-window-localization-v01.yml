@@ -1,0 +1,50 @@
+name: W04 M21 l400 accumulation window localization v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-l400-accumulation-window-localization-v01.yml']
+permissions:
+  actions: read
+  contents: read
+env:
+  RECOVERY_RUN: '34907528331'
+  EDGE_RUN: '34950152312'
+jobs:
+  analyze:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m21-l400-edge-absolute-sufficiency-v01
+          path: edge
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.EDGE_RUN }}
+      - name: Frozen authority barrier
+        run: |
+          python3 - <<'PY'
+          import json
+          d=json.load(open('edge/M21_L400_EDGE_ABSOLUTE_SUFFICIENCY_RESULT.json'))
+          assert d['classification']=='M21_L400_EDGE_SPECIFICITY_ABSOLUTELY_INSUFFICIENT_WITH_SCOPE', d['classification']
+          assert d.get('physical_falsification') is False
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-l400-conv-case-*-v01
+          path: components
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.RECOVERY_RUN }}
+      - name: Run frozen window localization
+        run: |
+          python3 -m pip install --disable-pip-version-check -q numpy==2.2.6
+          python3 verification/m21/l400_accumulation_window_localization.py components edge/M21_L400_EDGE_ABSOLUTE_SUFFICIENCY_RESULT.json M21_L400_ACCUMULATION_WINDOW_LOCALIZATION_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-accumulation-window-localization-v01
+          path: M21_L400_ACCUMULATION_WINDOW_LOCALIZATION_RESULT.json
+          if-no-files-found: error
+          retention-days: 90
