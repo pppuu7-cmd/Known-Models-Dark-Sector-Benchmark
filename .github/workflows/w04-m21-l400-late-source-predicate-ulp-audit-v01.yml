@@ -6,7 +6,9 @@ on:
     paths:
       - '.github/workflows/w04-m21-l400-late-source-predicate-ulp-audit-v01.yml'
       - 'verification/m21/apply_l400_late_source_predicate_diag.py'
+      - 'verification/m21/run_l400_late_source_predicate_case_v01.sh'
       - 'protocol/W04_M21_L400_LATE_SOURCE_PREDICATE_COMPILE_RECOVERY_v0.1.md'
+      - 'protocol/W04_M21_L400_LATE_SOURCE_PREDICATE_PATH_SCOPE_RECOVERY_v0.1.md'
   workflow_dispatch:
 
 permissions:
