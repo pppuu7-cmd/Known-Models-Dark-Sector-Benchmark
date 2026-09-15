@@ -1,0 +1,66 @@
+{
+  "schema": "KMDSB.W04.M21.L400LateSourcePredicateULPAuditTerminal.v0.1",
+  "date": "2026-09-15",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "protocol": "protocol/W04_M21_L400_LATE_SOURCE_PREDICATE_ULP_AUDIT_v0.1.md",
+  "recovery_protocol": "protocol/W04_M21_L400_LATE_SOURCE_PREDICATE_PATH_SCOPE_RECOVERY_v0.1.md",
+  "run_id": 34917028014,
+  "head_sha": "21717857f8a551dfdaff63269df102de3427f345",
+  "artifact_id": 10377071832,
+  "artifact_digest": "sha256:5c48e4d9fe83fba608e87f6f2b7359b55252ef954cccdf5a3b1fd20afca63550",
+  "classification": "M21_L400_LATE_SOURCE_PREDICATE_ULP_SPLIT_LOCALIZED_WITH_SCOPE",
+  "q_count": 73,
+  "max_same_q_k_relative_difference": 1.8624557529000292e-10,
+  "case_summary": {
+    "ref": {
+      "angular_rescaling": 0.9999999999999994,
+      "angular_rescaling_minus_1": -5.551115123125783e-16,
+      "signed_ulp_from_1": -5,
+      "predicate_rhs": 399.9999999999998,
+      "predicate_margin_l_minus_rhs": 2.2737367544323206e-13,
+      "neglect_late_source": true,
+      "endpoint_relation": "earlier_than_bessel"
+    },
+    "f2": {
+      "angular_rescaling": 0.9999999999999996,
+      "angular_rescaling_minus_1": -4.440892098500626e-16,
+      "signed_ulp_from_1": -4,
+      "predicate_rhs": 399.99999999999983,
+      "predicate_margin_l_minus_rhs": 1.7053025658242404e-13,
+      "neglect_late_source": true,
+      "endpoint_relation": "earlier_than_bessel"
+    },
+    "f3": {
+      "angular_rescaling": 1.0000000000000002,
+      "angular_rescaling_minus_1": 2.220446049250313e-16,
+      "signed_ulp_from_1": 1,
+      "predicate_rhs": 400.0000000000001,
+      "predicate_margin_l_minus_rhs": -1.1368683772161603e-13,
+      "neglect_late_source": false,
+      "endpoint_relation": "at_bessel"
+    },
+    "f4": {
+      "angular_rescaling": 0.9999999999999998,
+      "angular_rescaling_minus_1": -2.220446049250313e-16,
+      "signed_ulp_from_1": -2,
+      "predicate_rhs": 399.9999999999999,
+      "predicate_margin_l_minus_rhs": 1.1368683772161603e-13,
+      "neglect_late_source": true,
+      "endpoint_relation": "earlier_than_bessel"
+    }
+  },
+  "integrity": {
+    "all_case_authority_clean": true,
+    "predicate_equals_actual_all_rows": true,
+    "all_final_indices_match_recovery": true,
+    "expected_pattern_consequence": true,
+    "same_q_k_clean": true
+  },
+  "scientific_interpretation": "At exact direct l=400 and runtime late-source threshold 400.0, sub-ULP-to-few-ULP numerical variation of the flat-universe angular_rescaling quantity crosses the strict provider predicate boundary. ref/f2/f4 lie below binary64 1.0, activate late-source neglect and truncate before the Bessel endpoint; f3 lies one ULP above 1.0, does not activate the predicate and extends to the Bessel endpoint. This localizes the numerical branch mechanism creating the previously terminal f3-only late-time support extension.",
+  "authorized_next_gate": "protocol/W04_M21_L400_CONDITIONAL_FLAT_IDENTITY_PREDICATE_COUNTERFACTUAL_v0.1.md",
+  "K1_promoted": false,
+  "K3_promoted": false,
+  "K4_promoted": false,
+  "physical_falsification": false,
+  "class_defect_claimed": false
+}
