@@ -1,0 +1,52 @@
+name: W04 M21 l400 native grid topology v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-l400-native-grid-topology-v01.yml']
+permissions:
+  actions: read
+  contents: read
+env:
+  RECOVERY_RUN: '34907528331'
+  BLOCKED_RUN: '34961138696'
+jobs:
+  analyze:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m21-l400-accumulation-window-localization-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.BLOCKED_RUN }}
+      - name: Frozen authority barrier
+        run: |
+          python3 - <<'PY'
+          import json
+          d=json.load(open('parent/M21_L400_ACCUMULATION_WINDOW_LOCALIZATION_RESULT.json'))
+          assert d['classification']=='M21_L400_ACCUMULATION_WINDOW_LOCALIZATION_BLOCKED'
+          assert d.get('physical_falsification') is False
+          assert d['checks']['same_q_set'] is True and d['checks']['q_nonempty'] is True
+          print('authority clean')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-l400-conv-case-*-v01
+          path: components
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.RECOVERY_RUN }}
+      - name: Run frozen native-grid topology diagnostic
+        run: |
+          python3 -m pip install --disable-pip-version-check -q numpy==2.2.6
+          python3 verification/m21/l400_native_grid_topology.py components parent/M21_L400_ACCUMULATION_WINDOW_LOCALIZATION_RESULT.json M21_L400_NATIVE_GRID_TOPOLOGY_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-native-grid-topology-v01
+          path: M21_L400_NATIVE_GRID_TOPOLOGY_RESULT.json
+          if-no-files-found: error
+          retention-days: 90
