@@ -6,13 +6,13 @@ python3 -m pip install --disable-pip-version-check --no-input -q numpy==2.2.6
 git clone -q https://github.com/lesgourg/class_public.git class; git -C class checkout -q --detach "$PIN"; test "$(git -C class rev-parse HEAD)" = "$PIN"
 python3 verification/m21/build_late_source_cross_cosmology_case.py "$c" cross_cases
 python3 verification/m21/build_l_grid_phase_profile.py P400_ON_TAIL_OFF class/cl_permille.pre verification/m21/m21_ncdm_tight.pre profile.pre profile_manifest.json
-mkdir -p clean_output native_output force_output
+mkdir -p clean_output native_output cf_output
 make -C class -j2 > build_clean.log 2>&1
 set +e; timeout 2700 ./class/class "cross_cases/${c}_clean_native.ini" profile.pre > run_clean.log 2>&1; r0=$?; set -e
 python3 verification/m21/apply_late_source_force_l400_true.py class/source/transfer.c patch_manifest.json "$PIN"; test "$(git -C class diff --name-only)" = source/transfer.c; git -C class diff --check; make -C class -j2 > build_patch.log 2>&1
 set +e
 OMP_NUM_THREADS=1 KMDSB_M21_BRANCH_DIAG="$(pwd)/native.dat" timeout 2700 ./class/class "cross_cases/${c}_patched_native.ini" profile.pre > run_native.log 2>&1; r1=$?
-OMP_NUM_THREADS=1 KMDSB_M21_FORCE_L400_TRUE=1 KMDSB_M21_BRANCH_DIAG="$(pwd)/force.dat" timeout 2700 ./class/class "cross_cases/${c}_patched_native.ini" profile.pre > run_force.log 2>&1; r2=$?
+OMP_NUM_THREADS=1 KMDSB_M21_FORCE_L400_TRUE=1 KMDSB_M21_BRANCH_DIAG="$(pwd)/force.dat" timeout 2700 ./class/class "cross_cases/${c}_flat_identity_predicate.ini" profile.pre > run_force.log 2>&1; r2=$?
 set -e
 P="$p" C="$c" PIN="$PIN" R0="$r0" R1="$r1" R2="$r2" python3 - <<'PY'
 import json,math,os,pathlib,subprocess,numpy as np
@@ -32,7 +32,7 @@ def diag(p):
   r=[float(x) for x in s.split()]; assert len(r)==14
   k=(int(round(r[2])),int(round(r[0]))); assert k not in d; d[k]=r
  return d
-A=cl('clean_output');B=cl('native_output');F=cl('force_output')
+A=cl('clean_output');B=cl('native_output');F=cl('cf_output')
 l2=lambda x,y: float(np.linalg.norm(x-y)/max(float(np.linalg.norm(x)),float(np.linalg.norm(y)),1e-300)) if x.shape==y.shape else float('inf')
 N=diag('native.dat');T=diag('force.dat'); keys=set(N); shape=(keys==set(T) and {k[0] for k in keys}=={399,400,401} and all(sum(k[0]==l for k in keys)>=20 for l in (399,400,401)))
 ar={r[3] for r in N.values()}; th={r[4] for r in N.values()}|{r[4] for r in T.values()}; neigh=True; changed=False
