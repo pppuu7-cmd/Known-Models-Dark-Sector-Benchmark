@@ -1,0 +1,52 @@
+name: W04 M21 l400 support domain decomposition v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-l400-support-domain-decomposition-v01.yml']
+permissions:
+  actions: read
+  contents: read
+env:
+  RECOVERY_RUN: '34907528331'
+  TOPOLOGY_RUN: '34972611076'
+jobs:
+  analyze:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m21-l400-native-grid-topology-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.TOPOLOGY_RUN }}
+      - name: Frozen authority barrier
+        run: |
+          python3 - <<'PY'
+          import json
+          d=json.load(open('parent/M21_L400_NATIVE_GRID_TOPOLOGY_RESULT.json'))
+          assert d['classification']=='M21_L400_F3_NATIVE_GRID_SUPPORT_AND_DENSITY_CHANGE_WITH_SCOPE'
+          assert d.get('physical_falsification') is False
+          assert d['f3_exclusive_expansion_fraction']>=0.9 and d['endpoint_clean'] is False
+          print('authority clean')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-l400-conv-case-*-v01
+          path: components
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.RECOVERY_RUN }}
+      - name: Run frozen support-domain decomposition
+        run: |
+          python3 -m pip install --disable-pip-version-check -q numpy==2.2.6
+          python3 verification/m21/l400_support_domain_decomposition.py components parent/M21_L400_NATIVE_GRID_TOPOLOGY_RESULT.json M21_L400_SUPPORT_DOMAIN_DECOMPOSITION_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-support-domain-decomposition-v01
+          path: M21_L400_SUPPORT_DOMAIN_DECOMPOSITION_RESULT.json
+          if-no-files-found: error
+          retention-days: 90
