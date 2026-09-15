@@ -1,0 +1,37 @@
+{
+  "schema": "KMDSB.W04.M21.FlatIdentityPredicateCounterfactualTerminal.v0.1",
+  "date": "2026-09-15",
+  "provider": "lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540",
+  "protocol": "protocol/W04_M21_L400_CONDITIONAL_FLAT_IDENTITY_PREDICATE_COUNTERFACTUAL_v0.1.md",
+  "parent_run_id": 34917028014,
+  "run_id": 34917565618,
+  "head_sha": "1106766bfc31b11672c8459fe15b84ad6948eafa",
+  "artifact_id": 10376567875,
+  "artifact_digest": "sha256:e1d5cb08ea4455dfd04ee16144db5c4220b5188dc69ad337b3589de9fa2fd199",
+  "classification": "M21_L400_FLAT_IDENTITY_PREDICATE_BRANCH_CAUSAL_WITH_SCOPE",
+  "q_count": 73,
+  "max_same_q_k_relative_difference": 1.8624557529000292e-10,
+  "checks": {
+    "authority_clean": true,
+    "native_predicate_pattern_reproduced": true,
+    "native_endpoint_pattern_reproduced": true,
+    "counterfactual_effective_identity": true,
+    "branch_normalized": true,
+    "endpoint_normalized": true,
+    "changed_only_expected_cases": true,
+    "f3_null": true
+  },
+  "f3_negative_control": {
+    "full_cmb_native_vs_counterfactual_l2": 0.0,
+    "transfer_max_relative_difference": 0.0,
+    "endpoint_same": true
+  },
+  "scientific_interpretation": "Replacing only the late-source predicate angular-rescaling operand by the exact flat-geometry identity 1.0 causally removes the branch/support split: all four cases take the non-neglect branch and end at the Bessel boundary, while the already-non-neglect f3 case is an exact null control. Therefore the few-ULP deviation of the implemented flat angular_rescaling quantity from 1.0 is causally sufficient for the previously localized l=400 support split in this benchmark.",
+  "authorized_next_gate": "protocol/W04_M21_CONDITIONAL_LATE_SOURCE_NEIGHBOR_MULTIPOLE_REGRESSION_v0.1.md",
+  "class_defect_claimed": false,
+  "production_fix_claimed": false,
+  "K1_promoted": false,
+  "K3_promoted": false,
+  "K4_promoted": false,
+  "physical_falsification": false
+}
