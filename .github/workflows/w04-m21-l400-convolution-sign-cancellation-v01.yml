@@ -1,0 +1,66 @@
+name: W04 M21 l400 convolution sign cancellation v0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-l400-convolution-sign-cancellation-v01.yml'
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download frozen router authority
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-l400-convolution-successor-router-v01
+          path: router
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34908508458
+      - name: Download frozen parent aggregate
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-l400-transfer-convolution-decomposition-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34907528331
+      - name: Download four immutable component artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-l400-conv-case-*-v01
+          path: components
+          merge-multiple: false
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34907528331
+      - name: Fail-closed authority barrier
+        run: |
+          python3 - <<'PY'
+          import json,glob
+          r=glob.glob('router/**/*.json',recursive=True)
+          assert len(r)==1,r
+          x=json.load(open(r[0]))
+          assert 'CONVOLUTION_SIGN_CANCELLATION' in x.get('authorized_next_gates',[]),x
+          p=glob.glob('parent/**/M21_L400_TRANSFER_CONVOLUTION_DECOMPOSITION_RESULT.json',recursive=True)
+          assert len(p)==1,p
+          y=json.load(open(p[0]))
+          assert y.get('classification')=='M21_L400_TRANSFER_SPIKE_CONVOLUTION_ACCUMULATION_WITH_SCOPE',y.get('classification')
+          PY
+      - name: Frozen signed accumulation analysis
+        run: |
+          python3 verification/m21/l400_convolution_sign_cancellation.py components parent/M21_L400_TRANSFER_CONVOLUTION_DECOMPOSITION_RESULT.json M21_L400_CONVOLUTION_SIGN_CANCELLATION_RESULT.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-convolution-sign-cancellation-v01
+          path: M21_L400_CONVOLUTION_SIGN_CANCELLATION_RESULT.json
+          if-no-files-found: error
+          retention-days: 90
