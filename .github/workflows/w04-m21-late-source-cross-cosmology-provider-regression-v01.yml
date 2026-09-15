@@ -1,0 +1,104 @@
+name: W04 M21 late-source cross-cosmology provider regression v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-late-source-cross-cosmology-provider-regression-v01.yml']
+permissions: {actions: read, contents: read}
+jobs:
+  preflight:
+    strategy:
+      fail-fast: false
+      matrix: {provider_label: [P0, P1]}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exact-pin patch compile preflight
+        env: {LABEL: '${{ matrix.provider_label }}'}
+        run: |
+          if [ "$LABEL" = P0 ]; then PIN='e85808324f51fc694d12e3ed7439552a3c3f9540'; else PIN='64bbab707faf4de4779a9e04edd180fef18d98fa'; fi
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$PIN"
+          test "$(git -C class rev-parse HEAD)" = "$PIN"
+          python3 verification/m21/apply_late_source_cross_provider_counterfactual.py class/source/transfer.c patch_manifest.json "$PIN"
+          test "$(git -C class diff --name-only)" = 'source/transfer.c'
+          git -C class diff --check
+          make -C class -j2 > build.log 2>&1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-cross-preflight-${{ matrix.provider_label }}-v01
+          path: |
+            patch_manifest.json
+            build.log
+          if-no-files-found: warn
+          retention-days: 90
+  case:
+    needs: preflight
+    strategy:
+      fail-fast: false
+      max-parallel: 14
+      matrix:
+        provider_label: [P0, P1]
+        cosmology_id: [base, h95, h105, ob95, ob105, odm95, odm105]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - id: execute
+        continue-on-error: true
+        run: bash verification/m21/run_late_source_cross_cosmology_provider_case_v01.sh '${{ matrix.provider_label }}' '${{ matrix.cosmology_id }}'
+      - if: always()
+        env: {P: '${{ matrix.provider_label }}', C: '${{ matrix.cosmology_id }}', OUT: '${{ steps.execute.outcome }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path('case_meta.json')
+          if not p.exists():p.write_text(json.dumps({'schema':'KMDSB.W04.M21.CrossCosmologyProviderCase.v0.1','provider_label':os.environ['P'],'cosmology_id':os.environ['C'],'authority_clean':False,'execution_outcome':os.environ['OUT']},indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-cross-${{ matrix.provider_label }}-${{ matrix.cosmology_id }}-v01
+          path: |
+            case_meta.json
+            native.dat
+            cf.dat
+            status.tsv
+            cross_provider_patch_manifest.json
+            cross_P400_ON_TAIL_OFF_profile_manifest.json
+            cross_cases/*_manifest.json
+            clean_output/*_cl.dat
+            native_output/*_cl.dat
+            cf_output/*_cl.dat
+            run_*.log
+            build_*.log
+          if-no-files-found: warn
+          retention-days: 90
+      - if: always()
+        run: "python3 -c \"import json; assert json.load(open('case_meta.json')).get('authority_clean') is True\""
+  aggregate:
+    needs: [preflight, case]
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {pattern: 'm21-cross-*-v01', path: components}
+      - id: analyze
+        continue-on-error: true
+        run: python3 verification/m21/late_source_cross_cosmology_provider_regression.py components M21_LATE_SOURCE_CROSS_COSMOLOGY_PROVIDER_REGRESSION_RESULT.json
+      - if: always()
+        env: {OUT: '${{ steps.analyze.outcome }}'}
+        run: |
+          if [ ! -f M21_LATE_SOURCE_CROSS_COSMOLOGY_PROVIDER_REGRESSION_RESULT.json ]; then python3 -c "import json,os;open('M21_LATE_SOURCE_CROSS_COSMOLOGY_PROVIDER_REGRESSION_RESULT.json','w').write(json.dumps({'classification':'M21_LATE_SOURCE_CROSS_COSMOLOGY_PROVIDER_REGRESSION_BLOCKED','analysis_outcome':os.environ['OUT']},indent=2)+'\\n')"; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: m21-late-source-cross-cosmology-provider-regression-v01, path: M21_LATE_SOURCE_CROSS_COSMOLOGY_PROVIDER_REGRESSION_RESULT.json, retention-days: 90}
+      - if: always()
+        run: |
+          python3 - <<'PY'
+          import json
+          if json.load(open('M21_LATE_SOURCE_CROSS_COSMOLOGY_PROVIDER_REGRESSION_RESULT.json')).get('classification','').endswith('_BLOCKED'): raise SystemExit(1)
+          PY
