@@ -1,0 +1,76 @@
+name: W04 M21 flat-distance identity component audit v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-flat-distance-identity-component-audit-v01.yml']
+permissions: {actions: read, contents: read}
+env:
+  CLEAN_RECOVERY_RUN: '34907528331'
+jobs:
+  case:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: {case_id: [ref, f2, f3, f4]}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: m21-l400-conv-case-${{ matrix.case_id }}-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.CLEAN_RECOVERY_RUN }}
+      - id: execute
+        continue-on-error: true
+        run: bash verification/m21/run_flat_distance_identity_component_case_v01.sh '${{ matrix.case_id }}' parent
+      - if: always()
+        env: {CASE_ID: '${{ matrix.case_id }}', OUTCOME: '${{ steps.execute.outcome }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path('case_meta.json')
+          if not p.exists(): p.write_text(json.dumps({'case':os.environ['CASE_ID'],'authority_clean':False,'execution_outcome':os.environ['OUTCOME']},indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-flat-distance-component-${{ matrix.case_id }}-v01
+          path: |
+            case_meta.json
+            flat_distance_${{ matrix.case_id }}.dat
+            flat_distance_identity_component_patch_manifest.json
+            flat_distance_P400_ON_TAIL_OFF_profile_manifest.json
+            output/*_cl.dat
+          retention-days: 90
+      - if: always()
+        run: "python3 -c \"import json; assert json.load(open('case_meta.json')).get('authority_clean') is True\""
+  aggregate:
+    needs: case
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {pattern: 'm21-flat-distance-component-*-v01', path: components}
+      - id: analyze
+        continue-on-error: true
+        run: python3 verification/m21/flat_distance_identity_component_audit.py components M21_FLAT_DISTANCE_IDENTITY_COMPONENT_AUDIT_RESULT.json
+      - if: always()
+        env: {OUTCOME: '${{ steps.analyze.outcome }}'}
+        run: |
+          if [ ! -f M21_FLAT_DISTANCE_IDENTITY_COMPONENT_AUDIT_RESULT.json ]; then
+            python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('M21_FLAT_DISTANCE_IDENTITY_COMPONENT_AUDIT_RESULT.json').write_text(json.dumps({'classification':'M21_FLAT_DISTANCE_COMPONENT_AUDIT_BLOCKED','analysis_outcome':os.environ['OUTCOME']},indent=2)+'\n')
+          PY
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-flat-distance-identity-component-audit-v01
+          path: M21_FLAT_DISTANCE_IDENTITY_COMPONENT_AUDIT_RESULT.json
+          retention-days: 90
