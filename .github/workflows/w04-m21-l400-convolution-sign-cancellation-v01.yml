@@ -16,6 +16,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Install frozen analysis dependency
+        run: python3 -m pip install --disable-pip-version-check numpy
       - name: Download frozen router authority
         uses: actions/download-artifact@v4
         with:
@@ -44,7 +46,7 @@ jobs:
       - name: Fail-closed authority barrier
         run: |
           python3 - <<'PY'
-          import json,glob
+          import json,glob,numpy
           r=glob.glob('router/**/*.json',recursive=True)
           assert len(r)==1,r
           x=json.load(open(r[0]))
@@ -53,6 +55,7 @@ jobs:
           assert len(p)==1,p
           y=json.load(open(p[0]))
           assert y.get('classification')=='M21_L400_TRANSFER_SPIKE_CONVOLUTION_ACCUMULATION_WITH_SCOPE',y.get('classification')
+          print('numpy', numpy.__version__)
           PY
       - name: Frozen signed accumulation analysis
         run: |
