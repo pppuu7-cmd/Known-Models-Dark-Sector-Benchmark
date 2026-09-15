@@ -1,0 +1,84 @@
+name: W04 M21 late-source branch topology interaction v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-late-source-branch-topology-interaction-v01.yml']
+permissions: {actions: read, contents: read}
+jobs:
+  preflight:
+    strategy:
+      fail-fast: false
+      matrix: {provider_label: [P0, P1]}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - env: {P: '${{ matrix.provider_label }}'}
+        run: |
+          if [ "$P" = P0 ]; then PIN=e85808324f51fc694d12e3ed7439552a3c3f9540; else PIN=64bbab707faf4de4779a9e04edd180fef18d98fa; fi
+          git clone -q https://github.com/lesgourg/class_public.git class; git -C class checkout -q --detach "$PIN"
+          python3 verification/m21/apply_late_source_force_l400_true.py class/source/transfer.c patch_manifest.json "$PIN"
+          test "$(git -C class diff --name-only)" = source/transfer.c; git -C class diff --check; make -C class -j2 > build.log 2>&1
+  case:
+    needs: preflight
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: {provider_label: [P0, P1], cosmology_id: [base, h105]}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - id: execute
+        continue-on-error: true
+        run: bash verification/m21/run_late_source_branch_topology_case_v01.sh '${{ matrix.provider_label }}' '${{ matrix.cosmology_id }}'
+      - if: always()
+        env: {P: '${{ matrix.provider_label }}', C: '${{ matrix.cosmology_id }}', O: '${{ steps.execute.outcome }}'}
+        run: |
+          if [ ! -f case_meta.json ]; then python3 -c "import json,os;open('case_meta.json','w').write(json.dumps({'schema':'KMDSB.W04.M21.BranchTopologyCase.v0.1','provider_label':os.environ['P'],'cosmology_id':os.environ['C'],'authority_clean':False,'execution_outcome':os.environ['O']},indent=2)+'\n')"; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-branch-topology-${{ matrix.provider_label }}-${{ matrix.cosmology_id }}-v01
+          path: |
+            case_meta.json
+            native.dat
+            force.dat
+            patch_manifest.json
+            clean_output/*_cl.dat
+            native_output/*_cl.dat
+            cf_output/*_cl.dat
+            run_*.log
+            build_*.log
+          if-no-files-found: warn
+          retention-days: 90
+      - if: always()
+        run: python3 -c "import json; assert json.load(open('case_meta.json')).get('authority_clean') is True"
+  aggregate:
+    needs: [preflight, case]
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {pattern: 'm21-branch-topology-*-v01', path: components}
+      - uses: actions/download-artifact@v4
+        with:
+          name: m21-late-source-cross-cosmology-provider-regression-v01
+          path: parent
+          github-token: '${{ github.token }}'
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34918945022
+      - id: analyze
+        continue-on-error: true
+        run: python3 verification/m21/late_source_branch_topology_interaction.py components parent/M21_LATE_SOURCE_CROSS_COSMOLOGY_PROVIDER_REGRESSION_RESULT.json M21_LATE_SOURCE_BRANCH_TOPOLOGY_INTERACTION_RESULT.json
+      - if: always()
+        env: {O: '${{ steps.analyze.outcome }}'}
+        run: |
+          if [ ! -f M21_LATE_SOURCE_BRANCH_TOPOLOGY_INTERACTION_RESULT.json ]; then python3 -c "import json,os;open('M21_LATE_SOURCE_BRANCH_TOPOLOGY_INTERACTION_RESULT.json','w').write(json.dumps({'classification':'M21_LATE_SOURCE_BRANCH_TOPOLOGY_INTERACTION_BLOCKED','analysis_outcome':os.environ['O']},indent=2)+'\n')"; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: m21-late-source-branch-topology-interaction-v01, path: M21_LATE_SOURCE_BRANCH_TOPOLOGY_INTERACTION_RESULT.json, retention-days: 90}
+      - if: always()
+        run: python3 -c "import json; assert not json.load(open('M21_LATE_SOURCE_BRANCH_TOPOLOGY_INTERACTION_RESULT.json')).get('classification','').endswith('_BLOCKED')"
