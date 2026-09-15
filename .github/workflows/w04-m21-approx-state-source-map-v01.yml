@@ -1,0 +1,44 @@
+name: W04 M21 approximation-state source map v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-approx-state-source-map-v01.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-map:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clone pinned CLASS
+        run: |
+          git clone https://github.com/lesgourg/class_public.git provider
+          cd provider
+          git checkout e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+      - name: Extract exact source and approximation-state authority
+        run: |
+          mkdir -p out
+          python - <<'PY'
+          from pathlib import Path
+          import json,re
+          root=Path('provider/source')
+          pats=[r'index_tp_p',r'rsa',r'tca',r'tight_coupling',r'radiation_streaming',r'pol0_g',r'pol2_g',r'shear_g',r'tca_shear_g',r'visibility',r'index_th_g',r's_l\[2\]']
+          out={}
+          for fn in ['perturbations.c','transfer.c','thermodynamics.c']:
+            p=root/fn
+            lines=p.read_text(errors='replace').splitlines()
+            hits=[]
+            for i,line in enumerate(lines,1):
+              if any(re.search(x,line,re.I) for x in pats):
+                lo=max(1,i-3); hi=min(len(lines),i+3)
+                hits.append({'line':i,'context':[f'{j}: {lines[j-1]}' for j in range(lo,hi+1)]})
+            out[fn]=hits
+          Path('out/M21_APPROX_STATE_SOURCE_MAP.json').write_text(json.dumps({'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','protocol':'protocol/W04_M21_L400_APPROX_STATE_SOURCE_ZERO_TRANSITION_AUDIT_v0.1.md','files':out},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m21-approx-state-source-map-v01
+          path: out/M21_APPROX_STATE_SOURCE_MAP.json
+          if-no-files-found: error
