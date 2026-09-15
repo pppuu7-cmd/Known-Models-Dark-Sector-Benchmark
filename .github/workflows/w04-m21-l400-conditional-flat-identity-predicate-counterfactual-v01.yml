@@ -1,0 +1,191 @@
+name: W04 M21 l400 conditional flat-identity predicate counterfactual v0.1
+
+on:
+  workflow_run:
+    workflows: ["W04 M21 l400 late-source predicate ULP audit v0.1"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  PIN: e85808324f51fc694d12e3ed7439552a3c3f9540
+  CLEAN_RECOVERY_RUN: '34907528331'
+
+jobs:
+  route:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 8
+    outputs:
+      active: ${{ steps.route.outputs.active }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download triggering predicate aggregate
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-l400-late-source-predicate-ulp-audit-v01
+          path: parent_gate
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ github.event.workflow_run.id }}
+      - name: Route only authorized parent classification
+        id: route
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path('parent_gate/M21_L400_LATE_SOURCE_PREDICATE_ULP_AUDIT_RESULT.json')
+          d=json.load(open(p))
+          active=d.get('classification')=='M21_L400_LATE_SOURCE_PREDICATE_ULP_SPLIT_LOCALIZED_WITH_SCOPE'
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f: f.write('active='+('true' if active else 'false')+'\n')
+          pathlib.Path('FLAT_IDENTITY_ROUTE.json').write_text(json.dumps({'schema':'KMDSB.W04.M21.FlatIdentityRoute.v0.1','trigger_run_id':int(os.environ['TRIGGER_RUN']),'parent_classification':d.get('classification'),'active':active},indent=2,sort_keys=True)+'\n')
+          PY
+        env:
+          TRIGGER_RUN: ${{ github.event.workflow_run.id }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m21-l400-flat-identity-route-v01
+          path: FLAT_IDENTITY_ROUTE.json
+          retention-days: 90
+
+  preflight:
+    needs: route
+    if: needs.route.outputs.active == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exact-pin counterfactual compile preflight
+        run: |
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$PIN"
+          test "$(git -C class rev-parse HEAD)" = "$PIN"
+          python3 verification/m21/apply_l400_flat_identity_predicate_counterfactual.py class/source/transfer.c patch_manifest.json
+          test "$(git -C class diff --name-only)" = 'source/transfer.c'
+          git -C class diff --check
+          make -C class -j2 > preflight_build.log 2>&1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-flat-identity-preflight-v01
+          path: |
+            patch_manifest.json
+            preflight_build.log
+          if-no-files-found: warn
+          retention-days: 90
+
+  case:
+    needs: [route,preflight]
+    if: needs.route.outputs.active == 'true'
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        case_id: [ref, f2, f3, f4]
+        lane_id: [native, flat_identity_predicate]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download immutable matching clean parent
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-l400-conv-case-${{ matrix.case_id }}-v01
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ env.CLEAN_RECOVERY_RUN }}
+      - name: Execute native/counterfactual case
+        id: execute
+        continue-on-error: true
+        run: bash verification/m21/run_l400_flat_identity_counterfactual_case_v01.sh '${{ matrix.case_id }}' '${{ matrix.lane_id }}' parent
+      - name: Materialize blocker metadata if needed
+        if: always()
+        env:
+          CASE_ID: ${{ matrix.case_id }}
+          LANE_ID: ${{ matrix.lane_id }}
+          OUTCOME: ${{ steps.execute.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path('case_meta.json')
+          if not p.exists():
+            p.write_text(json.dumps({'schema':'KMDSB.W04.M21.FlatIdentityPredicateCase.v0.1','protocol':'protocol/W04_M21_L400_CONDITIONAL_FLAT_IDENTITY_PREDICATE_COUNTERFACTUAL_v0.1.md','case':os.environ['CASE_ID'],'lane':os.environ['LANE_ID'],'authority_clean':False,'execution_outcome':os.environ['OUTCOME'],'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False},indent=2,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-flat-identity-${{ matrix.case_id }}-${{ matrix.lane_id }}-v01
+          path: |
+            case_meta.json
+            flat_identity_${{ matrix.case_id }}_${{ matrix.lane_id }}.dat
+            l400_flat_identity_predicate_patch_manifest.json
+            flat_identity_P400_ON_TAIL_OFF_profile_manifest.json
+            case_status.tsv
+            run_${{ matrix.case_id }}_${{ matrix.lane_id }}.log
+            build.log
+            output/*_cl.dat
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Fail blocked case after evidence upload
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json
+          if json.load(open('case_meta.json')).get('authority_clean') is not True: raise SystemExit(1)
+          PY
+
+  aggregate:
+    needs: [route,preflight,case]
+    if: ${{ always() && needs.route.outputs.active == 'true' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download counterfactual components
+        uses: actions/download-artifact@v4
+        with:
+          pattern: m21-l400-flat-identity-*-v01
+          path: components
+      - name: Download authorized parent predicate result
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-l400-late-source-predicate-ulp-audit-v01
+          path: parent_gate
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: ${{ github.event.workflow_run.id }}
+      - name: Apply frozen flat-identity classifier
+        id: analyze
+        continue-on-error: true
+        run: |
+          python3 -m pip install --disable-pip-version-check -q numpy==2.2.6
+          python3 verification/m21/l400_flat_identity_predicate_counterfactual.py \
+            components \
+            parent_gate/M21_L400_LATE_SOURCE_PREDICATE_ULP_AUDIT_RESULT.json \
+            M21_L400_FLAT_IDENTITY_PREDICATE_COUNTERFACTUAL_RESULT.json
+      - name: Materialize blocker if analyzer stopped before result
+        if: always()
+        env:
+          OUTCOME: ${{ steps.analyze.outcome }}
+        run: |
+          if [ ! -f M21_L400_FLAT_IDENTITY_PREDICATE_COUNTERFACTUAL_RESULT.json ]; then
+            python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('M21_L400_FLAT_IDENTITY_PREDICATE_COUNTERFACTUAL_RESULT.json').write_text(json.dumps({'schema':'KMDSB.W04.M21.FlatIdentityPredicateCounterfactual.v0.1','protocol':'protocol/W04_M21_L400_CONDITIONAL_FLAT_IDENTITY_PREDICATE_COUNTERFACTUAL_v0.1.md','classification':'M21_L400_FLAT_IDENTITY_COUNTERFACTUAL_BLOCKED','analysis_outcome':os.environ['OUTCOME'],'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False},indent=2,sort_keys=True)+'\n')
+          PY
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-l400-flat-identity-predicate-counterfactual-v01
+          path: M21_L400_FLAT_IDENTITY_PREDICATE_COUNTERFACTUAL_RESULT.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Fail only after artifact upload if blocked
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json
+          if json.load(open('M21_L400_FLAT_IDENTITY_PREDICATE_COUNTERFACTUAL_RESULT.json')).get('classification','').endswith('_BLOCKED'): raise SystemExit(1)
+          PY
