@@ -21,6 +21,8 @@ jobs:
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
+      - name: Install analysis dependency
+        run: python3 -m pip install --user numpy
       - name: Enforce frozen protocol authority
         run: |
           python3 - <<'PY'
