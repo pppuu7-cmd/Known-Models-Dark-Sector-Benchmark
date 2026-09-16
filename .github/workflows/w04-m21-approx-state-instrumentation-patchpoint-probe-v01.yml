@@ -36,24 +36,23 @@ jobs:
           pin='e85808324f51fc694d12e3ed7439552a3c3f9540'
           files=['class/source/perturbations.c','class/source/transfer.c','class/source/thermodynamics.c']
           out={'schema':'KMDSB.W04.M21.ApproxStateInstrumentationPatchpointProbe.v0.1','provider':'lesgourg/class_public@'+pin,'scientific_gate_executed':False,'trajectory_modified':False,'physical_falsification':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'files':{},'anchors':{}}
+          texts={}
           for f in files:
-            b=pathlib.Path(f).read_bytes(); out['files'][f]={'sha256':hashlib.sha256(b).hexdigest(),'bytes':len(b)}
-          text=pathlib.Path('class/source/perturbations.c').read_text()
+            p=pathlib.Path(f); b=p.read_bytes(); texts[f]=p.read_text(); out['files'][f]={'sha256':hashlib.sha256(b).hexdigest(),'bytes':len(b)}
           anchors={
-            'index_tp_p':[r'index_tp_p'],
-            'rsa':[r'rsa'],
-            'tca':[r'tca'],
-            'visibility':[r'visibility'],
-            'polarization_source':[r'pol0_g',r'pol2_g',r'shear_g'],
+            'index_tp_p':('class/source/perturbations.c',[r'index_tp_p']),
+            'rsa':('class/source/perturbations.c',[r'rsa']),
+            'tca':('class/source/perturbations.c',[r'tca']),
+            # visibility g is thermodynamics authority; do not require the English word "visibility" in perturbations.c
+            'visibility':('class/source/thermodynamics.c',[r'index_th_g',r'\bg\b.*kappa',r'kappa.*exp']),
+            'polarization_source':('class/source/perturbations.c',[r'pol0_g',r'pol2_g',r'shear_g']),
           }
-          lines=text.splitlines()
-          for key,pats in anchors.items():
+          for key,(f,pats) in anchors.items():
             hits=[]
-            for i,line in enumerate(lines,1):
-              if any(re.search(p,line,re.I) for p in pats): hits.append({'line':i,'text':line.strip()[:240]})
+            for i,line in enumerate(texts[f].splitlines(),1):
+              if any(re.search(p,line,re.I) for p in pats): hits.append({'file':f,'line':i,'text':line.strip()[:240]})
             out['anchors'][key]=hits
             assert hits, key
-          # Frozen audit needs all these observables to be available from provider source before any patch is authored.
           out['classification']='M21_L400_INSTRUMENTATION_PATCHPOINT_AUTHORITY_PASS'
           pathlib.Path('M21_APPROX_STATE_INSTRUMENTATION_PATCHPOINT_PROBE_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
           print(json.dumps({k:len(v) for k,v in out['anchors'].items()},indent=2))
