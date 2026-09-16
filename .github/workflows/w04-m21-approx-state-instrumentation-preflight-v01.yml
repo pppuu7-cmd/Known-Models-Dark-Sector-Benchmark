@@ -21,16 +21,30 @@ jobs:
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
-      - name: Enforce frozen scientific authority
+      - name: Enforce frozen protocol authority
         run: |
           python3 - <<'PY'
-          import json
           p='protocol/W04_M21_L400_APPROX_STATE_SOURCE_ZERO_TRANSITION_AUDIT_v0.1.md'
           s=open(p).read()
           assert 'e85808324f51fc694d12e3ed7439552a3c3f9540' in s
           assert 'Run ref/f2/f3/f4 as four independent jobs' in s
           assert 'normalized L2 <=1e-12' in s
-          d=json.load(open('waves/wave_04_dark_matter/M21_L400_SUPPORT_TRIGGER_Q_SCALING_RESULT.json'))
+          PY
+      - name: Download immutable q-scaling scientific authority
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-l400-support-trigger-q-scaling-v01
+          path: authority
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34985846954
+      - name: Validate immutable q-scaling authority
+        run: |
+          python3 - <<'PY'
+          import glob,json
+          ps=glob.glob('authority/**/M21_L400_SUPPORT_TRIGGER_Q_SCALING_RESULT.json',recursive=True)
+          assert len(ps)==1, ps
+          d=json.load(open(ps[0]))
           assert d['classification']=='M21_L400_F3_SUPPORT_EXTENSION_MONOTONE_NONLINEAR_WITH_SCOPE'
           assert d['physical_falsification'] is False
           PY
@@ -57,22 +71,20 @@ jobs:
           make -C class -j2 > build.log 2>&1
           timeout 2700 ./class/class "m21_cases/${CASE}.ini" l400_diag.pre > "run_${CASE}.log" 2>&1
           python3 - <<'PY'
-          import glob,hashlib,json,os,pathlib,numpy as np
+          import glob,json,os,pathlib,numpy as np
           c=os.environ['CASE']
           cand=glob.glob(f'output/*{c}*_cl.dat')+glob.glob('output/*_cl.dat')
           assert cand, 'fresh cl.dat missing'
           fresh=pathlib.Path(cand[0])
           pc=[pathlib.Path(x) for x in glob.glob('parent/**/*_cl.dat',recursive=True) if c in pathlib.Path(x).name]
-          if not pc:
-            pc=[pathlib.Path(x) for x in glob.glob('parent/**/*_cl.dat',recursive=True)]
+          if not pc: pc=[pathlib.Path(x) for x in glob.glob('parent/**/*_cl.dat',recursive=True)]
           assert pc, 'immutable parent cl.dat missing'
           def load(p):
             a=np.loadtxt(p); return a[:,0],a[:,1:]
-          lf,yf=load(fresh); lp,yp=load(pc[0]);
-          common=np.intersect1d(lf,lp); assert len(common)>10
+          lf,yf=load(fresh); lp,yp=load(pc[0]); common=np.intersect1d(lf,lp); assert len(common)>10
           fi=np.searchsorted(lf,common); pi=np.searchsorted(lp,common)
-          a=yf[fi].ravel(); b=yp[pi].ravel(); den=max(np.linalg.norm(b),1e-300); r=float(np.linalg.norm(a-b)/den)
-          out={'schema':'KMDSB.W04.M21.ApproxStateInstrumentationPreflight.v0.1','case':c,'provider':'lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540','parent_run_id':34887488405,'normalized_l2':r,'threshold':1e-12,'preflight_pass':r<=1e-12,'instrumentation_applied':False,'scientific_classification':None,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          a=yf[fi].ravel(); b=yp[pi].ravel(); r=float(np.linalg.norm(a-b)/max(np.linalg.norm(b),1e-300))
+          out={'schema':'KMDSB.W04.M21.ApproxStateInstrumentationPreflight.v0.1','case':c,'provider':'lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540','parent_run_id':34887488405,'q_scaling_authority_run_id':34985846954,'normalized_l2':r,'threshold':1e-12,'preflight_pass':r<=1e-12,'instrumentation_applied':False,'scientific_classification':None,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
           pathlib.Path(f'preflight_{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
           print(json.dumps(out,indent=2))
           if not out['preflight_pass']: raise SystemExit(1)
