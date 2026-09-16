@@ -70,6 +70,7 @@ jobs:
           test "$(git -C class rev-parse HEAD)" = "$PIN"
           python3 verification/m21/mixed_cold_warm_k1_reference.py prepare m21_cases
           python3 verification/m21/build_l_grid_phase_profile.py P400_ON_TAIL_OFF class/cl_permille.pre verification/m21/m21_ncdm_tight.pre l400_diag.pre profile_manifest.json
+          mkdir -p output
           make -C class -j2 > build.log 2>&1
           timeout 2700 ./class/class "m21_cases/${CASE}.ini" l400_diag.pre > "run_${CASE}.log" 2>&1
           python3 - <<'PY'
