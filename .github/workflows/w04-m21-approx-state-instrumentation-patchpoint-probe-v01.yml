@@ -1,0 +1,69 @@
+name: W04 M21 approximation-state instrumentation patch-point probe v0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-approx-state-instrumentation-patchpoint-probe-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  patchpoint-authority:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce frozen audit authority
+        run: |
+          python3 - <<'PY'
+          s=open('protocol/W04_M21_L400_APPROX_STATE_SOURCE_ZERO_TRANSITION_AUDIT_v0.1.md').read()
+          assert 'e85808324f51fc694d12e3ed7439552a3c3f9540' in s
+          assert 'output-only instrumentation' in s
+          assert 'must not modify arrays, state, precision, integration order, source values, or trajectory' in s
+          PY
+      - name: Clone exact provider and freeze instrumentation patch points
+        run: |
+          set -euo pipefail
+          PIN=e85808324f51fc694d12e3ed7439552a3c3f9540
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$PIN"
+          test "$(git -C class rev-parse HEAD)" = "$PIN"
+          python3 - <<'PY'
+          import hashlib,json,pathlib,re
+          pin='e85808324f51fc694d12e3ed7439552a3c3f9540'
+          files=['class/source/perturbations.c','class/source/transfer.c','class/source/thermodynamics.c']
+          out={'schema':'KMDSB.W04.M21.ApproxStateInstrumentationPatchpointProbe.v0.1','provider':'lesgourg/class_public@'+pin,'scientific_gate_executed':False,'trajectory_modified':False,'physical_falsification':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'files':{},'anchors':{}}
+          for f in files:
+            b=pathlib.Path(f).read_bytes(); out['files'][f]={'sha256':hashlib.sha256(b).hexdigest(),'bytes':len(b)}
+          text=pathlib.Path('class/source/perturbations.c').read_text()
+          anchors={
+            'index_tp_p':[r'index_tp_p'],
+            'rsa':[r'rsa'],
+            'tca':[r'tca'],
+            'visibility':[r'visibility'],
+            'polarization_source':[r'pol0_g',r'pol2_g',r'shear_g'],
+          }
+          lines=text.splitlines()
+          for key,pats in anchors.items():
+            hits=[]
+            for i,line in enumerate(lines,1):
+              if any(re.search(p,line,re.I) for p in pats): hits.append({'line':i,'text':line.strip()[:240]})
+            out['anchors'][key]=hits
+            assert hits, key
+          # Frozen audit needs all these observables to be available from provider source before any patch is authored.
+          out['classification']='M21_L400_INSTRUMENTATION_PATCHPOINT_AUTHORITY_PASS'
+          pathlib.Path('M21_APPROX_STATE_INSTRUMENTATION_PATCHPOINT_PROBE_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({k:len(v) for k,v in out['anchors'].items()},indent=2))
+          PY
+      - name: Compile pristine pinned provider control
+        run: make -C class -j2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-approx-state-instrumentation-patchpoint-probe-v01
+          path: M21_APPROX_STATE_INSTRUMENTATION_PATCHPOINT_PROBE_RESULT.json
+          if-no-files-found: warn
+          retention-days: 90
