@@ -1,0 +1,117 @@
+name: W04 M21 approximation-state instrumentation preflight v0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-approx-state-instrumentation-preflight-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  trajectory-preflight:
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [ref, f2, f3, f4]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce frozen scientific authority
+        run: |
+          python3 - <<'PY'
+          import json
+          p='protocol/W04_M21_L400_APPROX_STATE_SOURCE_ZERO_TRANSITION_AUDIT_v0.1.md'
+          s=open(p).read()
+          assert 'e85808324f51fc694d12e3ed7439552a3c3f9540' in s
+          assert 'Run ref/f2/f3/f4 as four independent jobs' in s
+          assert 'normalized L2 <=1e-12' in s
+          d=json.load(open('waves/wave_04_dark_matter/M21_L400_SUPPORT_TRIGGER_Q_SCALING_RESULT.json'))
+          assert d['classification']=='M21_L400_F3_SUPPORT_EXTENSION_MONOTONE_NONLINEAR_WITH_SCOPE'
+          assert d['physical_falsification'] is False
+          PY
+      - name: Download immutable matching parent lane
+        uses: actions/download-artifact@v4
+        with:
+          name: m21-lphase-P400_ON_TAIL_OFF
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34887488405
+      - name: Reproduce exact trajectory before source instrumentation
+        env:
+          CASE: ${{ matrix.case }}
+          OMP_NUM_THREADS: '1'
+        run: |
+          set -euo pipefail
+          PIN=e85808324f51fc694d12e3ed7439552a3c3f9540
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$PIN"
+          test "$(git -C class rev-parse HEAD)" = "$PIN"
+          python3 verification/m21/mixed_cold_warm_k1_reference.py prepare m21_cases
+          python3 verification/m21/build_l_grid_phase_profile.py P400_ON_TAIL_OFF class/cl_permille.pre verification/m21/m21_ncdm_tight.pre l400_diag.pre profile_manifest.json
+          make -C class -j2 > build.log 2>&1
+          timeout 2700 ./class/class "m21_cases/${CASE}.ini" l400_diag.pre > "run_${CASE}.log" 2>&1
+          python3 - <<'PY'
+          import glob,hashlib,json,os,pathlib,numpy as np
+          c=os.environ['CASE']
+          cand=glob.glob(f'output/*{c}*_cl.dat')+glob.glob('output/*_cl.dat')
+          assert cand, 'fresh cl.dat missing'
+          fresh=pathlib.Path(cand[0])
+          pc=[pathlib.Path(x) for x in glob.glob('parent/**/*_cl.dat',recursive=True) if c in pathlib.Path(x).name]
+          if not pc:
+            pc=[pathlib.Path(x) for x in glob.glob('parent/**/*_cl.dat',recursive=True)]
+          assert pc, 'immutable parent cl.dat missing'
+          def load(p):
+            a=np.loadtxt(p); return a[:,0],a[:,1:]
+          lf,yf=load(fresh); lp,yp=load(pc[0]);
+          common=np.intersect1d(lf,lp); assert len(common)>10
+          fi=np.searchsorted(lf,common); pi=np.searchsorted(lp,common)
+          a=yf[fi].ravel(); b=yp[pi].ravel(); den=max(np.linalg.norm(b),1e-300); r=float(np.linalg.norm(a-b)/den)
+          out={'schema':'KMDSB.W04.M21.ApproxStateInstrumentationPreflight.v0.1','case':c,'provider':'lesgourg/class_public@e85808324f51fc694d12e3ed7439552a3c3f9540','parent_run_id':34887488405,'normalized_l2':r,'threshold':1e-12,'preflight_pass':r<=1e-12,'instrumentation_applied':False,'scientific_classification':None,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          pathlib.Path(f'preflight_{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2))
+          if not out['preflight_pass']: raise SystemExit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-approx-state-preflight-${{ matrix.case }}
+          path: |
+            preflight_${{ matrix.case }}.json
+            run_${{ matrix.case }}.log
+            build.log
+            profile_manifest.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  barrier:
+    needs: trajectory-preflight
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-approx-state-preflight-*
+          path: lanes
+      - name: Fail closed unless all four exact uninstrumented trajectories reproduce
+        run: |
+          python3 - <<'PY'
+          import json,pathlib
+          ds=[json.load(open(p)) for p in pathlib.Path('lanes').rglob('preflight_*.json')]
+          assert {d['case'] for d in ds}=={'ref','f2','f3','f4'}
+          assert all(d['preflight_pass'] for d in ds)
+          out={'schema':'KMDSB.W04.M21.ApproxStateInstrumentationPreflightBarrier.v0.1','classification':'M21_L400_APPROX_STATE_INSTRUMENTATION_PREFLIGHT_PASS','lanes':{d['case']:d['normalized_l2'] for d in ds},'instrumentation_applied':False,'scientific_gate_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          pathlib.Path('M21_APPROX_STATE_INSTRUMENTATION_PREFLIGHT_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-approx-state-instrumentation-preflight-v01
+          path: M21_APPROX_STATE_INSTRUMENTATION_PREFLIGHT_RESULT.json
+          if-no-files-found: warn
+          retention-days: 90
