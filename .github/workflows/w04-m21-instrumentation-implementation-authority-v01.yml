@@ -1,0 +1,96 @@
+name: W04 M21 instrumentation implementation authority v0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-instrumentation-implementation-authority-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  implementation-authority:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [source_assignment, approximation_states, visibility, polarization_primitives]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce frozen authorities
+        run: |
+          grep -F 'M21_L400_INSTRUMENTATION_IMPLEMENTATION_AUTHORITY_PASS' protocol/W04_M21_INSTRUMENTATION_IMPLEMENTATION_AUTHORITY_v0.1.md
+          grep -F 'e85808324f51fc694d12e3ed7439552a3c3f9540' protocol/W04_M21_L400_APPROX_STATE_SOURCE_ZERO_TRANSITION_AUDIT_v0.1.md
+      - name: Pin provider and resolve exact observation scope
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          PIN=e85808324f51fc694d12e3ed7439552a3c3f9540
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$PIN"
+          test "$(git -C class rev-parse HEAD)" = "$PIN"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re
+          target=os.environ['TARGET']; root=pathlib.Path('class/source')
+          files={p.name:p for p in root.glob('*.c')}
+          # Exact native anchors; this gate observes source only and never patches it.
+          specs={
+            'source_assignment': [('perturbations.c',r'_set_source_\(ppt->index_tp_p\).*sqrt\(6\.\).*g.*P')],
+            'approximation_states': [('perturbations.c',r'approx\[.*rsa'),('perturbations.c',r'approx\[.*tca'),('perturbations.c',r'tight_coupling')],
+            'visibility': [('perturbations.c',r'index_th_g'),('thermodynamics.c',r'index_th_g')],
+            'polarization_primitives': [('perturbations.c',r'\bP\s*='),('perturbations.c',r'pol0'),('perturbations.c',r'pol2'),('perturbations.c',r'psi0'),('perturbations.c',r'psi2')]
+          }
+          hits=[]
+          for fname,pat in specs[target]:
+            p=files.get(fname)
+            if not p: continue
+            ls=p.read_text(errors='replace').splitlines()
+            for i,line in enumerate(ls,1):
+              if re.search(pat,line,re.I):
+                lo=max(1,i-8); hi=min(len(ls),i+8)
+                hits.append({'file':fname,'line':i,'pattern':pat,'text':line.strip(),'context_start':lo,'context_end':hi,'context':ls[lo-1:hi]})
+          passed=bool(hits)
+          reason='native anchors resolved' if passed else 'required native scope anchor missing'
+          out={'schema':'KMDSB.W04.M21.InstrumentationImplementationAuthorityLane.v0.1','target':target,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','source_sha256':{n:hashlib.sha256(p.read_bytes()).hexdigest() for n,p in files.items() if n in ('perturbations.c','thermodynamics.c','transfer.c')},'hits':hits,'lane_pass':passed,'reason':reason,'trajectory_modified':False,'scientific_gate_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          pathlib.Path(f'implementation_{target}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          if not passed: raise SystemExit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-instrumentation-implementation-${{ matrix.target }}
+          path: implementation_${{ matrix.target }}.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  barrier:
+    needs: implementation-authority
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-instrumentation-implementation-*
+          path: lanes
+      - name: Fail closed unless all four implementation lanes pass
+        run: |
+          python3 - <<'PY'
+          import json,pathlib
+          ds=[json.load(open(p)) for p in pathlib.Path('lanes').rglob('implementation_*.json')]
+          required={'source_assignment','approximation_states','visibility','polarization_primitives'}
+          ok={d['target'] for d in ds if d.get('lane_pass')}
+          passed=ok==required
+          out={'schema':'KMDSB.W04.M21.InstrumentationImplementationAuthorityBarrier.v0.1','classification':'M21_L400_INSTRUMENTATION_IMPLEMENTATION_AUTHORITY_PASS' if passed else 'M21_L400_INSTRUMENTATION_IMPLEMENTATION_AUTHORITY_BLOCKED','passed_targets':sorted(ok),'required_targets':sorted(required),'trajectory_modified':False,'scientific_gate_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          pathlib.Path('M21_INSTRUMENTATION_IMPLEMENTATION_AUTHORITY_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          if not passed: raise SystemExit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-instrumentation-implementation-authority-v01
+          path: M21_INSTRUMENTATION_IMPLEMENTATION_AUTHORITY_RESULT.json
+          if-no-files-found: warn
+          retention-days: 90
