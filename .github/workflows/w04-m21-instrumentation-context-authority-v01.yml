@@ -1,0 +1,60 @@
+name: W04 M21 instrumentation context authority v0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-instrumentation-context-authority-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  context-authority:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [source_assignment, approximation_states, visibility, polarization_primitives]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce frozen protocol
+        run: |
+          grep -F 'e85808324f51fc694d12e3ed7439552a3c3f9540' protocol/W04_M21_L400_APPROX_STATE_SOURCE_ZERO_TRANSITION_AUDIT_v0.1.md
+          grep -F 'output-only instrumentation' protocol/W04_M21_L400_APPROX_STATE_SOURCE_ZERO_TRANSITION_AUDIT_v0.1.md
+      - name: Pin provider and extract exact compile context
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          PIN=e85808324f51fc694d12e3ed7439552a3c3f9540
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$PIN"
+          test "$(git -C class rev-parse HEAD)" = "$PIN"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re
+          root=pathlib.Path('class/source')
+          files={p.name:p for p in root.glob('*.c')}
+          target=os.environ['TARGET']
+          patterns={
+            'source_assignment':[r'index_tp_p',r'sqrt\(6\.\).*\bg\b.*\bP\b',r'index_th_g'],
+            'approximation_states':[r'rsa',r'tca',r'tight_coupling'],
+            'visibility':[r'index_th_g',r'visibility'],
+            'polarization_primitives':[r'\bP\b',r'pol0',r'pol2',r'psi0',r'psi2']}
+          hits=[]
+          for name,p in files.items():
+            lines=p.read_text(errors='replace').splitlines()
+            for i,line in enumerate(lines,1):
+              if any(re.search(q,line,re.I) for q in patterns[target]):
+                lo=max(1,i-4); hi=min(len(lines),i+4)
+                hits.append({'file':name,'line':i,'context_start':lo,'context_end':hi,'text':line.strip(),'context':lines[lo-1:hi]})
+          assert hits, target
+          out={'schema':'KMDSB.W04.M21.InstrumentationContextAuthority.v0.1','target':target,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','source_sha256':{n:hashlib.sha256(p.read_bytes()).hexdigest() for n,p in files.items() if n in ('perturbations.c','thermodynamics.c','transfer.c')},'hits':hits,'trajectory_modified':False,'scientific_gate_executed':False,'physical_falsification':False}
+          pathlib.Path(f'context_{target}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m21-instrumentation-context-${{ matrix.target }}
+          path: context_${{ matrix.target }}.json
+          retention-days: 90
