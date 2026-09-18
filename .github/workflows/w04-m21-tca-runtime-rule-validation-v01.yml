@@ -33,7 +33,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           p=Path('class/source/perturbations.c'); s=p.read_text()
-          f0=s.index('int perturbations_timescale_and_approximations(')
+          f0=s.index('int perturbations_approximations(')
           b0=s.index('if (pth->has_idm_b == _TRUE_) {',f0)
           depth=0; end=None
           for i in range(b0,len(s)):
