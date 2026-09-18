@@ -1,0 +1,76 @@
+name: W04 M21 target-k state-boundary ambiguity localization v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-target-k-state-ambiguity-localization-v01.yml']
+  workflow_dispatch:
+permissions: {actions: read, contents: read}
+jobs:
+  analyze:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-l400-conv-case-*-v01
+          path: components
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34907528331
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-primitive-p-capture-*
+          path: primitive
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 35317585346
+      - name: Localize categorical bracket ambiguity without assigning target state
+        run: |
+          python3 - <<'PY'
+          import bisect,json,math,pathlib,re,collections
+          cases=('ref','f2','f3','f4'); qreq=set(range(261,334))
+          pat=re.compile(r'KMDSB_PP tau=([^ ]+) k=([^ ]+) rsa=(\d+) tca=(\d+)')
+          out={'schema':'KMDSB.W04.M21.TargetKStateBoundaryAmbiguity.v0.1','parent_component_run':34907528331,'primitive_capture_run':35317585346,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','scope':'analysis-only localization of tau-resolved target-k brackets whose endpoint categorical states differ; no target state is assigned and no scientific classifier is executed','cases':{},'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          for c in cases:
+            cp=next(iter(pathlib.Path('components').rglob(f'conv_{c}.dat'))); log=next(iter(pathlib.Path('primitive').rglob(f'primitive_{c}.log')))
+            targets={}
+            for raw in cp.read_text(errors='replace').splitlines():
+              p=raw.strip().split()
+              if len(p)!=12 or raw.lstrip().startswith('#'): continue
+              q=int(round(float(p[0]))); k=float(p[1])
+              if q in qreq: targets.setdefault(q,k)
+            rows={}
+            with log.open(errors='replace') as f:
+              for line in f:
+                m=pat.search(line)
+                if m:
+                  tau=float(m[1]); k=float(m[2]); st=(int(m[3]),int(m[4])); rows.setdefault(tau,{}).setdefault(k,set()).add(st)
+            patterns=collections.Counter(); qamb=collections.Counter(); fractions=[]; taus=[]; n=0
+            for tau,km in rows.items():
+              ks=sorted(km)
+              for q,k in targets.items():
+                i=bisect.bisect_left(ks,k)
+                if i==0 or i==len(ks): continue
+                if i<len(ks) and math.isclose(ks[i],k,rel_tol=1e-13,abs_tol=0.): continue
+                a,b=km[ks[i-1]],km[ks[i]]
+                if a==b and len(a)==1: continue
+                n+=1; qamb[q]+=1; taus.append(tau)
+                sa=next(iter(a)) if len(a)==1 else None; sb=next(iter(b)) if len(b)==1 else None
+                if sa is None or sb is None: key='non_singleton'
+                else:
+                  rd=sa[0]!=sb[0]; td=sa[1]!=sb[1]
+                  key='rsa_only' if rd and not td else 'tca_only' if td and not rd else 'rsa_and_tca' if rd and td else 'other'
+                patterns[key]+=1
+                fractions.append((k-ks[i-1])/(ks[i]-ks[i-1]))
+            out['cases'][c]={'ambiguous_samples':n,'patterns':dict(patterns),'q_with_ambiguity':sum(v>0 for v in qamb.values()),'max_ambiguous_per_q':max(qamb.values()) if qamb else 0,'fractional_bracket_position_min':min(fractions) if fractions else None,'fractional_bracket_position_max':max(fractions) if fractions else None,'tau_min':min(taus) if taus else None,'tau_max':max(taus) if taus else None}
+          # This diagnostic cannot authorize interpolation or choose a categorical target state.
+          out['classification']='M21_TARGET_K_STATE_BOUNDARY_AMBIGUITY_LOCALIZED_NO_STATE_ASSIGNMENT'
+          pathlib.Path('M21_TARGET_K_STATE_BOUNDARY_AMBIGUITY_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m21-target-k-state-boundary-ambiguity-v01
+          path: M21_TARGET_K_STATE_BOUNDARY_AMBIGUITY_RESULT.json
+          retention-days: 90
