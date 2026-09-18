@@ -1,0 +1,103 @@
+name: W04 M21 TCA runtime-rule validation v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-tca-runtime-rule-validation-v01.yml']
+  workflow_dispatch:
+permissions: {actions: read, contents: read}
+jobs:
+  lane:
+    strategy:
+      fail-fast: false
+      matrix: {case: [ref, f2, f3, f4]}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install --user numpy
+      - uses: actions/download-artifact@v4
+        with:
+          name: m21-lphase-P400_ON_TAIL_OFF
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34887488405
+      - name: Instrument pinned provider and validate exact TCA rule
+        env: {CASE: '${{ matrix.case }}', OMP_NUM_THREADS: '1'}
+        run: |
+          set -euo pipefail
+          PIN=e85808324f51fc694d12e3ed7439552a3c3f9540
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$PIN"
+          test "$(git -C class rev-parse HEAD)" = "$PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class/source/perturbations.c'); s=p.read_text()
+          f0=s.index('int perturbations_timescale_and_approximations(')
+          b0=s.index('if (pth->has_idm_b == _TRUE_) {',f0)
+          depth=0; end=None
+          for i in range(b0,len(s)):
+            if s[i]=='{': depth+=1
+            elif s[i]=='}':
+              depth-=1
+              if depth==0: end=i+1; break
+          assert end is not None
+          probe='\n    fprintf(stderr,"KMDSB_TCA tau=%.17g k=%.17g tca=%d dk=%.17g tc=%.17g th=%.17g tk=%.17g Hthr=%.17g Kthr=%.17g idmg=%d tdmg=%.17g Gthr=%.17g idmb=%d trb=%.17g Bthr=%.17g\\n",tau,k,ppw->approx[ppw->index_ap_tca],ppw->pvecthermo[pth->index_th_dkappa],tau_c,tau_h,tau_k,ppr->tight_coupling_trigger_tau_c_over_tau_h,ppr->tight_coupling_trigger_tau_c_over_tau_k,pth->has_idm_g,(pth->has_idm_g==_TRUE_?tau_dmu_idm_g:0.),ppr->tight_coupling_trigger_tau_c_over_tau_dmu_idm_g,pth->has_idm_b,(pth->has_idm_b==_TRUE_?tau_R_idm_b:0.),ppr->tight_coupling_trigger_tau_c_over_tau_R_idm_b);\n'
+          p.write_text(s[:end]+probe+s[end:])
+          PY
+          python3 verification/m21/mixed_cold_warm_k1_reference.py prepare m21_cases
+          python3 verification/m21/build_l_grid_phase_profile.py P400_ON_TAIL_OFF class/cl_permille.pre verification/m21/m21_ncdm_tight.pre l400_diag.pre profile_manifest.json
+          mkdir -p output; make -C class -j2 > build.log 2>&1
+          timeout 2700 ./class/class "m21_cases/${CASE}.ini" l400_diag.pre > "stdout_${CASE}.log" 2> "tca_runtime_${CASE}.log"
+          python3 - <<'PY'
+          import glob,json,os,pathlib,re,numpy as np
+          c=os.environ['CASE']; lines=pathlib.Path(f'tca_runtime_{c}.log').read_text(errors='replace').splitlines()
+          pat=re.compile(r'KMDSB_TCA tau=([^ ]+) k=([^ ]+) tca=(\d+) dk=([^ ]+) tc=([^ ]+) th=([^ ]+) tk=([^ ]+) Hthr=([^ ]+) Kthr=([^ ]+) idmg=(\d+) tdmg=([^ ]+) Gthr=([^ ]+) idmb=(\d+) trb=([^ ]+) Bthr=([^ ]+)')
+          n=mis=0; idmg_seen=idmb_seen=0; examples=[]
+          for line in lines:
+            m=pat.search(line)
+            if not m: continue
+            tau,k=float(m[1]),float(m[2]); actual=int(m[3]); dk,tc,th,tk,Ht,Kt=map(float,m.groups()[3:9]); idmg=int(m[10]); tdmg=float(m[11]); Gt=float(m[12]); idmb=int(m[13]); trb=float(m[14]); Bt=float(m[15]); idmg_seen=max(idmg_seen,idmg); idmb_seen=max(idmb_seen,idmb)
+            if dk==0.: pred=1
+            else:
+              on=(tc/th < Ht) and (tc/tk < Kt)
+              if idmg: on=on and not (tc/tdmg >= Gt)
+              if idmb: on=on and not (tc/trb >= Bt)
+              pred=0 if on else 1
+            n+=1
+            if pred!=actual:
+              mis+=1
+              if len(examples)<20: examples.append({'tau':tau,'k':k,'actual':actual,'predicted':pred,'dkappa':dk,'tau_c':tc,'tau_h':th,'tau_k':tk})
+          assert n>0
+          cand=glob.glob(f'output/*{c}*_cl.dat')+glob.glob('output/*_cl.dat'); pc=[pathlib.Path(x) for x in glob.glob('parent/**/*_cl.dat',recursive=True) if c in pathlib.Path(x).name] or [pathlib.Path(x) for x in glob.glob('parent/**/*_cl.dat',recursive=True)]; assert cand and pc
+          def load(p): a=np.loadtxt(p); return a[:,0],a[:,1:]
+          lf,yf=load(cand[0]); lp,yp=load(pc[0]); common=np.intersect1d(lf,lp); fi=np.searchsorted(lf,common); pi=np.searchsorted(lp,common); l2=float(np.linalg.norm(yf[fi].ravel()-yp[pi].ravel())/max(np.linalg.norm(yp[pi].ravel()),1e-300))
+          passed=(mis==0 and l2<=1e-12)
+          out={'schema':'KMDSB.W04.M21.TCARuntimeRuleLane.v0.1','case':c,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','runtime_rows':n,'rule_mismatches':mis,'mismatch_examples':examples,'has_idm_g_seen':bool(idmg_seen),'has_idm_b_seen':bool(idmb_seen),'normalized_l2':l2,'pass':passed,'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}; pathlib.Path(f'tca_runtime_{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps(out,indent=2)); raise SystemExit(0 if passed else 1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-tca-runtime-rule-${{ matrix.case }}-v01
+          path: |
+            tca_runtime_${{ matrix.case }}.json
+            tca_runtime_${{ matrix.case }}.log
+            build.log
+          if-no-files-found: warn
+          retention-days: 90
+  barrier:
+    needs: lane
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {pattern: 'm21-tca-runtime-rule-*-v01', path: lanes}
+      - run: |
+          python3 - <<'PY'
+          import json,pathlib
+          ds=[json.load(open(p)) for p in pathlib.Path('lanes').rglob('tca_runtime_*.json')]; req={'ref','f2','f3','f4'}; passed={d['case'] for d in ds if d.get('pass')}==req
+          out={'schema':'KMDSB.W04.M21.TCARuntimeRuleBarrier.v0.1','classification':'M21_TCA_RUNTIME_RULE_VALIDATION_PASS' if passed else 'M21_TCA_RUNTIME_RULE_VALIDATION_BLOCKED','lanes':{d['case']:{'runtime_rows':d['runtime_rows'],'rule_mismatches':d['rule_mismatches'],'has_idm_g_seen':d['has_idm_g_seen'],'has_idm_b_seen':d['has_idm_b_seen'],'normalized_l2':d['normalized_l2']} for d in ds},'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}; pathlib.Path('M21_TCA_RUNTIME_RULE_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps(out,indent=2)); raise SystemExit(0 if passed else 1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: m21-tca-runtime-rule-validation-v01, path: M21_TCA_RUNTIME_RULE_RESULT.json, retention-days: 90}
