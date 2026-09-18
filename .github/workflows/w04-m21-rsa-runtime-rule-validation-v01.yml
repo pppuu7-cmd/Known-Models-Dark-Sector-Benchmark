@@ -1,0 +1,86 @@
+name: W04 M21 RSA runtime-rule validation v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-rsa-runtime-rule-validation-v01.yml']
+  workflow_dispatch:
+permissions: {actions: read, contents: read}
+jobs:
+  lane:
+    strategy:
+      fail-fast: false
+      matrix: {case: [ref, f2, f3, f4]}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install --user numpy
+      - uses: actions/download-artifact@v4
+        with:
+          name: m21-lphase-P400_ON_TAIL_OFF
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34887488405
+      - name: Capture provider trigger inputs and validate exact RSA rule
+        env: {CASE: '${{ matrix.case }}', OMP_NUM_THREADS: '1'}
+        run: |
+          set -euo pipefail
+          PIN=e85808324f51fc694d12e3ed7439552a3c3f9540
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$PIN"
+          test "$(git -C class rev-parse HEAD)" = "$PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class/source/perturbations.c'); s=p.read_text(); needle='_set_source_(ppt->index_tp_p) = sqrt(6.) * g * P;'; assert s.count(needle)>=1
+          probe=needle+'\n        fprintf(stderr,"KMDSB_RSA tau=%.17g k=%.17g rsa=%d rsa_mode=%d rsa_thr=%.17g tau_fs=%.17g\\n",tau,k,ppw->approx[ppw->index_ap_rsa],ppr->radiation_streaming_approximation,ppr->radiation_streaming_trigger_tau_over_tau_k,pth->tau_free_streaming);'
+          p.write_text(s.replace(needle,probe))
+          PY
+          python3 verification/m21/mixed_cold_warm_k1_reference.py prepare m21_cases
+          python3 verification/m21/build_l_grid_phase_profile.py P400_ON_TAIL_OFF class/cl_permille.pre verification/m21/m21_ncdm_tight.pre l400_diag.pre profile_manifest.json
+          mkdir -p output; make -C class -j2 > build.log 2>&1
+          timeout 2700 ./class/class "m21_cases/${CASE}.ini" l400_diag.pre > "stdout_${CASE}.log" 2> "rsa_${CASE}.log"
+          python3 - <<'PY'
+          import glob,json,os,pathlib,re,numpy as np
+          c=os.environ['CASE']; pat=re.compile(r'KMDSB_RSA tau=([^ ]+) k=([^ ]+) rsa=(\d+) rsa_mode=(\d+) rsa_thr=([^ ]+) tau_fs=([^ ]+)')
+          rows=[]; mismatch=0
+          for line in pathlib.Path(f'rsa_{c}.log').read_text(errors='replace').splitlines():
+            m=pat.search(line)
+            if not m: continue
+            tau,k=float(m[1]),float(m[2]); rsa,mode=int(m[3]),int(m[4]); thr,tfs=float(m[5]),float(m[6])
+            # Pinned enum authority: rsa_none=0, rsa_md=1, rsa_md_with_reio=2; rsa_off=0,rsa_on=1.
+            predicted=1 if (tau*k>thr and tau>tfs and mode!=0) else 0
+            mismatch += int(predicted!=rsa); rows.append((tau,k,rsa,mode,thr,tfs,predicted))
+          assert rows
+          cand=glob.glob(f'output/*{c}*_cl.dat')+glob.glob('output/*_cl.dat'); pc=[pathlib.Path(x) for x in glob.glob('parent/**/*_cl.dat',recursive=True) if c in pathlib.Path(x).name] or [pathlib.Path(x) for x in glob.glob('parent/**/*_cl.dat',recursive=True)]; assert cand and pc
+          def load(p): a=np.loadtxt(p); return a[:,0],a[:,1:]
+          lf,yf=load(cand[0]); lp,yp=load(pc[0]); common=np.intersect1d(lf,lp); fi=np.searchsorted(lf,common); pi=np.searchsorted(lp,common); l2=float(np.linalg.norm(yf[fi].ravel()-yp[pi].ravel())/max(np.linalg.norm(yp[pi].ravel()),1e-300))
+          finite=bool(all(np.isfinite(x) for r in rows for x in (r[0],r[1],r[4],r[5]))); passed=bool(rows) and finite and mismatch==0 and l2<=1e-12
+          vals={'rsa_modes':sorted(set(r[3] for r in rows)),'rsa_thresholds':sorted(set(r[4] for r in rows)),'tau_free_streaming_values':sorted(set(r[5] for r in rows))}
+          out={'schema':'KMDSB.W04.M21.RSARuntimeRuleValidationLane.v0.1','case':c,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','capture_rows':len(rows),'native_rule_mismatches':mismatch,'runtime_authority_values':vals,'parent_normalized_l2':l2,'pass':passed,'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}; pathlib.Path(f'rsa_rule_{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps(out,indent=2)); raise SystemExit(0 if passed else 1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-rsa-runtime-rule-${{ matrix.case }}
+          path: |
+            rsa_rule_${{ matrix.case }}.json
+            rsa_${{ matrix.case }}.log
+            build.log
+          retention-days: 90
+  barrier:
+    needs: lane
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {pattern: 'm21-rsa-runtime-rule-*', path: lanes}
+      - run: |
+          python3 - <<'PY'
+          import json,pathlib
+          ds=[json.load(open(p)) for p in pathlib.Path('lanes').rglob('rsa_rule_*.json')]; req={'ref','f2','f3','f4'}; passed={d['case'] for d in ds if d.get('pass')}==req
+          out={'schema':'KMDSB.W04.M21.RSARuntimeRuleValidationBarrier.v0.1','classification':'M21_RSA_RUNTIME_RULE_VALIDATION_PASS' if passed else 'M21_RSA_RUNTIME_RULE_VALIDATION_BLOCKED','lanes':{d['case']:{'rows':d['capture_rows'],'native_rule_mismatches':d['native_rule_mismatches'],'parent_normalized_l2':d['parent_normalized_l2'],'runtime_authority_values':d['runtime_authority_values']} for d in ds},'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}; pathlib.Path('M21_RSA_RUNTIME_RULE_VALIDATION_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps(out,indent=2)); raise SystemExit(0 if passed else 1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: m21-rsa-runtime-rule-validation-v01, path: M21_RSA_RUNTIME_RULE_VALIDATION_RESULT.json, retention-days: 90}
