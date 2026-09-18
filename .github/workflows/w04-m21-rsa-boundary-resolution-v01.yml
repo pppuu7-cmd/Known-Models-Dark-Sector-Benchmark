@@ -1,0 +1,88 @@
+name: W04 M21 RSA boundary resolution v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-rsa-boundary-resolution-v01.yml']
+  workflow_dispatch:
+permissions: {actions: read, contents: read}
+jobs:
+  analyze:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-l400-conv-case-*-v01
+          path: components
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34907528331
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-primitive-p-capture-*
+          path: primitive
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 35317585346
+      - uses: actions/download-artifact@v4
+        with:
+          name: m21-rsa-runtime-rule-validation-v01
+          path: authority
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 35360159958
+      - name: Resolve target-k RSA boundaries with validated exact provider rule
+        run: |
+          python3 - <<'PY'
+          import bisect,json,math,pathlib,re
+          auth=json.load(open('authority/M21_RSA_RUNTIME_RULE_VALIDATION_RESULT.json'))
+          assert auth['classification']=='M21_RSA_RUNTIME_RULE_VALIDATION_PASS'
+          cases=('ref','f2','f3','f4'); qreq=set(range(261,334)); pat=re.compile(r'KMDSB_PP tau=([^ ]+) k=([^ ]+) rsa=(\d+) tca=(\d+)')
+          out={'schema':'KMDSB.W04.M21.RSABoundaryResolution.v0.1','provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','authority_run':35360159958,'primitive_capture_run':35317585346,'parent_component_run':34907528331,'rule':'rsa_on iff tau*k>45 and tau>tau_free_streaming and rsa_mode!=rsa_none; runtime-validated on all native rows; TCA remains categorical endpoint-consensus only','cases':{},'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          allpass=True
+          for c in cases:
+            av=auth['lanes'][c]['runtime_authority_values']; assert av['rsa_modes']==[2] and av['rsa_thresholds']==[45.0] and len(av['tau_free_streaming_values'])==1
+            tfs=float(av['tau_free_streaming_values'][0])
+            cp=list(pathlib.Path('components').rglob(f'conv_{c}.dat')); lg=list(pathlib.Path('primitive').rglob(f'primitive_{c}.log')); assert len(cp)==len(lg)==1
+            targets={}
+            for raw in cp[0].read_text(errors='replace').splitlines():
+              p=raw.strip().split()
+              if len(p)!=12 or raw.lstrip().startswith('#'): continue
+              q=int(round(float(p[0]))); k=float(p[1])
+              if q in qreq: targets.setdefault(q,k)
+            assert set(targets)==qreq
+            rows={}
+            for line in lg[0].read_text(errors='replace').splitlines():
+              m=pat.search(line)
+              if m:
+                tau=float(m[1]); k=float(m[2]); st=(int(m[3]),int(m[4])); rows.setdefault(tau,{}).setdefault(k,set()).add(st)
+            total=outside=old_amb=resolved_rsa=tca_amb=unresolved=0; on=off=0
+            for tau,km in rows.items():
+              ks=sorted(km)
+              for q,k in targets.items():
+                total+=1; i=bisect.bisect_left(ks,k)
+                if i<len(ks) and math.isclose(ks[i],k,rel_tol=1e-13,abs_tol=0):
+                  sts=km[ks[i]]
+                  if len(sts)!=1: unresolved+=1; continue
+                  rsa,tca=next(iter(sts)); pred=int(tau*k>45.0 and tau>tfs); unresolved+=int(pred!=rsa); on+=pred; off+=1-pred; continue
+                if i==0 or i==len(ks): outside+=1; continue
+                a,b=km[ks[i-1]],km[ks[i]]
+                if len(a)!=1 or len(b)!=1: unresolved+=1; continue
+                sa,sb=next(iter(a)),next(iter(b))
+                if sa!=sb: old_amb+=1
+                if sa[1]!=sb[1]: tca_amb+=1; unresolved+=1; continue
+                pred=int(tau*k>45.0 and tau>tfs); on+=pred; off+=1-pred
+                if sa[0]!=sb[0]: resolved_rsa+=1
+            passed=total>0 and outside==0 and tca_amb==0 and unresolved==0
+            allpass &= passed
+            out['cases'][c]={'mapping_samples':total,'previous_categorical_ambiguous':old_amb,'rsa_boundary_samples_resolved_by_exact_rule':resolved_rsa,'tca_boundary_ambiguous':tca_amb,'outside_samples':outside,'unresolved_samples':unresolved,'target_rsa_on':on,'target_rsa_off':off,'tau_free_streaming':tfs,'pass':passed}
+          out['classification']='M21_TARGET_K_RSA_BOUNDARY_RESOLUTION_PASS' if allpass else 'M21_TARGET_K_RSA_BOUNDARY_RESOLUTION_BLOCKED'
+          pathlib.Path('M21_TARGET_K_RSA_BOUNDARY_RESOLUTION_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps(out,indent=2)); raise SystemExit(0 if allpass else 1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-target-k-rsa-boundary-resolution-v01
+          path: M21_TARGET_K_RSA_BOUNDARY_RESOLUTION_RESULT.json
+          retention-days: 90
