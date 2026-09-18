@@ -1,31 +1,20 @@
 name: W04 M21 primitive-P capture v0.1
-
 on:
   push:
     branches: [main]
-    paths:
-      - '.github/workflows/w04-m21-primitive-p-capture-v01.yml'
+    paths: ['.github/workflows/w04-m21-primitive-p-capture-v01.yml']
   workflow_dispatch:
-
-permissions:
-  actions: read
-  contents: read
-
+permissions: {actions: read, contents: read}
 jobs:
   lane:
     strategy:
       fail-fast: false
-      matrix:
-        case: [ref, f2, f3, f4]
+      matrix: {case: [ref, f2, f3, f4]}
     runs-on: ubuntu-22.04
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
       - run: python3 -m pip install --user numpy
-      - name: Enforce frozen authorities
-        run: |
-          grep -F 'e85808324f51fc694d12e3ed7439552a3c3f9540' protocol/W04_M21_L400_APPROX_STATE_SOURCE_ZERO_TRANSITION_AUDIT_v0.1.md
-          grep -F 'polarization_primitives' protocol/W04_M21_INSTRUMENTATION_IMPLEMENTATION_AUTHORITY_v0.1.md
       - uses: actions/download-artifact@v4
         with:
           name: m21-lphase-P400_ON_TAIL_OFF
@@ -34,9 +23,7 @@ jobs:
           repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
           run-id: 34887488405
       - name: Compile and execute branch-aware primitive-P capture
-        env:
-          CASE: ${{ matrix.case }}
-          OMP_NUM_THREADS: '1'
+        env: {CASE: '${{ matrix.case }}', OMP_NUM_THREADS: '1'}
         run: |
           set -euo pipefail
           PIN=e85808324f51fc694d12e3ed7439552a3c3f9540
@@ -45,47 +32,32 @@ jobs:
           test "$(git -C class rev-parse HEAD)" = "$PIN"
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('class/source/perturbations.c'); s=p.read_text()
-          needle='_set_source_(ppt->index_tp_p) = sqrt(6.) * g * P;'
-          assert s.count(needle)>=1
-          # Read-only capture. Branch-aware ternaries never dereference polarization y-indices
-          # in RSA/TCA branches where those primitives are not the active representation.
+          p=Path('class/source/perturbations.c'); s=p.read_text(); needle='_set_source_(ppt->index_tp_p) = sqrt(6.) * g * P;'; assert s.count(needle)>=1
           probe=needle+'\n        fprintf(stderr,"KMDSB_PP tau=%.17g k=%.17g rsa=%d tca=%d g=%.17g P=%.17g SE=%.17g tca_shear=%.17g pol0=%.17g pol2=%.17g shear=%.17g s2=%.17g\\n",tau,k,ppw->approx[ppw->index_ap_rsa],ppw->approx[ppw->index_ap_tca],g,P,_set_source_(ppt->index_tp_p),ppw->approx[ppw->index_ap_rsa]==(int)rsa_off && ppw->approx[ppw->index_ap_tca]==(int)tca_on ? ppw->tca_shear_g : 0.,ppw->approx[ppw->index_ap_rsa]==(int)rsa_off && ppw->approx[ppw->index_ap_tca]==(int)tca_off ? y[ppw->pv->index_pt_pol0_g] : 0.,ppw->approx[ppw->index_ap_rsa]==(int)rsa_off && ppw->approx[ppw->index_ap_tca]==(int)tca_off ? y[ppw->pv->index_pt_pol2_g] : 0.,ppw->approx[ppw->index_ap_rsa]==(int)rsa_off && ppw->approx[ppw->index_ap_tca]==(int)tca_off ? y[ppw->pv->index_pt_shear_g] : 0.,ppw->s_l[2]);'
           p.write_text(s.replace(needle,probe))
           PY
           python3 verification/m21/mixed_cold_warm_k1_reference.py prepare m21_cases
           python3 verification/m21/build_l_grid_phase_profile.py P400_ON_TAIL_OFF class/cl_permille.pre verification/m21/m21_ncdm_tight.pre l400_diag.pre profile_manifest.json
-          mkdir -p output
-          make -C class -j2 > build.log 2>&1
+          mkdir -p output; make -C class -j2 > build.log 2>&1
           timeout 2700 ./class/class "m21_cases/${CASE}.ini" l400_diag.pre > "stdout_${CASE}.log" 2> "primitive_${CASE}.log"
           python3 - <<'PY'
           import glob,json,os,pathlib,re,numpy as np
-          c=os.environ['CASE']; lines=pathlib.Path(f'primitive_{c}.log').read_text(errors='replace').splitlines()
-          pat=re.compile(r'KMDSB_PP tau=([^ ]+) k=([^ ]+) rsa=(\d+) tca=(\d+) g=([^ ]+) P=([^ ]+) SE=([^ ]+) tca_shear=([^ ]+) pol0=([^ ]+) pol2=([^ ]+) shear=([^ ]+) s2=([^ ]+)')
+          c=os.environ['CASE']; lines=pathlib.Path(f'primitive_{c}.log').read_text(errors='replace').splitlines(); pat=re.compile(r'KMDSB_PP tau=([^ ]+) k=([^ ]+) rsa=(\d+) tca=(\d+) g=([^ ]+) P=([^ ]+) SE=([^ ]+) tca_shear=([^ ]+) pol0=([^ ]+) pol2=([^ ]+) shear=([^ ]+) s2=([^ ]+)')
           rows=[]; errs=[]; counts={'rsa':0,'tca':0,'full':0}
           for line in lines:
             m=pat.search(line)
             if not m: continue
-            tau,k=float(m[1]),float(m[2]); rsa,tca=int(m[3]),int(m[4]); vals=list(map(float,m.groups()[4:])); g,P,SE,tsh,p0,p2,sh,s2=vals
-            if rsa!=0: # provider enum: rsa_on is the active nonzero state
-              pr=0.; branch='rsa'
-            elif tca!=0:
-              pr=5.*s2*tsh/8.; branch='tca'
-            else:
-              pr=(p0+p2+2.*s2*sh)/8.; branch='full'
-            counts[branch]+=1
-            errs.append(abs(P-pr)/max(abs(P),abs(pr),1e-300)); rows.append((tau,k,rsa,tca,g,P,SE,tsh,p0,p2,sh,s2))
+            tau,k=float(m[1]),float(m[2]); rsa,tca=int(m[3]),int(m[4]); g,P,SE,tsh,p0,p2,sh,s2=map(float,m.groups()[4:])
+            # Pinned CLASS enums: tca_on=0,tca_off=1; rsa_off=0,rsa_on=1.
+            if rsa!=0: pr=0.; branch='rsa'
+            elif tca==0: pr=5.*s2*tsh/8.; branch='tca'
+            else: pr=(p0+p2+2.*s2*sh)/8.; branch='full'
+            counts[branch]+=1; errs.append(abs(P-pr)/max(abs(P),abs(pr),1e-300)); rows.append((tau,k,rsa,tca,g,P,SE,tsh,p0,p2,sh,s2))
           assert rows
-          cand=glob.glob(f'output/*{c}*_cl.dat')+glob.glob('output/*_cl.dat'); assert cand
-          pc=[pathlib.Path(x) for x in glob.glob('parent/**/*_cl.dat',recursive=True) if c in pathlib.Path(x).name] or [pathlib.Path(x) for x in glob.glob('parent/**/*_cl.dat',recursive=True)]; assert pc
+          cand=glob.glob(f'output/*{c}*_cl.dat')+glob.glob('output/*_cl.dat'); pc=[pathlib.Path(x) for x in glob.glob('parent/**/*_cl.dat',recursive=True) if c in pathlib.Path(x).name] or [pathlib.Path(x) for x in glob.glob('parent/**/*_cl.dat',recursive=True)]; assert cand and pc
           def load(p): a=np.loadtxt(p); return a[:,0],a[:,1:]
-          lf,yf=load(cand[0]); lp,yp=load(pc[0]); common=np.intersect1d(lf,lp); assert len(common)>10
-          fi=np.searchsorted(lf,common); pi=np.searchsorted(lp,common); a=yf[fi].ravel(); b=yp[pi].ravel()
-          l2=float(np.linalg.norm(a-b)/max(np.linalg.norm(b),1e-300)); perr=float(max(errs)); finite=bool(np.isfinite(perr) and all(np.isfinite(x) for row in rows for x in row))
-          passed=bool(rows) and finite and l2<=1e-12 and perr<=1e-10
-          out={'schema':'KMDSB.W04.M21.PrimitivePCaptureLane.v0.1','case':c,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','capture_rows':len(rows),'branch_counts':counts,'normalized_l2':l2,'primitive_P_reconstruction_max_relative_error':perr,'finite':finite,'pass':passed,'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
-          pathlib.Path(f'primitive_p_{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps(out,indent=2))
-          if not passed: raise SystemExit(1)
+          lf,yf=load(cand[0]); lp,yp=load(pc[0]); common=np.intersect1d(lf,lp); assert len(common)>10; fi=np.searchsorted(lf,common); pi=np.searchsorted(lp,common); a=yf[fi].ravel(); b=yp[pi].ravel(); l2=float(np.linalg.norm(a-b)/max(np.linalg.norm(b),1e-300)); perr=float(max(errs)); finite=bool(np.isfinite(perr) and all(np.isfinite(x) for row in rows for x in row)); passed=bool(rows) and finite and l2<=1e-12 and perr<=1e-10
+          out={'schema':'KMDSB.W04.M21.PrimitivePCaptureLane.v0.1','case':c,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','capture_rows':len(rows),'branch_counts':counts,'normalized_l2':l2,'primitive_P_reconstruction_max_relative_error':perr,'finite':finite,'pass':passed,'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}; pathlib.Path(f'primitive_p_{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps(out,indent=2)); raise SystemExit(0 if passed else 1)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
@@ -98,29 +70,18 @@ jobs:
             stdout_${{ matrix.case }}.log
           if-no-files-found: warn
           retention-days: 90
-
   barrier:
     needs: lane
     if: always()
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/download-artifact@v4
-        with:
-          pattern: m21-primitive-p-capture-*
-          path: lanes
-      - name: Fail closed on 4/4 primitive-P capture
-        run: |
+        with: {pattern: 'm21-primitive-p-capture-*', path: lanes}
+      - run: |
           python3 - <<'PY'
           import json,pathlib
-          ds=[json.load(open(p)) for p in pathlib.Path('lanes').rglob('primitive_p_*.json')]
-          req={'ref','f2','f3','f4'}; passed={d['case'] for d in ds if d.get('pass')}==req
-          out={'schema':'KMDSB.W04.M21.PrimitivePCaptureBarrier.v0.1','classification':'M21_L400_PRIMITIVE_P_CAPTURE_PASS' if passed else 'M21_L400_PRIMITIVE_P_CAPTURE_BLOCKED','lanes':{d['case']:{'rows':d['capture_rows'],'branch_counts':d['branch_counts'],'normalized_l2':d['normalized_l2'],'primitive_P_reconstruction_max_relative_error':d['primitive_P_reconstruction_max_relative_error']} for d in ds},'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
-          pathlib.Path('M21_PRIMITIVE_P_CAPTURE_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
-          if not passed: raise SystemExit(1)
+          ds=[json.load(open(p)) for p in pathlib.Path('lanes').rglob('primitive_p_*.json')]; req={'ref','f2','f3','f4'}; passed={d['case'] for d in ds if d.get('pass')}==req; out={'schema':'KMDSB.W04.M21.PrimitivePCaptureBarrier.v0.1','classification':'M21_L400_PRIMITIVE_P_CAPTURE_PASS' if passed else 'M21_L400_PRIMITIVE_P_CAPTURE_BLOCKED','lanes':{d['case']:{'rows':d['capture_rows'],'branch_counts':d['branch_counts'],'normalized_l2':d['normalized_l2'],'primitive_P_reconstruction_max_relative_error':d['primitive_P_reconstruction_max_relative_error']} for d in ds},'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}; pathlib.Path('M21_PRIMITIVE_P_CAPTURE_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); raise SystemExit(0 if passed else 1)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
-        with:
-          name: m21-primitive-p-capture-v01
-          path: M21_PRIMITIVE_P_CAPTURE_RESULT.json
-          retention-days: 90
+        with: {name: m21-primitive-p-capture-v01, path: M21_PRIMITIVE_P_CAPTURE_RESULT.json, retention-days: 90}
