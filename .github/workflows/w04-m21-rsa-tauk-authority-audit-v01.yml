@@ -1,0 +1,46 @@
+name: W04 M21 RSA tau_k authority audit v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-rsa-tauk-authority-audit-v01.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin provider and extract tau_k definition around RSA trigger
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git -C class rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          python3 - <<'PY'
+          import json,pathlib,re
+          p=pathlib.Path('class/source/perturbations.c')
+          lines=p.read_text(errors='replace').splitlines()
+          hits=[]
+          pats=[r'\btau_k\b',r'radiation_streaming_trigger_tau_over_tau_k',r'tau/tau_k']
+          for i,line in enumerate(lines):
+            if any(re.search(x,line) for x in pats):
+              lo=max(0,i-12); hi=min(len(lines),i+13)
+              hits.append({'line':i+1,'context':'\n'.join(f'{j+1}: {lines[j]}' for j in range(lo,hi))})
+          assignments=[h for h in hits if re.search(r'\btau_k\s*=',h['context'])]
+          trigger=[h for h in hits if 'radiation_streaming_trigger_tau_over_tau_k' in h['context'] and 'rsa_on' in h['context']]
+          out={'schema':'KMDSB.W04.M21.RSATauKAuthorityAudit.v0.1','provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','scope':'source-only authority audit for tau_k definition and RSA trigger; no target-state assignment and no scientific classifier','hit_count':len(hits),'assignment_context_count':len(assignments),'trigger_context_count':len(trigger),'hits':hits,'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          out['classification']='M21_RSA_TAUK_AUTHORITY_COMPLETE' if assignments and trigger else 'M21_RSA_TAUK_AUTHORITY_INCOMPLETE'
+          pathlib.Path('M21_RSA_TAUK_AUTHORITY_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          pathlib.Path('M21_RSA_TAUK_AUTHORITY_CONTEXT.txt').write_text('\n\n===== HIT =====\n\n'.join(h['context'] for h in hits)+'\n')
+          print(json.dumps({k:v for k,v in out.items() if k!='hits'},indent=2))
+          if not assignments or not trigger: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-rsa-tauk-authority-v01
+          path: |
+            M21_RSA_TAUK_AUTHORITY_RESULT.json
+            M21_RSA_TAUK_AUTHORITY_CONTEXT.txt
+          retention-days: 90
