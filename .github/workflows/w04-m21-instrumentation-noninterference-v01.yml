@@ -1,0 +1,111 @@
+name: W04 M21 instrumentation noninterference control v0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/w04-m21-instrumentation-noninterference-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  lane:
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [ref, f2, f3, f4]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install --user numpy
+      - name: Enforce frozen authorities
+        run: |
+          grep -F 'e85808324f51fc694d12e3ed7439552a3c3f9540' protocol/W04_M21_L400_APPROX_STATE_SOURCE_ZERO_TRANSITION_AUDIT_v0.1.md
+          grep -F 'normalized L2 <=1e-12' protocol/W04_M21_L400_APPROX_STATE_SOURCE_ZERO_TRANSITION_AUDIT_v0.1.md
+          grep -F 'M21_L400_INSTRUMENTATION_IMPLEMENTATION_AUTHORITY_PASS' protocol/W04_M21_INSTRUMENTATION_IMPLEMENTATION_AUTHORITY_v0.1.md
+      - uses: actions/download-artifact@v4
+        with:
+          name: m21-lphase-P400_ON_TAIL_OFF
+          path: parent
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34887488405
+      - name: Build pinned provider with read-only source instrumentation and reproduce parent
+        env:
+          CASE: ${{ matrix.case }}
+          OMP_NUM_THREADS: '1'
+        run: |
+          set -euo pipefail
+          PIN=e85808324f51fc694d12e3ed7439552a3c3f9540
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$PIN"
+          test "$(git -C class rev-parse HEAD)" = "$PIN"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('class/source/perturbations.c'); s=p.read_text()
+          needle='_set_source_(ppt->index_tp_p) = sqrt(6.) * g * P;'
+          n=s.count(needle); assert n>=1,n
+          probe=needle+'\n        { volatile double kmdsb_g = g; volatile double kmdsb_P = P; volatile double kmdsb_SE = _set_source_(ppt->index_tp_p); (void)kmdsb_g; (void)kmdsb_P; (void)kmdsb_SE; }'
+          p.write_text(s.replace(needle,probe))
+          Path('patch_count.txt').write_text(str(n)+'\n')
+          PY
+          python3 verification/m21/mixed_cold_warm_k1_reference.py prepare m21_cases
+          python3 verification/m21/build_l_grid_phase_profile.py P400_ON_TAIL_OFF class/cl_permille.pre verification/m21/m21_ncdm_tight.pre l400_diag.pre profile_manifest.json
+          mkdir -p output
+          make -C class -j2 > build.log 2>&1
+          timeout 2700 ./class/class "m21_cases/${CASE}.ini" l400_diag.pre > "run_${CASE}.log" 2>&1
+          python3 - <<'PY'
+          import glob,json,os,pathlib,numpy as np
+          c=os.environ['CASE']; cand=glob.glob(f'output/*{c}*_cl.dat')+glob.glob('output/*_cl.dat'); assert cand
+          pc=[pathlib.Path(x) for x in glob.glob('parent/**/*_cl.dat',recursive=True) if c in pathlib.Path(x).name]
+          if not pc: pc=[pathlib.Path(x) for x in glob.glob('parent/**/*_cl.dat',recursive=True)]
+          assert pc
+          def load(p): a=np.loadtxt(p); return a[:,0],a[:,1:]
+          lf,yf=load(cand[0]); lp,yp=load(pc[0]); common=np.intersect1d(lf,lp); assert len(common)>10
+          fi=np.searchsorted(lf,common); pi=np.searchsorted(lp,common); a=yf[fi].ravel(); b=yp[pi].ravel()
+          r=float(np.linalg.norm(a-b)/max(np.linalg.norm(b),1e-300)); passed=r<=1e-12
+          out={'schema':'KMDSB.W04.M21.InstrumentationNoninterferenceLane.v0.1','case':c,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','parent_run_id':34887488405,'normalized_l2':r,'threshold':1e-12,'pass':passed,'instrumentation':'read-only volatile capture of g,P,S_E after native scalar-E assignment','scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          pathlib.Path(f'noninterference_{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps(out,indent=2))
+          if not passed: raise SystemExit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-instrumentation-noninterference-${{ matrix.case }}
+          path: |
+            noninterference_${{ matrix.case }}.json
+            patch_count.txt
+            build.log
+            run_${{ matrix.case }}.log
+          if-no-files-found: warn
+          retention-days: 90
+
+  barrier:
+    needs: lane
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-instrumentation-noninterference-*
+          path: lanes
+      - name: Fail closed on 4/4 reproduction
+        run: |
+          python3 - <<'PY'
+          import json,pathlib
+          ds=[json.load(open(p)) for p in pathlib.Path('lanes').rglob('noninterference_*.json')]
+          passed={d['case'] for d in ds if d.get('pass')}; req={'ref','f2','f3','f4'}; ok=passed==req
+          out={'schema':'KMDSB.W04.M21.InstrumentationNoninterferenceBarrier.v0.1','classification':'M21_L400_INSTRUMENTATION_NONINTERFERENCE_PASS' if ok else 'M21_L400_INSTRUMENTATION_NONINTERFERENCE_BLOCKED','lanes':{d['case']:d['normalized_l2'] for d in ds},'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          pathlib.Path('M21_INSTRUMENTATION_NONINTERFERENCE_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          if not ok: raise SystemExit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-instrumentation-noninterference-v01
+          path: M21_INSTRUMENTATION_NONINTERFERENCE_RESULT.json
+          retention-days: 90
