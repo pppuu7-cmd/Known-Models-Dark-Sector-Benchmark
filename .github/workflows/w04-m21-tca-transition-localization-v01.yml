@@ -15,85 +15,57 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
-        with:
-          name: m21-primitive-p-capture-${{ matrix.case }}
-          path: primitive
-          github-token: ${{ github.token }}
-          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
-          run-id: 35317585346
+        with: {name: 'm21-primitive-p-capture-${{ matrix.case }}', path: primitive, github-token: '${{ github.token }}', repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark, run-id: 35317585346}
       - uses: actions/download-artifact@v4
-        with:
-          name: m21-l400-conv-case-${{ matrix.case }}-v01
-          path: component
-          github-token: ${{ github.token }}
-          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
-          run-id: 34907528331
+        with: {name: 'm21-l400-conv-case-${{ matrix.case }}-v01', path: component, github-token: '${{ github.token }}', repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark, run-id: 34907528331}
       - uses: actions/download-artifact@v4
-        with:
-          name: m21-rsa-transition-localization-v01
-          path: rsa
-          github-token: ${{ github.token }}
-          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
-          run-id: 35383392702
+        with: {name: m21-rsa-transition-localization-v01, path: rsa, github-token: '${{ github.token }}', repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark, run-id: 35383392702}
       - name: Map provider TCA state to exact target-k by endpoint consensus
         env: {CASE: '${{ matrix.case }}'}
         run: |
           python3 - <<'PY'
-          import os,re,json,pathlib,bisect,math
-          c=os.environ['CASE']; proto=pathlib.Path('protocol/W04_M21_L400_APPROX_STATE_SOURCE_ZERO_TRANSITION_AUDIT_v0.1.md').read_text()
-          assert '>=90%' in proto and 'one native f3 tau step' in proto and 'TCA' in proto
-          rsa=json.load(open('rsa/M21_RSA_TRANSITION_LOCALIZATION_RESULT.json'))
-          assert rsa['classification']=='M21_L400_RSA_TRANSITION_NOT_LOCALIZED_CONTINUE_TCA_P_G'
-          pat=re.compile(r'KMDSB_PP tau=([^ ]+) k=([^ ]+) rsa=(\d+) tca=(\d+)')
-          bytau={}
+          import os,re,json,pathlib,bisect
+          c=os.environ['CASE']; proto=pathlib.Path('protocol/W04_M21_L400_APPROX_STATE_SOURCE_ZERO_TRANSITION_AUDIT_v0.1.md').read_text(); assert '>=90%' in proto and 'one native f3 tau step' in proto and 'TCA' in proto
+          rsa=json.load(open('rsa/M21_RSA_TRANSITION_LOCALIZATION_RESULT.json')); assert rsa['classification']=='M21_L400_RSA_TRANSITION_NOT_LOCALIZED_CONTINUE_TCA_P_G'
+          pat=re.compile(r'KMDSB_PP tau=([^ ]+) k=([^ ]+) rsa=(\d+) tca=(\d+)'); bytau={}
           for line in pathlib.Path(f'primitive/primitive_{c}.log').read_text(errors='replace').splitlines():
             m=pat.search(line)
-            if m:
-              tau,k=float(m[1]),float(m[2]); tca=int(m[4]); bytau.setdefault(tau,[]).append((k,tca))
-          assert bytau
-          taus=sorted(bytau)
+            if m: bytau.setdefault(float(m[1]),[]).append((float(m[2]),int(m[4])))
+          assert bytau; taus=sorted(bytau)
           for t in taus: bytau[t].sort()
-          conv=list(pathlib.Path('component').rglob(f'conv_{c}.dat')); assert len(conv)==1
-          qrows={}
+          conv=list(pathlib.Path('component').rglob(f'conv_{c}.dat')); assert len(conv)==1; qrows={}
           for raw in conv[0].read_text(errors='replace').splitlines():
             z=raw.split()
-            if len(z)!=12: continue
-            q=int(round(float(z[0]))); j=int(z[2]); tau=float(z[3]); k=float(z[1]); epj=int(z[10]); ept=float(z[11])
-            if 261<=q<=333: qrows.setdefault(q,[]).append((j,tau,k,epj,ept))
-          assert len(qrows)==73
-          outq={}; unresolved=0
+            if len(z)==12:
+              q=int(round(float(z[0])))
+              if 261<=q<=333: qrows.setdefault(q,[]).append((int(z[2]),float(z[3]),float(z[1]),int(z[10]),float(z[11])))
+          assert len(qrows)==73; outq={}; unresolved=0
           for q,rows in qrows.items():
             states=[]
             for j,tau,k,epj,ept in rows:
-              ti=bisect.bisect_left(taus,tau)
-              # Frozen mapping forbids interpolation between tau samples: require exact native tau.
-              cand=[]
-              for ii in (ti-1,ti):
-                if 0<=ii<len(taus) and abs(taus[ii]-tau)<=1e-11*max(1.,abs(tau)): cand.append(taus[ii])
+              ti=bisect.bisect_left(taus,tau); cand=[taus[ii] for ii in (ti-1,ti) if 0<=ii<len(taus) and abs(taus[ii]-tau)<=1e-11*max(1.,abs(tau))]
               if not cand: states.append((j,tau,None)); unresolved+=1; continue
-              tt=min(cand,key=lambda x:abs(x-tau)); arr=bytau[tt]; ks=[x[0] for x in arr]; p=bisect.bisect_left(ks,k)
+              arr=bytau[min(cand,key=lambda x:abs(x-tau))]; ks=[x[0] for x in arr]; p=bisect.bisect_left(ks,k)
               if p<len(arr) and abs(arr[p][0]-k)<=1e-12*max(1.,abs(k)): st=arr[p][1]
               elif p==0 or p==len(arr): st=None
               else: st=arr[p-1][1] if arr[p-1][1]==arr[p][1] else None
               if st is None: unresolved+=1
               states.append((j,tau,st))
-            transitions=[]
-            prev=None
-            for j,tau,st in sorted(states):
+            ss=sorted(states); transitions=[]; prev=None
+            for j,tau,st in ss:
               if st is None: continue
               if prev is not None and st!=prev[2]: transitions.append({'j':j,'tau':tau,'from':prev[2],'to':st})
               prev=(j,tau,st)
-            outq[str(q)]={'transitions':transitions,'endpoint_tau':rows[0][4],'endpoint_j':rows[0][3],'mapped_rows':sum(x[2] is not None for x in states),'total_rows':len(states)}
-          out={'schema':'KMDSB.W04.M21.TCATransitionLane.v0.1','case':c,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','primitive_capture_run':35317585346,'rsa_run':35383392702,'q_count':73,'unresolved_mapping_rows':unresolved,'per_q':outq,'pass':unresolved==0,'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
-          pathlib.Path(f'tca_lane_{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
-          print(json.dumps({k:v for k,v in out.items() if k!='per_q'},indent=2)); raise SystemExit(0 if out['pass'] else 1)
+            ep=rows[0][4]; near=min(range(len(ss)),key=lambda i:abs(ss[i][1]-ep)); dif=[]
+            if near>0: dif.append(abs(ss[near][1]-ss[near-1][1]))
+            if near+1<len(ss): dif.append(abs(ss[near+1][1]-ss[near][1]))
+            step=max(dif) if dif else None
+            outq[str(q)]={'transitions':transitions,'endpoint_tau':ep,'endpoint_j':rows[0][3],'native_step_at_endpoint':step,'mapped_rows':sum(x[2] is not None for x in ss),'total_rows':len(ss)}
+          out={'schema':'KMDSB.W04.M21.TCATransitionLane.v0.1','case':c,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','primitive_capture_run':35317585346,'rsa_run':35383392702,'q_count':73,'unresolved_mapping_rows':unresolved,'per_q':outq,'pass':unresolved==0,'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}; pathlib.Path(f'tca_lane_{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); raise SystemExit(0 if out['pass'] else 1)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
-        with:
-          name: m21-tca-transition-lane-${{ matrix.case }}-v01
-          path: tca_lane_${{ matrix.case }}.json
-          retention-days: 90
+        with: {name: 'm21-tca-transition-lane-${{ matrix.case }}-v01', path: 'tca_lane_${{ matrix.case }}.json', retention-days: 90}
   barrier:
     needs: lane
     if: always()
@@ -105,28 +77,19 @@ jobs:
       - name: Frozen TCA localization classification
         run: |
           python3 - <<'PY'
-          import json,pathlib,math
+          import json,pathlib
           ds={d['case']:d for p in pathlib.Path('lanes').rglob('tca_lane_*.json') for d in [json.load(open(p))]}; req={'ref','f2','f3','f4'}
-          if set(ds)!=req or not all(d.get('pass') for d in ds.values()):
-            out={'schema':'KMDSB.W04.M21.TCATransitionLocalization.v0.1','classification':'M21_L400_TCA_MAPPING_BLOCKED','scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          if set(ds)!=req or not all(d.get('pass') for d in ds.values()): out={'schema':'KMDSB.W04.M21.TCATransitionLocalization.v0.1','classification':'M21_L400_TCA_MAPPING_BLOCKED','scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
           else:
             hits=0; perq={}
             for q in range(261,334):
-              z={c:ds[c]['per_q'][str(q)] for c in req}; f3=z['f3']; ep=f3['endpoint_tau']
-              # native f3 step: nearest transition-side spacing inferred from mapped q rows count is not enough; use conservative nearest transition separation if present.
-              tf3=[x['tau'] for x in f3['transitions']]
-              # Frozen criterion requires an actual f3-exclusive TCA transition; exact coincidence in controls rejects exclusivity.
-              if tf3:
-                t=tf3[0]
-                ctrl=[x['tau'] for c in ('ref','f2','f4') for x in z[c]['transitions']]
-                # one native step proxy is prospectively bounded by nearest f3 mapped transition-to-endpoint distance only when transition is adjacent; fail closed otherwise.
-                near=abs(t-ep)
-                exclusive=all(abs(t-u)>max(1e-12,near) for u in ctrl)
-                localized=bool(exclusive and near>0 and near<=0.02*max(abs(ep),1.0))
-              else: t=None; near=None; exclusive=False; localized=False
-              hits+=localized; perq[str(q)]={'f3_transition_tau':t,'f3_endpoint_tau':ep,'distance':near,'f3_exclusive':exclusive,'tca_localized':localized}
-            frac=hits/73.0
-            out={'schema':'KMDSB.W04.M21.TCATransitionLocalization.v0.1','q_count':73,'tca_localized_q':hits,'tca_localized_fraction':frac,'frozen_threshold':0.90,'classification':'M21_L400_TCA_TRANSITION_LOCALIZED_CANDIDATE' if frac>=0.90 else 'M21_L400_TCA_TRANSITION_NOT_LOCALIZED_CONTINUE_P_G','per_q':perq,'scientific_classifier_executed':False,'frozen_full_classifier_deferred':True,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+              z={c:ds[c]['per_q'][str(q)] for c in req}; f3=z['f3']; ep=f3['endpoint_tau']; step=f3['native_step_at_endpoint']; tf3=[x['tau'] for x in f3['transitions']]
+              if tf3 and step is not None:
+                # choose the f3 transition nearest the frozen extended-support endpoint
+                t=min(tf3,key=lambda x:abs(x-ep)); ctrl=[x['tau'] for c in ('ref','f2','f4') for x in z[c]['transitions']]; exclusive=all(abs(t-u)>step for u in ctrl); localized=bool(exclusive and abs(t-ep)<=step)
+              else: t=None; exclusive=False; localized=False
+              hits+=localized; perq[str(q)]={'f3_transition_tau':t,'f3_endpoint_tau':ep,'native_f3_tau_step':step,'f3_exclusive':exclusive,'within_one_native_step_of_endpoint':bool(t is not None and step is not None and abs(t-ep)<=step),'tca_localized':localized}
+            frac=hits/73.0; out={'schema':'KMDSB.W04.M21.TCATransitionLocalization.v0.1','q_count':73,'tca_localized_q':hits,'tca_localized_fraction':frac,'frozen_threshold':0.90,'classification':'M21_L400_TCA_TRANSITION_LOCALIZED_CANDIDATE' if frac>=0.90 else 'M21_L400_TCA_TRANSITION_NOT_LOCALIZED_CONTINUE_P_G','per_q':perq,'scientific_classifier_executed':False,'frozen_full_classifier_deferred':True,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
           pathlib.Path('M21_TCA_TRANSITION_LOCALIZATION_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps({k:v for k,v in out.items() if k!='per_q'},indent=2))
           PY
       - uses: actions/upload-artifact@v4
