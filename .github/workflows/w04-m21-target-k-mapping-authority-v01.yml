@@ -1,0 +1,78 @@
+name: W04 M21 target-k mapping authority v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-target-k-mapping-authority-v01.yml']
+  workflow_dispatch:
+permissions: {actions: read, contents: read}
+jobs:
+  analyze:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-l400-conv-case-*-v01
+          path: components
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34907528331
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-primitive-p-capture-*
+          path: primitive
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 35317585346
+      - name: Analyze exact target-k/native-k geometry without scientific classification
+        run: |
+          python3 - <<'PY'
+          import bisect,json,math,pathlib,re
+          cases=('ref','f2','f3','f4'); qreq=set(range(261,334))
+          pat=re.compile(r'KMDSB_PP tau=([^ ]+) k=([^ ]+) rsa=(\d+) tca=(\d+)')
+          out={'schema':'KMDSB.W04.M21.TargetKMappingAuthority.v0.1','parent_component_run':34907528331,'primitive_capture_run':35317585346,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','cases':{},'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          allpass=True
+          for c in cases:
+            cps=list(pathlib.Path('components').rglob(f'conv_{c}.dat')); logs=list(pathlib.Path('primitive').rglob(f'primitive_{c}.log'))
+            if len(cps)!=1 or len(logs)!=1: raise RuntimeError((c,cps,logs))
+            targets={}
+            for raw in cps[0].read_text(errors='replace').splitlines():
+              s=raw.strip()
+              if not s or s.startswith('#'): continue
+              p=s.split()
+              if len(p)!=12: continue
+              q=int(round(float(p[0]))); k=float(p[1])
+              if q in qreq: targets.setdefault(q,k)
+            if set(targets)!=qreq: raise RuntimeError(f'{c}: target q coverage {len(targets)}')
+            states={}
+            with logs[0].open(errors='replace') as f:
+              for line in f:
+                m=pat.search(line)
+                if not m: continue
+                k=float(m[2]); states.setdefault(k,set()).add((int(m[3]),int(m[4])))
+            ks=sorted(states); assert len(ks)>100
+            exact=0; consistent=0; ambiguous=[]; outside=[]; maxgap=0.; rows={}
+            for q,k in sorted(targets.items()):
+              i=bisect.bisect_left(ks,k)
+              if i<len(ks) and math.isclose(ks[i],k,rel_tol=1e-13,abs_tol=0.): lo=hi=ks[i]; exact+=1
+              elif i==0 or i==len(ks): outside.append(q); continue
+              else: lo,hi=ks[i-1],ks[i]
+              gap=0. if lo==hi else (hi-lo)/max(abs(k),1e-300); maxgap=max(maxgap,gap)
+              shared=states[lo].intersection(states[hi])
+              ok=bool(shared) and states[lo]==states[hi] and len(states[lo])==1
+              consistent+=int(ok)
+              if not ok: ambiguous.append(q)
+              rows[str(q)]={'target_k':k,'k_lo':lo,'k_hi':hi,'relative_bracket_width':gap,'lo_states':sorted(map(list,states[lo])),'hi_states':sorted(map(list,states[hi])),'categorical_bracket_consistent':ok}
+            passed=(not outside and not ambiguous and len(rows)==73)
+            allpass &= passed
+            out['cases'][c]={'target_q_count':len(targets),'native_k_count':len(ks),'exact_target_matches':exact,'categorical_consistent_q':consistent,'ambiguous_q':ambiguous,'outside_q':outside,'max_relative_bracket_width':maxgap,'pass':passed,'per_q':rows}
+          out['classification']='M21_TARGET_K_MAPPING_AUTHORITY_PASS' if allpass else 'M21_TARGET_K_MAPPING_AUTHORITY_REQUIRES_EXPLICIT_STATE_MAPPING'
+          pathlib.Path('M21_TARGET_K_MAPPING_AUTHORITY_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({'classification':out['classification'],'cases':{c:{k:v for k,v in out['cases'][c].items() if k!='per_q'} for c in cases}},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m21-target-k-mapping-authority-v01
+          path: M21_TARGET_K_MAPPING_AUTHORITY_RESULT.json
+          retention-days: 90
