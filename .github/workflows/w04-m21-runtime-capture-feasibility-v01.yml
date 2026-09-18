@@ -48,8 +48,6 @@ jobs:
           p=Path('class/source/perturbations.c'); s=p.read_text()
           needle='_set_source_(ppt->index_tp_p) = sqrt(6.) * g * P;'
           assert s.count(needle)>=1
-          # Read-only capture at the already validated native scalar-E assignment.
-          # No arrays/state/source/precision/integration values are modified.
           probe=needle+'\n        fprintf(stderr,"KMDSB_CAP tau=%.17g k=%.17g rsa=%d tca=%d g=%.17g P=%.17g SE=%.17g\\n",tau,k,ppw->approx[ppw->index_ap_rsa],ppw->approx[ppw->index_ap_tca],g,P,_set_source_(ppt->index_tp_p));'
           p.write_text(s.replace(needle,probe))
           PY
@@ -74,8 +72,8 @@ jobs:
           lf,yf=load(cand[0]); lp,yp=load(pc[0]); common=np.intersect1d(lf,lp); assert len(common)>10
           fi=np.searchsorted(lf,common); pi=np.searchsorted(lp,common); a=yf[fi].ravel(); b=yp[pi].ravel()
           r=float(np.linalg.norm(a-b)/max(np.linalg.norm(b),1e-300))
-          finite=all(np.isfinite([x for row in rows for x in (row[0],row[1],row[4],row[5],row[6])]))
-          recon=max((abs(row[6]-np.sqrt(6.)*row[4]*row[5])/max(abs(row[6]),abs(np.sqrt(6.)*row[4]*row[5]),1e-300) for row in rows),default=float('inf'))
+          finite=bool(all(np.isfinite([x for row in rows for x in (row[0],row[1],row[4],row[5],row[6])])))
+          recon=float(max((abs(row[6]-np.sqrt(6.)*row[4]*row[5])/max(abs(row[6]),abs(np.sqrt(6.)*row[4]*row[5]),1e-300) for row in rows),default=float('inf')))
           passed=bool(rows) and finite and r<=1e-12 and recon<=1e-10
           out={'schema':'KMDSB.W04.M21.RuntimeCaptureFeasibilityLane.v0.1','case':c,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','capture_rows':len(rows),'normalized_l2':r,'reconstruction_max_relative_error':recon,'finite':finite,'pass':passed,'scope':'runtime feasibility for tau,k,RSA,TCA,g,P,S_E; primitive-P decomposition remains required before frozen scientific classifier','scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
           pathlib.Path(f'capture_feasibility_{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps(out,indent=2))
