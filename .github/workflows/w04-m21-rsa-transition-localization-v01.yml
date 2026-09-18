@@ -1,0 +1,90 @@
+name: W04 M21 RSA transition localization v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-rsa-transition-localization-v01.yml']
+  workflow_dispatch:
+permissions: {actions: read, contents: read}
+jobs:
+  analyze:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-l400-conv-case-*-v01
+          path: components
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34907528331
+      - uses: actions/download-artifact@v4
+        with:
+          name: m21-rsa-runtime-rule-validation-v01
+          path: authority
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 35360159958
+      - uses: actions/download-artifact@v4
+        with:
+          name: m21-target-k-rsa-boundary-resolution-v01
+          path: boundary
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 35377611890
+      - name: Frozen RSA-only transition localization
+        run: |
+          python3 - <<'PY'
+          import json,math,pathlib
+          proto=pathlib.Path('protocol/W04_M21_L400_APPROX_STATE_SOURCE_ZERO_TRANSITION_AUDIT_v0.1.md').read_text()
+          assert '>=90%' in proto and 'one native f3 tau step' in proto and 'J_shared=2905' in proto
+          auth=json.load(open('authority/M21_RSA_RUNTIME_RULE_VALIDATION_RESULT.json'))
+          bnd=json.load(open('boundary/M21_TARGET_K_RSA_BOUNDARY_RESOLUTION_RESULT.json'))
+          assert auth['classification']=='M21_RSA_RUNTIME_RULE_VALIDATION_PASS'
+          assert bnd['classification']=='M21_TARGET_K_RSA_BOUNDARY_RESOLUTION_PASS'
+          qreq=range(261,334); cases=('ref','f2','f3','f4')
+          dat={}
+          for c in cases:
+            p=list(pathlib.Path('components').rglob(f'conv_{c}.dat')); assert len(p)==1
+            d={}
+            for raw in p[0].read_text(errors='replace').splitlines():
+              z=raw.split()
+              if len(z)!=12: continue
+              q=int(round(float(z[0]))); j=int(z[2]); tau=float(z[3]); endpoint_j=int(z[10]); endpoint_tau=float(z[11])
+              if q in qreq: d.setdefault(q,[]).append((j,tau,endpoint_j,endpoint_tau))
+            assert set(d)==set(qreq); dat[c]=d
+          vals={c:auth['lanes'][c]['runtime_authority_values'] for c in cases}
+          perq={}; localized=0
+          for q in qreq:
+            ks={}
+            for c in cases:
+              # target transfer k is constant within q lane
+              p=list(pathlib.Path('components').rglob(f'conv_{c}.dat'))[0]
+              for raw in p.read_text(errors='replace').splitlines():
+                z=raw.split()
+                if len(z)==12 and int(round(float(z[0])))==q: ks[c]=float(z[1]); break
+            # exact provider RSA transition tau=max(45/k,tau_free_streaming), strict > means state flips immediately after threshold
+            tr={c:max(45.0/ks[c],float(vals[c]['tau_free_streaming_values'][0])) for c in cases}
+            shared_tau=dat['ref'][q][0][3]
+            f3_end_tau=dat['f3'][q][0][3]
+            # native f3 tau step nearest frozen shared endpoint
+            rows=sorted(dat['f3'][q],key=lambda x:x[0]); near=min(range(len(rows)),key=lambda i:abs(rows[i][1]-shared_tau))
+            neigh=[]
+            if near>0: neigh.append(abs(rows[near][1]-rows[near-1][1]))
+            if near+1<len(rows): neigh.append(abs(rows[near+1][1]-rows[near][1]))
+            step=max(neigh) if neigh else float('nan')
+            # RSA-localization requires f3-exclusive state transition near extended-source onset/termination. Exact trigger times themselves must differ materially from all controls.
+            f3_exclusive=all(abs(tr['f3']-tr[c])>step for c in ('ref','f2','f4')) if math.isfinite(step) else False
+            near_endpoint=min(abs(tr['f3']-shared_tau),abs(tr['f3']-f3_end_tau))<=step if math.isfinite(step) else False
+            hit=bool(f3_exclusive and near_endpoint); localized+=hit
+            perq[str(q)]={'target_k':ks,'rsa_transition_tau':tr,'shared_endpoint_tau':shared_tau,'f3_endpoint_tau':f3_end_tau,'native_f3_tau_step':step,'f3_exclusive':f3_exclusive,'within_one_native_step_of_endpoint':near_endpoint,'rsa_localized':hit}
+          frac=localized/73.0
+          out={'schema':'KMDSB.W04.M21.RSATransitionLocalization.v0.1','provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','authority_runs':[35360159958,35377611890],'q_count':73,'rsa_localized_q':localized,'rsa_localized_fraction':frac,'frozen_threshold':0.90,'classification':'M21_L400_RSA_TRANSITION_LOCALIZED_CANDIDATE' if frac>=0.90 else 'M21_L400_RSA_TRANSITION_NOT_LOCALIZED_CONTINUE_TCA_P_G','per_q':perq,'scientific_classifier_executed':False,'frozen_full_classifier_deferred':True,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          pathlib.Path('M21_RSA_TRANSITION_LOCALIZATION_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps({k:v for k,v in out.items() if k!='per_q'},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-rsa-transition-localization-v01
+          path: M21_RSA_TRANSITION_LOCALIZATION_RESULT.json
+          retention-days: 90
