@@ -1,0 +1,79 @@
+name: W04 M21 tau-resolved target-k state mapping v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-target-k-state-mapping-v01.yml']
+  workflow_dispatch:
+permissions: {actions: read, contents: read}
+jobs:
+  analyze:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-l400-conv-case-*-v01
+          path: components
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 34907528331
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m21-primitive-p-capture-*
+          path: primitive
+          github-token: ${{ github.token }}
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 35317585346
+      - name: Tau-resolved categorical mapping authority
+        run: |
+          python3 - <<'PY'
+          import bisect,json,math,pathlib,re
+          cases=('ref','f2','f3','f4'); qreq=set(range(261,334))
+          pat=re.compile(r'KMDSB_PP tau=([^ ]+) k=([^ ]+) rsa=(\d+) tca=(\d+)')
+          out={'schema':'KMDSB.W04.M21.TargetKStateMapping.v0.1','parent_component_run':34907528331,'primitive_capture_run':35317585346,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','method':'categorical state mapped only within identical native tau row; target k is bracketed in that tau row; no interpolation of categorical state; authority requires equal singleton endpoint states','cases':{},'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          allpass=True
+          for c in cases:
+            cps=list(pathlib.Path('components').rglob(f'conv_{c}.dat')); logs=list(pathlib.Path('primitive').rglob(f'primitive_{c}.log'))
+            if len(cps)!=1 or len(logs)!=1: raise RuntimeError((c,cps,logs))
+            targets={}
+            for raw in cps[0].read_text(errors='replace').splitlines():
+              p=raw.strip().split()
+              if len(p)!=12 or raw.lstrip().startswith('#'): continue
+              q=int(round(float(p[0]))); k=float(p[1])
+              if q in qreq: targets.setdefault(q,k)
+            if set(targets)!=qreq: raise RuntimeError(f'{c}: target q coverage {len(targets)}')
+            # tau -> k -> set(states). State decisions are only meaningful at the same tau.
+            rows={}
+            with logs[0].open(errors='replace') as f:
+              for line in f:
+                m=pat.search(line)
+                if not m: continue
+                tau=float(m[1]); k=float(m[2]); st=(int(m[3]),int(m[4]))
+                rows.setdefault(tau,{}).setdefault(k,set()).add(st)
+            total=consistent=ambiguous=outside=exact=0; perq={q:{'samples':0,'consistent':0,'ambiguous':0,'outside':0,'exact':0} for q in qreq}
+            for tau,km in rows.items():
+              ks=sorted(km)
+              for q,k in targets.items():
+                i=bisect.bisect_left(ks,k); total+=1; perq[q]['samples']+=1
+                if i<len(ks) and math.isclose(ks[i],k,rel_tol=1e-13,abs_tol=0.):
+                  sts=km[ks[i]]; ok=len(sts)==1; exact+=1; perq[q]['exact']+=1
+                elif i==0 or i==len(ks):
+                  outside+=1; perq[q]['outside']+=1; continue
+                else:
+                  a,b=km[ks[i-1]],km[ks[i]]; ok=(a==b and len(a)==1)
+                if ok: consistent+=1; perq[q]['consistent']+=1
+                else: ambiguous+=1; perq[q]['ambiguous']+=1
+            # Fail closed: every retained tau/q mapping must be in-domain and categorical endpoints identical.
+            passed=(total>0 and outside==0 and ambiguous==0 and consistent==total)
+            allpass &= passed
+            out['cases'][c]={'native_tau_rows':len(rows),'mapping_samples':total,'consistent_samples':consistent,'ambiguous_samples':ambiguous,'outside_samples':outside,'exact_samples':exact,'consistent_fraction':consistent/total if total else 0.0,'pass':passed,'per_q':{str(q):perq[q] for q in sorted(perq)}}
+          out['classification']='M21_TARGET_K_TAU_RESOLVED_STATE_MAPPING_AUTHORITY_PASS' if allpass else 'M21_TARGET_K_TAU_RESOLVED_STATE_MAPPING_REQUIRES_PROVIDER_RULE'
+          pathlib.Path('M21_TARGET_K_TAU_RESOLVED_STATE_MAPPING_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({'classification':out['classification'],'cases':{c:{k:v for k,v in out['cases'][c].items() if k!='per_q'} for c in cases}},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m21-target-k-tau-resolved-state-mapping-v01
+          path: M21_TARGET_K_TAU_RESOLVED_STATE_MAPPING_RESULT.json
+          retention-days: 90
