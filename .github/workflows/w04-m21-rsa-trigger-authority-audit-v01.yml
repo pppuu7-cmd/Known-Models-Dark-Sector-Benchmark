@@ -1,0 +1,47 @@
+name: W04 M21 RSA trigger authority audit v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-rsa-trigger-authority-audit-v01.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin provider and extract RSA switch authority
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git -C class rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          python3 - <<'PY'
+          import json,pathlib,re
+          root=pathlib.Path('class')
+          files=[p for p in root.rglob('*') if p.is_file() and p.suffix in {'.c','.h','.ini','.pre'}]
+          needles=('rsa_on','rsa_off','radiation_streaming_approximation','rsa_trigger','radiation streaming')
+          hits=[]
+          for p in files:
+            try: lines=p.read_text(errors='replace').splitlines()
+            except: continue
+            for i,line in enumerate(lines):
+              if any(n.lower() in line.lower() for n in needles):
+                lo=max(0,i-8); hi=min(len(lines),i+9)
+                hits.append({'path':str(p.relative_to(root)),'line':i+1,'context':'\n'.join(f'{j+1}: {lines[j]}' for j in range(lo,hi))})
+          # Fail closed: this is authority discovery only; no target state assignment.
+          out={'schema':'KMDSB.W04.M21.RSATriggerAuthorityAudit.v0.1','provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','scope':'source-only audit of pinned provider approximation trigger/state transition logic; no scientific classifier and no target-state assignment','hit_count':len(hits),'hits':hits,'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False,'classification':'M21_RSA_TRIGGER_AUTHORITY_SOURCE_AUDIT_COMPLETE' if hits else 'M21_RSA_TRIGGER_AUTHORITY_NOT_FOUND'}
+          pathlib.Path('M21_RSA_TRIGGER_AUTHORITY_AUDIT_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          pathlib.Path('M21_RSA_TRIGGER_AUTHORITY_CONTEXT.txt').write_text('\n\n===== HIT =====\n\n'.join(h['context'] for h in hits)+'\n')
+          print(json.dumps({k:v for k,v in out.items() if k!='hits'},indent=2))
+          if not hits: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-rsa-trigger-authority-audit-v01
+          path: |
+            M21_RSA_TRIGGER_AUTHORITY_AUDIT_RESULT.json
+            M21_RSA_TRIGGER_AUTHORITY_CONTEXT.txt
+          retention-days: 90
