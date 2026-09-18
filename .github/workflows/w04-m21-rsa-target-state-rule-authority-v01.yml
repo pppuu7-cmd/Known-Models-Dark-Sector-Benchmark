@@ -1,0 +1,55 @@
+name: W04 M21 RSA target-state rule authority v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-rsa-target-state-rule-authority-v01.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  authority:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin provider and machine-freeze exact RSA target-state rule
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git -C class rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          python3 - <<'PY'
+          import json,pathlib,re
+          src=pathlib.Path('class/source/perturbations.c').read_text(errors='replace')
+          checks={
+            'tau_k_exact_inverse_k': bool(re.search(r'tau_k\s*=\s*1\s*\.\s*/\s*pppaw->k\s*;',src)),
+            'rsa_tau_ratio_trigger': 'tau/tau_k > ppr->radiation_streaming_trigger_tau_over_tau_k' in src,
+            'rsa_free_streaming_trigger': 'tau > pth->tau_free_streaming' in src,
+            'rsa_enabled_guard': 'ppr->radiation_streaming_approximation != rsa_none' in src,
+            'rsa_on_assignment': 'ppw->approx[ppw->index_ap_rsa] = (int)rsa_on;' in src,
+            'rsa_off_assignment': 'ppw->approx[ppw->index_ap_rsa] = (int)rsa_off;' in src,
+          }
+          ok=all(checks.values())
+          out={
+            'schema':'KMDSB.W04.M21.RSATargetStateRuleAuthority.v0.1',
+            'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540',
+            'scope':'source-only prospective authority synthesis; no captured-state assignment and no scientific classifier',
+            'checks':checks,
+            'derived_identity':'tau/tau_k = tau*k because tau_k = 1/k',
+            'provider_exact_target_rule':'rsa_on iff (tau*k > radiation_streaming_trigger_tau_over_tau_k) AND (tau > tau_free_streaming) AND (radiation_streaming_approximation != rsa_none); otherwise rsa_off',
+            'strict_inequality_preserved':True,
+            'nearest_neighbor_forbidden':True,
+            'majority_vote_forbidden':True,
+            'scientific_classifier_executed':False,
+            'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False,
+            'classification':'M21_RSA_TARGET_STATE_RULE_AUTHORITY_COMPLETE' if ok else 'M21_RSA_TARGET_STATE_RULE_AUTHORITY_INCOMPLETE'
+          }
+          pathlib.Path('M21_RSA_TARGET_STATE_RULE_AUTHORITY_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          if not ok: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-rsa-target-state-rule-authority-v01
+          path: M21_RSA_TARGET_STATE_RULE_AUTHORITY_RESULT.json
+          retention-days: 90
