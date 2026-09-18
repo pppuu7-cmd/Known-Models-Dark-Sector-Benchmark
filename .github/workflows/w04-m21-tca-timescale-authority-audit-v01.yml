@@ -1,0 +1,54 @@
+name: W04 M21 TCA timescale authority audit v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-tca-timescale-authority-audit-v01.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin provider and extract exact TCA timescale authority
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q e85808324f51fc694d12e3ed7439552a3c3f9540
+          test "$(git -C class rev-parse HEAD)" = "e85808324f51fc694d12e3ed7439552a3c3f9540"
+          python3 - <<'PY'
+          import json,pathlib,re
+          root=pathlib.Path('class')
+          p=(root/'source/perturbations.c').read_text(errors='replace').splitlines()
+          needles=['tau_c =','tau_h =','tau_k =','index_th_dkappa','tight_coupling_trigger_tau_c_over_tau_h','tight_coupling_trigger_tau_c_over_tau_k','has_idm_g','has_idm_b']
+          hits=[]
+          for i,line in enumerate(p):
+            if any(n in line for n in needles):
+              lo=max(0,i-7); hi=min(len(p),i+8)
+              hits.append({'line':i+1,'context':'\n'.join(f'{j+1}: {p[j]}' for j in range(lo,hi))})
+          joined='\n'.join(h['context'] for h in hits)
+          checks={
+            'tau_c_from_dkappa': bool(re.search(r'tau_c\s*=\s*1\./ppw->pvecthermo\[pth->index_th_dkappa\]',joined)),
+            'tau_k_from_k': bool(re.search(r'tau_k\s*=\s*1\./k',joined)),
+            'tau_h_assignment_found': bool(re.search(r'tau_h\s*=',joined)),
+            'base_two_trigger_rule_found': ('tau_c/tau_h < ppr->tight_coupling_trigger_tau_c_over_tau_h' in joined and 'tau_c/tau_k < ppr->tight_coupling_trigger_tau_c_over_tau_k' in joined),
+            'idm_g_extra_condition_found': ('has_idm_g' in joined and 'tight_coupling_trigger_tau_c_over_tau_dmu_idm_g' in joined),
+            'idm_b_extra_condition_found': ('has_idm_b' in joined and 'tight_coupling_trigger_tau_c_over_tau_R_idm_b' in joined)
+          }
+          required=['tau_c_from_dkappa','tau_k_from_k','tau_h_assignment_found','base_two_trigger_rule_found','idm_g_extra_condition_found','idm_b_extra_condition_found']
+          ok=all(checks[k] for k in required)
+          out={'schema':'KMDSB.W04.M21.TCATimescaleAuthorityAudit.v0.1','provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','scope':'source-only closure of exact provider timescale definitions and conditional TCA branches; no target-state assignment or scientific classifier','checks':checks,'hits':hits,'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False,'classification':'M21_TCA_TIMESCALE_AUTHORITY_COMPLETE' if ok else 'M21_TCA_TIMESCALE_AUTHORITY_INCOMPLETE'}
+          pathlib.Path('M21_TCA_TIMESCALE_AUTHORITY_AUDIT_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          pathlib.Path('M21_TCA_TIMESCALE_AUTHORITY_CONTEXT.txt').write_text('\n\n===== HIT =====\n\n'.join(h['context'] for h in hits)+'\n')
+          print(json.dumps({k:v for k,v in out.items() if k!='hits'},indent=2))
+          if not ok: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-tca-timescale-authority-audit-v01
+          path: |
+            M21_TCA_TIMESCALE_AUTHORITY_AUDIT_RESULT.json
+            M21_TCA_TIMESCALE_AUTHORITY_CONTEXT.txt
+          retention-days: 90
