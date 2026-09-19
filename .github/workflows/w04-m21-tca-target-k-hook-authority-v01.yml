@@ -1,0 +1,50 @@
+name: W04 M21 TCA target-k hook authority v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-tca-target-k-hook-authority-v01.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit pinned provider target-k spline and approximation-state hook
+        run: |
+          set -euo pipefail
+          PIN=e85808324f51fc694d12e3ed7439552a3c3f9540
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$PIN"
+          test "$(git -C class rev-parse HEAD)" = "$PIN"
+          python3 - <<'PY'
+          import json,pathlib,re
+          root=pathlib.Path('class/source')
+          files={p.name:p.read_text(errors='replace') for p in root.glob('*.c')}
+          needles=['array_interpolate_spline','array_interpolate_two','transfer','sources','perturbations_approximations']
+          hits={n:[] for n in needles}
+          for fn,s in files.items():
+            for n in needles:
+              for m in re.finditer(re.escape(n),s):
+                a=max(0,m.start()-700); b=min(len(s),m.end()+1200)
+                hits[n].append({'file':fn,'offset':m.start(),'context':s[a:b]})
+          # Authority requires locating both the provider spline machinery used on perturbation/source k data
+          # and the native approximation-state routine. This gate does not choose a hook post hoc.
+          has_ap=any('int perturbations_approximations(' in x['context'] for x in hits['perturbations_approximations'])
+          has_spline=bool(hits['array_interpolate_spline'] or hits['array_interpolate_two'])
+          out={'schema':'KMDSB.W04.M21.TCATargetKHookAuthority.v0.1','provider_commit':"e85808324f51fc694d12e3ed7439552a3c3f9540",'has_native_approximation_routine':has_ap,'has_provider_interpolation_candidates':has_spline,'hit_counts':{k:len(v) for k,v in hits.items()},'classification':'M21_TCA_TARGET_K_HOOK_AUTHORITY_CANDIDATES_FOUND' if has_ap and has_spline else 'M21_TCA_TARGET_K_HOOK_AUTHORITY_BLOCKED','scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          pathlib.Path('M21_TCA_TARGET_K_HOOK_AUTHORITY_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          # preserve bounded contexts for manual/machine successor selection
+          pathlib.Path('M21_TCA_TARGET_K_HOOK_CONTEXTS.json').write_text(json.dumps(hits,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2))
+          raise SystemExit(0 if has_ap and has_spline else 1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-tca-target-k-hook-authority-v01
+          path: |
+            M21_TCA_TARGET_K_HOOK_AUTHORITY_RESULT.json
+            M21_TCA_TARGET_K_HOOK_CONTEXTS.json
+          retention-days: 90
