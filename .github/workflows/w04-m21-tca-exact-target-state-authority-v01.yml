@@ -18,8 +18,9 @@ jobs:
           git clone -q https://github.com/lesgourg/class_public.git class
           git -C class checkout -q --detach "$PIN"
           test "$(git -C class rev-parse HEAD)" = "$PIN"
-          python3 - <<'PY'
-          import json,pathlib,re
+          PROVIDER_PIN="$PIN" python3 - <<'PY'
+          import json,pathlib,re,os
+          PIN=os.environ['PROVIDER_PIN']
           p=pathlib.Path('class/source/perturbations.c'); s=p.read_text(errors='replace')
           f=s.index('int perturbations_approximations(')
           body=s[f:s.index('\nint ',f+10) if '\nint ' in s[f+10:] else len(s)]
@@ -28,7 +29,6 @@ jobs:
           bg_ok='background_at_tau' in body
           th_ok='thermodynamics_at_z' in body or 'thermodynamics_at_z' in s[f:f+12000]
           tca_ok=('index_ap_tca' in body and 'tight_coupling_trigger_tau_c_over_tau_h' in body and 'tight_coupling_trigger_tau_c_over_tau_k' in body)
-          # Provider itself calls this routine at arbitrary k and tau while locating approximation switches.
           calls=[]
           for m in re.finditer(r'perturbations_approximations\s*\(',s):
             if m.start()==f: continue
