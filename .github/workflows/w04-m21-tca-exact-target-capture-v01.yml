@@ -45,10 +45,8 @@ jobs:
           p.write_text(s.replace(needle,probe))
           PY
           mkdir -p output; make -C class -j2 > build.log 2>&1
-          set +e
-          timeout 2700 ./class/class "m21_cases/${CASE}.ini" l400_diag.pre > "stdout_${CASE}.log" 2> "target_${CASE}.log"
-          rc=$?
-          set -e
+          rc=0
+          timeout 2700 ./class/class "m21_cases/${CASE}.ini" l400_diag.pre > "stdout_${CASE}.log" 2> "target_${CASE}.log" || rc=$?
           python3 - "$rc" <<'PY'
           import json,os,pathlib,re,sys
           c=os.environ['CASE']; rc=int(sys.argv[1]); text=pathlib.Path(f'target_{c}.log').read_text(errors='replace')
