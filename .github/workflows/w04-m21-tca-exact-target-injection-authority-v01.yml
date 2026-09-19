@@ -1,0 +1,47 @@
+name: W04 M21 TCA exact-target injection authority v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-tca-exact-target-injection-authority-v01.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin provider and locate initialized-workspace injection point
+        run: |
+          set -euo pipefail
+          PIN=e85808324f51fc694d12e3ed7439552a3c3f9540
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$PIN"
+          test "$(git -C class rev-parse HEAD)" = "$PIN"
+          PIN="$PIN" python3 - <<'PY'
+          import json,os,pathlib,re
+          s=pathlib.Path('class/source/perturbations.c').read_text()
+          # Frozen objective: output-only probe must call the already validated provider routine
+          # only after ppw has valid background/thermo workspaces and before those are freed.
+          names=['perturbations_workspace_init','perturbations_solve','perturbations_workspace_free']
+          loc={n:[m.start() for m in re.finditer(n+r'\s*\(',s)] for n in names}
+          approx=[m.start() for m in re.finditer(r'perturbations_approximations\s*\(',s)]
+          contexts=[]
+          for n,offs in loc.items():
+            for o in offs[:8]: contexts.append({'symbol':n,'offset':o,'context':s[max(0,o-1800):min(len(s),o+3200)]})
+          # Require an actual solve routine, workspace initialization and cleanup in pinned source.
+          solve_def=re.search(r'int\s+perturbations_solve\s*\((.*?)\)\s*\{',s,re.S)
+          ws_init=bool(loc['perturbations_workspace_init']); ws_free=bool(loc['perturbations_workspace_free'])
+          # Exact-state routine authority was separately validated; assert source still has exact k,tau signature.
+          exact=bool(re.search(r'int\s+perturbations_approximations\s*\([^)]*double\s+k\s*,[^)]*double\s+tau\s*,',s,re.S))
+          feasible=bool(solve_def and ws_init and ws_free and exact and len(approx)>1)
+          out={'schema':'KMDSB.W04.M21.TCAExactTargetInjectionAuthority.v0.1','provider_commit':os.environ['PIN'],'solve_definition_found':bool(solve_def),'workspace_init_found':ws_init,'workspace_free_found':ws_free,'exact_k_tau_routine_found':exact,'approximation_call_count':len(approx),'classification':'M21_TCA_EXACT_TARGET_INJECTION_AUTHORITY_PASS' if feasible else 'M21_TCA_EXACT_TARGET_INJECTION_AUTHORITY_BLOCKED','contexts':contexts,'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          pathlib.Path('M21_TCA_EXACT_TARGET_INJECTION_AUTHORITY_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({k:v for k,v in out.items() if k!='contexts'},indent=2))
+          raise SystemExit(0 if feasible else 1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-tca-exact-target-injection-authority-v01
+          path: M21_TCA_EXACT_TARGET_INJECTION_AUTHORITY_RESULT.json
+          retention-days: 90
