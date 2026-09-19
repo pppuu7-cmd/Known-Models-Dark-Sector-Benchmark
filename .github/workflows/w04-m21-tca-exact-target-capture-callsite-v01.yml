@@ -1,0 +1,46 @@
+name: W04 M21 TCA exact-target capture callsite v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-tca-exact-target-capture-callsite-v01.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit provider callsite for output-only exact-target capture
+        run: |
+          set -euo pipefail
+          PIN=e85808324f51fc694d12e3ed7439552a3c3f9540
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$PIN"
+          test "$(git -C class rev-parse HEAD)" = "$PIN"
+          PIN="$PIN" python3 - <<'PY'
+          import json,os,pathlib,re
+          p=pathlib.Path('class/source/perturbations.c'); s=p.read_text()
+          sig=re.search(r'int perturbations_approximations\s*\((.*?)\)\s*\{',s,re.S)
+          assert sig
+          calls=[]
+          for m in re.finditer(r'perturbations_approximations\s*\(',s):
+            if m.start()==sig.start(): continue
+            a=max(0,m.start()-1200); b=min(len(s),m.start()+1800)
+            calls.append({'offset':m.start(),'context':s[a:b]})
+          # Frozen objective: find an existing initialized provider call where arbitrary k,tau are already legal.
+          exact_k_tau=bool(re.search(r'perturbations_approximations\s*\([^;]*?k[^;]*?tau',s,re.S))
+          has_bg='background_at_tau' in s[sig.end():sig.end()+12000]
+          has_th='thermodynamics_at_z' in s[sig.end():sig.end()+12000] or 'thermodynamics_at_tau' in s[sig.end():sig.end()+12000]
+          # Require at least one non-definition provider call and exact-state prerequisites before allowing instrumentation design.
+          feasible=bool(calls and has_bg and has_th)
+          out={'schema':'KMDSB.W04.M21.TCAExactTargetCaptureCallsite.v0.1','provider_commit':os.environ['PIN'],'call_count':len(calls),'routine_has_background_path':has_bg,'routine_has_thermodynamics_path':has_th,'exact_k_tau_signature_evidence':exact_k_tau,'classification':'M21_TCA_EXACT_TARGET_CAPTURE_CALLSITE_FOUND' if feasible else 'M21_TCA_EXACT_TARGET_CAPTURE_CALLSITE_BLOCKED_SOURCE_AUDIT','call_contexts':calls[:8],'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          pathlib.Path('M21_TCA_EXACT_TARGET_CAPTURE_CALLSITE_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({k:v for k,v in out.items() if k!='call_contexts'},indent=2))
+          raise SystemExit(0 if feasible else 1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-tca-exact-target-capture-callsite-v01
+          path: M21_TCA_EXACT_TARGET_CAPTURE_CALLSITE_RESULT.json
+          retention-days: 90
