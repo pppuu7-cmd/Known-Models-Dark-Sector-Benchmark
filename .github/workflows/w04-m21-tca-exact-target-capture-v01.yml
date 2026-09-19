@@ -46,6 +46,7 @@ jobs:
           p.write_text(s.replace(needle,probe))
           PY
           make -C class -j2 >/dev/null
+          mkdir -p output
           rc=0
           timeout 2700 ./class/class "m21_cases/${CASE}.ini" l400_diag.pre > "stdout_${CASE}.log" 2> "target_${CASE}.log" || rc=$?
           python3 - "$rc" <<'PY'
