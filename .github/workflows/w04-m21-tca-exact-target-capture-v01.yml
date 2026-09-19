@@ -52,17 +52,19 @@ jobs:
           import json,os,pathlib,re,sys
           c=os.environ['CASE']; rc=int(sys.argv[1]); text=pathlib.Path(f'target_{c}.log').read_text(errors='replace')
           pat=re.compile(r'^KMDSB_TCA_TARGET q=(\d+) j=(\d+) tau=([^ ]+) k=([^ ]+) tca=([+-]?\d+)\s*$',re.M)
-          done=pat.findall(text)
-          qs={int(x[0]) for x in done}
-          outp=pathlib.Path(f'tca_exact_{c}.tsv'); outp.write_text('q\tj\ttau\tk\ttca\n'+''.join('\t'.join(x)+'\n' for x in done))
-          ok=(rc==0 and bool(done) and qs==set(range(261,334)))
-          meta={'schema':'KMDSB.W04.M21.TCAExactTargetCapture.v0.1','case':c,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','class_exit_code':rc,'rows':len(done),'q_count':len(qs),'q_min':min(qs) if qs else None,'q_max':max(qs) if qs else None,'capture_complete':ok,'stderr_tail':'\n'.join(text.splitlines()[-40:]),'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          done=pat.findall(text); qs={int(x[0]) for x in done}
+          pathlib.Path(f'tca_exact_{c}.tsv').write_text('q\tj\ttau\tk\ttca\n'+''.join('\t'.join(x)+'\n' for x in done))
+          data_complete=(bool(done) and qs==set(range(261,334)))
+          runtime_clean=(rc==0)
+          ok=(data_complete and runtime_clean)
+          nonprobe=[ln for ln in text.splitlines() if not ln.startswith('KMDSB_TCA_TARGET ')]
+          meta={'schema':'KMDSB.W04.M21.TCAExactTargetCapture.v0.1','case':c,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','class_exit_code':rc,'rows':len(done),'q_count':len(qs),'q_min':min(qs) if qs else None,'q_max':max(qs) if qs else None,'data_complete':data_complete,'runtime_clean':runtime_clean,'capture_complete':ok,'nonprobe_stderr_tail':'\n'.join(nonprobe[-120:]),'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
           pathlib.Path(f'tca_exact_{c}.json').write_text(json.dumps(meta,indent=2,sort_keys=True)+'\n')
           if not ok: raise SystemExit(1)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: 'm21-tca-exact-target-${{ matrix.case }}-v01', path: 'tca_exact_${{ matrix.case }}.*', retention-days: 90, if-no-files-found: warn}
+        with: {name: 'm21-tca-exact-target-${{ matrix.case }}-v01', path: 'tca_exact_${{ matrix.case }}.*\ntarget_${{ matrix.case }}.log\nstdout_${{ matrix.case }}.log', retention-days: 90, if-no-files-found: warn}
   barrier:
     needs: lane
     if: always()
