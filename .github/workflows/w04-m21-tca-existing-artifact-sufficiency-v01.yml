@@ -1,0 +1,58 @@
+name: W04 M21 TCA existing-artifact sufficiency v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-tca-existing-artifact-sufficiency-v01.yml']
+  workflow_dispatch:
+permissions: {contents: read, actions: read}
+jobs:
+  audit:
+    strategy:
+      fail-fast: false
+      matrix: {case: [ref, f2, f3, f4]}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: 'm21-primitive-p-capture-${{ matrix.case }}'
+          path: primitive
+          github-token: '${{ github.token }}'
+          repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark
+          run-id: 35317585346
+      - name: Audit whether immutable capture already contains exact TCA-rule inputs
+        env: {CASE: '${{ matrix.case }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib,re
+          c=os.environ['CASE']; files=list(pathlib.Path('primitive').rglob('*'))
+          texts=[]
+          for p in files:
+            if p.is_file():
+              try: texts.append(p.read_text(errors='replace'))
+              except: pass
+          s='\n'.join(texts)
+          checks={
+            'tau': bool(re.search(r'\btau=',s)),
+            'k': bool(re.search(r'\bk=',s)),
+            'tca_state': bool(re.search(r'\btca=',s)),
+            'dkappa_or_tau_c': bool(re.search(r'\b(?:dkappa|tau_c)=',s)),
+            'tau_h_or_background_rate': bool(re.search(r'\b(?:tau_h|a_prime_over_a|H)=',s)),
+            'trigger_thresholds': bool(re.search(r'tight_coupling_trigger|tca_trigger|tau_c_over_tau_[hk]',s)),
+          }
+          sufficient=all(checks.values())
+          out={'schema':'KMDSB.W04.M21.TCAExistingArtifactSufficiency.v0.1','case':c,'primitive_capture_run':35317585346,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','checks':checks,'classification':'M21_TCA_EXISTING_ARTIFACTS_SUFFICIENT_FOR_EXACT_TARGET_RULE' if sufficient else 'M21_TCA_EXISTING_ARTIFACTS_INSUFFICIENT_NEW_OUTPUT_ONLY_CAPTURE_REQUIRED','scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          pathlib.Path(f'M21_TCA_EXISTING_ARTIFACT_SUFFICIENCY_{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 'm21-tca-existing-artifact-sufficiency-${{ matrix.case }}-v01'
+          path: 'M21_TCA_EXISTING_ARTIFACT_SUFFICIENCY_${{ matrix.case }}.json'
+          retention-days: 90
+  barrier:
+    if: always()
+    needs: audit
+    runs-on: ubuntu-22.04
+    steps:
+      - run: echo 'Four independent immutable-artifact sufficiency audits completed; consume per-lane artifacts before authorizing any new heavy capture.'
