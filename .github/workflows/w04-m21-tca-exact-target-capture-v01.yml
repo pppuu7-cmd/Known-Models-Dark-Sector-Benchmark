@@ -64,7 +64,14 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: 'm21-tca-exact-target-${{ matrix.case }}-v01', path: 'tca_exact_${{ matrix.case }}.*\ntarget_${{ matrix.case }}.log\nstdout_${{ matrix.case }}.log', retention-days: 90, if-no-files-found: warn}
+        with:
+          name: 'm21-tca-exact-target-${{ matrix.case }}-v01'
+          path: |
+            tca_exact_${{ matrix.case }}.*
+            target_${{ matrix.case }}.log
+            stdout_${{ matrix.case }}.log
+          retention-days: 90
+          if-no-files-found: warn
   barrier:
     needs: lane
     if: always()
