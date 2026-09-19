@@ -44,7 +44,18 @@ jobs:
           probe=needle+'''\n          /* KMDSB diagnostic output-only exact-target TCA probe; frozen targets/rule unchanged. */\n          if ((index_ic == 0) && (index_k == 0) && (index_md == ppt->index_md_scalars)) {\n            struct {int q; int j; double tau; double k;} km_targets[] = {\n'''+arr+'''\n            };\n            int km_i;\n            for (km_i=0; km_i<(int)(sizeof(km_targets)/sizeof(km_targets[0])); km_i++) {\n              fprintf(stderr,"KMDSB_TCA_CALL q=%d j=%d tau=%.17g k=%.17g\\n",km_targets[km_i].q,km_targets[km_i].j,km_targets[km_i].tau,km_targets[km_i].k);\n              class_call(perturbations_approximations(ppr,pba,pth,ppt,index_md,km_targets[km_i].k,km_targets[km_i].tau,&pw),ppt->error_message,ppt->error_message);\n              fprintf(stderr,"KMDSB_TCA_TARGET q=%d j=%d tau=%.17g k=%.17g tca=%d\\n",km_targets[km_i].q,km_targets[km_i].j,km_targets[km_i].tau,km_targets[km_i].k,pw.approx[pw.index_ap_tca]);\n            }\n          }'''
           p.write_text(s.replace(needle,probe))
           PY
-          mkdir -p output; make -C class -j2 > build.log 2>&1
+          mkdir -p output
+          build_rc=0
+          make -C class -j2 > build.log 2>&1 || build_rc=$?
+          if [ "$build_rc" -ne 0 ]; then
+            python3 - "$build_rc" <<'PY'
+          import json,os,pathlib,sys
+          c=os.environ['CASE']; rc=int(sys.argv[1]); text=pathlib.Path('build.log').read_text(errors='replace')
+          out={'schema':'KMDSB.W04.M21.TCAExactTargetCaptureDiagnostic.v0.1','case':c,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','stage':'build','build_exit_code':rc,'class_exit_code':None,'calls_started':0,'calls_completed':0,'last_call':None,'last_completed':None,'stderr_tail':'\n'.join(text.splitlines()[-120:]),'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          pathlib.Path(f'tca_diag_{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          PY
+            exit 0
+          fi
           rc=0
           timeout 2700 ./class/class "m21_cases/${CASE}.ini" l400_diag.pre > "stdout_${CASE}.log" 2> "target_${CASE}.log" || rc=$?
           python3 - "$rc" <<'PY'
@@ -52,9 +63,8 @@ jobs:
           c=os.environ['CASE']; rc=int(sys.argv[1]); text=pathlib.Path(f'target_{c}.log').read_text(errors='replace')
           calls=re.findall(r'KMDSB_TCA_CALL q=(\d+) j=(\d+) tau=([^ ]+) k=([^ ]+)',text)
           done=re.findall(r'KMDSB_TCA_TARGET q=(\d+) j=(\d+) tau=([^ ]+) k=([^ ]+) tca=(\d+)',text)
-          tail='\n'.join(text.splitlines()[-80:])
-          out={'schema':'KMDSB.W04.M21.TCAExactTargetCaptureDiagnostic.v0.1','case':c,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','class_exit_code':rc,'calls_started':len(calls),'calls_completed':len(done),'last_call':calls[-1] if calls else None,'last_completed':done[-1] if done else None,'stderr_tail':tail,'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
-          pathlib.Path(f'tca_diag_{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps({k:v for k,v in out.items() if k!='stderr_tail'},indent=2))
+          out={'schema':'KMDSB.W04.M21.TCAExactTargetCaptureDiagnostic.v0.1','case':c,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','stage':'runtime','build_exit_code':0,'class_exit_code':rc,'calls_started':len(calls),'calls_completed':len(done),'last_call':calls[-1] if calls else None,'last_completed':done[-1] if done else None,'stderr_tail':'\n'.join(text.splitlines()[-120:]),'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          pathlib.Path(f'tca_diag_{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
           PY
       - uses: actions/upload-artifact@v4
         if: always()
@@ -70,7 +80,7 @@ jobs:
           python3 - <<'PY'
           import json,pathlib
           ds={d['case']:d for p in pathlib.Path('lanes').rglob('tca_diag_*.json') for d in [json.load(open(p))]}
-          out={'schema':'KMDSB.W04.M21.TCAExactTargetCaptureDiagnosticBarrier.v0.1','classification':'M21_TCA_EXACT_TARGET_CAPTURE_TECHNICAL_DIAGNOSTIC_COMPLETE' if len(ds)==4 else 'M21_TCA_EXACT_TARGET_CAPTURE_DIAGNOSTIC_INCOMPLETE','lanes':{c:{'class_exit_code':d['class_exit_code'],'calls_started':d['calls_started'],'calls_completed':d['calls_completed'],'last_call':d['last_call'],'last_completed':d['last_completed'],'stderr_tail':d['stderr_tail']} for c,d in ds.items()},'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          out={'schema':'KMDSB.W04.M21.TCAExactTargetCaptureDiagnosticBarrier.v0.1','classification':'M21_TCA_EXACT_TARGET_CAPTURE_TECHNICAL_DIAGNOSTIC_COMPLETE' if len(ds)==4 else 'M21_TCA_EXACT_TARGET_CAPTURE_DIAGNOSTIC_INCOMPLETE','lanes':ds,'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
           pathlib.Path('M21_TCA_EXACT_TARGET_CAPTURE_DIAGNOSTIC_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
           PY
       - uses: actions/upload-artifact@v4
