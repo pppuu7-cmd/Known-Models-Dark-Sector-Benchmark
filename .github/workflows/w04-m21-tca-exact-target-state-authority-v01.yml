@@ -1,0 +1,51 @@
+name: W04 M21 TCA exact-target state authority v0.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/w04-m21-tca-exact-target-state-authority-v01.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  authority:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Certify provider-native exact k,tau approximation-state path
+        run: |
+          set -euo pipefail
+          PIN=e85808324f51fc694d12e3ed7439552a3c3f9540
+          git clone -q https://github.com/lesgourg/class_public.git class
+          git -C class checkout -q --detach "$PIN"
+          test "$(git -C class rev-parse HEAD)" = "$PIN"
+          python3 - <<'PY'
+          import json,pathlib,re
+          p=pathlib.Path('class/source/perturbations.c'); s=p.read_text(errors='replace')
+          f=s.index('int perturbations_approximations(')
+          body=s[f:s.index('\nint ',f+10) if '\nint ' in s[f+10:] else len(s)]
+          sig_ok=all(x in body[:1800] for x in ['double k','double tau','struct perturbations_workspace * ppw'])
+          tauk_ok=bool(re.search(r'tau_k\s*=\s*1\s*\.\s*/\s*k\s*;',body))
+          bg_ok='background_at_tau' in body
+          th_ok='thermodynamics_at_z' in body or 'thermodynamics_at_z' in s[f:f+12000]
+          tca_ok=('index_ap_tca' in body and 'tight_coupling_trigger_tau_c_over_tau_h' in body and 'tight_coupling_trigger_tau_c_over_tau_k' in body)
+          # Provider itself calls this routine at arbitrary k and tau while locating approximation switches.
+          calls=[]
+          for m in re.finditer(r'perturbations_approximations\s*\(',s):
+            if m.start()==f: continue
+            ctx=s[max(0,m.start()-600):min(len(s),m.end()+900)]
+            if re.search(r'\bk\s*,\s*(?:mid|tau_end|0\.5\s*\()',ctx): calls.append(ctx)
+          direct_ok=bool(calls)
+          passed=all([sig_ok,tauk_ok,bg_ok,th_ok,tca_ok,direct_ok])
+          out={'schema':'KMDSB.W04.M21.TCAExactTargetStateAuthority.v0.1','provider_commit':PIN,'signature_accepts_exact_k_tau':sig_ok,'tau_k_uses_exact_input_k':tauk_ok,'background_evaluated_at_tau':bg_ok,'thermodynamics_path_present':th_ok,'tca_rule_present':tca_ok,'provider_calls_same_routine_at_arbitrary_k_tau':direct_ok,'classification':'M21_TCA_EXACT_TARGET_STATE_AUTHORITY_PASS' if passed else 'M21_TCA_EXACT_TARGET_STATE_AUTHORITY_BLOCKED','scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          pathlib.Path('M21_TCA_EXACT_TARGET_STATE_AUTHORITY_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          pathlib.Path('M21_TCA_EXACT_TARGET_STATE_AUTHORITY_CONTEXTS.txt').write_text('\n\n---CALL---\n'.join(calls[:8]))
+          print(json.dumps(out,indent=2)); raise SystemExit(0 if passed else 1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m21-tca-exact-target-state-authority-v01
+          path: |
+            M21_TCA_EXACT_TARGET_STATE_AUTHORITY_RESULT.json
+            M21_TCA_EXACT_TARGET_STATE_AUTHORITY_CONTEXTS.txt
+          retention-days: 90
