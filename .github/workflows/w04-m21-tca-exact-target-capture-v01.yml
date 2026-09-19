@@ -17,7 +17,7 @@ jobs:
       - run: python3 -m pip install --user numpy
       - uses: actions/download-artifact@v4
         with: {name: 'm21-l400-conv-case-${{ matrix.case }}-v01', path: component, github-token: '${{ github.token }}', repository: pppuu7-cmd/Known-Models-Dark-Sector-Benchmark, run-id: 34907528331}
-      - name: Exact-target provider TCA capture
+      - name: Exact-target provider TCA capture diagnostic
         env: {CASE: '${{ matrix.case }}', OMP_NUM_THREADS: '1'}
         run: |
           set -euo pipefail
@@ -28,7 +28,7 @@ jobs:
           python3 verification/m21/mixed_cold_warm_k1_reference.py prepare m21_cases
           python3 verification/m21/build_l_grid_phase_profile.py P400_ON_TAIL_OFF class/cl_permille.pre verification/m21/m21_ncdm_tight.pre l400_diag.pre profile_manifest.json
           python3 - <<'PY'
-          import glob,os,pathlib
+          import os,pathlib
           c=os.environ['CASE']; fs=list(pathlib.Path('component').rglob(f'conv_{c}.dat')); assert len(fs)==1
           rows=[]
           for raw in fs[0].read_text().splitlines():
@@ -38,38 +38,43 @@ jobs:
               if 261<=q<=333: rows.append((q,int(z[2]),float(z[3]),float(z[1])))
           assert rows and len({q for q,_,_,_ in rows})==73
           arr=',\n'.join('{%d,%d,%.17g,%.17g}'%r for r in rows)
-          p=pathlib.Path('class/source/perturbations.c'); s=p.read_text();
+          p=pathlib.Path('class/source/perturbations.c'); s=p.read_text()
           needle='''          class_call(perturbations_solve(ppr,\n                                         pba,\n                                         pth,\n                                         ppt,\n                                         index_md,\n                                         index_ic,\n                                         index_k,\n                                         &pw),\n                     ppt->error_message,\n                     ppt->error_message);'''
           assert s.count(needle)==1
-          probe=needle+'''\n          /* KMDSB output-only exact-target TCA probe: after solve, before workspace free. */\n          if ((index_ic == 0) && (index_k == 0) && (index_md == ppt->index_md_scalars)) {\n            struct {int q; int j; double tau; double k;} km_targets[] = {\n'''+arr+'''\n            };\n            int km_i;\n            for (km_i=0; km_i<(int)(sizeof(km_targets)/sizeof(km_targets[0])); km_i++) {\n              class_call(perturbations_approximations(ppr,pba,pth,ppt,index_md,km_targets[km_i].k,km_targets[km_i].tau,&pw),ppt->error_message,ppt->error_message);\n              fprintf(stderr,"KMDSB_TCA_TARGET q=%d j=%d tau=%.17g k=%.17g tca=%d\\n",km_targets[km_i].q,km_targets[km_i].j,km_targets[km_i].tau,km_targets[km_i].k,pw.approx[pw.index_ap_tca]);\n            }\n          }'''
+          probe=needle+'''\n          /* KMDSB diagnostic output-only exact-target TCA probe; frozen targets/rule unchanged. */\n          if ((index_ic == 0) && (index_k == 0) && (index_md == ppt->index_md_scalars)) {\n            struct {int q; int j; double tau; double k;} km_targets[] = {\n'''+arr+'''\n            };\n            int km_i;\n            for (km_i=0; km_i<(int)(sizeof(km_targets)/sizeof(km_targets[0])); km_i++) {\n              fprintf(stderr,"KMDSB_TCA_CALL q=%d j=%d tau=%.17g k=%.17g\\n",km_targets[km_i].q,km_targets[km_i].j,km_targets[km_i].tau,km_targets[km_i].k);\n              class_call(perturbations_approximations(ppr,pba,pth,ppt,index_md,km_targets[km_i].k,km_targets[km_i].tau,&pw),ppt->error_message,ppt->error_message);\n              fprintf(stderr,"KMDSB_TCA_TARGET q=%d j=%d tau=%.17g k=%.17g tca=%d\\n",km_targets[km_i].q,km_targets[km_i].j,km_targets[km_i].tau,km_targets[km_i].k,pw.approx[pw.index_ap_tca]);\n            }\n          }'''
           p.write_text(s.replace(needle,probe))
           PY
           mkdir -p output; make -C class -j2 > build.log 2>&1
+          set +e
           timeout 2700 ./class/class "m21_cases/${CASE}.ini" l400_diag.pre > "stdout_${CASE}.log" 2> "target_${CASE}.log"
-          python3 - <<'PY'
-          import glob,json,os,pathlib,re,numpy as np
-          c=os.environ['CASE']; pat=re.compile(r'KMDSB_TCA_TARGET q=(\d+) j=(\d+) tau=([^ ]+) k=([^ ]+) tca=(\d+)'); rows=[]
-          for line in pathlib.Path(f'target_{c}.log').read_text(errors='replace').splitlines():
-            m=pat.search(line)
-            if m: rows.append({'q':int(m[1]),'j':int(m[2]),'tau':float(m[3]),'k':float(m[4]),'tca':int(m[5])})
-          qs={r['q'] for r in rows}; finite=all(np.isfinite([r['tau'],r['k']]).all() for r in rows); passed=bool(rows) and len(qs)==73 and finite
-          out={'schema':'KMDSB.W04.M21.TCAExactTargetCaptureLane.v0.1','case':c,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','capture_rows':len(rows),'q_count':len(qs),'finite':finite,'pass':passed,'states':rows,'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}; pathlib.Path(f'tca_exact_{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps({k:v for k,v in out.items() if k!='states'},indent=2)); raise SystemExit(0 if passed else 1)
+          rc=$?
+          set -e
+          python3 - "$rc" <<'PY'
+          import json,os,pathlib,re,sys
+          c=os.environ['CASE']; rc=int(sys.argv[1]); text=pathlib.Path(f'target_{c}.log').read_text(errors='replace')
+          calls=re.findall(r'KMDSB_TCA_CALL q=(\d+) j=(\d+) tau=([^ ]+) k=([^ ]+)',text)
+          done=re.findall(r'KMDSB_TCA_TARGET q=(\d+) j=(\d+) tau=([^ ]+) k=([^ ]+) tca=(\d+)',text)
+          tail='\n'.join(text.splitlines()[-80:])
+          out={'schema':'KMDSB.W04.M21.TCAExactTargetCaptureDiagnostic.v0.1','case':c,'provider_commit':'e85808324f51fc694d12e3ed7439552a3c3f9540','class_exit_code':rc,'calls_started':len(calls),'calls_completed':len(done),'last_call':calls[-1] if calls else None,'last_completed':done[-1] if done else None,'stderr_tail':tail,'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          pathlib.Path(f'tca_diag_{c}.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps({k:v for k,v in out.items() if k!='stderr_tail'},indent=2))
           PY
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: 'm21-tca-exact-target-${{ matrix.case }}-v01', path: 'tca_exact_${{ matrix.case }}.json', retention-days: 90}
+        with: {name: 'm21-tca-exact-target-diagnostic-${{ matrix.case }}-v01', path: 'tca_diag_${{ matrix.case }}.json', retention-days: 90}
   barrier:
     needs: lane
     if: always()
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/download-artifact@v4
-        with: {pattern: 'm21-tca-exact-target-*-v01', path: lanes}
+        with: {pattern: 'm21-tca-exact-target-diagnostic-*-v01', path: lanes}
       - run: |
           python3 - <<'PY'
           import json,pathlib
-          ds={d['case']:d for p in pathlib.Path('lanes').rglob('tca_exact_*.json') for d in [json.load(open(p))]}; req={'ref','f2','f3','f4'}; passed=set(ds)==req and all(d.get('pass') for d in ds.values()); out={'schema':'KMDSB.W04.M21.TCAExactTargetCaptureBarrier.v0.1','classification':'M21_TCA_EXACT_TARGET_CAPTURE_PASS' if passed else 'M21_TCA_EXACT_TARGET_CAPTURE_BLOCKED','lanes':{c:{'rows':d['capture_rows'],'q_count':d['q_count']} for c,d in ds.items()},'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}; pathlib.Path('M21_TCA_EXACT_TARGET_CAPTURE_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); raise SystemExit(0 if passed else 1)
+          ds={d['case']:d for p in pathlib.Path('lanes').rglob('tca_diag_*.json') for d in [json.load(open(p))]}
+          out={'schema':'KMDSB.W04.M21.TCAExactTargetCaptureDiagnosticBarrier.v0.1','classification':'M21_TCA_EXACT_TARGET_CAPTURE_TECHNICAL_DIAGNOSTIC_COMPLETE' if len(ds)==4 else 'M21_TCA_EXACT_TARGET_CAPTURE_DIAGNOSTIC_INCOMPLETE','lanes':{c:{'class_exit_code':d['class_exit_code'],'calls_started':d['calls_started'],'calls_completed':d['calls_completed'],'last_call':d['last_call'],'last_completed':d['last_completed'],'stderr_tail':d['stderr_tail']} for c,d in ds.items()},'scientific_classifier_executed':False,'K1_promoted':False,'K3_promoted':False,'K4_promoted':False,'physical_falsification':False}
+          pathlib.Path('M21_TCA_EXACT_TARGET_CAPTURE_DIAGNOSTIC_RESULT.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
           PY
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: m21-tca-exact-target-capture-v01, path: M21_TCA_EXACT_TARGET_CAPTURE_RESULT.json, retention-days: 90}
+        with: {name: m21-tca-exact-target-capture-diagnostic-v01, path: M21_TCA_EXACT_TARGET_CAPTURE_DIAGNOSTIC_RESULT.json, retention-days: 90}
